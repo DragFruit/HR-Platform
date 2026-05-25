@@ -1,75 +1,30 @@
-# Nuxt Minimal Starter
+# Frontend (Nuxt 4)
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Клиентская часть **VBI HR Gamification**. Общее описание проекта — в [корневом README](../README.md).
 
-## Setup
-
-Make sure to install dependencies:
+## Команды
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+npm run dev      # http://localhost:3000
+npm run build    # production → .output/
+npm run preview  # превью сборки
 ```
 
-## Development Server
+## Структура `app/`
 
-Start the development server on `http://localhost:3000`:
+| Папка | Содержимое |
+|-------|------------|
+| `pages/` | Файловый роутинг Nuxt |
+| `components/` | Vue-компоненты |
+| `composables/` | Состояние и бизнес-логика |
+| `assets/main.css` | Глобальные стили |
+| `plugins/` | Client-only инициализация |
+| `data/` | JSON-сиды (отпуска) |
 
-```bash
-# npm
-npm run dev
+## Документация
 
-# pnpm
-pnpm dev
+- [Архитектура](../docs/ARCHITECTURE.md)
+- [Changelog](../docs/CHANGELOG.md)
 
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+При добавлении страниц или composables обновляйте документацию в корне `docs/`.
