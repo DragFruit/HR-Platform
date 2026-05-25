@@ -1,0 +1,19 @@
+.DS_Store
+__MACOSX/
+*.log
+
+# Frontend (Nuxt)
+frontend/node_modules/
+frontend/.output/
+frontend/.nuxt/
+frontend/.nitro/
+frontend/.cache/
+frontend/dist/
+frontend/.data/
+frontend/.env
+frontend/.env.*
+
+# Backend / misc
+vendor/
+.env
+.env.*
