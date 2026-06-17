@@ -7,33 +7,18 @@ export type WalletTransaction = {
   counterparty?: string;
 };
 
-const CURRENT_USER_ID = 1;
+export type GiftRecipient = {
+  id: number;
+  name: string;
+  department: string;
+};
 
-const walletByUser = ref<Record<number, WalletTransaction[]>>({
-  1: [
-    {
-      idempotency_key: 'demo-credit-1',
-      type: 'credit',
-      amount: 550,
-      reason: 'Стартовый баланс',
-      created_at: '2026-04-20'
-    },
-    {
-      idempotency_key: 'demo-debit-1',
-      type: 'debit',
-      amount: 450,
-      reason: 'Покупка: Merch Pack',
-      created_at: '2026-04-19'
-    }
-  ],
-  2: [{ idempotency_key: 'u2-seed', type: 'credit', amount: 320, reason: 'Стартовый баланс', created_at: '2026-04-18' }],
-  3: [{ idempotency_key: 'u3-seed', type: 'credit', amount: 210, reason: 'Стартовый баланс', created_at: '2026-04-18' }],
-  4: [{ idempotency_key: 'u4-seed', type: 'credit', amount: 480, reason: 'Стартовый баланс', created_at: '2026-04-18' }],
-  5: [{ idempotency_key: 'u5-seed', type: 'credit', amount: 390, reason: 'Стартовый баланс', created_at: '2026-04-18' }]
-});
+const WALLET_STORAGE_KEY = 'vbi-wallet-state-v1';
 
-function calcBalance(userId: number): number {
-  const txs = walletByUser.value[userId] ?? [];
+const defaultWalletByUser = (): Record<number, WalletTransaction[]> => ({});
+
+function calcBalance(userId: number, wallets: Record<number, WalletTransaction[]>): number {
+  const txs = wallets[userId] ?? [];
   return txs.reduce((acc, tx) => acc + (tx.type === 'credit' ? tx.amount : -tx.amount), 0);
 }
 
@@ -42,16 +27,54 @@ function today(): string {
 }
 
 export function useWallet() {
-  const { users } = useAdminData();
+  const { user } = useAuth();
+  const { employees } = useEmployees();
 
-  const currentUserId = CURRENT_USER_ID;
+  const walletByUser = useState<Record<number, WalletTransaction[]>>('vbi-wallet-by-user', () =>
+    defaultWalletByUser()
+  );
+  const walletHydrated = useState<boolean>('vbi-wallet-hydrated', () => false);
 
-  const balance = computed(() => calcBalance(currentUserId));
+  const persistWallets = () => {
+    if (!import.meta.client) return;
+    localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(walletByUser.value));
+  };
 
-  const walletTransactions = computed(() => walletByUser.value[currentUserId] ?? []);
+  const hydrateWallets = () => {
+    if (!import.meta.client || walletHydrated.value) return;
+    const raw = localStorage.getItem(WALLET_STORAGE_KEY);
+    if (raw) {
+      try {
+        walletByUser.value = { ...defaultWalletByUser(), ...(JSON.parse(raw) as Record<number, WalletTransaction[]>) };
+      } catch {
+        walletByUser.value = defaultWalletByUser();
+      }
+    }
+    walletHydrated.value = true;
+  };
 
-  const giftRecipients = computed(() =>
-    users.value.filter((u) => u.id !== currentUserId && u.status === 'active')
+  const currentUserId = computed(() => user.value?.id ?? 0);
+
+  const balance = computed(() => {
+    const id = currentUserId.value;
+    if (!id) return 0;
+    return calcBalance(id, walletByUser.value);
+  });
+
+  const walletTransactions = computed(() => {
+    const id = currentUserId.value;
+    if (!id) return [];
+    return walletByUser.value[id] ?? [];
+  });
+
+  const giftRecipients = computed((): GiftRecipient[] =>
+    employees.value
+      .filter((emp) => emp.platform_user_id && emp.platform_user_id !== currentUserId.value)
+      .map((emp) => ({
+        id: emp.platform_user_id!,
+        name: emp.name,
+        department: emp.department
+      }))
   );
 
   const monthTurnover = computed(() => {
@@ -62,11 +85,17 @@ export function useWallet() {
   });
 
   const giftToColleague = (toUserId: number, amount: number, comment = '') => {
-    const recipient = users.value.find((u) => u.id === toUserId);
+    const fromId = currentUserId.value;
+    if (!fromId) {
+      return { ok: false, error: 'Войдите в аккаунт' };
+    }
+
+    const recipient = giftRecipients.value.find((r) => r.id === toUserId);
+    const senderName = user.value?.name ?? 'Коллега';
     if (!recipient) {
       return { ok: false, error: 'Получатель не найден' };
     }
-    if (toUserId === currentUserId) {
+    if (toUserId === fromId) {
       return { ok: false, error: 'Нельзя отправить подарок самому себе' };
     }
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -76,17 +105,17 @@ export function useWallet() {
       return { ok: false, error: 'Недостаточно валюты на балансе' };
     }
 
-    const key = `gift-${currentUserId}-${toUserId}-${Date.now()}`;
+    const key = `gift-${fromId}-${toUserId}-${Date.now()}`;
     const note = comment.trim() ? ` (${comment.trim()})` : '';
 
-    if (!walletByUser.value[currentUserId]) {
-      walletByUser.value[currentUserId] = [];
+    if (!walletByUser.value[fromId]) {
+      walletByUser.value[fromId] = [];
     }
     if (!walletByUser.value[toUserId]) {
       walletByUser.value[toUserId] = [];
     }
 
-    walletByUser.value[currentUserId].unshift({
+    walletByUser.value[fromId].unshift({
       idempotency_key: `${key}-debit`,
       type: 'debit',
       amount,
@@ -99,12 +128,26 @@ export function useWallet() {
       idempotency_key: `${key}-credit`,
       type: 'credit',
       amount,
-      reason: `Подарок от коллеги: Стас${note}`,
+      reason: `Подарок от коллеги: ${senderName}${note}`,
       created_at: today(),
-      counterparty: 'Стас'
+      counterparty: senderName
     });
 
+    persistWallets();
     return { ok: true };
+  };
+
+  const creditUser = (userId: number, amount: number, reason: string) => {
+    if (!userId || amount <= 0) return;
+    if (!walletByUser.value[userId]) walletByUser.value[userId] = [];
+    walletByUser.value[userId].unshift({
+      idempotency_key: `credit-${userId}-${Date.now()}`,
+      type: 'credit',
+      amount,
+      reason,
+      created_at: today()
+    });
+    persistWallets();
   };
 
   return {
@@ -113,6 +156,9 @@ export function useWallet() {
     walletTransactions,
     giftRecipients,
     monthTurnover,
-    giftToColleague
+    giftToColleague,
+    creditUser,
+    hydrateWallets,
+    persistWallets
   };
 }

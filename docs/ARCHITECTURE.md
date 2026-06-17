@@ -19,7 +19,7 @@ flowchart TB
     Org[useOrgStructure + OrgChart]
     Vac[useEmployees + useVacations]
     Game[useTasks + useWallet + useMockData]
-    Adapt[useAdaptationData]
+    Adapt[useAdaptation]
   end
 
   Nuxt --> Auth
@@ -39,13 +39,24 @@ flowchart TB
 
 1. `authReady === false` → «Загрузка...»
 2. Не авторизован → `AuthLogin.vue`
-3. Авторизован → `app-shell` (sidebar + topbar + `<NuxtPage />`) + опционально `WelcomeCelebration`
+3. Авторизован → `app-shell` (sidebar + topbar + `<NuxtPage />`) + опционально `FirstLoginOnboarding` (приветствие → аватар → конфетти)
 
 ### `usePlatformContext.ts`
 
 - Роль UI: `employee` | `admin` (не путать с `user.role` в auth).
 - Админ с `role: admin` может переключать режим в сайдбаре.
 - `guardRoute`: пути `/admin/*` недоступны в режиме сотрудника.
+
+### Поэтапный запуск (`useLaunchScope.ts`)
+
+- Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — `full` (по умолчанию) или `vacations`.
+- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков» и «Сотрудники» (даты выхода, руководитель = согласование).
+
+### Окружения и деплой
+
+- Env: `NUXT_PUBLIC_APP_ENV` — `development` | `staging` | `production` (`useAppEnv.ts`).
+- Ветки Git: `staging` → тест, `main` → бой. Подробно: [DEPLOYMENT.md](DEPLOYMENT.md).
+- CI: `.github/workflows/ci.yml`, артефакты: `release-artifact.yml`.
 
 ### Плагины (только client)
 
@@ -60,8 +71,10 @@ flowchart TB
 
 | Composable | Файл | Ответственность |
 |------------|------|-----------------|
-| `useAuth` | `useAuth.ts` | Логин, сессия, welcome-флаг |
+| `useAuth` | `useAuth.ts` | Логин, сессия, онбординг (welcome + аватар) |
+| `useAvatars` | `useAvatars.ts` | Персонажи `public/avatars/`, выбор и URL по user id |
 | `usePlatformContext` | `usePlatformContext.ts` | Навигация, режим admin/employee |
+| `useLaunchScope` | `useLaunchScope.ts` | Поэтапный запуск (`vacations` / `full`) |
 | `usePermissions` | `usePermissions.ts` | Подписи ролей, `roleLabel` |
 | `useEmployees` | `useEmployees.ts` | Справочник ФИО, руководители, связь с аккаунтами |
 | `useVacations` | `useVacations.ts` | Заявки, календарь, согласование |
@@ -69,7 +82,7 @@ flowchart TB
 | `useTasks` | `useTasks.ts` | Задачи геймификации |
 | `useWallet` | `useWallet.ts` | Баланс и транзакции |
 | `useMockData` | `useMockData.ts` | Демо-данные дашборда, магазин |
-| `useAdaptationData` | `useAdaptationData.ts` | Направления и шаги адаптации |
+| `useAdaptation` | `useAdaptation.ts` | Трек адаптации, тесты, `$fetch` к Nitro API |
 | `useAdminData` | `useAdminData.ts` | Справочники админки (пользователи, отделы legacy) |
 
 **Правило:** `useState()` только **внутри** функций composable / setup — не на уровне модуля (иначе SSR 500 и вечная «Загрузка...»).
@@ -90,8 +103,9 @@ flowchart TB
 
 - `admin/index.vue` — хаб ссылок
 - `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа
-- `admin/employees.vue`, `admin/hierarchy.vue`, `admin/vacations.vue`
-- `admin/users.vue`, `admin/store.vue`, `admin/adaptation.vue`
+- `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue`
+- `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
+- `profile.vue` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
 
 ---
 
@@ -108,9 +122,46 @@ flowchart TB
 | `VacationTeamCalendar.vue` | Команда на год |
 | `VacationDetailedCalendar.vue` | Детальный календарь |
 | `AuthLogin.vue` | Форма входа |
-| `WelcomeCelebration.vue` | Конфетти + «Добро пожаловать» |
+| `FirstLoginOnboarding.vue` | Первый вход: приветствие, выбор аватара, конфетти |
+| `UserAvatar.vue` | Круглый аватар или инициалы |
+| `AdaptationQuizForm.vue` | Прохождение теста, отправка на сервер |
+| `AdaptationPhaseTimeline.vue` | Фазы трека, чеклист, CTA теста |
 
 ---
+
+## Адаптация (Nitro API)
+
+Серверные данные в `frontend/server/data/`:
+
+| Файл | Содержимое |
+|------|------------|
+| `adaptation-track.json` | Шаблон трека и вопросы (с `correct` только на сервере) |
+| `adaptation-state.json` | Попытки тестов и отметки шагов |
+| `employees.json` | Справочник для привязки `platform_user_id` → ФИО |
+
+Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/session`.
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/adaptation/me` | Прогресс текущего пользователя |
+| `POST /api/adaptation/attempts` | Сдача теста → запись для админа |
+| `GET /api/adaptation/attempts` | Журнал (admin) или `?mine=1` |
+| `PATCH /api/adaptation/attempts/:id/seen` | Админ отметил просмотр |
+| `PATCH /api/adaptation/steps/:stepId` | Отметить шаг чеклиста |
+
+Клиент: `useAdaptation.ts`.
+
+### Справочник сотрудников (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/employees` | Список (сессия) — источник для адаптации |
+| `PUT /api/employees` | Сохранение справочника (admin/hr) |
+
+Клиент: `useEmployees` — `localStorage` + синхронизация через `persist()` → `PUT`.
+
+---
+
 
 ## Оргструктура (данные)
 
@@ -118,7 +169,6 @@ flowchart TB
 OrgExecutive   // id, title, person, order, gridCol, gridRow
 OrgUnit        // отдел: executiveId, groupId?, name, head, ...
 OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
-OrgStatsFact   // «VBI в цифрах» (опционально)
 ```
 
 - `buildPlacedItems()` — порядок отрисовки: группы, затем solo-отделы.
@@ -142,7 +192,8 @@ OrgStatsFact   // «VBI в цифрах» (опционально)
 | Ключ | Composable / модуль |
 |------|---------------------|
 | `vbi-auth-session` | `useAuth` |
-| `vbi-welcomed-users` | `useAuth` (IDs, уже видевших welcome) |
+| `vbi-welcomed-users` | `useAuth` (IDs, завершивших онбординг) |
+| `vbi-user-avatars-v1` | `useAvatars` — `{ [userId]: "character_01" }` |
 | `vbi-platform-demo-version` | `vbi-demo-data.client.ts` (сейчас `4`) |
 | `vbi-employees-v3` | `useEmployees` |
 | `vbi-vacations-state-v3` | `useVacations` |
@@ -174,15 +225,10 @@ NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 
 ---
 
-## Backend (план)
+## Backend
 
-Папка `backend/` зарезервирована. В транскрипте разработки упоминался PHP API (wallet, tasks, store) — в текущем коммите **не включён**.
-
-При появлении API:
-
-1. Описать контракт в `docs/API.md`.
-2. Заменить `persist()` в composables на `fetch`.
-3. Обновить README и CHANGELOG.
+- **Адаптация и сессия** — реализованы в Nitro (`frontend/server/`).
+- Папка `backend/` зарезервирована для выноса wallet/tasks/store при необходимости.
 
 ---
 

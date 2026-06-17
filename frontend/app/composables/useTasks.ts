@@ -17,79 +17,6 @@ export type Task = {
 
 const STORAGE_KEY = 'vbi-tasks-state';
 
-const defaultTasks: Task[] = [
-  {
-    id: 1,
-    title: 'Провести внутренний митап по best practices',
-    motivation_block: 'personal_brand',
-    reward_amount: 300,
-    deadline: '2026-05-25',
-    difficulty: 'medium',
-    status: 'active',
-    assignee_id: 1,
-    taken_at: '2026-05-10'
-  },
-  {
-    id: 2,
-    title: 'Оптимизировать weekly-отчет команды',
-    motivation_block: 'more_free_time',
-    reward_amount: 260,
-    deadline: '2026-05-18',
-    difficulty: 'easy',
-    status: 'completed',
-    assignee_id: 1,
-    taken_at: '2026-04-28',
-    completed_at: '2026-05-12'
-  },
-  {
-    id: 3,
-    title: 'Завершить курс по leadership',
-    motivation_block: 'learning',
-    reward_amount: 250,
-    deadline: '2026-05-29',
-    difficulty: 'medium',
-    status: 'pool'
-  },
-  {
-    id: 4,
-    title: 'Протестировать новую гипотезу роста',
-    motivation_block: 'new_interesting',
-    reward_amount: 340,
-    deadline: '2026-06-02',
-    difficulty: 'hard',
-    status: 'pool'
-  },
-  {
-    id: 5,
-    title: 'Подготовить кейс для внутреннего блога',
-    motivation_block: 'personal_brand',
-    reward_amount: 220,
-    deadline: '2026-06-08',
-    difficulty: 'easy',
-    status: 'pool'
-  },
-  {
-    id: 6,
-    title: 'Автоматизировать еженедельный отчет KPI',
-    motivation_block: 'more_money',
-    reward_amount: 380,
-    deadline: '2026-06-15',
-    difficulty: 'hard',
-    status: 'pool'
-  },
-  {
-    id: 7,
-    title: 'Согласовать план развития на квартал',
-    motivation_block: 'learning',
-    reward_amount: 200,
-    deadline: '2026-04-20',
-    difficulty: 'medium',
-    status: 'cancelled',
-    assignee_id: 1,
-    taken_at: '2026-04-01'
-  }
-];
-
 export const taskStatusLabels: Record<TaskStatus, string> = {
   pool: 'Доступна',
   active: 'В работе',
@@ -111,9 +38,18 @@ const difficultyLabels = {
   hard: 'Сложная'
 } as const;
 
+export type NewTaskInput = {
+  title: string;
+  motivation_block: MotivationBlock;
+  reward_amount: number;
+  deadline: string;
+  difficulty: Task['difficulty'];
+};
+
 export function useTasks() {
   const { user } = useAuth();
-  const tasks = useState<Task[]>('vbi-tasks', () => structuredClone(defaultTasks));
+  const { creditUser } = useWallet();
+  const tasks = useState<Task[]>('vbi-tasks', () => []);
   const hydrated = useState<boolean>('vbi-tasks-hydrated', () => false);
 
   const persist = () => {
@@ -129,7 +65,7 @@ export function useTasks() {
       try {
         tasks.value = JSON.parse(raw) as Task[];
       } catch {
-        tasks.value = structuredClone(defaultTasks);
+        tasks.value = [];
       }
     }
 
@@ -145,6 +81,23 @@ export function useTasks() {
   });
 
   const myActiveTasks = computed(() => myTasks.value.filter((task) => task.status === 'active'));
+
+  const completedCount = computed(() => tasks.value.filter((t) => t.status === 'completed').length);
+
+  const addTask = (input: NewTaskInput) => {
+    const nextId = Math.max(0, ...tasks.value.map((t) => t.id)) + 1;
+    tasks.value.push({
+      id: nextId,
+      title: input.title.trim(),
+      motivation_block: input.motivation_block,
+      reward_amount: input.reward_amount,
+      deadline: input.deadline,
+      difficulty: input.difficulty,
+      status: 'pool'
+    });
+    persist();
+    return nextId;
+  };
 
   const takeTask = (taskId: number) => {
     const userId = user.value?.id;
@@ -171,6 +124,7 @@ export function useTasks() {
 
     task.status = 'completed';
     task.completed_at = new Date().toISOString().slice(0, 10);
+    creditUser(userId, task.reward_amount, `Награда за задачу: ${task.title}`);
     persist();
     return true;
   };
@@ -186,7 +140,9 @@ export function useTasks() {
     poolTasks,
     myTasks,
     myActiveTasks,
+    completedCount,
     hydrate,
+    addTask,
     takeTask,
     completeTask,
     filterByMotivation,

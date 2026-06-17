@@ -108,23 +108,6 @@
       </div>
     </div>
 
-    <aside class="org-stats-card">
-      <h3 class="org-stats-title">VBI в цифрах:</h3>
-      <ul class="org-stats-list list-reset">
-        <li v-for="fact in orgStats" :key="fact.id" class="org-stats-item">
-          <InlineField
-            v-model="fact.text"
-            :readonly="readonly"
-            placeholder="Факт"
-            class-name="org-stats-text"
-          />
-        </li>
-      </ul>
-      <button v-if="!readonly" type="button" class="button ghost small-btn" @click="addStatsFact">
-        + Факт
-      </button>
-    </aside>
-
     <OrgConfirmDialog
       :open="confirmTarget !== null"
       :message="confirmMessage"
@@ -155,10 +138,8 @@ const props = defineProps<{
 const readonly = computed(() => props.readonly ?? false);
 
 const {
-  orgStats,
   executivesSorted,
   placedByExecutive,
-  addStatsFact,
   setUnitGrid,
   setGroupGrid,
   removeExecutive,

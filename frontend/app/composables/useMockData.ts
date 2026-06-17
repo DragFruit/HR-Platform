@@ -42,15 +42,21 @@ const storeItems: StoreItem[] = [
 ];
 
 export function useMockData() {
-  const { balance, walletTransactions } = useWallet();
-  const { myActiveTasks } = useTasks();
-  const levelProgress = computed(() => 68);
+  const { balance, walletTransactions, monthTurnover } = useWallet();
+  const { myActiveTasks, completedCount } = useTasks();
+
+  const levelProgress = computed(() => {
+    const done = completedCount.value;
+    if (done === 0) return 0;
+    return Math.min(100, 20 + done * 15);
+  });
 
   return {
     myActiveTasks,
     storeItems,
     walletTransactions,
     balance,
+    monthTurnover,
     levelProgress
   };
 }

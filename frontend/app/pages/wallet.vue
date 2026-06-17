@@ -89,7 +89,12 @@
 </template>
 
 <script setup lang="ts">
-const { balance, walletTransactions, giftRecipients, monthTurnover, giftToColleague } = useWallet();
+const { balance, walletTransactions, giftRecipients, monthTurnover, giftToColleague, hydrateWallets } =
+  useWallet();
+
+onMounted(() => {
+  hydrateWallets();
+});
 
 const recipientId = ref<number | ''>('');
 const amount = ref<number | null>(null);

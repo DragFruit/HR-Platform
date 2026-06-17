@@ -11,7 +11,15 @@
       <div class="brand">
         <span class="brand-title">VBI HR Gamification</span>
         <span class="brand-subtitle">
-          {{ isAdmin ? 'Панель администратора' : 'Рабочее пространство сотрудника' }}
+          {{
+            isVacationsOnly
+              ? isAdmin
+                ? 'Администрирование отпусков'
+                : 'График отпусков'
+              : isAdmin
+                ? 'Панель администратора'
+                : 'Рабочее пространство сотрудника'
+          }}
         </span>
       </div>
 
@@ -46,13 +54,17 @@
     </aside>
 
     <div class="shell-main">
+      <div v-if="envLabel" class="env-banner" :class="`env-banner--${appEnv}`" role="status">
+        {{ envLabel }}
+      </div>
       <header class="topbar">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
+          <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
           <span class="soft">{{ user?.name }}</span>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>
-          <div v-if="!isAdmin" class="pill">Баланс: {{ balance }}</div>
-          <div v-else class="pill admin-pill">Режим: администрирование</div>
+          <div v-if="!isAdmin && !isVacationsOnly" class="pill">Баланс: {{ balance }}</div>
+          <div v-else-if="isAdmin && !isVacationsOnly" class="pill admin-pill">Режим: администрирование</div>
         </div>
       </header>
 
@@ -62,34 +74,46 @@
     </div>
     </div>
 
-    <WelcomeCelebration
-      v-if="showWelcome && user"
+    <FirstLoginOnboarding
+      v-if="showOnboarding && user"
       :user-name="user.name"
-      @close="finishWelcome"
+      :user-id="user.id"
+      :initial-step="onboardingStep"
+      @complete="onOnboardingComplete"
     />
   </template>
 </template>
 
 <script setup lang="ts">
 const { balance } = useWallet();
-const { user, showWelcome, authReady, isAuthenticated, restoreSession, logout, markWelcomed } = useAuth();
+const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
+  useAuth();
 const { roleLabel } = usePermissions();
-const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole } = usePlatformContext();
+const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
+  usePlatformContext();
+const { homePath } = useLaunchScope();
+const { appEnv, envLabel } = useAppEnv();
 
-onMounted(() => {
-  restoreSession();
+onMounted(async () => {
+  if (!authReady.value) {
+    await restoreSession();
+  }
   syncRoleFromAuth();
-  useEmployees().hydrate();
+  await useEmployees().hydrate();
   useVacations().hydrate();
+  useTasks().hydrate();
+  useWallet().hydrateWallets();
 });
 
 const onLoginSuccess = () => {
   syncRoleFromAuth();
+  const router = useRouter();
+  router.replace(homePath(user.value?.role === 'admin'));
 };
 
-const finishWelcome = () => {
+const onOnboardingComplete = (characterId: import('~/composables/useAvatars').AvatarCharacterId) => {
   if (user.value) {
-    markWelcomed(user.value.id);
+    finishOnboarding(user.value.id, characterId);
   }
 };
 

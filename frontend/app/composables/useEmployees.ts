@@ -1,3 +1,5 @@
+export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
+
 export type Employee = {
   id: number;
   name: string;
@@ -6,6 +8,21 @@ export type Employee = {
   manager: string;
   hired_at: string;
   platform_user_id: number | null;
+  email: string;
+  account_role: AccountRole | '';
+};
+
+/** Данные входа (синхрон с useAuth / server credentials) */
+export const PLATFORM_ACCOUNTS: Record<
+  number,
+  { email: string; account_role: AccountRole; name: string }
+> = {
+  1: { email: 'stas@vbi.local', account_role: 'admin', name: 'Стас' },
+  2: { email: 'kostya@vbi.local', account_role: 'manager', name: 'Костя' },
+  3: { email: 'katya@vbi.local', account_role: 'employee', name: 'Катя' },
+  4: { email: 'vasya@vbi.local', account_role: 'employee', name: 'Вася' },
+  5: { email: 'masha@vbi.local', account_role: 'employee', name: 'Маша' },
+  6: { email: 'alina@vbi.local', account_role: 'employee', name: 'Алина' }
 };
 
 export type EmployeeDepartment = {
@@ -15,116 +32,151 @@ export type EmployeeDepartment = {
 
 const STORAGE_KEY = 'vbi-employees-v3';
 
-/** id аккаунта → ФИО в справочнике отпусков */
-const TEST_ACCOUNT_LINKS: Record<number, string> = {
-  2: 'Костя',
-  3: 'Катя',
-  4: 'Вася',
-  5: 'Маша'
+const EMAIL_TO_EMPLOYEE: Record<string, string> = Object.fromEntries(
+  Object.values(PLATFORM_ACCOUNTS).map((a) => [a.email.toLowerCase(), a.name])
+);
+
+export const buildDefaultEmployees = (): Employee[] => [];
+
+const accountIdByEmail = (email: string): number | null => {
+  const normalized = email.trim().toLowerCase();
+  const entry = Object.entries(PLATFORM_ACCOUNTS).find(
+    ([, acc]) => acc.email.toLowerCase() === normalized
+  );
+  return entry ? Number(entry[0]) : null;
 };
 
-const EMAIL_TO_EMPLOYEE: Record<string, string> = {
-  'katya@vbi.local': 'Катя',
-  'vasya@vbi.local': 'Вася',
-  'masha@vbi.local': 'Маша',
-  'kostya@vbi.local': 'Костя',
-  'stas@vbi.local': 'Стас'
-};
-
-export const buildDefaultEmployees = (): Employee[] => [
-  {
-    id: 1,
-    name: 'Катя',
-    title: 'Сотрудник',
-    department: 'Команда',
-    manager: 'Костя',
-    hired_at: '2022-03-15',
-    platform_user_id: 3
-  },
-  {
-    id: 2,
-    name: 'Вася',
-    title: 'Сотрудник',
-    department: 'Команда',
-    manager: 'Костя',
-    hired_at: '2023-06-01',
-    platform_user_id: 4
-  },
-  {
-    id: 3,
-    name: 'Маша',
-    title: 'Сотрудник',
-    department: 'Команда',
-    manager: 'Костя',
-    hired_at: '2024-01-10',
-    platform_user_id: 5
-  },
-  {
-    id: 4,
-    name: 'Костя',
-    title: 'Руководитель',
-    department: 'Команда',
-    manager: '',
-    hired_at: '2020-05-20',
-    platform_user_id: 2
+const enrichEmployeeRecord = (emp: Employee): Employee => {
+  if (emp.email.trim()) {
+    const userId = accountIdByEmail(emp.email);
+    if (userId) {
+      const acc = PLATFORM_ACCOUNTS[userId];
+      return {
+        ...emp,
+        platform_user_id: userId,
+        account_role: emp.account_role || acc.account_role,
+        name: emp.name.trim() || acc.name
+      };
+    }
   }
-];
+  return emp;
+};
 
 export function useEmployees() {
-  const employees = useState<Employee[]>('vbi-employees', () => buildDefaultEmployees());
+  const employees = useState<Employee[]>('vbi-employees', () => []);
   const hydrated = useState<boolean>('vbi-employees-hydrated', () => false);
+
+  const platformAccounts = computed(() =>
+    Object.entries(PLATFORM_ACCOUNTS).map(([id, acc]) => ({
+      id: Number(id),
+      ...acc,
+      linked: employees.value.some((e) => e.platform_user_id === Number(id))
+    }))
+  );
+
+  const toServerShape = (emp: Employee) => ({
+    id: emp.id,
+    name: emp.name,
+    title: emp.title,
+    department: emp.department,
+    manager: emp.manager,
+    hired_at: emp.hired_at,
+    platform_user_id: emp.platform_user_id,
+    email: emp.email || undefined,
+    account_role: emp.account_role || undefined
+  });
+
+  const fromServerShape = (row: {
+    id: number;
+    name: string;
+    title: string;
+    department: string;
+    manager: string;
+    hired_at: string;
+    platform_user_id: number | null;
+    email?: string;
+    account_role?: string;
+  }): Employee =>
+    enrichEmployeeRecord({
+      id: row.id,
+      name: row.name,
+      title: row.title,
+      department: row.department,
+      manager: row.manager,
+      hired_at: row.hired_at,
+      platform_user_id: row.platform_user_id,
+      email: row.email ?? '',
+      account_role: (row.account_role as AccountRole) ?? ''
+    });
+
+  const syncToServer = async () => {
+    if (!import.meta.client) return;
+    try {
+      await $fetch('/api/employees', {
+        method: 'PUT',
+        body: employees.value.map(toServerShape)
+      });
+    } catch {
+      /* офлайн или нет прав */
+    }
+  };
 
   const persist = () => {
     if (!import.meta.client) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+    syncToServer();
   };
 
-  const applyTestAccountLinks = () => {
-    Object.entries(TEST_ACCOUNT_LINKS).forEach(([userId, name]) => {
-      const emp = employees.value.find((item) => item.name === name);
-      if (emp) emp.platform_user_id = Number(userId);
-    });
-  };
-
-  const ensureDemoTeam = () => {
-    const katya = employees.value.find((item) => item.name === 'Катя');
-    const linksOk = katya?.platform_user_id === 3;
-    if (!katya || !linksOk) {
-      employees.value = buildDefaultEmployees();
-      persist();
-    }
-    applyTestAccountLinks();
-  };
-
-  const hydrate = () => {
+  const hydrate = async () => {
     if (!import.meta.client) return;
-    if (hydrated.value) {
-      ensureDemoTeam();
-      return;
-    }
+    if (hydrated.value) return;
 
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        employees.value = JSON.parse(raw) as Employee[];
-      } catch {
-        employees.value = buildDefaultEmployees();
+    let loaded = false;
+    try {
+      const fromServer = await $fetch<
+        {
+          id: number;
+          name: string;
+          title: string;
+          department: string;
+          manager: string;
+          hired_at: string;
+          platform_user_id: number | null;
+          email?: string;
+          account_role?: string;
+        }[]
+      >('/api/employees');
+      if (Array.isArray(fromServer)) {
+        employees.value = fromServer.map(fromServerShape);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+        loaded = true;
       }
-    } else {
-      employees.value = buildDefaultEmployees();
-      persist();
+    } catch {
+      /* нет сессии */
     }
 
-    ensureDemoTeam();
+    if (!loaded) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          employees.value = (JSON.parse(raw) as Employee[]).map(enrichEmployeeRecord);
+        } catch {
+          employees.value = [];
+        }
+      }
+      if (employees.value.length) syncToServer();
+    }
+
     hydrated.value = true;
   };
 
   const departmentsGrouped = computed<EmployeeDepartment[]>(() => {
     const map = new Map<string, Employee[]>();
     employees.value.forEach((emp) => {
-      const bucket = map.get(emp.department) ?? [];
+      const dept = emp.department.trim() || 'Без отдела';
+      const bucket = map.get(dept) ?? [];
       bucket.push(emp);
-      map.set(emp.department, bucket);
+      map.set(dept, bucket);
     });
     return [...map.entries()].map(([name, group]) => ({
       name,
@@ -132,21 +184,36 @@ export function useEmployees() {
     }));
   });
 
-  const hierarchyLinks = computed(() =>
-    employees.value
-      .filter((emp) => emp.manager.trim())
-      .map((emp, index) => ({
-        id: index + 1,
-        employee: emp.name,
-        manager: emp.manager,
-        department: emp.department
-      }))
-  );
-
   const updateEmployee = (id: number, patch: Partial<Employee>) => {
     const emp = employees.value.find((item) => item.id === id);
     if (!emp) return;
     Object.assign(emp, patch);
+    const enriched = enrichEmployeeRecord(emp);
+    Object.assign(emp, enriched);
+    persist();
+  };
+
+  const linkEmployeeToAccount = (employeeId: number, platformUserId: number | null) => {
+    const emp = employees.value.find((item) => item.id === employeeId);
+    if (!emp) return;
+    if (!platformUserId) {
+      emp.platform_user_id = null;
+      persist();
+      return;
+    }
+    const acc = PLATFORM_ACCOUNTS[platformUserId];
+    if (!acc) return;
+    employees.value.forEach((row) => {
+      if (row.id !== employeeId && row.platform_user_id === platformUserId) {
+        row.platform_user_id = null;
+        row.email = '';
+        row.account_role = '';
+      }
+    });
+    emp.platform_user_id = platformUserId;
+    emp.email = acc.email;
+    emp.account_role = acc.account_role;
+    if (!emp.name.trim()) emp.name = acc.name;
     persist();
   };
 
@@ -154,12 +221,14 @@ export function useEmployees() {
     const nextId = Math.max(0, ...employees.value.map((e) => e.id)) + 1;
     employees.value.push({
       id: nextId,
-      name: 'Новый сотрудник',
-      title: 'Должность',
-      department: 'Команда',
-      manager: 'Костя',
-      hired_at: '',
-      platform_user_id: null
+      name: '',
+      title: '',
+      department: '',
+      manager: '',
+      hired_at: new Date().toISOString().slice(0, 10),
+      platform_user_id: null,
+      email: '',
+      account_role: ''
     });
     persist();
   };
@@ -186,13 +255,79 @@ export function useEmployees() {
     return null;
   };
 
-  const directReports = (managerName: string) =>
-    employees.value.filter((emp) => emp.manager === managerName);
+  const directReports = (managerName: string) => {
+    const normalized = managerName.trim();
+    if (!normalized) return [];
+    return employees.value.filter(
+      (emp) => emp.manager.trim() === normalized && emp.name.trim() !== normalized
+    );
+  };
+
+  const managerProfileName = (
+    user: { id: number; email: string; name: string } | null | undefined
+  ) => {
+    if (!user) return '';
+    const linked = findByUserForAuth(user);
+    return (linked?.name.trim() || user.name.trim());
+  };
+
+  const directReportsForAuthUser = (
+    user: { id: number; email: string; name: string } | null | undefined
+  ) => directReports(managerProfileName(user));
+
+  type ProfileTeamContext = {
+    mode: 'reports' | 'department';
+    department: string;
+    members: Employee[];
+  };
+
+  const profileTeamForUser = (
+    user: { id: number; email: string; name: string; role: string; department: string } | null
+  ): ProfileTeamContext => {
+    if (!user) {
+      return { mode: 'department', department: '', members: [] };
+    }
+
+    const me = findByUserForAuth(user);
+    const myName = me?.name.trim() || user.name.trim();
+    const isManager = user.role === 'manager' || me?.account_role === 'manager';
+
+    const isSelf = (emp: Employee) => {
+      if (emp.platform_user_id === user.id) return true;
+      if (me && emp.id === me.id) return true;
+      return Boolean(myName && emp.name.trim() === myName);
+    };
+
+    if (isManager && myName) {
+      const members = directReports(myName)
+        .filter((emp) => emp.name.trim() && !isSelf(emp))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      return {
+        mode: 'reports',
+        department: me?.department.trim() || user.department.trim(),
+        members
+      };
+    }
+
+    const department = (me?.department || user.department || '').trim();
+    if (!department) {
+      return { mode: 'department', department: '', members: [] };
+    }
+
+    const members = employees.value
+      .filter(
+        (emp) =>
+          emp.department.trim() === department && emp.name.trim() && !isSelf(emp)
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+    return { mode: 'department', department, members };
+  };
 
   const canManagerApproveRequest = (managerProfileName: string, employeeName: string) => {
     const employee = findByName(employeeName);
     if (!employee) return false;
-    return employee.manager === managerProfileName;
+    return employee.manager.trim() === managerProfileName.trim();
   };
 
   const managerOptions = computed(() => {
@@ -208,23 +343,34 @@ export function useEmployees() {
     return [...names].sort((a, b) => a.localeCompare(b, 'ru'));
   });
 
+  const employeeCount = computed(() => employees.value.length);
+
+  const linkedCount = computed(
+    () => employees.value.filter((e) => e.platform_user_id && e.name.trim()).length
+  );
+
   return {
     employees,
     departmentsGrouped,
-    hierarchyLinks,
+    platformAccounts,
+    employeeCount,
+    linkedCount,
     hydrate,
     persist,
     updateEmployee,
+    linkEmployeeToAccount,
     addEmployee,
     removeEmployee,
     findByUserId,
     findByUserForAuth,
     findByName,
-    applyTestAccountLinks,
-    ensureDemoTeam,
     directReports,
+    directReportsForAuthUser,
+    managerProfileName,
+    profileTeamForUser,
     canManagerApproveRequest,
     managerOptions,
-    departmentOptions
+    departmentOptions,
+    syncToServer
   };
 }

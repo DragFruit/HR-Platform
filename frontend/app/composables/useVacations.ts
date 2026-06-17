@@ -18,51 +18,10 @@ type VacationState = {
 
 const STORAGE_KEY = 'vbi-vacations-state-v3';
 
-const DEMO_EMPLOYEE_NAMES = ['Катя', 'Вася', 'Маша'];
-
-const demoRequests2026: VacationRequest[] = [
-  {
-    id: 1,
-    employee: 'Катя',
-    start: '2026-03-10',
-    end: '2026-03-20',
-    status: 'approved',
-    comment: 'Ежегодный отпуск',
-    createdAt: '10.01.2026'
-  },
-  {
-    id: 2,
-    employee: 'Вася',
-    start: '2026-06-15',
-    end: '2026-06-28',
-    status: 'pending',
-    comment: 'Летний отпуск',
-    createdAt: '15.02.2026'
-  },
-  {
-    id: 3,
-    employee: 'Маша',
-    start: '2026-08-04',
-    end: '2026-08-17',
-    status: 'approved',
-    comment: 'Отпуск',
-    createdAt: '20.02.2026'
-  },
-  {
-    id: 4,
-    employee: 'Катя',
-    start: '2026-07-06',
-    end: '2026-07-12',
-    status: 'pending',
-    comment: 'Короткий отпуск',
-    createdAt: '01.03.2026'
-  }
-];
-
 const defaultState = (): VacationState => ({
-  primaryYear: 2026,
-  requestsByYear: { '2026': demoRequests2026 },
-  nextRequestId: 5
+  primaryYear: new Date().getFullYear(),
+  requestsByYear: {},
+  nextRequestId: 1
 });
 
 export const vacationStatusLabels: Record<VacationStatus, string> = {
@@ -108,7 +67,7 @@ export const formatMonthVacationRange = (
 export function useVacations() {
   const { canManagerApproveRequest } = useEmployees();
   const state = useState<VacationState>('vbi-vacations', defaultState);
-  const viewYear = useState<number>('vbi-vacations-year', () => 2026);
+  const viewYear = useState<number>('vbi-vacations-year', () => new Date().getFullYear());
   const hydrated = useState<boolean>('vbi-vacations-hydrated', () => false);
 
   const persist = () => {
@@ -143,23 +102,12 @@ export function useVacations() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as VacationState;
-        const hasDemo = (parsed.requestsByYear['2026'] ?? []).some((r) =>
-          DEMO_EMPLOYEE_NAMES.includes(r.employee)
-        );
-        if (hasDemo) {
-          state.value = parsed;
-        } else {
-          state.value = defaultState();
-          persist();
-        }
+        state.value = JSON.parse(raw) as VacationState;
       } catch {
         state.value = defaultState();
-        persist();
       }
     } else {
       state.value = defaultState();
-      persist();
     }
 
     syncViewYearToData();
@@ -209,11 +157,9 @@ export function useVacations() {
   };
 
   const setRequestStatus = (id: number, status: VacationStatus) => {
-    const list = state.value.requestsByYear[String(viewYear.value)];
-    if (!list) return false;
-    const item = list.find((r) => r.id === id);
-    if (!item) return false;
-    item.status = status;
+    const found = findRequestById(id);
+    if (!found) return false;
+    found.item.status = status;
     persist();
     return true;
   };

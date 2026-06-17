@@ -5,7 +5,7 @@
         <thead>
           <tr>
             <th class="sticky-col-name">Сотрудник</th>
-            <th v-for="month in months" :key="month">{{ month }}</th>
+            <th v-for="month in monthHeaders" :key="month">{{ month }}</th>
           </tr>
         </thead>
         <tbody>
@@ -53,7 +53,7 @@ const props = defineProps<{
 }>();
 
 const { MONTHS_RU } = useVacations();
-const months = MONTHS_RU;
+const monthHeaders = computed(() => MONTHS_RU.map((label) => label.slice(0, 3)));
 
 const cellBlocks = (employeeName: string, month: number) => {
   const entries = props.getMonthEntries(employeeName, month, props.year);

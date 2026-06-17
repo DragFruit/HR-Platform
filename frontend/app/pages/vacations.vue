@@ -49,31 +49,67 @@
               :get-month-entries="getMonthEntries"
             />
 
-            <section v-else class="card section-card">
-              <h3 class="section-title">Очередь согласования</h3>
-              <p v-if="isManager && currentEmployee" class="muted">
-                Заявки подчинённых, у которых руководитель —
-                <strong>{{ currentEmployee.name }}</strong>.
-              </p>
-              <p v-else-if="canSeeAllVacationApprovals" class="muted">Все заявки на согласование.</p>
+            <section v-else class="card section-card vac-approval-panel">
+              <header class="vac-approval-panel__head">
+                <h3 class="section-title vac-approval-panel__title">Очередь согласования</h3>
+                <span v-if="approvalQueue.length" class="vac-approval-panel__count">
+                  {{ approvalQueue.length }}
+                </span>
+              </header>
 
-              <div v-if="approvalQueue.length === 0" class="state-box compact-state">
-                <p class="muted">Нет заявок на согласование за {{ viewYear }} год.</p>
+              <div v-if="approvalQueue.length === 0" class="vac-approval-empty">
+                <p>Нет заявок на согласование за {{ viewYear }} год</p>
               </div>
 
-              <ul v-else class="list-reset vacation-request-list">
-                <li v-for="req in approvalQueue" :key="req.id" class="task-item">
-                  <div class="row">
-                    <div>
-                      <strong>{{ req.employee }}</strong>
-                      <p class="muted">{{ formatRange(req.start, req.end) }}</p>
+              <ul v-else class="list-reset vac-approval-list">
+                <li v-for="req in approvalQueue" :key="req.id" class="vac-approval-item">
+                  <div class="vac-approval-item__accent" aria-hidden="true" />
+                  <div class="vac-approval-item__body">
+                    <div class="vac-approval-item__lead">
+                      <span class="vac-approval-item__avatar">{{ employeeInitials(req.employee) }}</span>
+                      <div class="vac-approval-item__info">
+                        <strong class="vac-approval-item__name">{{ req.employee }}</strong>
+                        <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
+                        <span
+                          v-if="overlapDetails(req).length"
+                          class="vac-overlap-badge-wrap"
+                        >
+                          <span class="vac-overlap-badge" tabindex="0">
+                            <span class="vac-overlap-badge__dot" aria-hidden="true" />
+                            Есть пересечение
+                          </span>
+                          <div class="vac-overlap-popover" role="tooltip">
+                            <p class="vac-overlap-popover__title">Пересечения отпусков</p>
+                            <div
+                              v-for="(item, index) in overlapDetails(req)"
+                              :key="`${item.employee}-${item.vacationStart}-${index}`"
+                              class="vac-overlap-popover__item"
+                            >
+                              <strong>{{ item.employee }}</strong>
+                              <dl class="vac-overlap-popover__meta">
+                                <div>
+                                  <dt>Отпуск</dt>
+                                  <dd>{{ formatRange(item.vacationStart, item.vacationEnd) }}</dd>
+                                </div>
+                                <div>
+                                  <dt>Пересечение</dt>
+                                  <dd>{{ formatRange(item.overlapStart, item.overlapEnd) }}</dd>
+                                </div>
+                              </dl>
+                            </div>
+                          </div>
+                        </span>
+                      </div>
                     </div>
-                    <div class="row">
-                      <button class="button primary" type="button" @click="approve(req.id)">Согласовать</button>
-                      <button class="button ghost" type="button" @click="reject(req.id)">Отклонить</button>
+                    <div class="vac-approval-item__actions">
+                      <button class="button vac-btn-approve" type="button" @click="approve(req.id)">
+                        Согласовать
+                      </button>
+                      <button class="button vac-btn-reject" type="button" @click="reject(req.id)">
+                        Отклонить
+                      </button>
                     </div>
                   </div>
-                  <p class="soft">{{ req.comment }}</p>
                 </li>
               </ul>
             </section>
@@ -96,10 +132,12 @@
 </template>
 
 <script setup lang="ts">
+import type { VacationRequest } from '~/composables/useVacations';
+import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
 const { user, authReady } = useAuth();
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { isAdmin: isAdminShell } = usePlatformContext();
-const { departmentsGrouped, directReports, findByUserForAuth, hydrate: hydrateEmployees } =
+const { departmentsGrouped, directReportsForAuthUser, managerProfileName, hydrate: hydrateEmployees } =
   useEmployees();
 const {
   viewYear,
@@ -132,9 +170,7 @@ const visibleTabs = computed(() => {
   return tabs;
 });
 
-const currentEmployee = computed(() => findByUserForAuth(user.value));
-
-const groupByDepartment = (list: ReturnType<typeof directReports>) => {
+const groupByDepartment = (list: ReturnType<typeof directReportsForAuthUser>) => {
   const map = new Map<string, typeof list>();
   list.forEach((emp) => {
     const bucket = map.get(emp.department) ?? [];
@@ -147,21 +183,26 @@ const groupByDepartment = (list: ReturnType<typeof directReports>) => {
   }));
 };
 
-/** Руководитель видит только подчинённых; HR/админ — всю команду */
+/** Руководитель видит подчинённых из справочника (колонка «Руководитель») */
+const managerTeam = computed(() => {
+  if (!isManager.value || canSeeAllVacationApprovals.value) return [];
+  return directReportsForAuthUser(user.value);
+});
+
 const calendarDepartments = computed(() => {
-  if (isManager.value && currentEmployee.value && !canSeeAllVacationApprovals.value) {
-    return groupByDepartment(directReports(currentEmployee.value.name));
+  if (isManager.value && !canSeeAllVacationApprovals.value) {
+    return groupByDepartment(managerTeam.value);
   }
   return departmentsGrouped.value;
 });
 
 const approvalQueue = computed(() =>
-  pendingRequestsForApprover(currentEmployee.value?.name ?? null, canSeeAllVacationApprovals.value)
+  pendingRequestsForApprover(managerProfileName(user.value) || null, canSeeAllVacationApprovals.value)
 );
 
 const teamMembers = computed(() => {
-  if (isManager.value && currentEmployee.value && !canSeeAllVacationApprovals.value) {
-    return directReports(currentEmployee.value.name);
+  if (isManager.value && !canSeeAllVacationApprovals.value) {
+    return managerTeam.value;
   }
   return departmentsGrouped.value.flatMap((dep) => dep.employees);
 });
@@ -207,6 +248,24 @@ const formatRange = (start: string, end: string) => {
     new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
   return `${fmt(start)} — ${fmt(end)}`;
 };
+
+const employeeInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
+  }
+  return (parts[0] ?? '?').slice(0, 2).toUpperCase();
+};
+
+const overlapScopeNames = computed(() => {
+  if (isManager.value && !canSeeAllVacationApprovals.value) {
+    return teamEmployeeNames.value;
+  }
+  return undefined;
+});
+
+const overlapDetails = (req: VacationRequest) =>
+  findVacationOverlapDetails(req, yearRequests.value, overlapScopeNames.value);
 
 const approve = (id: number) => setRequestStatus(id, 'approved');
 const reject = (id: number) => setRequestStatus(id, 'rejected');

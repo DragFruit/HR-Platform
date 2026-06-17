@@ -2,50 +2,49 @@
   <section class="hero">
     <article class="card">
       <h2>Добро пожаловать, {{ userName }}</h2>
-      <p class="muted">
-        Ты на 68% к следующему уровню. Заверши 2 задачи и сможешь забрать новую награду из магазина.
+      <p v-if="!employeeProfile && !isAdmin" class="gift-error">
+        Ваш аккаунт не привязан к справочнику сотрудников. Попросите HR добавить запись с вашим email.
       </p>
-      <div class="progress" aria-label="Прогресс уровня">
+      <p v-else class="muted">{{ welcomeHint }}</p>
+      <div v-if="levelProgress > 0" class="progress" aria-label="Прогресс">
         <span :style="{ width: `${levelProgress}%` }" />
       </div>
-      <p class="soft">Уровень 7 · {{ levelProgress }}% до уровня 8</p>
+      <p v-if="completedTasks > 0" class="soft">{{ completedTasks }} завершённых задач</p>
       <div class="row">
-        <NuxtLink to="/adaptation" class="button primary">Запустить адаптацию</NuxtLink>
-        <NuxtLink to="/tasks" class="button ghost">Приоритетные задачи</NuxtLink>
+        <NuxtLink to="/adaptation" class="button primary">Адаптация</NuxtLink>
+        <NuxtLink to="/tasks" class="button ghost">Задачи</NuxtLink>
       </div>
     </article>
 
     <article class="card">
-      <h3 class="section-title">Ключевые метрики недели</h3>
+      <h3 class="section-title">Ваши показатели</h3>
       <div class="grid-two">
         <div>
+          <p class="soft">Баланс</p>
+          <p class="stat-value">{{ balance }}</p>
+        </div>
+        <div>
+          <p class="soft">Активных задач</p>
+          <p class="stat-value">{{ myActiveTasks.length }}</p>
+        </div>
+        <div>
           <p class="soft">Завершено задач</p>
-          <p class="stat-value">12</p>
+          <p class="stat-value">{{ completedTasks }}</p>
         </div>
         <div>
-          <p class="soft">Начислено валюты</p>
-          <p class="stat-value">+1 450</p>
-        </div>
-        <div>
-          <p class="soft">Серия активности</p>
-          <p class="stat-value">6 дней</p>
-        </div>
-        <div>
-          <p class="soft">Покупок в магазине</p>
-          <p class="stat-value">3</p>
+          <p class="soft">Оборот за месяц</p>
+          <p class="stat-value">+{{ monthTurnover.credited }}</p>
         </div>
       </div>
     </article>
   </section>
 
-  <section class="card promo-card">
+  <section v-if="isAdmin && employeeCount === 0" class="card promo-card">
+    <h3 class="section-title">Первый запуск платформы</h3>
+    <p class="muted">Справочник сотрудников пуст. Начните с админ-панели:</p>
     <div class="row">
-      <div>
-        <p class="eyebrow">Новый модуль</p>
-        <h3 class="section-title">Адаптация сотрудников</h3>
-        <p class="muted">Направления onboarding, buddy-программа и 30-дневный трек в ярком HR-интерфейсе.</p>
-      </div>
-      <NuxtLink to="/adaptation" class="button primary">Открыть модуль</NuxtLink>
+      <NuxtLink to="/admin/employees" class="button primary">Добавить сотрудников</NuxtLink>
+      <NuxtLink to="/admin/tasks" class="button ghost">Создать задачи</NuxtLink>
     </div>
   </section>
 
@@ -53,7 +52,9 @@
     <article class="card">
       <h3 class="section-title">Приоритетные задачи</h3>
       <ul class="list-reset">
-        <li v-if="topTasks.length === 0" class="task-item muted">Нет активных задач. Возьми задачу в разделе «Задачи».</li>
+        <li v-if="topTasks.length === 0" class="task-item muted">
+          Нет активных задач. Откройте раздел «Задачи» и возьмите задачу из общего пула.
+        </li>
         <li v-for="task in topTasks" :key="task.id" class="task-item">
           <div class="row">
             <strong>{{ task.title }}</strong>
@@ -84,16 +85,23 @@
 
 <script setup lang="ts">
 const { user } = useAuth();
-const { tasks, storeItems, levelProgress } = useMockData();
+const { isAdmin } = usePermissions();
+const { findByUserForAuth, employeeCount } = useEmployees();
+const { myActiveTasks, completedCount, taskStatusLabels } = useTasks();
+const { balance, monthTurnover, storeItems, levelProgress } = useMockData();
+
 const userName = computed(() => user.value?.name ?? 'коллега');
+const employeeProfile = computed(() => findByUserForAuth(user.value));
+const completedTasks = completedCount;
+const topTasks = computed(() => myActiveTasks.value.slice(0, 3));
 
-const labels = {
-  personal_brand: 'Личный бренд',
-  more_money: 'Деньги',
-  more_free_time: 'Свободное время',
-  new_interesting: 'Новое',
-  learning: 'Обучение'
-};
-
-const topTasks = computed(() => tasks.slice(0, 3));
+const welcomeHint = computed(() => {
+  if (myActiveTasks.value.length) {
+    return `У вас ${myActiveTasks.value.length} активных задач. Завершите их, чтобы получить валюту.`;
+  }
+  if (completedTasks.value > 0) {
+    return 'Отличная работа. Возьмите новую задачу или проверьте прогресс адаптации.';
+  }
+  return 'Возьмите задачу из общего пула или пройдите этапы адаптации.';
+});
 </script>

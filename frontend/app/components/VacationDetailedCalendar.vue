@@ -4,8 +4,12 @@
       <table class="vac-detailed-timeline">
         <thead>
           <tr class="vac-detailed-head-month">
-            <th class="sticky-col-name" rowspan="3">Сотрудник</th>
-            <th class="sticky-col-balance" rowspan="3">Остаток дней</th>
+            <th class="sticky-col-name sticky-col-name--head" rowspan="3">
+              <span class="vac-employee-head-label">Сотрудник</span>
+            </th>
+            <th class="sticky-col-balance" rowspan="3">
+              <span class="vac-balance-head-label">Остаток</span>
+            </th>
             <th
               v-for="span in monthSpans"
               :key="`m-${span.month}`"

@@ -157,3 +157,71 @@ export const countInclusiveCalendarDays = (startStr: string, endStr: string) => 
   }
   return n;
 };
+
+export const vacationRangesOverlap = (
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string
+) => {
+  const a0 = new Date(`${startA}T00:00:00`);
+  const a1 = new Date(`${endA}T00:00:00`);
+  const b0 = new Date(`${startB}T00:00:00`);
+  const b1 = new Date(`${endB}T00:00:00`);
+  if ([a0, a1, b0, b1].some((d) => Number.isNaN(d.getTime()))) return false;
+  return a0 <= b1 && b0 <= a1;
+};
+
+export type VacationOverlapDetail = {
+  employee: string;
+  vacationStart: string;
+  vacationEnd: string;
+  overlapStart: string;
+  overlapEnd: string;
+};
+
+export const vacationOverlapPeriod = (
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string
+): { overlapStart: string; overlapEnd: string } | null => {
+  if (!vacationRangesOverlap(startA, endA, startB, endB)) return null;
+  const a0 = new Date(`${startA}T00:00:00`);
+  const a1 = new Date(`${endA}T00:00:00`);
+  const b0 = new Date(`${startB}T00:00:00`);
+  const b1 = new Date(`${endB}T00:00:00`);
+  const from = a0 > b0 ? a0 : b0;
+  const to = a1 < b1 ? a1 : b1;
+  return { overlapStart: toIso(from), overlapEnd: toIso(to) };
+};
+
+export const findVacationOverlapDetails = (
+  request: { id: number; employee: string; start: string; end: string },
+  allRequests: { id: number; employee: string; start: string; end: string; status: string }[],
+  scopeEmployeeNames?: string[]
+): VacationOverlapDetail[] => {
+  const scope = scopeEmployeeNames ? new Set(scopeEmployeeNames) : null;
+  const details: VacationOverlapDetail[] = [];
+
+  allRequests.forEach((other) => {
+    if (other.id === request.id || other.employee === request.employee) return;
+    if (other.status !== 'approved' && other.status !== 'pending') return;
+    if (scope && !scope.has(other.employee)) return;
+    const overlap = vacationOverlapPeriod(request.start, request.end, other.start, other.end);
+    if (!overlap) return;
+    details.push({
+      employee: other.employee,
+      vacationStart: other.start,
+      vacationEnd: other.end,
+      overlapStart: overlap.overlapStart,
+      overlapEnd: overlap.overlapEnd
+    });
+  });
+
+  return details.sort((a, b) => {
+    const byName = a.employee.localeCompare(b.employee, 'ru');
+    if (byName !== 0) return byName;
+    return a.vacationStart.localeCompare(b.vacationStart);
+  });
+};

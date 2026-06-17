@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "name": "Стас Мяфлин",
+    "title": "HR",
+    "department": "HR",
+    "manager": "",
+    "hired_at": "2023-11-20",
+    "platform_user_id": 1,
+    "email": "stas@vbi.local",
+    "account_role": "admin"
+  },
+  {
+    "id": 2,
+    "name": "Костя",
+    "title": "Руководитель контекста",
+    "department": "Команда",
+    "manager": "",
+    "hired_at": "2024-01-15",
+    "platform_user_id": 2,
+    "email": "kostya@vbi.local",
+    "account_role": "manager"
+  },
+  {
+    "id": 3,
+    "name": "Анастасия Желялетдинова",
+    "title": "Сотрудник",
+    "department": "Команда",
+    "manager": "Костя",
+    "hired_at": "2024-03-01",
+    "platform_user_id": 3,
+    "email": "katya@vbi.local",
+    "account_role": "employee"
+  },
+  {
+    "id": 4,
+    "name": "Вася",
+    "title": "Сотрудник",
+    "department": "Команда",
+    "manager": "Костя",
+    "hired_at": "2024-04-10",
+    "platform_user_id": 4,
+    "email": "vasya@vbi.local",
+    "account_role": "employee"
+  },
+  {
+    "id": 5,
+    "name": "Маша",
+    "title": "Сотрудник",
+    "department": "Команда",
+    "manager": "Костя",
+    "hired_at": "2024-05-20",
+    "platform_user_id": 5,
+    "email": "masha@vbi.local",
+    "account_role": "employee"
+  },
+  {
+    "id": 6,
+    "name": "Алина",
+    "title": "Сотрудник",
+    "department": "Команда",
+    "manager": "Костя",
+    "hired_at": "2026-05-25",
+    "platform_user_id": 6,
+    "email": "alina@vbi.local",
+    "account_role": "employee"
+  }
+]

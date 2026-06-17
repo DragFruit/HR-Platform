@@ -3,24 +3,40 @@
     <div>
       <p class="eyebrow">Администрирование</p>
       <h2>Центр управления платформой</h2>
-      <p class="muted">
-        Настройка оргструктуры, сотрудников, графика отпусков, подчинения и внутреннего магазина наград.
-      </p>
+      <p class="muted">Пустой старт: наполняйте справочники и модули в нужном порядке, как в реальной компании.</p>
     </div>
+  </section>
+
+  <section v-if="setupIncomplete" class="card section-card onboarding-box">
+    <h3 class="section-title">Рекомендуемый порядок настройки</h3>
+    <ol class="onboarding-steps">
+      <li :class="{ done: employeeCount > 0 }">
+        <NuxtLink to="/admin/employees">Сотрудники</NuxtLink> — добавьте людей и привяжите email к аккаунтам входа
+      </li>
+      <li :class="{ done: orgUnits.length > 0 }">
+        <NuxtLink to="/admin/organization">Оргструктура</NuxtLink> — директора и отделы (по желанию)
+      </li>
+      <li :class="{ done: taskCount > 0 }">
+        <NuxtLink to="/admin/tasks">Задачи</NuxtLink> — опубликуйте задачи в общий пул
+      </li>
+      <li>
+        <NuxtLink to="/admin/adaptation">Адаптация</NuxtLink> — сотрудники проходят тесты после привязки профиля
+      </li>
+    </ol>
   </section>
 
   <section class="grid-three">
     <article class="card admin-stat">
-      <p class="soft">Подразделения</p>
+      <p class="soft">Сотрудников</p>
+      <p class="stat-value">{{ employeeCount }}</p>
+    </article>
+    <article class="card admin-stat">
+      <p class="soft">Задач в пуле</p>
+      <p class="stat-value">{{ poolTaskCount }}</p>
+    </article>
+    <article class="card admin-stat">
+      <p class="soft">Отделов в оргсхеме</p>
       <p class="stat-value">{{ orgUnits.length }}</p>
-    </article>
-    <article class="card admin-stat">
-      <p class="soft">Активные пользователи</p>
-      <p class="stat-value">{{ activeUsers }}</p>
-    </article>
-    <article class="card admin-stat">
-      <p class="soft">Награды в магазине</p>
-      <p class="stat-value">{{ activeRewards }}</p>
     </article>
   </section>
 
@@ -28,29 +44,44 @@
     <article class="card">
       <h3 class="section-title">Быстрые действия</h3>
       <div class="admin-actions">
-        <NuxtLink to="/admin/organization" class="button ghost">Структура компании</NuxtLink>
-        <NuxtLink to="/admin/employees" class="button ghost">Сотрудники</NuxtLink>
-        <NuxtLink to="/admin/vacations" class="button ghost">График отпусков</NuxtLink>
-        <NuxtLink to="/admin/hierarchy" class="button ghost">Подчинение</NuxtLink>
-        <NuxtLink to="/admin/users" class="button ghost">Аккаунты</NuxtLink>
-        <NuxtLink to="/admin/store" class="button primary">Редактор магазина</NuxtLink>
+        <NuxtLink to="/admin/employees" class="button primary">Сотрудники</NuxtLink>
+        <NuxtLink to="/admin/tasks" class="button ghost">Задачи</NuxtLink>
+        <NuxtLink to="/admin/organization" class="button ghost">Структура</NuxtLink>
+        <NuxtLink to="/admin/vacations" class="button ghost">Отпуска</NuxtLink>
+        <NuxtLink to="/admin/store" class="button ghost">Магазин</NuxtLink>
+        <NuxtLink to="/admin/adaptation" class="button ghost">
+          Адаптация
+          <span v-if="adaptationUnseen > 0" class="tag learning">{{ adaptationUnseen }}</span>
+        </NuxtLink>
       </div>
     </article>
     <article class="card">
-      <h3 class="section-title">Последние изменения</h3>
-      <ul class="list-reset">
-        <li class="task-item">Обновлен лимит награды «Merch Pack»</li>
-        <li class="task-item">Добавлен сотрудник в отдел Product</li>
-        <li class="task-item">Изменена линия подчинения: Алина К. → Анна С.</li>
+      <h3 class="section-title">Связи модулей</h3>
+      <ul class="list-reset soft-links">
+        <li>Сотрудник в справочнике (в т.ч. руководитель) → отпуска, согласования, адаптация</li>
+        <li>Email = аккаунт входа → личный кабинет и кошелёк</li>
+        <li>Задача в пуле → взять → завершить → валюта на кошелёк</li>
       </ul>
     </article>
   </section>
 </template>
 
 <script setup lang="ts">
-const { users, storeRewards } = useAdminData();
 const { orgUnits } = useOrgStructure();
+const { employees, employeeCount, hydrate: hydrateEmployees } = useEmployees();
+const { tasks, poolTasks, hydrate: hydrateTasks } = useTasks();
 
-const activeUsers = computed(() => users.value.filter((u) => u.status === 'active').length);
-const activeRewards = computed(() => storeRewards.value.filter((r) => r.active).length);
+const taskCount = computed(() => tasks.value.length);
+const poolTaskCount = computed(() => poolTasks.value.length);
+const setupIncomplete = computed(
+  () => employeeCount.value === 0 || taskCount.value === 0
+);
+
+const { unseenCount: adaptationUnseen, loadAdminAttempts } = useAdaptation();
+
+onMounted(() => {
+  hydrateEmployees();
+  hydrateTasks();
+  loadAdminAttempts().catch(() => {});
+});
 </script>

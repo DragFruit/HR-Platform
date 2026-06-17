@@ -25,7 +25,8 @@
           :requests="yearRequests"
         />
         <p v-else class="vac-emp-empty">
-          Войдите как <strong>Катя</strong>, <strong>Вася</strong> или <strong>Маша</strong>.
+          Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
+          вашим email.
         </p>
       </section>
 

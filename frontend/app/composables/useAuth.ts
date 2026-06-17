@@ -1,3 +1,5 @@
+import type { PlatformRole } from '~/composables/usePlatformContext';
+
 export type AuthSessionUser = {
   id: number;
   name: string;
@@ -57,50 +59,91 @@ const credentials: Credential[] = [
     role: 'employee',
     department: 'Команда',
     description: 'Сотрудник — график отпусков и заявки'
+  },
+  {
+    id: 6,
+    name: 'Алина',
+    email: 'alina@vbi.local',
+    password: 'employee123',
+    role: 'employee',
+    department: 'Команда',
+    description: 'Новичок — трек адаптации и тесты'
   }
 ];
 
 const SESSION_KEY = 'vbi-auth-session';
 const WELCOMED_KEY = 'vbi-welcomed-users';
 
+let restoreSessionPromise: Promise<void> | null = null;
+
+export type OnboardingStep = 'welcome' | 'avatar';
+
 export function useAuth() {
   const user = useState<AuthSessionUser | null>('auth-user', () => null);
-  const showWelcome = useState<boolean>('auth-show-welcome', () => false);
+  const showOnboarding = useState<boolean>('auth-show-onboarding', () => false);
+  const onboardingStep = useState<OnboardingStep>('auth-onboarding-step', () => 'welcome');
   const authReady = useState<boolean>('auth-ready', () => false);
 
   const isAuthenticated = computed(() => Boolean(user.value));
 
-  const restoreSession = () => {
+  const restoreSession = async () => {
     if (!import.meta.client) return;
+    if (restoreSessionPromise) return restoreSessionPromise;
 
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) {
-      authReady.value = true;
-      return;
-    }
+    restoreSessionPromise = (async () => {
+      try {
+        const server = await $fetch<{ ok: boolean; user: AuthSessionUser | null }>('/api/auth/session');
+        if (server.ok && server.user) {
+          user.value = server.user;
+          localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
+          syncOnboardingState(server.user.id);
+          authReady.value = true;
+          return;
+        }
+      } catch {
+        /* cookie expired — fall through to localStorage */
+      }
 
-    try {
-      const parsed = JSON.parse(raw) as AuthSessionUser;
-      const match = credentials.find(
-        (item) => item.id === parsed.id && item.email.toLowerCase() === parsed.email.toLowerCase()
-      );
-      if (match) {
-        user.value = {
-          id: match.id,
-          name: match.name,
-          email: match.email,
-          role: match.role,
-          department: match.department
-        };
-      } else {
-        user.value = null;
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) {
+        authReady.value = true;
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as AuthSessionUser;
+        const match = credentials.find(
+          (item) => item.id === parsed.id && item.email.toLowerCase() === parsed.email.toLowerCase()
+        );
+        if (match) {
+          user.value = {
+            id: match.id,
+            name: match.name,
+            email: match.email,
+            role: match.role,
+            department: match.department
+          };
+          await $fetch('/api/auth/session', {
+            method: 'POST',
+            body: { email: match.email, password: match.password }
+          }).catch(() => {});
+          syncOnboardingState(match.id);
+        } else {
+          user.value = null;
+          localStorage.removeItem(SESSION_KEY);
+        }
+      } catch {
         localStorage.removeItem(SESSION_KEY);
       }
-    } catch {
-      localStorage.removeItem(SESSION_KEY);
-    }
 
-    authReady.value = true;
+      authReady.value = true;
+    })();
+
+    try {
+      await restoreSessionPromise;
+    } finally {
+      restoreSessionPromise = null;
+    }
   };
 
   const getWelcomedUsers = (): number[] => {
@@ -119,10 +162,37 @@ export function useAuth() {
     const welcomed = new Set(getWelcomedUsers());
     welcomed.add(userId);
     localStorage.setItem(WELCOMED_KEY, JSON.stringify([...welcomed]));
-    showWelcome.value = false;
   };
 
-  const login = (email: string, password: string) => {
+  const syncOnboardingState = (userId: number) => {
+    if (!import.meta.client) return;
+    const { hasAvatar } = useAvatars();
+    const welcomed = getWelcomedUsers().includes(userId);
+    const avatarChosen = hasAvatar(userId);
+
+    if (!welcomed) {
+      showOnboarding.value = true;
+      onboardingStep.value = 'welcome';
+      return;
+    }
+
+    if (!avatarChosen) {
+      showOnboarding.value = true;
+      onboardingStep.value = 'avatar';
+      return;
+    }
+
+    showOnboarding.value = false;
+  };
+
+  const finishOnboarding = (userId: number, characterId: import('~/composables/useAvatars').AvatarCharacterId) => {
+    const { setAvatarId } = useAvatars();
+    setAvatarId(userId, characterId);
+    markWelcomed(userId);
+    showOnboarding.value = false;
+  };
+
+  const login = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const found = credentials.find(
       (item) => item.email.toLowerCase() === normalizedEmail && item.password === password
@@ -132,30 +202,38 @@ export function useAuth() {
       return { ok: false as const, error: 'Неверный логин или пароль' };
     }
 
-    const sessionUser: AuthSessionUser = {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      role: found.role,
-      department: found.department
-    };
+    try {
+      const res = await $fetch<{ ok: boolean; user: AuthSessionUser }>('/api/auth/session', {
+        method: 'POST',
+        body: { email: normalizedEmail, password }
+      });
+      user.value = res.user;
+    } catch {
+      return { ok: false as const, error: 'Ошибка входа на сервер' };
+    }
 
-    user.value = sessionUser;
+    const sessionUser = user.value!;
 
     if (import.meta.client) {
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
-      const welcomed = getWelcomedUsers();
-      showWelcome.value = !welcomed.includes(sessionUser.id);
+      syncOnboardingState(sessionUser.id);
     }
 
-    return { ok: true as const, user: sessionUser, isFirstLogin: showWelcome.value };
+    return {
+      ok: true as const,
+      user: sessionUser,
+      isFirstLogin: showOnboarding.value
+    };
   };
 
-  const logout = () => {
+  const logout = async () => {
     user.value = null;
-    showWelcome.value = false;
+    showOnboarding.value = false;
     if (import.meta.client) {
+      useAdaptation().resetUserSession();
+      useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
       localStorage.removeItem(SESSION_KEY);
+      await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
     }
   };
 
@@ -169,13 +247,14 @@ export function useAuth() {
 
   return {
     user,
-    showWelcome,
+    showOnboarding,
+    onboardingStep,
     authReady,
     isAuthenticated,
     restoreSession,
     login,
     logout,
-    markWelcomed,
+    finishOnboarding,
     demoAccounts
   };
 }

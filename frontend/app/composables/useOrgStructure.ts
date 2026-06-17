@@ -36,83 +36,15 @@ export type OrgUnitGroup = {
   gridRow?: number;
 };
 
-export type OrgStatsFact = {
-  id: string;
-  text: string;
-};
-
 export type OrgPlacedItem =
   | { kind: 'unit'; unit: OrgUnit }
   | { kind: 'group'; group: OrgUnitGroup; units: OrgUnit[] };
 
 const STORAGE_KEY = 'vbi-org-structure-v1';
 
-const defaultExecutives: OrgExecutive[] = [
-  { id: 'exe-fin', title: 'Финансовый директор', person: 'Сергей', order: 0, gridCol: 0, gridRow: 0 },
-  { id: 'exe-ceo', title: 'Генеральный директор', person: 'Вадим', order: 1, gridCol: 0, gridRow: 0 },
-  { id: 'exe-comm', title: 'Коммерческий директор', person: 'Владислав', order: 2, gridCol: 0, gridRow: 0 }
-];
-
-const defaultGroups: OrgUnitGroup[] = [
-  { id: 'grp-anna', executiveId: 'exe-ceo', label: 'Анна Трубицына', order: 30, gridCol: 2, gridRow: 0 }
-];
-
-const defaultUnits: OrgUnit[] = [
-  { id: 'u-acc', executiveId: 'exe-fin', name: 'Бухгалтерия', head: '', order: 10, stackId: null, groupId: null, gridCol: 0, gridRow: 0, employees: 0, members: [] },
-  { id: 'u-sales', executiveId: 'exe-comm', name: 'Отдел продаж', head: '', order: 10, stackId: null, groupId: null, gridCol: 0, gridRow: 0, employees: 0, members: [] },
-  { id: 'u-digital', executiveId: 'exe-ceo', name: 'Digital отдел', head: '', order: 10, stackId: null, groupId: null, gridCol: 0, gridRow: 0, employees: 0, members: [] },
-  {
-    id: 'u-context',
-    executiveId: 'exe-ceo',
-    name: 'Отдел контекстной и медийной рекламы',
-    head: '',
-    order: 11,
-    stackId: null,
-    groupId: null,
-    gridCol: 0,
-    gridRow: 1,
-    employees: 0,
-    members: []
-  },
-  {
-    id: 'u-smm',
-    executiveId: 'exe-ceo',
-    name: 'Отдел SMM & Influence & таргета',
-    head: '',
-    order: 12,
-    stackId: null,
-    groupId: null,
-    gridCol: 0,
-    gridRow: 2,
-    employees: 0,
-    members: []
-  },
-  { id: 'u-analytics', executiveId: 'exe-ceo', name: 'Отдел аналитики', head: '', order: 13, stackId: null, groupId: null, gridCol: 0, gridRow: 3, employees: 0, members: [] },
-  { id: 'u-dev', executiveId: 'exe-ceo', name: 'Отдел разработки', head: '', order: 20, stackId: null, groupId: null, gridCol: 1, gridRow: 0, employees: 0, members: [] },
-  { id: 'u-orm', executiveId: 'exe-ceo', name: 'ORM отдел', head: '', order: 31, stackId: null, groupId: 'grp-anna', employees: 0, members: [] },
-  { id: 'u-seo', executiveId: 'exe-ceo', name: 'SEO отдел', head: '', order: 32, stackId: null, groupId: 'grp-anna', employees: 0, members: [] },
-  {
-    id: 'u-accounting',
-    executiveId: 'exe-ceo',
-    name: 'Отдел аккаунтинга',
-    head: '',
-    order: 33,
-    stackId: null,
-    groupId: 'grp-anna',
-    employees: 0,
-    members: []
-  },
-  { id: 'u-marketing', executiveId: 'exe-ceo', name: 'Отдел маркетинга', head: '', order: 40, stackId: null, groupId: null, gridCol: 3, gridRow: 0, employees: 0, members: [] },
-  { id: 'u-hr', executiveId: 'exe-ceo', name: 'HR-отдел', head: '', order: 41, stackId: null, groupId: null, gridCol: 3, gridRow: 1, employees: 0, members: [] },
-  { id: 'u-office', executiveId: 'exe-ceo', name: 'Офис-менеджер', head: '', order: 42, stackId: null, groupId: null, gridCol: 3, gridRow: 2, employees: 0, members: [] },
-  { id: 'u-legal', executiveId: 'exe-ceo', name: 'Юристы', head: '', order: 43, stackId: null, groupId: null, gridCol: 3, gridRow: 3, employees: 0, members: [] }
-];
-
-const defaultStats: OrgStatsFact[] = [
-  { id: 's1', text: '12 лет на рынке' },
-  { id: 's2', text: '80+ сотрудников' },
-  { id: 's3', text: '70% работают из офиса' }
-];
+const defaultExecutives: OrgExecutive[] = [];
+const defaultGroups: OrgUnitGroup[] = [];
+const defaultUnits: OrgUnit[] = [];
 
 export function buildPlacedItems(executiveId: string, units: OrgUnit[], groups: OrgUnitGroup[]): OrgPlacedItem[] {
   const execUnits = units.filter((u) => u.executiveId === executiveId);
@@ -248,7 +180,6 @@ export function useOrgStructure() {
   const orgExecutives = useState<OrgExecutive[]>('vbi-org-executives', () => [...defaultExecutives]);
   const orgUnits = useState<OrgUnit[]>('vbi-org-units', () => [...defaultUnits]);
   const orgGroups = useState<OrgUnitGroup[]>('vbi-org-groups', () => [...defaultGroups]);
-  const orgStats = useState<OrgStatsFact[]>('vbi-org-stats', () => [...defaultStats]);
   const orgHydrated = useState<boolean>('vbi-org-hydrated', () => false);
 
   const executivesSorted = computed(() => [...orgExecutives.value].sort((a, b) => a.order - b.order));
@@ -268,8 +199,7 @@ export function useOrgStructure() {
       JSON.stringify({
         executives: orgExecutives.value,
         units: orgUnits.value,
-        groups: orgGroups.value,
-        stats: orgStats.value
+        groups: orgGroups.value
       })
     );
   };
@@ -289,12 +219,10 @@ export function useOrgStructure() {
         executives?: OrgExecutive[];
         units?: OrgUnit[];
         groups?: OrgUnitGroup[];
-        stats?: OrgStatsFact[];
       };
       if (data.executives?.length) orgExecutives.value = data.executives;
       if (data.units?.length) orgUnits.value = data.units;
       if (data.groups) orgGroups.value = data.groups;
-      if (data.stats?.length) orgStats.value = data.stats;
       ensureGridLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
     } catch {
       /* keep defaults */
@@ -348,7 +276,7 @@ export function useOrgStructure() {
   };
 
   const addUnit = (executiveId?: string) => {
-    const execId = executiveId ?? orgExecutives.value.find((e) => e.id === 'exe-ceo')?.id ?? orgExecutives.value[0]?.id;
+    const execId = executiveId ?? orgExecutives.value[0]?.id;
     if (!execId) return;
 
     const order = Math.max(...orgUnits.value.filter((u) => u.executiveId === execId).map((u) => u.order), 0) + 10;
@@ -386,11 +314,6 @@ export function useOrgStructure() {
     return groupId;
   };
 
-  const addStatsFact = () => {
-    orgStats.value.push({ id: nextId('s'), text: 'Новый факт' });
-    persist();
-  };
-
   const removeExecutive = (id: string) => {
     if (orgExecutives.value.length <= 1) return;
     orgExecutives.value = orgExecutives.value.filter((e) => e.id !== id);
@@ -414,14 +337,13 @@ export function useOrgStructure() {
 
   if (import.meta.client && !persistWatchRegistered) {
     persistWatchRegistered = true;
-    watch([orgExecutives, orgUnits, orgGroups, orgStats], persist, { deep: true });
+    watch([orgExecutives, orgUnits, orgGroups], persist, { deep: true });
   }
 
   return {
     orgExecutives,
     orgUnits,
     orgGroups,
-    orgStats,
     executivesSorted,
     placedByExecutive,
     hydrate,
@@ -430,7 +352,6 @@ export function useOrgStructure() {
     addGroup,
     setUnitGrid,
     setGroupGrid,
-    addStatsFact,
     removeExecutive,
     removeUnit,
     removeGroup,

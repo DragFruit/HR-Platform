@@ -44,99 +44,15 @@ export type StoreReward = {
 };
 
 const companyLeader = ref<CompanyLeader>({
-  name: 'Алексей В.',
-  title: 'Генеральный директор'
+  name: '',
+  title: ''
 });
 
-const departments = ref<Department[]>([
-  {
-    id: 1,
-    name: 'Product',
-    head: 'Анна С.',
-    head_user_id: 2,
-    employees: 18,
-    members: [
-      { id: 101, name: 'Стас', title: 'Product Developer' },
-      { id: 102, name: 'Алина К.', title: 'Product Analyst' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Engineering',
-    head: 'Игорь М.',
-    head_user_id: null,
-    employees: 42,
-    members: [
-      { id: 201, name: 'Дмитрий Л.', title: 'Backend Developer' },
-      { id: 202, name: 'Елена Р.', title: 'QA Engineer' }
-    ]
-  },
-  {
-    id: 3,
-    name: 'Sales',
-    head: 'Мария К.',
-    head_user_id: null,
-    employees: 26,
-    members: [{ id: 301, name: 'Павел Н.', title: 'Account Manager' }]
-  },
-  {
-    id: 4,
-    name: 'HR',
-    head: 'Ольга П.',
-    head_user_id: 3,
-    employees: 8,
-    members: [{ id: 401, name: 'Кира Т.', title: 'HR Specialist' }]
-  }
-]);
+const departments = ref<Department[]>([]);
+const hierarchy = ref<HierarchyLink[]>([]);
 
-const hierarchy = ref<HierarchyLink[]>([
-  { id: 1, employee: 'Стас', manager: 'Анна С.', department: 'Product' },
-  { id: 2, employee: 'Алина К.', manager: 'Анна С.', department: 'Product' },
-  { id: 3, employee: 'Игорь М.', manager: 'CEO Office', department: 'Engineering' }
-]);
-
-const users = ref<PlatformUser[]>([
-  {
-    id: 1,
-    name: 'Стас',
-    email: 'stas@vbi.local',
-    role: 'admin',
-    department: 'HR',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: 'Костя',
-    email: 'kostya@vbi.local',
-    role: 'manager',
-    department: 'Команда',
-    status: 'active'
-  },
-  {
-    id: 3,
-    name: 'Катя',
-    email: 'katya@vbi.local',
-    role: 'employee',
-    department: 'Команда',
-    status: 'active'
-  },
-  {
-    id: 4,
-    name: 'Вася',
-    email: 'vasya@vbi.local',
-    role: 'employee',
-    department: 'Команда',
-    status: 'active'
-  },
-  {
-    id: 5,
-    name: 'Маша',
-    email: 'masha@vbi.local',
-    role: 'employee',
-    department: 'Команда',
-    status: 'active'
-  }
-]);
+/** Legacy-справочник для редактора отделов в useAdminData; сотрудники — useEmployees */
+const users = ref<PlatformUser[]>([]);
 
 const storeRewards = ref<StoreReward[]>([
   { id: 1, name: 'Day Off', category: 'time', price: 1000, monthly_limit: 1, active: true },

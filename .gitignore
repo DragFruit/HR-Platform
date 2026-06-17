@@ -12,6 +12,7 @@ frontend/dist/
 frontend/.data/
 frontend/.env
 frontend/.env.*
+!frontend/.env.example
 
 # Backend / misc
 vendor/

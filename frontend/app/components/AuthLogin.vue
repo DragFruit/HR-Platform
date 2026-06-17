@@ -25,7 +25,7 @@
       </form>
 
       <details class="auth-demo" open>
-        <summary>Тестовые аккаунты</summary>
+        <summary>Учётные записи для входа (пароли в описании)</summary>
         <ul class="list-reset demo-accounts-list">
           <li v-for="account in demoAccounts" :key="account.email">
             <button type="button" class="demo-account-btn" @click="fillDemo(account)">
@@ -49,8 +49,8 @@ const emit = defineEmits<{
 
 const { login, demoAccounts } = useAuth();
 
-const email = ref('katya@vbi.local');
-const password = ref('employee123');
+const email = ref('');
+const password = ref('');
 const error = ref('');
 const loading = ref(false);
 
@@ -65,7 +65,7 @@ const submit = async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 350));
 
-  const result = login(email.value, password.value);
+  const result = await login(email.value, password.value);
   loading.value = false;
 
   if (!result.ok) {

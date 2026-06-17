@@ -5,6 +5,8 @@ export type NavItem = {
   label: string;
 };
 
+const profileNavItem: NavItem = { to: '/profile', label: 'Профиль' };
+
 const employeeNav: NavItem[] = [
   { to: '/', label: 'Главная' },
   { to: '/adaptation', label: 'Адаптация' },
@@ -12,29 +14,35 @@ const employeeNav: NavItem[] = [
   { to: '/vacations', label: 'График отпусков' },
   { to: '/tasks', label: 'Задачи' },
   { to: '/store', label: 'Магазин' },
-  { to: '/wallet', label: 'Кошелек' },
-  { to: '/profile', label: 'Профиль' }
+  { to: '/wallet', label: 'Кошелёк' },
+  profileNavItem
 ];
 
 const adminNav: NavItem[] = [
   { to: '/admin', label: 'Панель' },
   { to: '/admin/organization', label: 'Структура' },
   { to: '/admin/employees', label: 'Сотрудники' },
-  { to: '/admin/hierarchy', label: 'Подчинение' },
+  { to: '/admin/tasks', label: 'Задачи' },
   { to: '/admin/vacations', label: 'График отпусков' },
-  { to: '/admin/users', label: 'Аккаунты' },
   { to: '/admin/store', label: 'Магазин' },
-  { to: '/admin/adaptation', label: 'Адаптация' }
+  { to: '/admin/adaptation', label: 'Адаптация' },
+  profileNavItem
 ];
 
 export function usePlatformContext() {
   const role = useState<PlatformRole>('platform-role', () => 'employee');
   const router = useRouter();
   const route = useRoute();
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
+  const { isVacationsOnly, isPathAllowed, homePath, navForLaunchScope } = useLaunchScope();
 
   const isAdmin = computed(() => role.value === 'admin');
-  const navItems = computed(() => (isAdmin.value ? adminNav : employeeNav));
+  const navItems = computed(() => {
+    if (isVacationsOnly.value) {
+      return navForLaunchScope(isAdmin.value);
+    }
+    return isAdmin.value ? adminNav : employeeNav;
+  });
   const canSwitchRole = computed(() => user.value?.role === 'admin');
 
   const syncRoleFromAuth = () => {
@@ -47,18 +55,31 @@ export function usePlatformContext() {
 
     role.value = next;
     if (next === 'admin') {
-      router.push('/admin');
+      router.push(isVacationsOnly.value ? '/admin/employees' : '/admin');
       return;
     }
-    router.push('/');
+    router.push(isVacationsOnly.value ? homePath(false) : '/');
   };
 
   const guardRoute = () => {
+    if (!authReady.value) return;
+
+    const canAccessAdmin = role.value === 'admin' || user.value?.role === 'admin';
     const adminOnly = route.path.startsWith('/admin');
-    if (adminOnly && role.value !== 'admin') {
-      router.replace('/');
+
+    if (adminOnly && !canAccessAdmin) {
+      router.replace(isVacationsOnly.value ? homePath(false) : '/');
+      return;
+    }
+
+    if (isVacationsOnly.value && !isPathAllowed(route.path)) {
+      router.replace(homePath(canAccessAdmin && role.value === 'admin'));
     }
   };
+
+  watch(authReady, (ready) => {
+    if (ready) syncRoleFromAuth();
+  });
 
   watch([role, () => route.path], guardRoute, { immediate: true });
 
@@ -74,6 +95,7 @@ export function usePlatformContext() {
     canSwitchRole,
     syncRoleFromAuth,
     switchRole,
-    pageTitle
+    pageTitle,
+    isVacationsOnly
   };
 }
