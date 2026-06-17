@@ -2,10 +2,10 @@
 
 ## Ветки Git
 
-| Ветка | Назначение | `NUXT_PUBLIC_APP_ENV` |
-|-------|------------|------------------------|
-| `staging` | Тестовый стенд | `staging` |
-| `main` | Бой (production) | `production` |
+| Ветка | Назначение | `NUXT_PUBLIC_APP_ENV` | `NUXT_PUBLIC_LAUNCH_SCOPE` |
+|-------|------------|------------------------|----------------------------|
+| `staging` | Тестовый стенд, полная платформа | `staging` | `full` |
+| `main` | Бой, только график отпусков | `production` | `vacations` |
 
 **Поток работы:** фича → PR в `staging` → проверка на тесте → PR `staging` → `main`.
 
@@ -49,10 +49,10 @@ Workflow `release-artifact.yml` привязывает сборку к этим 
 
 Скопируйте `frontend/.env.example` → `frontend/.env` локально.
 
-| Переменная | Тест (`staging`) | Бой (`main`) | Локально |
-|------------|------------------|--------------|----------|
+| Переменная | Тест (`staging`) | Бой (`main`) | Локально на `staging` |
+|------------|------------------|--------------|------------------------|
 | `NUXT_PUBLIC_APP_ENV` | `staging` | `production` | `development` |
-| `NUXT_PUBLIC_LAUNCH_SCOPE` | `full` или `vacations` | `full` | `full` |
+| `NUXT_PUBLIC_LAUNCH_SCOPE` | `full` | `vacations` | `full` |
 
 На тесте в шапке появляется оранжевая плашка **«Тестовый стенд»**.
 

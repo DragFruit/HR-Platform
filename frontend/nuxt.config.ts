@@ -7,8 +7,8 @@ export default defineNuxtConfig({
     public: {
       /** development | staging | production — для плашки стенда и логики окружения */
       appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
-      /** `vacations` — только график отпусков; `full` — вся платформа */
-      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full'
+      /** `vacations` — только график отпусков; `full` — вся платформа (ветка main = vacations) */
+      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'vacations'
     }
   }
 })

@@ -9,10 +9,12 @@
 ## Быстрый старт
 
 1. Дважды кликните **`Open Frontend.command`** в корне проекта (macOS).
-2. Откроется `http://127.0.0.1:3300/` — экран входа, затем главная со всеми разделами.
+2. Откроется `http://127.0.0.1:3300/` — экран входа и разделы платформы (на ветке `staging` — всё; на `main` — только график отпусков).
 3. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
 
-**Только график отпусков** (пилот): задайте `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` в `.env` в `frontend/` или в окружении.
+**Ветки:** `main` (бой) — только отпуска; `staging` (тест) — полная платформа. Разработка ведётся на `staging`.
+
+**Полная платформа локально на main:** `NUXT_PUBLIC_LAUNCH_SCOPE=full` в `frontend/.env`.
 
 Альтернатива из терминала:
 
@@ -159,10 +161,10 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 
 ## Git: тест и бой
 
-| Ветка | Стенд | Env при сборке |
-|-------|-------|----------------|
-| `staging` | Тест | `NUXT_PUBLIC_APP_ENV=staging` |
-| `main` | Бой | `NUXT_PUBLIC_APP_ENV=production` |
+| Ветка | Стенд | Модули | `NUXT_PUBLIC_LAUNCH_SCOPE` |
+|-------|-------|--------|----------------------------|
+| `staging` | Тест | Вся платформа | `full` |
+| `main` | Бой | Только график отпусков | `vacations` |
 
 1. Создайте репозиторий на GitHub и привяжите remote (см. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 2. Первый push: `main`, затем `./scripts/setup-git-branches.sh` и `git push -u origin staging`.

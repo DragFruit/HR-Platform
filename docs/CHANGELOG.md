@@ -4,6 +4,12 @@
 
 ## 2026-05-28
 
+### main: только график отпусков; разработка на staging
+
+- Ветка `main` (бой): `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` по умолчанию в `nuxt.config.ts` и в CI.
+- Ветка `staging` (тест): полная платформа (`full`). Дальнейшие фичи — коммиты в `staging`.
+- Пути: `frontend/nuxt.config.ts`, `.github/workflows/ci.yml`, `release-artifact.yml`.
+
 ### Git: ветки staging / main и CI
 
 - Ветки: `staging` (тест, плашка в UI) и `main` (бой); документация [docs/DEPLOYMENT.md](DEPLOYMENT.md).

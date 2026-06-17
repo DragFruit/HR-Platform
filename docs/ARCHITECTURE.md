@@ -49,7 +49,7 @@ flowchart TB
 
 ### Поэтапный запуск (`useLaunchScope.ts`)
 
-- Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — `full` (по умолчанию) или `vacations`.
+- Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — на `main` по умолчанию `vacations`; на `staging` — `full`.
 - В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков» и «Сотрудники» (даты выхода, руководитель = согласование).
 
 ### Окружения и деплой
