@@ -39,7 +39,7 @@ import {
   buildDaySetsForEmployee,
   buildMonthGrid,
   isDaySelectable,
-  isIsoInRange,
+  isInRangePreview,
   rangePreviewSegmentClass,
   type CalendarDayCell
 } from '~/utils/vacationCalendar';
@@ -79,7 +79,7 @@ const previewEnd = computed(() => props.rangePickHover ?? props.rangePickStart ?
 
 const isInPreview = (cell: CalendarDayCell) => {
   if (!props.rangePickStart || !previewEnd.value || cell.empty) return false;
-  return isIsoInRange(cell.iso, props.rangePickStart, previewEnd.value);
+  return isInRangePreview(cell.iso, props.rangePickStart, previewEnd.value);
 };
 
 const cellClass = (cell: CalendarDayCell) => {

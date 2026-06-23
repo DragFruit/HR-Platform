@@ -2457,8 +2457,7 @@ a {
 }
 
 .vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview,
-.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.weekend,
-.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.holiday {
+.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.weekend {
   background: #f59e0b;
   color: #fff;
 }
@@ -3847,8 +3846,7 @@ a {
 }
 
 .hr-month-grid td.emp-day-range-preview,
-.hr-month-grid td.emp-day-range-preview.weekend,
-.hr-month-grid td.emp-day-range-preview.holiday {
+.hr-month-grid td.emp-day-range-preview.weekend {
   background: #f59e0b;
   color: #fff;
   border-radius: 0;
@@ -4710,8 +4708,7 @@ a {
 }
 
 .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview,
-.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.weekend,
-.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.holiday {
+.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.weekend {
   background: #f59e0b;
   color: #fff;
 }

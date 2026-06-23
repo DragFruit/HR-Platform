@@ -57,20 +57,6 @@ export const isRangeFullySelectable = (
   return true;
 };
 
-export const rangePreviewSegmentClass = (
-  iso: string,
-  start: string,
-  hover: string | null
-): string => {
-  const end = hover ?? start;
-  const [lo, hi] = normalizeRange(start, end);
-  if (iso < lo || iso > hi) return '';
-  if (lo === hi) return 'emp-range-seg-single';
-  if (iso === lo) return 'emp-range-seg-start';
-  if (iso === hi) return 'emp-range-seg-end';
-  return 'emp-range-seg-mid';
-};
-
 export const isWeekendDay = (date: Date) => {
   const w = date.getDay();
   return w === 0 || w === 6;
@@ -80,6 +66,31 @@ export const isRuHoliday = (iso: string) => {
   const y = Number(iso.slice(0, 4));
   const set = RU_PROD_CAL_OFF_BY_YEAR[y];
   return Boolean(set?.has(iso));
+};
+
+export const isInRangePreview = (
+  iso: string,
+  start: string,
+  hover: string | null
+) => {
+  const end = hover ?? start;
+  if (!isIsoInRange(iso, start, end)) return false;
+  return !isRuHoliday(iso);
+};
+
+export const rangePreviewSegmentClass = (
+  iso: string,
+  start: string,
+  hover: string | null
+): string => {
+  if (isRuHoliday(iso)) return '';
+  const end = hover ?? start;
+  const [lo, hi] = normalizeRange(start, end);
+  if (iso < lo || iso > hi) return '';
+  if (lo === hi) return 'emp-range-seg-single';
+  if (iso === lo) return 'emp-range-seg-start';
+  if (iso === hi) return 'emp-range-seg-end';
+  return 'emp-range-seg-mid';
 };
 
 export type CalendarDayCell = {
