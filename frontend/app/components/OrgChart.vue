@@ -1,129 +1,124 @@
 <template>
   <div class="org-chart org-chart-vbi">
-    <div class="org-executives-band">
+    <div
+      ref="mainCanvasRef"
+      class="org-chart-canvas"
+      :class="{
+        'org-chart-canvas--edit': !readonly,
+        'org-chart-canvas--dragging': dragging || resizing
+      }"
+      :style="{ minHeight: `${totalCanvasHeight}px` }"
+    >
       <div
         v-for="exec in executivesSorted"
         :key="exec.id"
-        class="org-branch-column"
-        :class="{ 'org-branch-column--wide': exec.id === 'exe-ceo' }"
+        class="org-placed org-placed--exec"
+        :class="execPlacedClass(exec.id)"
+        :style="execPlacedStyle(exec, exec.id)"
+        @pointerdown="(e) => startExecutiveDrag(exec.id, exec, e)"
       >
-        <div
-          :ref="(el) => setCanvasRef(exec.id, el)"
-          class="org-branch-canvas"
-          :class="{
-            'org-branch-canvas--edit': !readonly,
-            'org-branch-canvas--dragging': dragging || resizing
-          }"
-          :style="{ minHeight: `${canvasHeight(exec.id)}px` }"
-        >
-          <div
-            class="org-placed org-placed--exec"
-            :class="execPlacedClass(exec.id)"
-            :style="execPlacedStyle(exec, exec.id)"
-            @pointerdown="(e) => startExecutiveDrag(exec.id, exec, e)"
+        <article class="org-node org-node-executive">
+          <InlineField
+            v-model="exec.title"
+            :readonly="readonly"
+            placeholder="Должность"
+            class-name="org-exec-title"
+          />
+          <InlineField
+            v-model="exec.person"
+            :readonly="readonly"
+            placeholder="ФИО"
+            class-name="org-exec-person"
+          />
+          <button
+            v-if="!readonly && executivesSorted.length > 1"
+            type="button"
+            class="org-remove-btn"
+            title="Удалить директора"
+            @click="removeExecutive(exec.id)"
           >
-            <article class="org-node org-node-executive">
-              <InlineField
-                v-model="exec.title"
-                :readonly="readonly"
-                placeholder="Должность"
-                class-name="org-exec-title"
-              />
-              <InlineField
-                v-model="exec.person"
-                :readonly="readonly"
-                placeholder="ФИО"
-                class-name="org-exec-person"
-              />
+            ×
+          </button>
+        </article>
+      </div>
+
+      <template v-for="exec in executivesSorted" :key="`items-${exec.id}`">
+        <template v-for="item in placedByExecutive[exec.id] ?? []" :key="itemKey(item)">
+          <div
+            v-if="item.kind === 'unit'"
+            class="org-placed org-placed--unit"
+            :class="placedClass(item.unit.id)"
+            :style="placedStyle(item.unit, item.unit.id)"
+            @pointerdown="(e) => startDrag('unit', item.unit.id, item.unit, e)"
+          >
+            <article class="org-node org-node-unit org-node-unit--solo">
               <button
-                v-if="!readonly && executivesSorted.length > 1"
+                v-if="!readonly"
                 type="button"
                 class="org-remove-btn"
-                title="Удалить директора"
-                @click="removeExecutive(exec.id)"
+                title="Удалить отдел"
+                @click.stop="requestRemoveUnit(item.unit)"
               >
                 ×
               </button>
+              <OrgUnitFields :unit="item.unit" :readonly="readonly" />
             </article>
           </div>
 
-          <template v-for="item in placedByExecutive[exec.id] ?? []" :key="itemKey(item)">
-            <div
-              v-if="item.kind === 'unit'"
-              class="org-placed org-placed--unit"
-              :class="placedClass(item.unit.id, exec.id)"
-              :style="placedStyle(item.unit, exec.id, item.unit.id)"
-              @pointerdown="(e) => startDrag(exec.id, 'unit', item.unit.id, item.unit, e)"
-            >
-              <article class="org-node org-node-unit org-node-unit--solo">
+          <div
+            v-else
+            class="org-placed org-placed--group"
+            :class="placedClass(item.group.id)"
+            :style="placedStyle(item.group, item.group.id)"
+            @pointerdown="(e) => startDrag('group', item.group.id, item.group, e)"
+          >
+            <div class="org-group-frame" :style="groupFrameStyle(item.group)">
+              <button
+                v-if="!readonly"
+                type="button"
+                class="org-remove-btn org-remove-btn--group"
+                title="Удалить группу"
+                @click.stop="requestRemoveGroup(item.group, item.units.length)"
+              >
+                ×
+              </button>
+              <article
+                v-for="unit in item.units"
+                :key="unit.id"
+                class="org-node org-node-unit org-node-unit--in-group"
+              >
                 <button
                   v-if="!readonly"
                   type="button"
                   class="org-remove-btn"
                   title="Удалить отдел"
-                  @click.stop="requestRemoveUnit(item.unit)"
+                  @click.stop="requestRemoveUnit(unit)"
                 >
                   ×
                 </button>
-                <OrgUnitFields :unit="item.unit" :readonly="readonly" />
+                <OrgUnitFields :unit="unit" :readonly="readonly" />
               </article>
-            </div>
-
-            <div
-              v-else
-              class="org-placed org-placed--group"
-              :class="placedClass(item.group.id, exec.id)"
-              :style="placedStyle(item.group, exec.id, item.group.id)"
-              @pointerdown="(e) => startDrag(exec.id, 'group', item.group.id, item.group, e)"
-            >
-              <div class="org-group-frame" :style="groupFrameStyle(item.group)">
-                <button
-                  v-if="!readonly"
-                  type="button"
-                  class="org-remove-btn org-remove-btn--group"
-                  title="Удалить группу"
-                  @click.stop="requestRemoveGroup(item.group, item.units.length)"
-                >
-                  ×
-                </button>
-                <article
-                  v-for="unit in item.units"
-                  :key="unit.id"
-                  class="org-node org-node-unit org-node-unit--in-group"
-                >
-                  <button
-                    v-if="!readonly"
-                    type="button"
-                    class="org-remove-btn"
-                    title="Удалить отдел"
-                    @click.stop="requestRemoveUnit(unit)"
-                  >
-                    ×
-                  </button>
-                  <OrgUnitFields :unit="unit" :readonly="readonly" />
-                </article>
-                <p class="org-group-label">
-                  <InlineField
-                    v-model="item.group.label"
-                    :readonly="readonly"
-                    placeholder="Подпись группы"
-                    class-name="org-group-label-text"
-                  />
-                </p>
-                <div
-                  v-if="!readonly"
-                  class="org-resize-handle"
-                  title="Изменить размер рамки"
-                  @pointerdown.stop="(e) => startResize(exec.id, item.group, e)"
+              <p class="org-group-label">
+                <InlineField
+                  v-model="item.group.label"
+                  :readonly="readonly"
+                  placeholder="Подпись группы"
+                  class-name="org-group-label-text"
                 />
-              </div>
+              </p>
+              <div
+                v-if="!readonly"
+                class="org-resize-handle"
+                title="Изменить размер рамки"
+                @pointerdown.stop="(e) => startResize(item.group, e)"
+              />
             </div>
-          </template>
-        </div>
-
-        <p v-if="!(placedByExecutive[exec.id]?.length)" class="org-empty soft">Нет подразделений</p>
-      </div>
+          </div>
+        </template>
+      </template>
     </div>
+
+    <p v-if="!hasPlacedItems" class="org-empty soft">Нет подразделений</p>
 
     <OrgConfirmDialog
       :open="confirmTarget !== null"
@@ -143,7 +138,6 @@ type ConfirmTarget =
   | { type: 'group'; id: string; label: string; unitsCount: number };
 
 type DragState = {
-  execId: string;
   kind: 'unit' | 'group' | 'executive';
   id: string;
   offsetX: number;
@@ -151,7 +145,6 @@ type DragState = {
 };
 
 type ResizeState = {
-  execId: string;
   groupId: string;
   startX: number;
   startY: number;
@@ -177,10 +170,10 @@ const {
   removeExecutive,
   removeUnit,
   removeGroup,
-  canvasMinHeight
+  globalCanvasMinHeight
 } = useOrgStructure();
 
-const canvasRefs = ref<Record<string, HTMLElement | null>>({});
+const mainCanvasRef = ref<HTMLElement | null>(null);
 const dragging = ref<DragState | null>(null);
 const dragPreview = ref<{ x: number; y: number } | null>(null);
 const resizing = ref<ResizeState | null>(null);
@@ -189,6 +182,14 @@ const confirmTarget = ref<ConfirmTarget | null>(null);
 
 const itemKey = (item: OrgPlacedItem) => (item.kind === 'unit' ? item.unit.id : item.group.id);
 
+const hasPlacedItems = computed(() =>
+  executivesSorted.value.some((exec) => (placedByExecutive.value[exec.id]?.length ?? 0) > 0)
+);
+
+const totalCanvasHeight = computed(() =>
+  globalCanvasMinHeight(placedByExecutive.value, executivesSorted.value)
+);
+
 const defaultY = () => ORG_CANVAS_EXEC_OFFSET;
 
 const itemPos = (item: Positionable) => ({
@@ -196,11 +197,8 @@ const itemPos = (item: Positionable) => ({
   y: item.y ?? defaultY()
 });
 
-const placedStyle = (item: Positionable, execId: string, id: string) => {
-  const isActive =
-    dragging.value?.id === id &&
-    dragging.value.execId === execId &&
-    dragPreview.value;
+const placedStyle = (item: Positionable, id: string) => {
+  const isActive = dragging.value?.id === id && dragPreview.value;
 
   const pos = isActive ? dragPreview.value! : itemPos(item);
 
@@ -211,8 +209,7 @@ const placedStyle = (item: Positionable, execId: string, id: string) => {
 };
 
 const groupFrameStyle = (group: OrgUnitGroup) => {
-  const isActive =
-    resizing.value?.groupId === group.id && resizePreview.value;
+  const isActive = resizing.value?.groupId === group.id && resizePreview.value;
 
   const width = isActive ? resizePreview.value!.width : group.width;
   const height = isActive ? resizePreview.value!.height : group.height;
@@ -223,9 +220,9 @@ const groupFrameStyle = (group: OrgUnitGroup) => {
   return style;
 };
 
-const placedClass = (id: string, execId: string) => ({
-  'is-dragging': dragging.value?.id === id && dragging.value.execId === execId,
-  'is-resizing': resizing.value?.groupId === id && resizing.value.execId === execId
+const placedClass = (id: string) => ({
+  'is-dragging': dragging.value?.id === id,
+  'is-resizing': resizing.value?.groupId === id
 });
 
 const execHasPosition = (exec: OrgExecutive) => exec.x != null && exec.y != null;
@@ -239,38 +236,26 @@ const execPlacedStyle = (exec: OrgExecutive, execId: string) => {
   if (isActive) {
     return {
       left: `${dragPreview.value!.x}px`,
-      top: `${dragPreview.value!.y}px`,
-      transform: 'none'
+      top: `${dragPreview.value!.y}px`
     };
   }
 
   if (execHasPosition(exec)) {
     return {
       left: `${exec.x}px`,
-      top: `${exec.y}px`,
-      transform: 'none'
+      top: `${exec.y}px`
     };
   }
 
   return {
-    left: '50%',
-    top: '0',
-    transform: 'translateX(-50%)'
+    left: `${(executivesSorted.value.findIndex((e) => e.id === execId) || 0) * 220}px`,
+    top: '0'
   };
 };
 
 const execPlacedClass = (execId: string) => ({
   'is-dragging': dragging.value?.kind === 'executive' && dragging.value.id === execId
 });
-
-const canvasHeight = (execId: string) => {
-  const exec = executivesSorted.value.find((e) => e.id === execId);
-  return canvasMinHeight(placedByExecutive.value[execId] ?? [], exec);
-};
-
-const setCanvasRef = (execId: string, el: Element | ComponentPublicInstance | null) => {
-  canvasRefs.value[execId] = el instanceof HTMLElement ? el : null;
-};
 
 const isInteractiveTarget = (target: EventTarget | null) =>
   Boolean(
@@ -286,7 +271,6 @@ const clampToCanvas = (canvas: HTMLElement, x: number, y: number) => ({
 });
 
 const startDrag = (
-  execId: string,
   kind: 'unit' | 'group',
   id: string,
   item: Positionable,
@@ -294,7 +278,7 @@ const startDrag = (
 ) => {
   if (readonly.value || isInteractiveTarget(event.target)) return;
 
-  const canvas = canvasRefs.value[execId];
+  const canvas = mainCanvasRef.value;
   if (!canvas) return;
 
   const handle = event.currentTarget as HTMLElement;
@@ -302,7 +286,6 @@ const startDrag = (
   const pos = itemPos(item);
 
   dragging.value = {
-    execId,
     kind,
     id,
     offsetX: event.clientX - canvasRect.left - pos.x,
@@ -322,7 +305,7 @@ const startDrag = (
     );
   };
 
-  const onEnd = (e: PointerEvent) => {
+  const onEnd = () => {
     if (dragging.value && dragPreview.value) {
       if (dragging.value.kind === 'unit') {
         setUnitPosition(dragging.value.id, dragPreview.value.x, dragPreview.value.y);
@@ -346,7 +329,7 @@ const startDrag = (
 const startExecutiveDrag = (execId: string, exec: OrgExecutive, event: PointerEvent) => {
   if (readonly.value || isInteractiveTarget(event.target)) return;
 
-  const canvas = canvasRefs.value[execId];
+  const canvas = mainCanvasRef.value;
   if (!canvas) return;
 
   const handle = event.currentTarget as HTMLElement;
@@ -360,7 +343,6 @@ const startExecutiveDrag = (execId: string, exec: OrgExecutive, event: PointerEv
       };
 
   dragging.value = {
-    execId,
     kind: 'executive',
     id: execId,
     offsetX: event.clientX - canvasRect.left - pos.x,
@@ -397,7 +379,7 @@ const startExecutiveDrag = (execId: string, exec: OrgExecutive, event: PointerEv
   event.preventDefault();
 };
 
-const startResize = (execId: string, group: OrgUnitGroup, event: PointerEvent) => {
+const startResize = (group: OrgUnitGroup, event: PointerEvent) => {
   if (readonly.value) return;
 
   const frame = (event.currentTarget as HTMLElement).closest('.org-group-frame') as HTMLElement;
@@ -408,7 +390,6 @@ const startResize = (execId: string, group: OrgUnitGroup, event: PointerEvent) =
   const startHeight = group.height && group.height > 0 ? group.height : rect.height;
 
   resizing.value = {
-    execId,
     groupId: group.id,
     startX: event.clientX,
     startY: event.clientY,

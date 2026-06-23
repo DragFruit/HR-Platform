@@ -887,35 +887,11 @@ a {
 
 .org-chart-vbi {
   align-items: stretch;
-  gap: 28px;
+  gap: 0;
   min-width: min(100%, 1280px);
 }
 
-.org-executives-band {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 24px;
-  width: 100%;
-  flex-wrap: wrap;
-}
-
-.org-branch-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1 1 200px;
-  min-width: 180px;
-  max-width: 240px;
-}
-
-.org-branch-column--wide {
-  flex: 2 1 520px;
-  max-width: none;
-  min-width: min(100%, 720px);
-}
-
-.org-branch-canvas {
+.org-chart-canvas {
   --org-canvas-grid: 24px;
   position: relative;
   width: 100%;
@@ -924,7 +900,7 @@ a {
   overflow: visible;
 }
 
-.org-branch-canvas--edit {
+.org-chart-canvas--edit {
   background-image:
     linear-gradient(to right, rgba(120, 113, 140, 0.1) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(120, 113, 140, 0.1) 1px, transparent 1px);
@@ -934,19 +910,16 @@ a {
 
 .org-placed--exec {
   position: absolute;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   z-index: 2;
   pointer-events: auto;
   touch-action: none;
 }
 
-.org-branch-canvas--edit .org-placed--exec:not(.is-dragging) {
+.org-chart-canvas--edit .org-placed--exec:not(.is-dragging) {
   cursor: grab;
 }
 
-.org-branch-canvas--edit .org-placed--exec:active:not(.is-dragging) {
+.org-chart-canvas--edit .org-placed--exec:active:not(.is-dragging) {
   cursor: grabbing;
 }
 
@@ -973,13 +946,13 @@ a {
   cursor: default;
 }
 
-.org-branch-canvas--edit .org-placed--unit:not(.is-dragging):not(.is-resizing),
-.org-branch-canvas--edit .org-placed--group:not(.is-dragging):not(.is-resizing) {
+.org-chart-canvas--edit .org-placed--unit:not(.is-dragging):not(.is-resizing),
+.org-chart-canvas--edit .org-placed--group:not(.is-dragging):not(.is-resizing) {
   cursor: grab;
 }
 
-.org-branch-canvas--edit .org-placed--unit:active:not(.is-dragging),
-.org-branch-canvas--edit .org-placed--group:active:not(.is-dragging) {
+.org-chart-canvas--edit .org-placed--unit:active:not(.is-dragging),
+.org-chart-canvas--edit .org-placed--group:active:not(.is-dragging) {
   cursor: grabbing;
 }
 
@@ -1046,16 +1019,18 @@ a {
   color: var(--text-muted);
 }
 
-.org-node-executive {
+.org-node.org-node-executive {
   position: relative;
   text-align: center;
   min-width: 200px;
   max-width: 280px;
-  padding: 14px 24px;
-  border-radius: 999px;
+  width: auto;
   border: 1px solid #e8944f;
   background: linear-gradient(180deg, #fde8d4 0%, #f4a96e 55%, #ef9a5a 100%);
   box-shadow: 0 4px 16px rgba(232, 148, 79, 0.22);
+  border-radius: 999px;
+  padding: 14px 24px;
+  box-sizing: border-box;
 }
 
 .org-exec-title {

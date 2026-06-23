@@ -107,6 +107,24 @@ const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.ra
 
 let persistWatchRegistered = false;
 
+function collectOccupied(
+  executives: OrgExecutive[],
+  units: OrgUnit[],
+  groups: OrgUnitGroup[]
+): { x: number; y: number }[] {
+  const occupied: { x: number; y: number }[] = [];
+  for (const exec of executives) {
+    if (exec.x != null && exec.y != null) occupied.push({ x: exec.x, y: exec.y });
+  }
+  for (const unit of units.filter((u) => !u.groupId)) {
+    if (unit.x != null && unit.y != null) occupied.push({ x: unit.x, y: unit.y });
+  }
+  for (const group of groups) {
+    if (group.x != null && group.y != null) occupied.push({ x: group.x, y: group.y });
+  }
+  return occupied;
+}
+
 function ensureCanvasLayout(
   executives: OrgExecutive[],
   units: OrgUnit[],
@@ -122,12 +140,19 @@ function ensureCanvasLayout(
     }
   });
 
+  const globalOccupied = collectOccupied(executives, units, groups);
+  for (const exec of executives) {
+    if (exec.x != null && exec.y != null) continue;
+    const slot = findFreeSlot(globalOccupied, 0);
+    exec.x = slot.x;
+    exec.y = slot.y;
+    globalOccupied.push(slot);
+  }
+
   const execIds = [...new Set(units.map((u) => u.executiveId).concat(groups.map((g) => g.executiveId)))];
 
   for (const executiveId of execIds) {
-    const occupied: { x: number; y: number }[] = [];
-
-    const mark = (x: number, y: number) => occupied.push({ x, y });
+    const mark = (x: number, y: number) => globalOccupied.push({ x, y });
 
     const migrateUnit = (unit: OrgUnit) => {
       if (unit.x != null && unit.y != null) {
@@ -167,7 +192,7 @@ function ensureCanvasLayout(
     for (const unit of solo) {
       migrateUnit(unit);
       if (unit.x == null || unit.y == null) {
-        const slot = findFreeSlot(occupied);
+        const slot = findFreeSlot(globalOccupied);
         unit.x = slot.x;
         unit.y = slot.y;
         mark(slot.x, slot.y);
@@ -187,7 +212,7 @@ function ensureCanvasLayout(
         mark(pos.x, pos.y);
         continue;
       }
-      const slot = findFreeSlot(occupied);
+      const slot = findFreeSlot(globalOccupied);
       group.x = slot.x;
       group.y = slot.y;
       mark(slot.x, slot.y);
@@ -195,19 +220,26 @@ function ensureCanvasLayout(
   }
 }
 
-function findFreeSlot(occupied: { x: number; y: number }[]): { x: number; y: number } {
+function findFreeSlot(
+  occupied: { x: number; y: number }[],
+  minY = ORG_CANVAS_EXEC_OFFSET
+): { x: number; y: number } {
   const threshold = 80;
+  const yValues: number[] = minY === 0 ? [0] : [];
   for (let row = 0; row < 32; row++) {
-    for (let col = 0; col < 8; col++) {
+    yValues.push(ORG_CANVAS_EXEC_OFFSET + row * ORG_ROW_STEP_PX);
+  }
+  for (const y of yValues) {
+    if (y < minY) continue;
+    for (let col = 0; col < 12; col++) {
       const x = col * ORG_COL_WIDTH_PX;
-      const y = ORG_CANVAS_EXEC_OFFSET + row * ORG_ROW_STEP_PX;
       const clash = occupied.some(
         (p) => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold
       );
       if (!clash) return { x, y };
     }
   }
-  const maxY = Math.max(ORG_CANVAS_EXEC_OFFSET, ...occupied.map((p) => p.y + ORG_ROW_STEP_PX));
+  const maxY = Math.max(minY, ORG_CANVAS_EXEC_OFFSET, ...occupied.map((p) => p.y + ORG_ROW_STEP_PX));
   return { x: 0, y: maxY };
 }
 
@@ -219,6 +251,17 @@ export function canvasMinHeight(items: OrgPlacedItem[], executive?: OrgExecutive
     const pos = posOf(item);
     const itemH = item.kind === 'group' ? item.group.height ?? 160 : 72;
     max = Math.max(max, pos.y + itemH + 48);
+  }
+  return max;
+}
+
+export function globalCanvasMinHeight(
+  placedByExecutive: Record<string, OrgPlacedItem[]>,
+  executives: OrgExecutive[]
+): number {
+  let max = 280;
+  for (const exec of executives) {
+    max = Math.max(max, canvasMinHeight(placedByExecutive[exec.id] ?? [], exec));
   }
   return max;
 }
@@ -284,20 +327,10 @@ export function useOrgStructure() {
     persist();
   };
 
-  const findFreePosition = (executiveId: string) => {
-    const occupied: { x: number; y: number }[] = [];
-    const exec = orgExecutives.value.find((e) => e.id === executiveId);
-    if (exec?.x != null && exec?.y != null) {
-      occupied.push({ x: exec.x, y: exec.y });
-    }
-    orgUnits.value
-      .filter((u) => u.executiveId === executiveId && !u.groupId)
-      .forEach((u) => occupied.push({ x: u.x ?? 0, y: u.y ?? ORG_CANVAS_EXEC_OFFSET }));
-    orgGroups.value
-      .filter((g) => g.executiveId === executiveId)
-      .forEach((g) => occupied.push({ x: g.x ?? 0, y: g.y ?? ORG_CANVAS_EXEC_OFFSET }));
-    return findFreeSlot(occupied);
-  };
+  const findFreeGlobalPosition = (minY = ORG_CANVAS_EXEC_OFFSET) =>
+    findFreeSlot(collectOccupied(orgExecutives.value, orgUnits.value, orgGroups.value), minY);
+
+  const findFreePosition = (executiveId: string) => findFreeGlobalPosition();
 
   const setUnitPosition = (unitId: string, x: number, y: number) => {
     const unit = orgUnits.value.find((u) => u.id === unitId);
@@ -325,11 +358,14 @@ export function useOrgStructure() {
 
   const addExecutive = () => {
     const order = Math.max(...orgExecutives.value.map((e) => e.order), -1) + 1;
+    const { x, y } = findFreeGlobalPosition(0);
     orgExecutives.value.push({
       id: nextId('exe'),
       title: 'Директор',
       person: '',
-      order
+      order,
+      x,
+      y
     });
     persist();
   };
@@ -418,6 +454,7 @@ export function useOrgStructure() {
     removeUnit,
     removeGroup,
     buildPlacedItems,
-    canvasMinHeight
+    canvasMinHeight,
+    globalCanvasMinHeight
   };
 }
