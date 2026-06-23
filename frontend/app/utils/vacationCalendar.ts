@@ -62,8 +62,8 @@ export const rangePreviewSegmentClass = (
   start: string,
   hover: string | null
 ): string => {
-  if (!hover || iso === start) return '';
-  const [lo, hi] = normalizeRange(start, hover);
+  const end = hover ?? start;
+  const [lo, hi] = normalizeRange(start, end);
   if (iso < lo || iso > hi) return '';
   if (lo === hi) return 'emp-range-seg-single';
   if (iso === lo) return 'emp-range-seg-start';
