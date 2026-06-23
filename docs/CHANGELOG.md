@@ -4,6 +4,13 @@
 
 ## 2026-06-23
 
+### Календарь отпусков: полные даты в месячном виде
+
+- Плашки в режиме «По месяцам» показывают диапазон дней без многоточия (`29-30`, `1-12`); месяц задаётся заголовком столбца.
+- Убраны `text-overflow: ellipsis` и `overflow: hidden` у `.vac-team-calendar .vac-block`.
+- Файлы: `frontend/app/assets/main.css`, `frontend/app/composables/useVacations.ts` (`formatMonthVacationRange`).
+- Проверка: `/vacations` → «По месяцам» — даты целиком, столбцы месяцев одинаковой ширины.
+
 ### Календарь отпусков руководителя: равная ширина месяцев
 
 - Таблица по месяцам (`VacationMonthlyCalendar` в `VacationTeamCalendar`): `table-layout: fixed`, столбцы Янв–Дек одинаковой ширины; колонка «Сотрудник» фиксирована.

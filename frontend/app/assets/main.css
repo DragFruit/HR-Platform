@@ -2798,19 +2798,16 @@ a {
   height: auto;
   padding: 3px 2px;
   vertical-align: top;
-  overflow: hidden;
 }
 
 .vac-team-calendar .vac-block {
   display: inline-block;
   width: fit-content;
   max-width: 100%;
-  font-size: 0.64rem;
-  padding: 2px 2px 2px 3px;
+  font-size: 0.68rem;
+  padding: 2px 1px 2px 2px;
   margin-bottom: 2px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: top;
   box-sizing: border-box;
 }
