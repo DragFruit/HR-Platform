@@ -1,5 +1,7 @@
 <template>
   <section class="auth-screen">
+    <div class="auth-screen__glow auth-screen__glow--a" aria-hidden="true" />
+    <div class="auth-screen__glow auth-screen__glow--b" aria-hidden="true" />
     <article class="auth-card">
       <div class="auth-brand">
         <span class="brand-title">VBI HR Gamification</span>

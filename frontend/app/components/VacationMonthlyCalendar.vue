@@ -15,7 +15,7 @@
             </tr>
             <tr v-for="emp in dep.employees" :key="emp.id">
               <td class="sticky-col-name">
-                <span class="emp-name">{{ emp.name }}</span>
+                <EmployeeNameStacked :name="emp.name" />
                 <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
               </td>
               <td
@@ -56,16 +56,9 @@ const { MONTHS_RU } = useVacations();
 const monthHeaders = computed(() => MONTHS_RU.map((label) => label.slice(0, 3)));
 
 const cellBlocks = (employeeName: string, month: number) => {
-  const entries = props.getMonthEntries(employeeName, month, props.year);
-  const labelsByStatus = new Map<string, string[]>();
-  entries.forEach((entry) => {
-    const bucket = labelsByStatus.get(entry.status) ?? [];
-    bucket.push(entry.label);
-    labelsByStatus.set(entry.status, bucket);
-  });
-  return [...labelsByStatus.entries()].map(([status, labels]) => ({
-    status,
-    label: labels.join(', ')
+  return props.getMonthEntries(employeeName, month, props.year).map((entry) => ({
+    status: entry.status,
+    label: entry.label
   }));
 };
 </script>

@@ -59,9 +59,13 @@ export const formatMonthVacationRange = (
   const to = end > monthEnd ? monthEnd : end;
   if (from > to) return '';
 
-  const fmt = (date: Date) => `${date.getDate()} ${MONTHS_RU[date.getMonth()].slice(0, 3).toLowerCase()}.`;
+  const fmt = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}.${monthNum}`;
+  };
   if (from.getTime() === to.getTime()) return fmt(from);
-  return `${fmt(from)} – ${fmt(to)}`;
+  return `${fmt(from)}-${fmt(to)}`;
 };
 
 export function useVacations() {

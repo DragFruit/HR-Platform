@@ -69,7 +69,13 @@
       </header>
 
       <main class="content">
-        <NuxtPage />
+        <NuxtPage v-slot="{ Component, route }">
+          <Transition name="page" mode="out-in">
+            <div v-if="Component" :key="route.path" class="page-root">
+              <component :is="Component" />
+            </div>
+          </Transition>
+        </NuxtPage>
       </main>
     </div>
     </div>
