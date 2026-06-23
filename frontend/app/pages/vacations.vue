@@ -70,35 +70,11 @@
                       <div class="vac-approval-item__info">
                         <strong class="vac-approval-item__name">{{ req.employee }}</strong>
                         <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
-                        <span
+                        <VacOverlapPopover
                           v-if="overlapDetails(req).length"
-                          class="vac-overlap-badge-wrap"
-                        >
-                          <span class="vac-overlap-badge" tabindex="0">
-                            <span class="vac-overlap-badge__dot" aria-hidden="true" />
-                            Есть пересечение
-                          </span>
-                          <div class="vac-overlap-popover" role="tooltip">
-                            <p class="vac-overlap-popover__title">Пересечения отпусков</p>
-                            <div
-                              v-for="(item, index) in overlapDetails(req)"
-                              :key="`${item.employee}-${item.vacationStart}-${index}`"
-                              class="vac-overlap-popover__item"
-                            >
-                              <strong>{{ item.employee }}</strong>
-                              <dl class="vac-overlap-popover__meta">
-                                <div>
-                                  <dt>Отпуск</dt>
-                                  <dd>{{ formatRange(item.vacationStart, item.vacationEnd) }}</dd>
-                                </div>
-                                <div>
-                                  <dt>Пересечение</dt>
-                                  <dd>{{ formatRange(item.overlapStart, item.overlapEnd) }}</dd>
-                                </div>
-                              </dl>
-                            </div>
-                          </div>
-                        </span>
+                          :items="overlapDetails(req)"
+                          :format-range="formatRange"
+                        />
                       </div>
                     </div>
                     <div class="vac-approval-item__actions">

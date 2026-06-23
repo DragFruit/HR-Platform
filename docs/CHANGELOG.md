@@ -4,6 +4,13 @@
 
 ## 2026-06-24
 
+### Отпуска: всплывающие окна поверх рамок (Teleport)
+
+- Попап «Пересечения отпусков» и меню действий «Мои заявки» рендерятся через `<Teleport to="body">` с `position: fixed` — не обрезаются родительскими `overflow: hidden`.
+- Новые файлы: `frontend/app/composables/useFloatingPosition.ts`, `frontend/app/components/VacOverlapPopover.vue`.
+- Затронуты: `frontend/app/pages/vacations.vue`, `frontend/app/pages/admin/vacations.vue`, `frontend/app/components/EmployeeVacationAside.vue`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → «Согласование» — навести на «Есть пересечение» у верхней/нижней заявки; режим «Сотрудник» в боковой панели → «⋯» у заявки внизу списка — меню полностью видно.
+
 ### Календарь отпусков: заголовок «Сотрудник» в месячном виде
 
 - Заголовок первого столбца в режиме «По месяцам» совпадает с детальным видом: отступ слева 8px, кегль 0.72rem, жирность 700.

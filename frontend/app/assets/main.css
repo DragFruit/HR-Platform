@@ -2619,6 +2619,48 @@ a {
   text-align: left;
 }
 
+.vac-overlap-popover--teleported {
+  display: block;
+  position: fixed;
+  z-index: 200;
+  margin: 0;
+}
+
+.vac-overlap-popover--teleported::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-surface);
+  transform: rotate(45deg);
+}
+
+.vac-overlap-popover--teleported.vac-overlap-popover--bottom-start::before,
+.vac-overlap-popover--teleported.vac-overlap-popover--bottom-end::before {
+  top: -6px;
+  left: 18px;
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.vac-overlap-popover--teleported.vac-overlap-popover--bottom-end::before {
+  left: auto;
+  right: 18px;
+}
+
+.vac-overlap-popover--teleported.vac-overlap-popover--top-start::before,
+.vac-overlap-popover--teleported.vac-overlap-popover--top-end::before {
+  bottom: -7px;
+  left: 18px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.vac-overlap-popover--teleported.vac-overlap-popover--top-end::before {
+  left: auto;
+  right: 18px;
+}
+
 .vac-overlap-popover::before {
   content: '';
   position: absolute;
@@ -2630,6 +2672,10 @@ a {
   border-left: 1px solid var(--border);
   border-top: 1px solid var(--border);
   transform: rotate(45deg);
+}
+
+.vac-overlap-popover--teleported::before {
+  border-color: var(--border-brutal);
 }
 
 /* Нижние заявки: попап вверх, чтобы не обрезался краем панели */
@@ -3870,6 +3916,10 @@ a {
   overflow: hidden;
 }
 
+.employee-aside--embedded .emp-requests-block {
+  overflow: visible;
+}
+
 .emp-requests-block .emp-requests-heading {
   flex-shrink: 0;
   margin: 0;
@@ -3955,6 +4005,14 @@ a {
   border: none;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.14);
+}
+
+.emp-request-menu--teleported {
+  position: fixed;
+  z-index: 200;
+  margin: 0;
+  border: 1px solid var(--border-brutal);
+  box-shadow: none;
 }
 
 .emp-request-menu-item {
