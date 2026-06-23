@@ -2456,6 +2456,23 @@ a {
   color: #fff;
 }
 
+.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-single {
+  border-radius: 6px;
+}
+
+.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-start {
+  border-radius: 6px 0 0 6px;
+}
+
+.vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-end {
+  border-radius: 0 6px 6px 0;
+}
+
 .vac-aside-stat-card {
   padding: 12px;
   border: 1px solid var(--vac-frame-border);
@@ -3818,6 +3835,37 @@ a {
   border-radius: 0 10px 10px 0;
 }
 
+.hr-month-grid td.emp-day-selectable {
+  cursor: pointer;
+}
+
+.hr-month-grid td.emp-day-unselectable:not(.emp-day-approved):not(.emp-day-pending) {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.hr-month-grid td.emp-day-range-preview {
+  background: #f59e0b;
+  color: #fff;
+  border-radius: 0;
+}
+
+.hr-month-grid td.emp-day-range-preview.emp-range-seg-single {
+  border-radius: 10px;
+}
+
+.hr-month-grid td.emp-day-range-preview.emp-range-seg-start {
+  border-radius: 10px 0 0 10px;
+}
+
+.hr-month-grid td.emp-day-range-preview.emp-range-seg-mid {
+  border-radius: 0;
+}
+
+.hr-month-grid td.emp-day-range-preview.emp-range-seg-end {
+  border-radius: 0 10px 10px 0;
+}
+
 .hr-day-num {
   font-size: clamp(10px, 2.6vw, 13px);
   font-weight: 600;
@@ -4655,6 +4703,23 @@ a {
 .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-pending {
   background: #f59e0b;
   color: #fff;
+}
+
+.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-single {
+  border-radius: 6px;
+}
+
+.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-start {
+  border-radius: 6px 0 0 6px;
+}
+
+.vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-end {
+  border-radius: 0 6px 6px 0;
 }
 
 .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-approved.emp-appr-seg-single,

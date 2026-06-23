@@ -23,6 +23,11 @@
           :employee-name="employeeName"
           :year="props.viewYear"
           :requests="yearRequests"
+          :range-pick-start="rangePickStart"
+          :range-pick-hover="rangePickHover"
+          :min-selectable-iso="minIso"
+          @day-click="handleDayClick"
+          @day-hover="handleDayHover"
         />
         <p v-else class="vac-emp-empty">
           Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
@@ -36,6 +41,8 @@
 </template>
 
 <script setup lang="ts">
+import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
+
 const props = defineProps<{
   viewYear: number;
   /** Календарь в колонке руководителя; боковая панель — в ManagerVacationAside */
@@ -48,24 +55,41 @@ const emit = defineEmits<{
 
 const { user } = useAuth();
 const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
-const { requestsForYear, addRequest, employeeRequests, hydrate: hydrateVacations } = useVacations();
+const { requestsForYear, addRequest, hydrate: hydrateVacations } = useVacations();
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
 
-const form = reactive({ start: '', end: '' });
-const formError = ref<{ title: string; text: string } | null>(null);
-const openMenuId = ref<number | null>(null);
-const editingId = ref<number | null>(null);
-const editForm = reactive({ start: '', end: '' });
-const editError = ref('');
-
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
-const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
-const balance = computed(() =>
-  calcEmployeeBalance(employeeName.value, hireIso.value, yearRequests.value, new Date(), props.viewYear)
-);
+const form = reactive({ start: '', end: '' });
+const formError = ref<{ title: string; text: string } | null>(null);
+
+const blockedDays = computed(() => {
+  if (!employeeName.value) return new Set<string>();
+  const { approved, pending } = buildDaySetsForEmployee(
+    employeeName.value,
+    props.viewYear,
+    yearRequests.value
+  );
+  return new Set([...approved, ...pending]);
+});
+
+const {
+  rangePickStart,
+  rangePickHover,
+  minIso,
+  clearSelection,
+  handleDayClick,
+  handleDayHover
+} = useVacationRangePick({
+  blockedDays,
+  onRangeSelected: (start, end) => {
+    form.start = start;
+    form.end = end;
+    formError.value = null;
+  }
+});
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(
@@ -75,60 +99,6 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
       (r.status === 'approved' || r.status === 'pending') &&
       !(end < r.start || start > r.end)
   );
-
-const closeRequestMenu = () => {
-  openMenuId.value = null;
-};
-
-const toggleRequestMenu = (id: number) => {
-  openMenuId.value = openMenuId.value === id ? null : id;
-  editingId.value = null;
-  editError.value = '';
-};
-
-const startEditRequest = (req: VacationRequest) => {
-  editingId.value = req.id;
-  editForm.start = req.start;
-  editForm.end = req.end;
-  editError.value = '';
-  closeRequestMenu();
-};
-
-const cancelEditRequest = () => {
-  editingId.value = null;
-  editError.value = '';
-};
-
-const saveEditRequest = (id: number) => {
-  editError.value = '';
-  if (!editForm.start || !editForm.end) {
-    editError.value = 'Укажите обе даты.';
-    return;
-  }
-  if (editForm.end < editForm.start) {
-    editError.value = 'Дата окончания не может быть раньше начала.';
-    return;
-  }
-  if (hasConflict(editForm.start, editForm.end, id)) {
-    editError.value = 'Пересечение с другим отпуском.';
-    return;
-  }
-  if (updateRequestDates(id, editForm.start, editForm.end)) {
-    editingId.value = null;
-  } else {
-    editError.value = 'Не удалось сохранить.';
-  }
-};
-
-const removeRequest = (req: VacationRequest) => {
-  closeRequestMenu();
-  if (editingId.value === req.id) cancelEditRequest();
-  deleteRequest(req.id);
-};
-
-const onDocumentClick = () => {
-  closeRequestMenu();
-};
 
 const submitRequest = () => {
   formError.value = null;
@@ -150,6 +120,7 @@ const submitRequest = () => {
   addRequest({ employee: employeeName.value, start: form.start, end: form.end });
   form.start = '';
   form.end = '';
+  clearSelection();
 };
 
 const refreshData = () => {

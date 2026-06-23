@@ -24,6 +24,53 @@ export const toIso = (date: Date) => {
   return `${y}-${m}-${d}`;
 };
 
+export const todayIso = () => toIso(new Date());
+
+export const normalizeRange = (start: string, end: string): [string, string] =>
+  start <= end ? [start, end] : [end, start];
+
+export const isIsoInRange = (iso: string, start: string, end: string) => {
+  const [lo, hi] = normalizeRange(start, end);
+  return iso >= lo && iso <= hi;
+};
+
+export const isDaySelectable = (
+  cell: Pick<CalendarDayCell, 'empty' | 'iso' | 'approved' | 'pending'>,
+  minIso: string
+) => !cell.empty && cell.iso >= minIso && !cell.approved && !cell.pending;
+
+export const isRangeFullySelectable = (
+  start: string,
+  end: string,
+  minIso: string,
+  blocked: Set<string>
+) => {
+  const [lo, hi] = normalizeRange(start, end);
+  if (lo < minIso) return false;
+  const cursor = new Date(`${lo}T00:00:00`);
+  const endDate = new Date(`${hi}T00:00:00`);
+  while (cursor <= endDate) {
+    const iso = toIso(cursor);
+    if (blocked.has(iso) || iso < minIso) return false;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return true;
+};
+
+export const rangePreviewSegmentClass = (
+  iso: string,
+  start: string,
+  hover: string | null
+): string => {
+  if (!hover || iso === start) return '';
+  const [lo, hi] = normalizeRange(start, hover);
+  if (iso < lo || iso > hi) return '';
+  if (lo === hi) return 'emp-range-seg-single';
+  if (iso === lo) return 'emp-range-seg-start';
+  if (iso === hi) return 'emp-range-seg-end';
+  return 'emp-range-seg-mid';
+};
+
 export const isWeekendDay = (date: Date) => {
   const w = date.getDay();
   return w === 0 || w === 6;
