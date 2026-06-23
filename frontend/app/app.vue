@@ -3,10 +3,10 @@
 
   <div v-if="!authReady" class="auth-loading">Загрузка...</div>
 
-  <AuthLogin v-else-if="!isAuthenticated" @success="onLoginSuccess" />
+  <div v-else class="app-viewport">
+    <AuthLogin v-if="!isAuthenticated" @success="onLoginSuccess" />
 
-  <template v-else>
-    <div class="app-shell">
+    <div v-else class="app-shell">
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-title">VBI HR Gamification</span>
@@ -80,14 +80,16 @@
     </div>
     </div>
 
+    <AppSiteFooter />
+
     <FirstLoginOnboarding
-      v-if="showOnboarding && user"
+      v-if="isAuthenticated && showOnboarding && user"
       :user-name="user.name"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
     />
-  </template>
+  </div>
 </template>
 
 <script setup lang="ts">

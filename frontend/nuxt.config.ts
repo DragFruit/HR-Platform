@@ -20,7 +20,10 @@ export default defineNuxtConfig({
       /** development | staging | production — для плашки стенда и логики окружения */
       appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
       /** `vacations` — только график отпусков; `full` — вся платформа */
-      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full'
+      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full',
+      /** Соцсети агентства VBI — переопределяются через NUXT_PUBLIC_SOCIAL_* */
+      socialVkUrl: process.env.NUXT_PUBLIC_SOCIAL_VK_URL || 'https://vk.com/vbi.agency',
+      socialTelegramUrl: process.env.NUXT_PUBLIC_SOCIAL_TELEGRAM_URL || 'https://t.me/vbi_agency'
     }
   }
 })

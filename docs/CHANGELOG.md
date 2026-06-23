@@ -4,6 +4,13 @@
 
 ## 2026-06-24
 
+### Футер агентства VBI на всех страницах
+
+- Внизу каждой страницы — полоска в стиле ITMO events: логотип **VBI**, разделитель, «Следите за нами» и иконки VK + Telegram.
+- Файлы: `frontend/app/components/AppSiteFooter.vue`, `frontend/app/app.vue`, `frontend/app/assets/main.css`, `frontend/nuxt.config.ts`.
+- Ссылки задаются через `runtimeConfig.public`: `NUXT_PUBLIC_SOCIAL_VK_URL` (по умолчанию `https://vk.com/vbi.agency`), `NUXT_PUBLIC_SOCIAL_TELEGRAM_URL` (`https://t.me/vbi_agency`).
+- Проверка: открыть `/` или экран входа — внизу полоска с VBI и двумя иконками; клик открывает соцсети агентства.
+
 ### Отпуска: компактное меню действий заявки
 
 - Меню «⋯» в «Мои заявки» снова компактное: у teleported-варианта сброшены `right`/`top` от абсолютного позиционирования (иначе `left` + `right: 0` растягивали попап на всю ширину viewport).
