@@ -4,7 +4,9 @@
       <table class="vacation-timeline">
         <thead>
           <tr>
-            <th class="sticky-col-name">Сотрудник</th>
+            <th class="sticky-col-name sticky-col-name--head">
+              <span class="vac-employee-head-label">Сотрудник</span>
+            </th>
             <th v-for="month in monthHeaders" :key="month">{{ month }}</th>
           </tr>
         </thead>

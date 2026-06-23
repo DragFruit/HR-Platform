@@ -2978,6 +2978,21 @@ a {
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {
   vertical-align: middle;
   text-align: left;
+  background: var(--bg-surface-raised);
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.vac-team-calendar .vacation-timeline thead .sticky-col-name--head {
+  padding: 8px 10px 8px 8px;
+}
+
+.vac-team-calendar .vacation-timeline .vac-employee-head-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
