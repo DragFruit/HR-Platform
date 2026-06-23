@@ -3995,11 +3995,15 @@ a {
 }
 
 .emp-request-menu {
+  display: flex;
+  flex-direction: column;
   position: absolute;
   top: calc(100% + 2px);
   right: 0;
   z-index: 20;
-  min-width: 140px;
+  width: fit-content;
+  min-width: 160px;
+  max-width: 220px;
   padding: 4px;
   background: var(--bg-surface);
   border: none;
@@ -4009,6 +4013,8 @@ a {
 
 .emp-request-menu--teleported {
   position: fixed;
+  top: auto;
+  right: auto;
   z-index: 200;
   margin: 0;
   border: 1px solid var(--border-brutal);
