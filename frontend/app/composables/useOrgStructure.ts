@@ -155,10 +155,7 @@ function ensureCanvasLayout(
     const mark = (x: number, y: number) => globalOccupied.push({ x, y });
 
     const migrateUnit = (unit: OrgUnit) => {
-      if (unit.x != null && unit.y != null) {
-        mark(unit.x, unit.y);
-        return;
-      }
+      if (unit.x != null && unit.y != null) return;
       if (unit.gridCol != null && unit.gridRow != null) {
         const pos = gridToCanvas(unit.gridCol, unit.gridRow);
         unit.x = pos.x;
@@ -201,10 +198,7 @@ function ensureCanvasLayout(
     }
 
     for (const group of groups.filter((g) => g.executiveId === executiveId)) {
-      if (group.x != null && group.y != null) {
-        mark(group.x, group.y);
-        continue;
-      }
+      if (group.x != null && group.y != null) continue;
       if (group.gridCol != null && group.gridRow != null) {
         const pos = gridToCanvas(group.gridCol, group.gridRow);
         group.x = pos.x;
