@@ -1,5 +1,13 @@
 import type { VacationRequest } from '~/composables/useVacations';
-import { countInclusiveCalendarDays } from '~/utils/vacationCalendar';
+import { countVacationBillableDays, isRuHoliday, toIso } from '~/utils/vacationCalendar';
+
+export type VacationBalanceAssessment = {
+  status: 'ok' | 'advance' | 'unknown' | 'incomplete';
+  neededDays: number;
+  availableAtStart: number;
+  deficit: number;
+  startLabel: string;
+};
 
 const ANNUAL_NORM = 28;
 
@@ -103,7 +111,8 @@ const countBookedDays = (
     const from = start > hireDay ? start : hireDay;
     const cursor = new Date(from);
     while (cursor <= end) {
-      n += 1;
+      const iso = toIso(cursor);
+      if (!isRuHoliday(iso)) n += 1;
       cursor.setDate(cursor.getDate() + 1);
     }
   });
@@ -129,11 +138,61 @@ const countBookedDaysUpTo = (
     if (from > to) return;
     const cursor = new Date(from);
     while (cursor <= to) {
-      n += 1;
+      const iso = toIso(cursor);
+      if (!isRuHoliday(iso)) n += 1;
       cursor.setDate(cursor.getDate() + 1);
     }
   });
   return n;
+};
+
+const formatStartLabel = (startIso: string) =>
+  new Date(`${startIso}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+export const assessVacationBalance = (
+  employeeName: string,
+  hireIso: string | undefined,
+  start: string,
+  end: string,
+  requests: VacationRequest[],
+  primaryYear: number,
+  excludeRequestId?: number
+): VacationBalanceAssessment => {
+  const empty: VacationBalanceAssessment = {
+    status: 'incomplete',
+    neededDays: 0,
+    availableAtStart: 0,
+    deficit: 0,
+    startLabel: ''
+  };
+
+  if (!start || !end || end < start) return empty;
+  if (!hireIso || !employeeName) {
+    return { ...empty, status: 'unknown' };
+  }
+
+  const neededDays = countVacationBillableDays(start, end);
+  const startLabel = formatStartLabel(start);
+  if (neededDays === 0) {
+    return { status: 'ok', neededDays: 0, availableAtStart: 0, deficit: 0, startLabel };
+  }
+
+  const filtered = excludeRequestId
+    ? requests.filter((r) => r.id !== excludeRequestId)
+    : requests;
+  const available = calcAvailableOnDate(employeeName, hireIso, start, filtered, primaryYear);
+  if (available === null) {
+    return { ...empty, status: 'unknown', neededDays, startLabel };
+  }
+
+  const deficit = Math.max(0, neededDays - available);
+  return {
+    status: deficit > 0 ? 'advance' : 'ok',
+    neededDays,
+    availableAtStart: available,
+    deficit,
+    startLabel
+  };
 };
 
 export const projectedAccruedVacationToDate = (
@@ -164,7 +223,7 @@ export const calcEmployeeBalance = (
   let taken = 0;
   let planned = 0;
   yearRequests.forEach((r) => {
-    const days = countInclusiveCalendarDays(r.start, r.end);
+    const days = countVacationBillableDays(r.start, r.end);
     if (r.status === 'approved') taken += days;
     if (r.status === 'pending') planned += days;
   });

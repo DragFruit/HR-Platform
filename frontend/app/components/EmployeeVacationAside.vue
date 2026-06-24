@@ -47,6 +47,12 @@
               <span class="emp-request-period">{{ formatRequestPeriod(req) }}</span>
               <div class="emp-request-meta">
                 <span class="pill" :class="req.status">{{ statusLabel(req.status) }}</span>
+                <span
+                  v-if="req.status === 'pending' && requestAdvance(req).status === 'advance'"
+                  class="vac-advance-tag"
+                >
+                  Аванс {{ requestAdvance(req).deficit }} дн.
+                </span>
               </div>
             </div>
             <div class="emp-request-menu-wrap">
@@ -116,8 +122,8 @@
 </template>
 
 <script setup lang="ts">
-import { calcAvailableOnDate, calcEmployeeBalance } from '~/utils/vacationBalance';
-import { countInclusiveCalendarDays } from '~/utils/vacationCalendar';
+import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
+import { countVacationBillableDays } from '~/utils/vacationCalendar';
 import type { VacationRequest, VacationStatus } from '~/composables/useVacations';
 
 const props = defineProps<{
@@ -177,9 +183,20 @@ const formatRequestPeriod = (req: VacationRequest) => {
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
   };
-  const days = countInclusiveCalendarDays(req.start, req.end);
+  const days = countVacationBillableDays(req.start, req.end);
   return `${fmt(req.start)} — ${fmt(req.end)} (${days} дн.)`;
 };
+
+const requestAdvance = (req: VacationRequest) =>
+  assessVacationBalance(
+    employeeName.value,
+    hireIso.value,
+    req.start,
+    req.end,
+    yearRequests.value,
+    state.value.primaryYear,
+    req.id
+  );
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(

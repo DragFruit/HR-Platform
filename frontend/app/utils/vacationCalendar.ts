@@ -216,6 +216,20 @@ export const countInclusiveCalendarDays = (startStr: string, endStr: string) => 
   return n;
 };
 
+/** Дни в счёт отпуска: календарные, без праздников (выходные входят). */
+export const countVacationBillableDays = (startStr: string, endStr: string) => {
+  const start = new Date(`${startStr}T00:00:00`);
+  const end = new Date(`${endStr}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+  let n = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    if (!isRuHoliday(toIso(cursor))) n += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return n;
+};
+
 export const vacationRangesOverlap = (
   startA: string,
   endA: string,

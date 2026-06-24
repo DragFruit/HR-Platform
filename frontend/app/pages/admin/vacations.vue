@@ -48,6 +48,10 @@
                 :items="overlapDetails(req)"
                 :format-range="formatRange"
               />
+              <VacAdvancePopover
+                v-if="advanceAssessment(req).status === 'advance'"
+                :assessment="advanceAssessment(req)"
+              />
             </div>
           </div>
           <div class="vac-approval-item__actions">
@@ -66,9 +70,10 @@
 
 <script setup lang="ts">
 import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
+import { assessVacationBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
 
-const { departmentsGrouped, hydrate: hydrateEmployees } = useEmployees();
+const { departmentsGrouped, findByName, hydrate: hydrateEmployees } = useEmployees();
 const { canSeeAllVacationApprovals } = usePermissions();
 const {
   viewYear,
@@ -76,7 +81,8 @@ const {
   pendingRequestsForApprover,
   getMonthEntries,
   setRequestStatus,
-  hydrate: hydrateVacations
+  hydrate: hydrateVacations,
+  state
 } = useVacations();
 
 const approvalQueue = computed(() => pendingRequestsForApprover(null, canSeeAllVacationApprovals.value));
@@ -96,6 +102,17 @@ const employeeInitials = (name: string) => {
 };
 
 const overlapDetails = (req: VacationRequest) => findVacationOverlapDetails(req, yearRequests.value);
+
+const advanceAssessment = (req: VacationRequest) =>
+  assessVacationBalance(
+    req.employee,
+    findByName(req.employee)?.hired_at,
+    req.start,
+    req.end,
+    yearRequests.value,
+    state.value.primaryYear,
+    req.id
+  );
 
 onMounted(() => {
   hydrateEmployees();

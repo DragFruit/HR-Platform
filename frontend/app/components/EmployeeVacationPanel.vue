@@ -8,6 +8,18 @@
         <span class="vac-emp-toolbar__word">по</span>
         <input v-model="form.end" type="date" class="vac-emp-input" aria-label="Дата окончания" />
         <button class="vac-emp-btn" type="submit">Создать заявку</button>
+        <p
+          v-if="formAssessment.status === 'advance'"
+          class="vac-advance-notice vac-advance-notice--toolbar"
+          role="status"
+        >
+          <span class="vac-advance-notice__mark" aria-hidden="true">◆</span>
+          <span class="vac-advance-notice__text">
+            <strong>Аванс {{ formAssessment.deficit }} дн.</strong>
+            · к {{ formAssessment.startLabel }} будет {{ formAssessment.availableAtStart }} из
+            {{ formAssessment.neededDays }}
+          </span>
+        </p>
       </form>
     </header>
 
@@ -42,6 +54,7 @@
 
 <script setup lang="ts">
 import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
+import { assessVacationBalance } from '~/utils/vacationBalance';
 
 const props = defineProps<{
   viewYear: number;
@@ -55,12 +68,24 @@ const emit = defineEmits<{
 
 const { user } = useAuth();
 const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
-const { requestsForYear, addRequest, hydrate: hydrateVacations } = useVacations();
+const { requestsForYear, addRequest, hydrate: hydrateVacations, state } = useVacations();
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
+const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
+
+const formAssessment = computed(() =>
+  assessVacationBalance(
+    employeeName.value,
+    hireIso.value,
+    form.start,
+    form.end,
+    yearRequests.value,
+    state.value.primaryYear
+  )
+);
 
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
