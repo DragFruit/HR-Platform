@@ -38,7 +38,6 @@
             <dd class="vac-advance-popover__deficit">{{ assessment.deficit }} дн.</dd>
           </div>
         </dl>
-        <p class="vac-advance-popover__hint">Праздники в период не входят в счёт отпуска.</p>
       </div>
     </Teleport>
   </span>

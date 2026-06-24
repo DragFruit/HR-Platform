@@ -69,6 +69,7 @@
   --vac-pending: #c47a12;
   --vac-balance-text: var(--text-muted);
   --vac-pill-overlap-bg: #efc038;
+  --vac-pill-pending-bg: #d4a03a;
   --vac-pill-advance-bg: #e186a9;
   --vac-pill-approved-bg: #388073;
   --vac-pill-rejected-bg: #c44b5a;
@@ -2145,28 +2146,34 @@ a {
 }
 
 .vac-block {
-  display: block;
+  display: inline-block;
+  width: fit-content;
+  max-width: none;
   margin-bottom: 4px;
-  padding: 3px 5px;
-  border-radius: 6px;
-  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   line-height: 1.2;
   white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  color: #ffffff;
 }
 
 .vac-block.approved {
-  background: rgba(34, 197, 94, 0.18);
-  color: #6ee7b7;
+  background: var(--vac-pill-approved-bg);
 }
 
 .vac-block.pending {
-  background: var(--yellow);
-  color: #b45309;
+  background: var(--vac-pill-pending-bg);
 }
 
 .vac-block.rejected {
-  background: rgba(248, 113, 113, 0.16);
-  color: #fca5a5;
+  background: var(--vac-pill-rejected-bg);
 }
 
 .shell-main:has(.vac-manager-layout) .topbar {
@@ -3049,13 +3056,6 @@ a {
   color: var(--vac-pill-advance-bg);
 }
 
-.vac-advance-popover__hint {
-  margin: 10px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: var(--text-soft);
-}
-
 .vac-advance-tag {
   display: inline-flex;
   align-items: center;
@@ -3162,20 +3162,22 @@ a {
 .vac-team-calendar .vac-cell {
   min-height: 42px;
   height: auto;
-  padding: 3px 2px;
+  padding: 4px 3px;
   vertical-align: top;
+  overflow: visible;
 }
 
 .vac-team-calendar .vac-block {
   display: inline-block;
   width: fit-content;
-  max-width: 100%;
-  font-size: 0.68rem;
-  padding: 2px 1px 2px 2px;
-  margin-bottom: 2px;
+  max-width: none;
+  margin-bottom: 3px;
+  padding: 4px 7px;
   white-space: nowrap;
   vertical-align: top;
   box-sizing: border-box;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .vac-team-calendar .vacation-timeline th,
@@ -3218,7 +3220,7 @@ a {
 }
 
 .vac-legend-dot--pending {
-  background: #f59e0b;
+  background: var(--vac-pill-pending-bg);
 }
 
 .vac-team-calendar__controls {
