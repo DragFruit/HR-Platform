@@ -180,8 +180,22 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 ## Отпуска
 
 1. `useEmployees` — кто чей руководитель; `findByUserForAuth()` по `platform_user_id` или email.
-2. `useVacations` — заявки, статусы, `canManagerApproveRequest()`.
-3. Сид: `data/vacation-seed.json` (год, праздники, демо-заявки).
+2. `useVacations` — заявки, статусы, `canManagerApproveRequest()`, `formatMonthVacationRange()` (даты в месячной таблице: `DD.MM-DD.MM`).
+3. `utils/vacationBalance.ts` — баланс ЗУП, аванс (`assessVacationBalance`), колонки **Отгулял** / **План** (`calcEmployeeBalance`: будущие согласованные → план, прошедшие/текущие → отгулял).
+4. `utils/vacationCalendar.ts` — праздники РФ, `countVacationBillableDays` (праздники не входят в счёт).
+5. Сид: `data/vacation-seed.json` (год, праздники, демо-заявки).
+
+**UI-плашки (ITMO pill):** solid фон, белый жирный текст, без обводки. CSS-токены в `main.css`:
+
+| Токен | Назначение | Цвет |
+|-------|------------|------|
+| `--vac-pill-approved-bg` | Согласован (таблица, «Мои заявки») | `#388073` |
+| `--vac-pill-pending-bg` | На согласовании (месячная таблица) | `#d4a03a` |
+| `--vac-pill-overlap-bg` | Пересечение отпусков | `#efc038` |
+| `--vac-pill-advance-bg` | Аванс | `#e186a9` |
+| `--vac-pill-rejected-bg` | Отклонён | `#c44b5a` |
+
+Классы: `.vac-block` (месячный календарь), `.vac-overlap-badge`, `.vac-advance-badge`, `.emp-request-meta .pill`. Popover пересечений и аванса — Teleport + ромбик `::before`.
 
 Референс бизнес-логики: `_vacation_source/График отпусков/`.
 
@@ -206,8 +220,8 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 
 ## Стили
 
-- Единый файл: `app/assets/main.css` (~3500 строк).
-- Токены: `--primary: #7c3aed`, фон `--bg: #f4f2ff`, карточки, vacation-layout, org-chart, auth-screen.
+- Единый файл: `app/assets/main.css` (~5700 строк).
+- Токены: neo-brutalist light UI (`--page-bg`, `--border-brutal`), фиолетовый topbar (`--hero-purple`), лайм (`--accent-lime`), vacation-pill (см. раздел «Отпуска»).
 - `platform-base.css` — **не используется** в сборке (остаток эксперимента Miro); можно удалить при уборке.
 
 Подключение: `nuxt.config.ts` → `css: ['~/assets/main.css']`.
