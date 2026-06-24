@@ -2312,6 +2312,47 @@ a {
   margin-bottom: 0;
 }
 
+.vac-manager-aside-panel--employee-view {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  gap: 8px;
+}
+
+.vac-manager-aside-panel--employee-view .employee-aside--fit:not(.employee-aside--embedded) {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  padding: 16px;
+  border: 1px solid var(--vac-frame-border);
+  border-radius: var(--vac-frame-radius);
+  background: var(--bg-surface);
+  box-shadow: var(--vac-frame-shadow);
+  box-sizing: border-box;
+  position: static;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.mgr-mode-back-btn {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.mgr-mode-back-btn:hover {
+  color: var(--text);
+}
+
 .employee-aside--embedded {
   margin: 0;
   padding: 0;
@@ -2326,12 +2367,12 @@ a {
   gap: 10px;
 }
 
-.vac-manager-aside-panel .employee-aside--fit .emp-balance-card {
+.vac-manager-aside-panel .employee-aside--embedded .emp-balance-card {
   margin: 0 0 8px;
   padding: 10px;
 }
 
-.vac-manager-aside-panel .employee-aside--fit .emp-balance-big {
+.vac-manager-aside-panel .employee-aside--embedded .emp-balance-big {
   font-size: 2rem;
 }
 

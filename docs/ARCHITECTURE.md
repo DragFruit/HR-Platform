@@ -197,6 +197,8 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 
 Классы: `.vac-block` (месячный календарь), `.vac-overlap-badge`, `.vac-advance-badge`, `.emp-request-meta .pill`. Popover пересечений и аванса — Teleport + ромбик `::before`.
 
+**Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. Руководитель/HR — `ManagerVacationAside`: в режиме «Руководитель» статистика команды и переключатель; в режиме «Сотрудник» — тот же `EmployeeVacationAside`, что у сотрудника, и кнопка «← Руководитель».
+
 Референс бизнес-логики: `_vacation_source/График отпусков/`.
 
 ---
