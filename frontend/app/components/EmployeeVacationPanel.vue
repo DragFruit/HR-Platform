@@ -13,11 +13,9 @@
           class="vac-advance-notice vac-advance-notice--toolbar"
           role="status"
         >
-          <span class="vac-advance-notice__mark" aria-hidden="true">◆</span>
           <span class="vac-advance-notice__text">
-            <strong>Аванс {{ formAssessment.deficit }} дн.</strong>
-            · к {{ formAssessment.startLabel }} будет {{ formAssessment.availableAtStart }} из
-            {{ formAssessment.neededDays }}
+            Аванс {{ formAssessment.deficit }} дн. · к {{ formAssessment.startLabel }} будет
+            {{ formAssessment.availableAtStart }} из {{ formAssessment.neededDays }}
           </span>
         </p>
       </form>
