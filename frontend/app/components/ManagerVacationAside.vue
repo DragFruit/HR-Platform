@@ -3,41 +3,49 @@
     class="vac-manager-aside-panel"
     :class="{ 'vac-manager-aside-panel--employee-view': modelValue === 'employee' }"
   >
-    <template v-if="modelValue === 'manager'">
-      <div class="emp-aside-role-strip">
-        <span class="emp-aside-role-strip-label">Режим</span>
+    <div class="emp-aside-role-strip">
+      <span class="emp-aside-role-strip-label">Режим</span>
 
-        <div
-          class="mgr-emp-slide mgr-emp-slide--interactive"
-          role="group"
-          aria-label="Режим интерфейса"
-        >
-          <span class="mgr-emp-slide-thumb" aria-hidden="true" />
-          <div class="mgr-emp-slide-inner">
-            <button
-              type="button"
-              class="mgr-emp-slide-name mgr-emp-slide-name--manager active"
-              @click="setMode('manager')"
-            >
-              Руководитель
-            </button>
-            <button
-              type="button"
-              class="mgr-emp-slide-name mgr-emp-slide-name--employee"
-              @click="setMode('employee')"
-            >
-              Сотрудник
-            </button>
-          </div>
-        </div>
-
-        <div v-if="showHrTab" class="role-switch role-switch--aside" role="group" aria-label="Раздел платформы">
-          <button type="button" class="role-btn active">Руководитель</button>
-          <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
-          <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
+      <div
+        class="mgr-emp-slide mgr-emp-slide--interactive"
+        :class="{ 'mgr-emp-slide--employee': modelValue === 'employee' }"
+        role="group"
+        aria-label="Режим интерфейса"
+      >
+        <span class="mgr-emp-slide-thumb" aria-hidden="true" />
+        <div class="mgr-emp-slide-inner">
+          <button
+            type="button"
+            class="mgr-emp-slide-name mgr-emp-slide-name--manager"
+            :class="{ active: modelValue === 'manager' }"
+            @click="setMode('manager')"
+          >
+            Руководитель
+          </button>
+          <button
+            type="button"
+            class="mgr-emp-slide-name mgr-emp-slide-name--employee"
+            :class="{ active: modelValue === 'employee' }"
+            @click="setMode('employee')"
+          >
+            Сотрудник
+          </button>
         </div>
       </div>
 
+      <div
+        v-if="showHrTab && modelValue === 'manager'"
+        class="role-switch role-switch--aside"
+        role="group"
+        aria-label="Раздел платформы"
+      >
+        <button type="button" class="role-btn active">Руководитель</button>
+        <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
+        <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
+      </div>
+    </div>
+
+    <template v-if="modelValue === 'manager'">
       <div class="vac-aside-stat-card">
         <div class="vac-aside-stat-label">Сегодня</div>
         <div class="vac-aside-stat-value">{{ todayLabel }}</div>
@@ -76,9 +84,6 @@
     </template>
 
     <template v-else>
-      <button type="button" class="mgr-mode-back-btn" @click="setMode('manager')">
-        ← Руководитель
-      </button>
       <EmployeeVacationAside :view-year="viewYear" />
     </template>
   </aside>

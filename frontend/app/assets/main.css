@@ -2317,7 +2317,11 @@ a {
   border: none;
   background: transparent;
   box-shadow: none;
-  gap: 8px;
+  gap: 10px;
+}
+
+.vac-manager-aside-panel--employee-view .emp-aside-role-strip {
+  margin-bottom: 0;
 }
 
 .vac-manager-aside-panel--employee-view .employee-aside--fit:not(.employee-aside--embedded) {
@@ -2333,24 +2337,6 @@ a {
   position: static;
   max-height: none;
   overflow-y: auto;
-}
-
-.mgr-mode-back-btn {
-  align-self: flex-start;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-.mgr-mode-back-btn:hover {
-  color: var(--text);
 }
 
 .employee-aside--embedded {
