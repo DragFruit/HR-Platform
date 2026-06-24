@@ -220,12 +220,32 @@ export const calcEmployeeBalance = (
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
   const yearRequests = requests.filter((r) => r.employee === employeeName);
+  const today = normalizeCalendarDate(asOf);
+  const todayIso = toIso(today);
   let taken = 0;
   let planned = 0;
   yearRequests.forEach((r) => {
-    const days = countVacationBillableDays(r.start, r.end);
-    if (r.status === 'approved') taken += days;
-    if (r.status === 'pending') planned += days;
+    if (r.status === 'pending') {
+      planned += countVacationBillableDays(r.start, r.end);
+      return;
+    }
+    if (r.status !== 'approved') return;
+
+    const start = normalizeCalendarDate(new Date(`${r.start}T00:00:00`));
+    const end = normalizeCalendarDate(new Date(`${r.end}T00:00:00`));
+    if (end < today) {
+      taken += countVacationBillableDays(r.start, r.end);
+    } else if (start > today) {
+      planned += countVacationBillableDays(r.start, r.end);
+    } else {
+      taken += countVacationBillableDays(r.start, todayIso);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowIso = toIso(tomorrow);
+      if (tomorrowIso <= r.end) {
+        planned += countVacationBillableDays(tomorrowIso, r.end);
+      }
+    }
   });
 
   const entitled = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;

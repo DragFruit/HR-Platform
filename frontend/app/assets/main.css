@@ -70,6 +70,8 @@
   --vac-balance-text: var(--text-muted);
   --vac-pill-overlap-bg: #efc038;
   --vac-pill-advance-bg: #e186a9;
+  --vac-pill-approved-bg: #388073;
+  --vac-pill-rejected-bg: #c44b5a;
   --brutal-list-radius: 14px;
   --transition-brutal: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
 }
@@ -2967,6 +2969,43 @@ a {
   display: block;
   position: fixed;
   z-index: 200;
+  margin: 0;
+}
+
+.vac-advance-popover--teleported::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-surface);
+  transform: rotate(45deg);
+  border-color: var(--border-brutal);
+}
+
+.vac-advance-popover--teleported.vac-advance-popover--bottom-start::before,
+.vac-advance-popover--teleported.vac-advance-popover--bottom-end::before {
+  top: -6px;
+  left: 18px;
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.vac-advance-popover--teleported.vac-advance-popover--bottom-end::before {
+  left: auto;
+  right: 18px;
+}
+
+.vac-advance-popover--teleported.vac-advance-popover--top-start::before,
+.vac-advance-popover--teleported.vac-advance-popover--top-end::before {
+  bottom: -7px;
+  left: 18px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.vac-advance-popover--teleported.vac-advance-popover--top-end::before {
+  left: auto;
+  right: 18px;
 }
 
 .vac-advance-popover__title {
@@ -3020,15 +3059,16 @@ a {
 .vac-advance-tag {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 6px 14px;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.2;
   background: var(--vac-pill-advance-bg);
   color: #ffffff;
   border: none;
+  box-shadow: none;
 }
 
 .vac-btn-approve {
@@ -4402,26 +4442,30 @@ a {
 }
 
 .emp-request-meta .pill {
-  font-size: 9px;
-  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
   margin-top: 0;
-  display: inline-block;
+  padding: 6px 14px;
   border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: #ffffff;
 }
 
 .emp-request-meta .pill.approved {
-  background: rgba(52, 211, 153, 0.16);
-  color: #6ee7b7;
+  background: var(--vac-pill-approved-bg);
 }
 
 .emp-request-meta .pill.pending {
-  background: rgba(251, 191, 36, 0.16);
-  color: #fcd34d;
+  background: var(--vac-pill-overlap-bg);
 }
 
 .emp-request-meta .pill.rejected {
-  background: rgba(248, 113, 113, 0.16);
-  color: #fca5a5;
+  background: var(--vac-pill-rejected-bg);
 }
 
 .hr-legend-item {
@@ -5616,7 +5660,8 @@ a {
   border: 1px solid var(--border-brutal);
 }
 
-.vac-overlap-popover {
+.vac-overlap-popover,
+.vac-advance-popover {
   border: 1px solid var(--border-brutal);
   box-shadow: none;
 }
