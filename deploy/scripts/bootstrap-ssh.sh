@@ -8,7 +8,8 @@ if [[ ! -f "${KEY}" ]]; then
   ssh-keygen -t ed25519 -f "${KEY}" -N "" -C "vbi-hr-deploy"
 fi
 
-ssh-keyscan -H ilnizumak.beget.app 45.12.74.25 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+ssh-keyscan -p 2222 -H ilnizumak.beget.app >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+ssh-keyscan -H 45.12.74.25 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
 
 CONFIG_MARK="# vbi-hr-deploy"
 if ! grep -q "${CONFIG_MARK}" "${HOME}/.ssh/config" 2>/dev/null; then
@@ -17,6 +18,7 @@ if ! grep -q "${CONFIG_MARK}" "${HOME}/.ssh/config" 2>/dev/null; then
 ${CONFIG_MARK}
 Host vbi-gitlab
   HostName ilnizumak.beget.app
+  Port 2222
   User git
   IdentityFile ${KEY}
   IdentitiesOnly yes
