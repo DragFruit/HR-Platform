@@ -7,10 +7,9 @@
 ### Деплой: GitLab CI и скрипты для VPS
 
 - `.gitlab-ci.yml` — сборка на `staging`/`main`, manual deploy через rsync + systemd.
-- `deploy/` — nginx, systemd (`vbi-hr`, `vbi-hr-staging`), `install-server.sh`, `deploy-remote.sh`, `build-and-deploy.sh`.
-- `frontend/.env.example` — шаблон env для локальной разработки.
-- Документация: [docs/DEPLOYMENT.md](DEPLOYMENT.md) (GitLab, переменные CI, чеклист первого боя).
-- Проверка: push в GitLab → pipeline build → на сервере после `install-server.sh` — manual deploy → URL теста/боя.
+- `deploy/` — nginx, systemd, скрипты выкладки.
+- **Beget:** [deploy/SETUP-ILNIZUMAK.md](../deploy/SETUP-ILNIZUMAK.md) — GitLab `ilnizumak.beget.app/vbi/hrplatform`, VPS `45.12.74.25`.
+- `deploy/scripts/bootstrap-ssh.sh` — SSH-ключ; `push-gitlab.sh` — push в GitLab.
 
 ### Отпуска: боковая панель руководителя в режиме «Сотрудник»
 

@@ -1,7 +1,7 @@
 # Тест: скопируйте в sites-enabled и замените server_name + SSL при необходимости.
 server {
     listen 80;
-    server_name hr-test.example.com;
+    server_name 45.12.74.25 hr-test.example.com;
 
     location / {
         proxy_pass http://127.0.0.1:3301;
