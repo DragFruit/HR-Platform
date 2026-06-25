@@ -1,5 +1,6 @@
-# GitLab CI: сборка и выкладка VBI HR на VPS
-# Переменные в Settings → CI/CD → Variables (см. docs/DEPLOYMENT.md)
+# GitLab CI/CD — задача 2: Git → сервер
+# Задача 1 (Mac → Git): scripts/push-to-gitlab.sh, docs/CI-CD.md
+# Variables: SSH_PRIVATE_KEY, DEPLOY_HOST, DEPLOY_USER
 
 stages:
   - build
@@ -16,6 +17,8 @@ cache:
   paths:
     - frontend/node_modules/
     - .npm/
+
+# --- Сборка (автоматически на push) ---
 
 .build:
   stage: build
@@ -45,36 +48,46 @@ build:production:
     NUXT_PUBLIC_APP_ENV: production
     NUXT_PUBLIC_LAUNCH_SCOPE: full
 
+# --- Деплой на VPS (только из CI, не с локальной машины в обычном потоке) ---
+
 .deploy:
   stage: deploy
   image: alpine:3.21
   before_script:
     - apk add --no-cache openssh-client rsync bash
     - mkdir -p ~/.ssh
+    - |
+      if [ -z "${SSH_PRIVATE_KEY:-}" ]; then
+        echo "Ошибка: задайте SSH_PRIVATE_KEY в Settings → CI/CD → Variables"
+        exit 1
+      fi
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
     - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-  rules:
-    - if: $CI_COMMIT_BRANCH == "staging" || $CI_COMMIT_BRANCH == "main"
-      when: manual
-  allow_failure: false
+    - export DEPLOY_SSH_KEY=~/.ssh/id_rsa
 
-deploy:staging:
+.deploy:staging:
   extends: .deploy
   needs:
     - job: build:staging
   rules:
     - if: $CI_COMMIT_BRANCH == "staging"
-      when: manual
   script:
-    - bash deploy/scripts/deploy-remote.sh staging
+    - bash deploy/scripts/deploy-from-ci.sh staging
 
-deploy:production:
+deploy:staging:
+  extends: .deploy:staging
+  when: on_success
+
+.deploy:production:
   extends: .deploy
   needs:
     - job: build:production
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
   script:
-    - bash deploy/scripts/deploy-remote.sh production
+    - bash deploy/scripts/deploy-from-ci.sh production
+
+deploy:production:
+  extends: .deploy:production
+  when: manual

@@ -2,6 +2,15 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-06-25
+
+### CI/CD: две задачи (Mac → Git → сервер)
+
+- **Задача 1:** `scripts/push-to-gitlab.sh` — push с компьютера в GitLab (порт 2222), без деплоя.
+- **Задача 2:** `.gitlab-ci.yml` — build на push, deploy на VPS (`deploy-from-ci.sh`); staging авто, main вручную.
+- Документация: [docs/CI-CD.md](CI-CD.md).
+- Проверка: `bash scripts/push-to-gitlab.sh staging` → [Pipelines](https://ilnizumak.beget.app/vbi/hrplatform/-/pipelines) → build + deploy.
+
 ## 2026-06-24
 
 ### Деплой: GitLab CI и скрипты для VPS

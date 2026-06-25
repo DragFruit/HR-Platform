@@ -171,15 +171,7 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 | `staging` | Тест | `NUXT_PUBLIC_APP_ENV=staging` |
 | `main` | Бой | `NUXT_PUBLIC_APP_ENV=production` |
 
-**Публикация:** GitLab CI + VPS — пошагово в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (`.gitlab-ci.yml`, `deploy/scripts/`).
-
-Кратко:
-1. Push в GitLab (`staging` / `main`).
-2. На сервере один раз: `sudo bash deploy/scripts/install-server.sh`.
-3. В GitLab CI/CD Variables: `SSH_PRIVATE_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`.
-4. Pipeline → **build** → manual **deploy**.
-
-Локально: `frontend/.env.example` → `.env`. GitHub Actions (если нужны): `ci.yml`, `release-artifact.yml`.
+**Публикация (2 задачи):** [docs/CI-CD.md](docs/CI-CD.md) — `scripts/push-to-gitlab.sh` (Mac→Git), GitLab CI (Git→сервер).
 
 ---
 

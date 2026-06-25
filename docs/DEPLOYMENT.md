@@ -15,18 +15,14 @@
 
 ## GitLab (рекомендуется)
 
-### 1. Репозиторий
+**Два контура CI/CD** — подробно: [docs/CI-CD.md](CI-CD.md).
 
-```bash
-cd "/Users/stasamba/Desktop/VBI HR платформа"
-git remote add gitlab git@gitlab.com:ВАШ_ГРУППА/vbi-hr.git   # если ещё нет
-git push -u gitlab staging
-git push -u gitlab main
-```
+| Задача | Кто | Команда |
+|--------|-----|---------|
+| 1. Mac → Git | разработчик | `bash scripts/push-to-gitlab.sh staging` |
+| 2. Git → сервер | GitLab CI | автоматически после push (бой — кнопка deploy) |
 
-Можно оставить GitHub как зеркало; CI для выкладки — **`.gitlab-ci.yml`**.
-
-### 2. Сервер (один раз)
+Репозиторий: `ssh://git@ilnizumak.beget.app:2222/vbi/hrplatform.git` (SSH **порт 2222**).
 
 На VPS (Ubuntu/Debian), с клонированным репозиторием или скопированной папкой `deploy/`:
 
@@ -42,7 +38,7 @@ sudo bash deploy/scripts/install-server.sh
 
 ### 3. Переменные GitLab CI/CD
 
-**Settings → CI/CD → Variables** (masked / protected по необходимости):
+См. [CI-CD.md](CI-CD.md#задача-2-из-git--сервер). Кратко:
 
 | Переменная | Пример | Назначение |
 |------------|--------|------------|
@@ -54,13 +50,9 @@ sudo bash deploy/scripts/install-server.sh
 
 ### 4. Пайплайн
 
-При push в `staging` или `main`:
-1. **build** — `npm ci` + `nuxt build`, артефакт `frontend/.output/` (14 дней).
-2. **deploy** — **вручную** (кнопка Play в GitLab): rsync на сервер + `systemctl restart`.
+См. [CI-CD.md](CI-CD.md). Кратко: push → **build** (авто) → **deploy** (staging авто, main вручную).
 
-Так можно сначала проверить сборку, потом выкладывать.
-
-### 5. Ручная выкладка с машины
+### 5. Ручная выкладка (только отладка)
 
 ```bash
 export DEPLOY_HOST=your.server
