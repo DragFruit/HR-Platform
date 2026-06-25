@@ -139,7 +139,7 @@ cat ~/.ssh/vbi_hr_deploy
 1. Push в `staging` (шаг 3).
 2. GitLab → **Build → Pipelines** → дождаться job **build:staging** (зелёный).
 3. Нажать **Play** у **deploy:staging** (manual).
-4. Открыть в браузере: `http://45.12.74.25` (тест на порту 3301 через nginx staging vhost).
+4. Открыть: `http://45.12.74.25:8080` (тест), `http://45.12.74.25` (бой).
 
 Для боя: merge `staging` → `main` → pipeline → **deploy:production** → порт 3300.
 

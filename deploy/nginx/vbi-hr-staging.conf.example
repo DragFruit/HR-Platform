@@ -1,6 +1,6 @@
-# Тест: скопируйте в sites-enabled и замените server_name + SSL при необходимости.
+# Тест: порт 8080 на том же IP (бой — 80). Замените server_name при появлении домена.
 server {
-    listen 80;
+    listen 8080;
     server_name 45.12.74.25 hr-test.example.com;
 
     location / {
