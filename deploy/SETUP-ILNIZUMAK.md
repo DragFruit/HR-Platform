@@ -29,9 +29,11 @@ cat ~/.ssh/vbi_hr_deploy.pub
 Проверка с Mac:
 
 ```bash
-ssh -i ~/.ssh/vbi_hr_deploy -T git@ilnizumak.beget.app
-# ожидается приветствие GitLab, не «Permission denied»
+ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
+# ожидается: Welcome to GitLab, @...
 ```
+
+GitLab на Beget: **SSH порт 2222** (не 22).
 
 ---
 
@@ -69,8 +71,8 @@ bash deploy/scripts/push-gitlab.sh
 
 ```bash
 cd "/Users/stasamba/Desktop/VBI HR платформа"
-git remote add gitlab git@ilnizumak.beget.app:vbi/hrplatform.git 2>/dev/null || true
-GIT_SSH_COMMAND='ssh -i ~/.ssh/vbi_hr_deploy -o IdentitiesOnly=yes' git push -u gitlab staging
+git remote add gitlab ssh://git@ilnizumak.beget.app:2222/vbi/hrplatform.git 2>/dev/null || true
+GIT_SSH_COMMAND='ssh -i ~/.ssh/vbi_hr_deploy -o IdentitiesOnly=yes -p 2222' git push -u gitlab staging
 GIT_SSH_COMMAND='ssh -i ~/.ssh/vbi_hr_deploy -o IdentitiesOnly=yes' git push -u gitlab main
 ```
 
