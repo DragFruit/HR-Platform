@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=deploy
-Group=www-data
+Group=deploy
 WorkingDirectory=/var/www/vbi-hr-staging
 EnvironmentFile=-/var/www/vbi-hr-staging/bitrix.env
 EnvironmentFile=-/etc/vbi-hr/bitrix.env
