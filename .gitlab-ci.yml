@@ -55,9 +55,8 @@ build:production:
   image: alpine:3.21
   before_script:
     - apk add --no-cache openssh-client rsync bash
-    - bash deploy/scripts/setup-ci-ssh-key.sh
+    - . deploy/scripts/setup-ci-ssh-key.sh
     - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-    - export DEPLOY_SSH_KEY=~/.ssh/id_rsa
 
 .deploy:staging:
   extends: .deploy
