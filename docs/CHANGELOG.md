@@ -12,6 +12,7 @@
 - `AuthLogin` — кнопка Битрикс на staging/production, демо только в development.
 - Убран `mode="out-in"` у переходов страниц (пустые экраны при навигации).
 - nginx staging: `Host $http_host` для корректного OAuth callback на :8080.
+- `load-bitrix-env`: не падать при EACCES на `/etc/vbi-hr/bitrix.env` (env из `.env` в каталоге приложения).
 - Проверка: войти через Битрикс → переходы по меню; logout → снова «Войти через Битрикс24».
 
 ### Битрикс24 (коробка): OAuth и синк сотрудников при входе
