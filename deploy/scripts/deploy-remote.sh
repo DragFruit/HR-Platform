@@ -54,6 +54,19 @@ if "${SSH_CMD[@]}" "${REMOTE}" "test -r /etc/vbi-hr/bitrix.env"; then
   "${SSH_CMD[@]}" "${REMOTE}" "cp /etc/vbi-hr/bitrix.env '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
 fi
 
+RUN_SCRIPT="${ROOT}/deploy/scripts/run-staging.sh"
+if [[ "$ENV" == "staging" && -f "${RUN_SCRIPT}" ]]; then
+  echo "→ установка run-staging.sh"
+  SCP_CMD=(scp -o IdentitiesOnly=yes)
+  if [[ -n "${DEPLOY_SSH_KEY:-}" && -f "${DEPLOY_SSH_KEY}" ]]; then
+    SCP_CMD=(scp -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes)
+  elif [[ -f "${HOME}/.ssh/vbi_hr_deploy" ]]; then
+    SCP_CMD=(scp -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes)
+  fi
+  "${SCP_CMD[@]}" "${RUN_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/run.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/run.sh'"
+fi
+
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
 
