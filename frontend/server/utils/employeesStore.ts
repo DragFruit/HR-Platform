@@ -9,6 +9,7 @@ export type ServerEmployee = {
   manager: string;
   hired_at: string;
   platform_user_id: number | null;
+  bitrix_user_id?: number | null;
   email?: string;
   account_role?: string;
 };

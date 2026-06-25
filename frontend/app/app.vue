@@ -103,9 +103,23 @@ const { homePath } = useLaunchScope();
 const { appEnv, envLabel } = useAppEnv();
 
 onMounted(async () => {
+  const route = useRoute();
+  const router = useRouter();
+
   if (!authReady.value) {
     await restoreSession();
   }
+
+  if (route.query.auth === 'bitrix' && isAuthenticated.value) {
+    useState<boolean>('vbi-employees-hydrated').value = false;
+    await useEmployees().hydrate();
+    syncRoleFromAuth();
+    const { auth: _auth, ...rest } = route.query;
+    router.replace({ path: route.path, query: rest });
+    router.replace(homePath(user.value?.role === 'admin'));
+    return;
+  }
+
   syncRoleFromAuth();
   await useEmployees().hydrate();
   useVacations().hydrate();

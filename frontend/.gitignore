@@ -18,7 +18,9 @@ logs
 .fleet
 .idea
 
-# Local env files
+# Local env files (секреты — BITRIX_*, ключи; шаблон: .env.example)
 .env
 .env.*
 !.env.example
+.env.local
+.env.*.local

@@ -22,6 +22,13 @@ export function getVbiSession(event: H3Event): SessionUser | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as SessionUser;
+
+    if (parsed.auth_source === 'bitrix' && parsed.bitrix_user_id) {
+      if (parsed.id !== parsed.bitrix_user_id) return null;
+      if (!parsed.email?.trim()) return null;
+      return parsed;
+    }
+
     const verified = findCredentialById(parsed.id);
     if (!verified || verified.email.toLowerCase() !== parsed.email.toLowerCase()) {
       return null;

@@ -7,6 +7,7 @@ Type=simple
 User=deploy
 Group=www-data
 WorkingDirectory=/var/www/vbi-hr
+EnvironmentFile=-/etc/vbi-hr/bitrix.env
 Environment=NITRO_HOST=127.0.0.1
 Environment=NITRO_PORT=3300
 ExecStart=/usr/bin/node /var/www/vbi-hr/.output/server/index.mjs

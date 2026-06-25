@@ -4,6 +4,24 @@
 
 ## 2026-06-25
 
+### Битрикс24 (коробка): OAuth и синк сотрудников при входе
+
+- Вход через **«Войти через Битрикс24»** (`/api/auth/bitrix`, callback `/api/auth/bitrix/callback`).
+- Кнопка видна, если на сервере заданы `BITRIX_*` env (`GET /api/auth/config` — runtime, не build).
+- При каждом логине — синхронизация активных сотрудников из `user.get` + `department.get` в `server/data/employees.json`.
+- Env: `BITRIX_PORTAL_URL`, `BITRIX_CLIENT_ID`, `BITRIX_CLIENT_SECRET`, опционально группы ролей.
+- Файлы: `server/utils/bitrix*.ts`, `AuthLogin.vue`, `useAuth.ts`, `frontend/.env.example`.
+- Документация: [docs/BITRIX.md](BITRIX.md).
+- Проверка: создать локальное приложение в коробке → задать env на VPS → войти через Битрикс → раздел «Сотрудники».
+
+### CI/CD: надёжная подготовка SSH-ключа в pipeline
+
+- `deploy/scripts/setup-ci-ssh-key.sh` — приоритет `SSH_PRIVATE_KEY` (File), устойчивый base64 (`openssl`), проверка заголовка и длины B64.
+- `deploy/scripts/verify-ci-key-local.sh` — проверка ключа на Mac и инструкции для GitLab Variables.
+- `.gitlab-ci.yml` — `openssl` в deploy job.
+- Документация: [docs/CI-CD.md](CI-CD.md) — пошагово Type File, снять Expand variable reference.
+- Проверка: `bash deploy/scripts/verify-ci-key-local.sh` → настроить Variables → Retry pipeline.
+
 ### CI/CD: две задачи (Mac → Git → сервер)
 
 - **Задача 1:** `scripts/push-to-gitlab.sh` — push с компьютера в GitLab (порт 2222), без деплоя.

@@ -1,11 +1,15 @@
 export type AuthRole = 'employee' | 'manager' | 'hr' | 'admin';
 
+export type AuthSource = 'demo' | 'bitrix';
+
 export type SessionUser = {
   id: number;
   name: string;
   email: string;
   role: AuthRole;
   department: string;
+  bitrix_user_id?: number | null;
+  auth_source?: AuthSource;
 };
 
 type Credential = SessionUser & { password: string };
@@ -68,12 +72,12 @@ export function findCredential(email: string, password: string): SessionUser | n
   );
   if (!found) return null;
   const { password: _pw, ...user } = found;
-  return user;
+  return { ...user, auth_source: 'demo' as const };
 }
 
 export function findCredentialById(id: number): SessionUser | null {
   const found = credentials.find((item) => item.id === id);
   if (!found) return null;
   const { password: _pw, ...user } = found;
-  return user;
+  return { ...user, auth_source: 'demo' as const };
 }

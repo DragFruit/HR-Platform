@@ -16,6 +16,13 @@ export default defineNuxtConfig({
     }
   },
   runtimeConfig: {
+    bitrixPortalUrl: process.env.BITRIX_PORTAL_URL || '',
+    bitrixClientId: process.env.BITRIX_CLIENT_ID || '',
+    bitrixClientSecret: process.env.BITRIX_CLIENT_SECRET || '',
+    bitrixRedirectUri: process.env.BITRIX_REDIRECT_URI || '',
+    bitrixAdminGroupIds: process.env.BITRIX_ADMIN_GROUP_IDS || '1',
+    bitrixHrGroupIds: process.env.BITRIX_HR_GROUP_IDS || '',
+    bitrixManagerGroupIds: process.env.BITRIX_MANAGER_GROUP_IDS || '',
     public: {
       /** development | staging | production — для плашки стенда и логики окружения */
       appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
