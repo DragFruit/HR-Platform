@@ -49,6 +49,11 @@ echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output'"
 RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az --delete "${OUTPUT_DIR}/" "${REMOTE}:${DEPLOY_PATH}/.output/"
 
+if "${SSH_CMD[@]}" "${REMOTE}" "test -r /etc/vbi-hr/bitrix.env"; then
+  echo "→ копирование /etc/vbi-hr/bitrix.env → ${DEPLOY_PATH}/.env"
+  "${SSH_CMD[@]}" "${REMOTE}" "cp /etc/vbi-hr/bitrix.env '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
+fi
+
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
 

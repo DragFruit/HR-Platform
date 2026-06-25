@@ -7,14 +7,14 @@
         <span class="brand-title">VBI HR Gamification</span>
         <p class="muted">
           {{
-            bitrixAuthEnabled
+            showBitrixLogin
               ? 'Войдите через корпоративный портал Битрикс24'
               : 'Войдите, чтобы начать работу в платформе'
           }}
         </p>
       </div>
 
-      <div v-if="bitrixAuthEnabled" class="auth-form">
+      <div v-if="showBitrixLogin" class="auth-form">
         <button class="button primary auth-submit" type="button" @click="loginWithBitrix">
           Войти через Битрикс24
         </button>
@@ -25,7 +25,7 @@
       </div>
 
       <template v-if="showDemoLogin">
-        <div v-if="bitrixAuthEnabled" class="auth-divider" role="separator">
+        <div v-if="showBitrixLogin" class="auth-divider" role="separator">
           <span>или демо-доступ</span>
         </div>
 
@@ -40,14 +40,14 @@
             <input v-model="password" class="org-input" type="password" placeholder="Введите пароль" required />
           </label>
 
-          <p v-if="!bitrixAuthEnabled && error" class="gift-error">{{ error }}</p>
+          <p v-if="!showBitrixLogin && error" class="gift-error">{{ error }}</p>
 
           <button class="button primary auth-submit" type="submit" :disabled="loading">
             {{ loading ? 'Входим...' : 'Войти' }}
           </button>
         </form>
 
-        <details class="auth-demo" :open="!bitrixAuthEnabled">
+        <details class="auth-demo" :open="!showBitrixLogin">
           <summary>Учётные записи для входа (пароли в описании)</summary>
           <ul class="list-reset demo-accounts-list">
             <li v-for="account in demoAccounts" :key="account.email">
@@ -73,13 +73,17 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const router = useRouter();
-const { isDevelopment } = useAppEnv();
+const { isDevelopment, isStaging, isProduction } = useAppEnv();
 const { login, loginWithBitrix, demoAccounts } = useAuth();
 
 const { data: authConfig } = await useFetch<{ bitrixAuthEnabled: boolean }>('/api/auth/config');
 
-const bitrixAuthEnabled = computed(() => Boolean(authConfig.value?.bitrixAuthEnabled));
-const showDemoLogin = computed(() => !bitrixAuthEnabled.value || isDevelopment.value);
+const bitrixAuthAvailable = computed(() => Boolean(authConfig.value?.bitrixAuthEnabled));
+/** Кнопка на staging/production всегда; OAuth сработает после /etc/vbi-hr/bitrix.env */
+const showBitrixLogin = computed(
+  () => bitrixAuthAvailable.value || isStaging.value || isProduction.value
+);
+const showDemoLogin = computed(() => !showBitrixLogin.value || isDevelopment.value);
 
 const email = ref('');
 const password = ref('');

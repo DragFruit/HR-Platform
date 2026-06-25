@@ -19,14 +19,15 @@ export function parseGroupIds(raw: string): number[] {
 
 export function getBitrixConfig(): BitrixRuntimeConfig {
   const config = useRuntimeConfig();
+  const env = process.env;
   return {
-    bitrixPortalUrl: String(config.bitrixPortalUrl || '').replace(/\/+$/, ''),
-    bitrixClientId: String(config.bitrixClientId || ''),
-    bitrixClientSecret: String(config.bitrixClientSecret || ''),
-    bitrixRedirectUri: String(config.bitrixRedirectUri || ''),
-    bitrixAdminGroupIds: String(config.bitrixAdminGroupIds || '1'),
-    bitrixHrGroupIds: String(config.bitrixHrGroupIds || ''),
-    bitrixManagerGroupIds: String(config.bitrixManagerGroupIds || '')
+    bitrixPortalUrl: String(env.BITRIX_PORTAL_URL || config.bitrixPortalUrl || '').replace(/\/+$/, ''),
+    bitrixClientId: String(env.BITRIX_CLIENT_ID || config.bitrixClientId || ''),
+    bitrixClientSecret: String(env.BITRIX_CLIENT_SECRET || config.bitrixClientSecret || ''),
+    bitrixRedirectUri: String(env.BITRIX_REDIRECT_URI || config.bitrixRedirectUri || ''),
+    bitrixAdminGroupIds: String(env.BITRIX_ADMIN_GROUP_IDS || config.bitrixAdminGroupIds || '1'),
+    bitrixHrGroupIds: String(env.BITRIX_HR_GROUP_IDS || config.bitrixHrGroupIds || ''),
+    bitrixManagerGroupIds: String(env.BITRIX_MANAGER_GROUP_IDS || config.bitrixManagerGroupIds || '')
   };
 }
 
