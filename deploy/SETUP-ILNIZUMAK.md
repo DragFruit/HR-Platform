@@ -103,9 +103,12 @@ nginx -t && systemctl reload nginx
 Sudoers для пользователя `deploy` (после install-server.sh):
 
 ```bash
-echo 'deploy ALL=(ALL) NOPASSWD: /bin/systemctl restart vbi-hr, /bin/systemctl restart vbi-hr-staging, /bin/systemctl is-active vbi-hr, /bin/systemctl is-active vbi-hr-staging' > /etc/sudoers.d/vbi-hr-deploy
+cp deploy/sudoers/vbi-hr-deploy /etc/sudoers.d/vbi-hr-deploy
 chmod 440 /etc/sudoers.d/vbi-hr-deploy
+visudo -c
 ```
+
+`chown` нужен CI: после ручного деплоя от root rsync от `deploy` не может перезаписать `.output`.
 
 Добавьте `vbi_hr_deploy.pub` также пользователю `deploy`:
 

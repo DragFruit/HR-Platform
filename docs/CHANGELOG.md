@@ -4,6 +4,13 @@
 
 ## 2026-06-25
 
+### CI/CD: починен deploy на staging
+
+- `DEPLOY_HOST` и `DEPLOY_USER` в `.gitlab-ci.yml` (не зависят от Protected variables).
+- `deploy-remote.sh` — `sudo chown` перед rsync (после ручного деплоя от root).
+- `deploy/sudoers/vbi-hr-deploy` — право `chown` для пользователя `deploy`.
+- Проверка: push в `staging` → pipeline build + deploy зелёные.
+
 ### UI staging: убран баннер «Тестовый стенд»
 
 - `useAppEnv.ts` — `envLabel` на staging пустой; баннер не рендерится в `app.vue`.

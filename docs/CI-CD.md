@@ -67,18 +67,47 @@ ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
 | `DEPLOY_HOST` | `45.12.74.25` | ✓ | — |
 | `DEPLOY_USER` | `deploy` | ✓ | — |
 
-**SSH-ключ в GitLab нельзя Masked** — в ключе есть переносы строк. Два рабочих варианта:
+**Проверка ключа на Mac перед настройкой GitLab:**
 
-**Вариант A (рекомендуется): тип File**
-1. Add variable → Key: `SSH_PRIVATE_KEY`
-2. **Type: File** (не Variable)
-3. Value: вставить `cat ~/.ssh/vbi_hr_deploy`
-4. ✓ Protect variable, **Visibility: Visible** (маска недоступна — это нормально)
+```bash
+bash deploy/scripts/verify-ci-key-local.sh
+```
 
-**Вариант B: base64 одной строкой (если File не завёлся)**
-1. На Mac: `bash deploy/scripts/print-ci-key-b64.sh` — скопировать **одну** строку (выделить мышкой, без лишнего Enter в конце)
-2. Key: `SSH_PRIVATE_KEY_B64`, Type: **Variable**
-3. ✓ **Protect variable**, Visibility: **Visible** — **не Masked** (GitLab ругается на base64/пробелы)
+Скрипт проверит `~/.ssh/vbi_hr_deploy` и выведет точные шаги для GitLab.
+
+**SSH-ключ в GitLab нельзя Masked** — в ключе есть переносы строк. Два рабочих варианта (CI предпочитает File):
+
+#### Вариант A (рекомендуется): `SSH_PRIVATE_KEY` Type **File**
+
+1. Удалите старые `SSH_PRIVATE_KEY` и `SSH_PRIVATE_KEY_B64`, если они были вставлены с ошибкой.
+2. На Mac выведите **полный** приватный ключ (не `.pub`):
+
+   ```bash
+   cat ~/.ssh/vbi_hr_deploy
+   ```
+
+   Первая строка: `-----BEGIN OPENSSH PRIVATE KEY-----`  
+   Последняя: `-----END OPENSSH PRIVATE KEY-----`
+
+3. GitLab → **Add variable**:
+   - **Key:** `SSH_PRIVATE_KEY`
+   - **Type:** **File** (не Variable!)
+   - **Value:** вставить весь вывод `cat` — все строки с BEGIN/END, с переносами
+   - ✓ **Protect variable**
+   - **Visibility:** Visible (Masked для многострочного ключа недоступен — это нормально)
+   - ✗ **Expand variable reference** — снять галочку, если отображается
+4. **Не** вставляйте `vbi_hr_deploy.pub` — только приватный файл.
+
+#### Вариант B (запасной): `SSH_PRIVATE_KEY_B64` Type Variable
+
+Если File не подходит:
+
+1. На Mac: `bash deploy/scripts/print-ci-key-b64.sh`
+2. Скопировать **одну** строку целиком (~532–668 символов для ed25519; без переносов внутри, без лишнего Enter в конце)
+3. Key: `SSH_PRIVATE_KEY_B64`, Type: **Variable**
+4. ✓ **Protect variable**, Visibility: **Visible** — **не Masked**
+
+Ошибка `base64: truncated input` в CI обычно значит обрезанную B64-строку — пересоздайте переменную или перейдите на File (вариант A).
 
 ### Каждый push
 
@@ -103,7 +132,7 @@ stages:
   - deploy   # rsync + systemctl restart (только из CI, не с Mac)
 ```
 
-Файлы: `.gitlab-ci.yml`, `deploy/scripts/deploy-from-ci.sh`, `deploy/scripts/deploy-remote.sh`.
+Файлы: `.gitlab-ci.yml`, `deploy/scripts/setup-ci-ssh-key.sh`, `deploy/scripts/deploy-from-ci.sh`, `deploy/scripts/deploy-remote.sh`.
 
 ---
 
@@ -132,7 +161,11 @@ flowchart LR
 | Job | Частая причина |
 |-----|----------------|
 | build | ошибка в коде / `npm ci` — смотреть лог job |
-| deploy | нет `SSH_PRIVATE_KEY`, неверный `DEPLOY_HOST`, нет ключа у `deploy@сервер` |
+| deploy | rsync `Permission denied` на `.output` | файлы от root после ручного деплоя — `chown` в `deploy-remote.sh`; sudoers: `deploy/sudoers/vbi-hr-deploy` |
+| deploy | пустые `DEPLOY_HOST` / `DEPLOY_USER` | переменные Protected, а ветка не protected — значения заданы в `.gitlab-ci.yml` |
+| deploy | нет/битый `SSH_PRIVATE_KEY` или `SSH_PRIVATE_KEY_B64` (`truncated input`), нет ключа у `deploy@сервер` |
+
+Для deploy: `bash deploy/scripts/verify-ci-key-local.sh` → исправить Variables → Retry pipeline.
 
 Ручная проверка деплоя (экстренно, не основной поток):
 
