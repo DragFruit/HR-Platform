@@ -124,8 +124,12 @@ sudo systemctl restart vbi-hr-staging
    - синк сотрудников (`user.get` + `department.get`);
    - определение роли.
 3. Редирект на главную с `?auth=bitrix`.
+4. Клиент дожидается cookie (`restoreSession`), загружает данные (`bootstrapAppData`) и убирает query из URL.
+5. Редирект на домашнюю страницу: `/` или `/admin` (режим `full`), `/vacations` или `/admin/vacations` (режим `vacations`).
 
 Сессия в cookie — **14 дней**, без разлогина при неактивности.
+
+**Nginx на staging:** в `proxy_set_header` используйте `Host $http_host`, иначе callback может потерять порт `:8080` в redirect URI.
 
 ---
 

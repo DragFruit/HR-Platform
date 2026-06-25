@@ -76,14 +76,8 @@ const router = useRouter();
 const { isDevelopment, isStaging, isProduction } = useAppEnv();
 const { login, loginWithBitrix, demoAccounts } = useAuth();
 
-const { data: authConfig } = await useFetch<{ bitrixAuthEnabled: boolean }>('/api/auth/config');
-
-const bitrixAuthAvailable = computed(() => Boolean(authConfig.value?.bitrixAuthEnabled));
-/** Кнопка на staging/production всегда; OAuth сработает после /etc/vbi-hr/bitrix.env */
-const showBitrixLogin = computed(
-  () => bitrixAuthAvailable.value || isStaging.value || isProduction.value
-);
-const showDemoLogin = computed(() => !showBitrixLogin.value || isDevelopment.value);
+const showBitrixLogin = computed(() => isStaging.value || isProduction.value);
+const showDemoLogin = computed(() => isDevelopment.value);
 
 const email = ref('');
 const password = ref('');
@@ -94,7 +88,8 @@ const readAuthError = () => {
   const raw = route.query.auth_error;
   if (!raw) return;
   error.value = Array.isArray(raw) ? String(raw[0]) : String(raw);
-  router.replace({ query: { ...route.query, auth_error: undefined } });
+  const { auth_error: _e, ...rest } = route.query;
+  router.replace({ path: route.path, query: rest });
 };
 
 onMounted(() => {
