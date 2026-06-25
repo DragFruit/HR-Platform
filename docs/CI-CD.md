@@ -63,11 +63,21 @@ ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
 
 | Variable | Value | Protected | Masked |
 |----------|-------|-----------|--------|
-| `SSH_PRIVATE_KEY` | содержимое `~/.ssh/vbi_hr_deploy` | ✓ | ✓ |
+| `SSH_PRIVATE_KEY` | файл ключа (см. ниже) | ✓ | **не Masked** — только File или Protected |
 | `DEPLOY_HOST` | `45.12.74.25` | ✓ | — |
 | `DEPLOY_USER` | `deploy` | ✓ | — |
 
-Тип `SSH_PRIVATE_KEY` — **File** (если доступно) или Variable (многострочный PEM/OpenSSH).
+**SSH-ключ в GitLab нельзя Masked** — в ключе есть переносы строк. Два рабочих варианта:
+
+**Вариант A (рекомендуется): тип File**
+1. Add variable → Key: `SSH_PRIVATE_KEY`
+2. **Type: File** (не Variable)
+3. Value: вставить `cat ~/.ssh/vbi_hr_deploy`
+4. ✓ Protect variable, **Visibility: Visible** (маска недоступна — это нормально)
+
+**Вариант B: masked base64 одной строкой**
+1. На Mac: `base64 < ~/.ssh/vbi_hr_deploy | tr -d '\n'` — скопировать одну строку
+2. Key: `SSH_PRIVATE_KEY_B64`, Type: Variable, ✓ **Masked**
 
 ### Каждый push
 
