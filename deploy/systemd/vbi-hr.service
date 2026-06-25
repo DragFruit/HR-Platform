@@ -1,0 +1,17 @@
+[Unit]
+Description=VBI HR Platform (production)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=www-data
+WorkingDirectory=/var/www/vbi-hr
+Environment=NITRO_HOST=127.0.0.1
+Environment=NITRO_PORT=3300
+ExecStart=/usr/bin/node /var/www/vbi-hr/.output/server/index.mjs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

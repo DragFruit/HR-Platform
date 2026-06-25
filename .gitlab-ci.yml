@@ -1,0 +1,80 @@
+# GitLab CI: сборка и выкладка VBI HR на VPS
+# Переменные в Settings → CI/CD → Variables (см. docs/DEPLOYMENT.md)
+
+stages:
+  - build
+  - deploy
+
+default:
+  image: node:22-bookworm
+
+variables:
+  NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - frontend/node_modules/
+    - .npm/
+
+.build:
+  stage: build
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/.output/
+    expire_in: 14 days
+
+build:staging:
+  extends: .build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging"
+  variables:
+    NUXT_PUBLIC_APP_ENV: staging
+    NUXT_PUBLIC_LAUNCH_SCOPE: full
+
+build:production:
+  extends: .build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    NUXT_PUBLIC_APP_ENV: production
+    NUXT_PUBLIC_LAUNCH_SCOPE: full
+
+.deploy:
+  stage: deploy
+  image: alpine:3.21
+  before_script:
+    - apk add --no-cache openssh-client rsync bash
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging" || $CI_COMMIT_BRANCH == "main"
+      when: manual
+  allow_failure: false
+
+deploy:staging:
+  extends: .deploy
+  needs:
+    - job: build:staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging"
+      when: manual
+  script:
+    - bash deploy/scripts/deploy-remote.sh staging
+
+deploy:production:
+  extends: .deploy
+  needs:
+    - job: build:production
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  script:
+    - bash deploy/scripts/deploy-remote.sh production

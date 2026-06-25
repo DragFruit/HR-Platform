@@ -4,6 +4,14 @@
 
 ## 2026-06-24
 
+### Деплой: GitLab CI и скрипты для VPS
+
+- `.gitlab-ci.yml` — сборка на `staging`/`main`, manual deploy через rsync + systemd.
+- `deploy/` — nginx, systemd (`vbi-hr`, `vbi-hr-staging`), `install-server.sh`, `deploy-remote.sh`, `build-and-deploy.sh`.
+- `frontend/.env.example` — шаблон env для локальной разработки.
+- Документация: [docs/DEPLOYMENT.md](DEPLOYMENT.md) (GitLab, переменные CI, чеклист первого боя).
+- Проверка: push в GitLab → pipeline build → на сервере после `install-server.sh` — manual deploy → URL теста/боя.
+
 ### Отпуска: боковая панель руководителя в режиме «Сотрудник»
 
 - Правая панель совпадает с экраном обычного сотрудника: баланс, таблица, «Мои заявки», легенда — в отдельной карточке с тем же оформлением.

@@ -56,7 +56,13 @@ VBI HR платформа/
 ├── README.md               # Этот файл
 ├── docs/
 │   ├── ARCHITECTURE.md     # Архитектура, модули, localStorage
-│   └── CHANGELOG.md        # История версий и фич
+│   ├── CHANGELOG.md        # История версий и фич
+│   └── DEPLOYMENT.md       # GitLab CI, VPS, nginx, systemd
+├── deploy/                 # Выкладка на сервер (см. DEPLOYMENT.md)
+│   ├── nginx/
+│   ├── systemd/
+│   └── scripts/
+├── .gitlab-ci.yml          # Сборка и deploy на VPS
 ├── frontend/               # Nuxt 4 приложение (основной код)
 │   └── app/
 │       ├── app.vue         # Shell: auth, sidebar, NuxtPage
@@ -165,11 +171,15 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 | `staging` | Тест | `NUXT_PUBLIC_APP_ENV=staging` |
 | `main` | Бой | `NUXT_PUBLIC_APP_ENV=production` |
 
-1. Создайте репозиторий на GitHub и привяжите remote (см. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
-2. Первый push: `main`, затем `./scripts/setup-git-branches.sh` и `git push -u origin staging`.
-3. CI собирает проект на push/PR; артефакт `.output` — workflow **Build artifact**.
+**Публикация:** GitLab CI + VPS — пошагово в [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (`.gitlab-ci.yml`, `deploy/scripts/`).
 
-На тестовом стенде в шапке отображается плашка **«Тестовый стенд»**. Локально — `frontend/.env.example` → `.env`.
+Кратко:
+1. Push в GitLab (`staging` / `main`).
+2. На сервере один раз: `sudo bash deploy/scripts/install-server.sh`.
+3. В GitLab CI/CD Variables: `SSH_PRIVATE_KEY`, `DEPLOY_HOST`, `DEPLOY_USER`.
+4. Pipeline → **build** → manual **deploy**.
+
+Локально: `frontend/.env.example` → `.env`. GitHub Actions (если нужны): `ci.yml`, `release-artifact.yml`.
 
 ---
 
