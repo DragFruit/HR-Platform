@@ -9,11 +9,13 @@ if [[ ! -f "$KEY" ]]; then
   exit 1
 fi
 
-echo "Скопируйте ОДНУ строку ниже в GitLab → CI/CD Variables:"
+echo "Скопируйте ОДНУ строку ниже (без переносов внутри) в GitLab → CI/CD Variables:"
 echo "  Key: SSH_PRIVATE_KEY_B64"
-echo "  Type: Variable, Masked ✓"
+echo "  Type: Variable"
+echo "  Protect variable: ✓"
+echo "  Visibility: Visible  (НЕ Masked — GitLab не маскирует base64)"
 echo ""
-base64 < "$KEY" | tr -d '\n'
+printf '%s' "$(base64 < "$KEY" | tr -d '\n')"
 echo ""
 echo ""
 echo "Старую SSH_PRIVATE_KEY (File) можно удалить."

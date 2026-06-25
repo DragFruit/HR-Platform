@@ -75,9 +75,10 @@ ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
 3. Value: вставить `cat ~/.ssh/vbi_hr_deploy`
 4. ✓ Protect variable, **Visibility: Visible** (маска недоступна — это нормально)
 
-**Вариант B: masked base64 одной строкой**
-1. На Mac: `base64 < ~/.ssh/vbi_hr_deploy | tr -d '\n'` — скопировать одну строку
-2. Key: `SSH_PRIVATE_KEY_B64`, Type: Variable, ✓ **Masked**
+**Вариант B: base64 одной строкой (если File не завёлся)**
+1. На Mac: `bash deploy/scripts/print-ci-key-b64.sh` — скопировать **одну** строку (выделить мышкой, без лишнего Enter в конце)
+2. Key: `SSH_PRIVATE_KEY_B64`, Type: **Variable**
+3. ✓ **Protect variable**, Visibility: **Visible** — **не Masked** (GitLab ругается на base64/пробелы)
 
 ### Каждый push
 
