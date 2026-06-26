@@ -73,11 +73,16 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const router = useRouter();
-const { isDevelopment, isStaging, isProduction } = useAppEnv();
+const { isDevelopment } = useAppEnv();
 const { login, loginWithBitrix, demoAccounts } = useAuth();
+const { bitrixAuthEnabled, configReady, preferBitrixLogin } = useBitrixAuthConfig();
 
-const showBitrixLogin = computed(() => isStaging.value || isProduction.value);
-const showDemoLogin = computed(() => isDevelopment.value);
+const showBitrixLogin = computed(() => preferBitrixLogin.value);
+const showDemoLogin = computed(() => {
+  if (!configReady.value && preferBitrixLogin.value) return false;
+  if (bitrixAuthEnabled.value) return false;
+  return isDevelopment.value;
+});
 
 const email = ref('');
 const password = ref('');
@@ -94,6 +99,10 @@ const readAuthError = () => {
 
 onMounted(() => {
   readAuthError();
+
+  if (route.query.auth === 'bitrix' && preferBitrixLogin.value) {
+    loginWithBitrix();
+  }
 });
 
 watch(

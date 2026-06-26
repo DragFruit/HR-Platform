@@ -4,6 +4,13 @@
 
 ## 2026-06-25
 
+### Auth: кнопка Битрикс после logout
+
+- `useBitrixAuthConfig` — `showBitrixLogin` от `/api/auth/config`, не только от `appEnv` в сборке.
+- Демо-форма скрыта, если на сервере настроен Bitrix OAuth.
+- При logout очищается `?auth=bitrix` из URL; на экране логина с этим query — сразу редирект в OAuth.
+- Проверка: войти через Битрикс → выйти → снова «Войти через Битрикс24», без демо-аккаунтов.
+
 ### CI/CD: починен deploy на staging
 
 - `DEPLOY_HOST` и `DEPLOY_USER` в `.gitlab-ci.yml` (не зависят от Protected variables).

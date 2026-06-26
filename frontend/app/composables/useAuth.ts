@@ -249,6 +249,12 @@ export function useAuth() {
       useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
       localStorage.removeItem(SESSION_KEY);
       await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+
+      const router = useRouter();
+      const route = useRoute();
+      if (route.query.auth || route.query.auth_error) {
+        await router.replace({ path: route.path, query: {} });
+      }
     }
   };
 
