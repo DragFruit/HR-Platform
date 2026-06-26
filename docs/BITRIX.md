@@ -73,6 +73,13 @@ BITRIX_REDIRECT_URI=http://localhost:3000/api/auth/bitrix/callback
 
 Запуск: `cd frontend && npm run dev` → http://localhost:3000 → «Войти через Битрикс24».
 
+**Проверка перед входом:** http://localhost:3000/api/auth/oauth-debug  
+- `usesProdClientId` должно быть `false`  
+- `clientId` — из dev-приложения (`local.6a3e403c…`, не как на сервере)  
+- `redirectUri` — `http://localhost:3000/api/auth/bitrix/callback` (тот же порт, что в терминале Nuxt)
+
+После смены `.env` перезапустите `npm run dev` (или сохраните файл — в dev env подхватывается автоматически).
+
 ### Бой на VPS
 
 Ключи из **prod-приложения** — в `/etc/vbi-hr/bitrix.env`:

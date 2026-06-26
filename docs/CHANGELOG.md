@@ -2,6 +2,14 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-06-26
+
+### Bitrix OAuth local: hot-reload .env и /api/auth/oauth-debug
+
+- `frontend/.env` перечитывается при каждом запросе в development.
+- `/api/auth/oauth-debug` — проверка Client ID и redirect URI перед входом.
+- Ошибки OAuth на staging возвращают на `:8080`, не на порт 80.
+
 ## 2026-06-25
 
 ### docs: шпаргалка по 3 локальным приложениям Bitrix

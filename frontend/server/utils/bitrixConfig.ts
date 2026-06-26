@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3';
+import { refreshLocalEnv } from './loadEnvFile';
 
 export type BitrixRuntimeConfig = {
   bitrixPortalUrl: string;
@@ -18,13 +19,17 @@ export function parseGroupIds(raw: string): number[] {
 }
 
 export function getBitrixConfig(): BitrixRuntimeConfig {
+  if (isLocalDevelopment()) {
+    refreshLocalEnv();
+  }
+
   const config = useRuntimeConfig();
   const env = process.env;
   return {
     bitrixPortalUrl: String(env.BITRIX_PORTAL_URL || config.bitrixPortalUrl || '').replace(/\/+$/, ''),
-    bitrixClientId: String(env.BITRIX_CLIENT_ID || config.bitrixClientId || ''),
-    bitrixClientSecret: String(env.BITRIX_CLIENT_SECRET || config.bitrixClientSecret || ''),
-    bitrixRedirectUri: String(env.BITRIX_REDIRECT_URI || config.bitrixRedirectUri || ''),
+    bitrixClientId: String(env.BITRIX_CLIENT_ID || ''),
+    bitrixClientSecret: String(env.BITRIX_CLIENT_SECRET || ''),
+    bitrixRedirectUri: String(env.BITRIX_REDIRECT_URI || ''),
     bitrixAdminGroupIds: String(env.BITRIX_ADMIN_GROUP_IDS || config.bitrixAdminGroupIds || '1'),
     bitrixHrGroupIds: String(env.BITRIX_HR_GROUP_IDS || config.bitrixHrGroupIds || ''),
     bitrixManagerGroupIds: String(env.BITRIX_MANAGER_GROUP_IDS || config.bitrixManagerGroupIds || '')
@@ -86,6 +91,24 @@ export function getBitrixRedirectUri(event?: H3Event): string {
     throw createError({ statusCode: 500, statusMessage: 'BITRIX_REDIRECT_URI не задан' });
   }
   return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
+}
+
+/** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */
+export function getOAuthReturnOrigin(event: H3Event): string {
+  if (isLocalDevelopment()) {
+    return getRequestPublicOrigin(event);
+  }
+
+  const { bitrixRedirectUri } = getBitrixConfig();
+  if (bitrixRedirectUri) {
+    try {
+      return new URL(bitrixRedirectUri).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return getRequestPublicOrigin(event);
 }
 
 /** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */
