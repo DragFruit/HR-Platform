@@ -70,11 +70,41 @@ export function isBitrixAuthConfigured(): boolean {
   return Boolean(bitrixPortalUrl && bitrixClientId && bitrixClientSecret);
 }
 
+export function isLocalDevelopment(): boolean {
+  const appEnv = process.env.NUXT_PUBLIC_APP_ENV || 'development';
+  return appEnv === 'development';
+}
+
 export function getBitrixRedirectUri(event?: H3Event): string {
+  if (event && isLocalDevelopment()) {
+    return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
+  }
+
   const { bitrixRedirectUri } = getBitrixConfig();
   if (bitrixRedirectUri) return bitrixRedirectUri;
   if (!event) {
     throw createError({ statusCode: 500, statusMessage: 'BITRIX_REDIRECT_URI не задан' });
   }
   return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
+}
+
+/** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */
+export function assertBitrixOAuthOrigin(event: H3Event, redirectUri: string) {
+  const requestOrigin = getRequestPublicOrigin(event);
+  let redirectOrigin: string;
+  try {
+    redirectOrigin = new URL(redirectUri).origin;
+  } catch {
+    throw createError({ statusCode: 500, statusMessage: 'Некорректный BITRIX_REDIRECT_URI' });
+  }
+
+  if (requestOrigin === redirectOrigin) return;
+
+  throw createError({
+    statusCode: 400,
+    statusMessage:
+      `OAuth: сайт открыт на ${requestOrigin}, а callback настроен на ${redirectOrigin}. ` +
+      'Для локальной разработки — отдельное приложение в Битриксе с обработчиком ' +
+      `${requestOrigin}/api/auth/bitrix/callback и свои CLIENT_ID/SECRET в frontend/.env.`
+  });
 }

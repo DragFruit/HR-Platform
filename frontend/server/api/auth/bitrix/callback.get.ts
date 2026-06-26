@@ -32,7 +32,12 @@ export default defineEventHandler(async (event) => {
     return redirectWithError(event, 'Нет кода авторизации от Битрикс');
   }
   if (!state || !savedState || state !== savedState) {
-    return redirectWithError(event, 'Неверный state OAuth');
+    return redirectWithError(
+      event,
+      'Неверный state OAuth: Битрикс вернул на другой адрес, чем начали вход. ' +
+        'Для localhost нужно отдельное локальное приложение в Битриксе (обработчик http://localhost:ПОРТ/api/auth/bitrix/callback) ' +
+        'и свои CLIENT_ID/SECRET в frontend/.env — не те же, что на сервере 45.12.74.25.'
+    );
   }
 
   try {

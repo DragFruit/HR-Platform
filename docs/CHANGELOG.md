@@ -4,6 +4,12 @@
 
 ## 2026-06-25
 
+### Bitrix OAuth local: отдельные ключи и callback с порта dev
+
+- В development `getBitrixRedirectUri` берёт origin из запроса (актуальный порт `npm run dev`).
+- Проверка origin перед OAuth; понятная ошибка при «Неверный state» (localhost vs сервер).
+- `.env.example`: CLIENT_ID dev-приложения ≠ prod на VPS.
+
 ### Bitrix: отдельные OAuth-приложения для local и prod
 
 - Документация: dev → `http://localhost:3000/api/auth/bitrix/callback`, prod → `http://45.12.74.25/api/auth/bitrix/callback`.
