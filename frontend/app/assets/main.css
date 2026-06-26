@@ -1059,8 +1059,7 @@ a {
 }
 
 .org-placed--exec.is-dragging .org-node-executive {
-  border-color: var(--hero-purple);
-  background: var(--org-card-hover-bg);
+  filter: brightness(1.05);
 }
 
 .org-placed--unit,
@@ -1175,21 +1174,106 @@ a {
 }
 
 .org-node.org-node-executive {
+  --org-exec-accent: var(--hero-purple);
+  --org-exec-accent-deep: var(--hero-purple-deep);
   position: relative;
   text-align: left;
   min-width: 220px;
   max-width: 300px;
   width: auto;
-  border: 2px solid var(--hero-purple);
-  background: linear-gradient(180deg, #f8f5ff 0%, var(--org-card-bg) 100%);
+  border: none;
+  background: var(--org-exec-accent);
   border-radius: var(--org-card-radius);
   padding: 16px 20px 15px;
   box-sizing: border-box;
+  overflow: hidden;
+  color: #fff;
   transition: var(--transition-brutal);
+  isolation: isolate;
+}
+
+.org-exec-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Геометрия как на abit.itmo.ru — фигуры обрезаются краем карточки */
+.org-node-executive--geo-0::before,
+.org-node-executive--geo-0::after,
+.org-node-executive--geo-1::before,
+.org-node-executive--geo-1::after,
+.org-node-executive--geo-2::before,
+.org-node-executive--geo-2::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 1-й директор: круг и вертикальная плашка */
+.org-node-executive--geo-0::before {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  top: -52px;
+  right: -58px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.org-node-executive--geo-0::after {
+  width: 72px;
+  height: 132px;
+  bottom: -48px;
+  left: -28px;
+  border-radius: 10px;
+  transform: rotate(14deg);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* 2-й директор: повёрнутый квадрат */
+.org-node-executive--geo-1::before {
+  width: 118px;
+  height: 118px;
+  top: -62px;
+  left: -44px;
+  border-radius: 6px;
+  transform: rotate(-18deg);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.org-node-executive--geo-1::after {
+  width: 96px;
+  height: 96px;
+  bottom: -54px;
+  right: -36px;
+  border-radius: 6px;
+  transform: rotate(22deg);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* 3-й директор: диагональные полосы */
+.org-node-executive--geo-2::before {
+  width: 160px;
+  height: 44px;
+  top: 18px;
+  right: -72px;
+  border-radius: 999px;
+  transform: rotate(-28deg);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.org-node-executive--geo-2::after {
+  width: 120px;
+  height: 120px;
+  bottom: -70px;
+  left: 36px;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  transform: rotate(8deg);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .org-chart-canvas--edit .org-node-executive:hover {
-  background: linear-gradient(180deg, #f3edff 0%, var(--org-card-hover-bg) 100%);
+  filter: brightness(1.06);
 }
 
 .org-exec-title {
@@ -1199,14 +1283,41 @@ a {
   line-height: 1.35;
   margin: 0;
   letter-spacing: -0.01em;
+  color: #fff;
 }
 
 .org-exec-person {
   margin: 6px 0 0;
   font-size: 0.86rem;
   font-weight: 500;
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.82);
   line-height: 1.35;
+}
+
+.org-node-executive .editable-line.is-empty {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.org-node-executive .editable-line:not(.readonly):hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.org-node-executive .inline-edit-input {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.org-remove-btn--exec {
+  z-index: 2;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.org-remove-btn--exec:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
 
 .org-node-unit {

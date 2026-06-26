@@ -10,30 +10,35 @@
       :style="{ minHeight: `${totalCanvasHeight}px` }"
     >
       <div
-        v-for="exec in executivesSorted"
+        v-for="(exec, execIndex) in executivesSorted"
         :key="exec.id"
         class="org-placed org-placed--exec"
         :class="execPlacedClass(exec.id)"
         :style="execPlacedStyle(exec, exec.id)"
         @pointerdown="(e) => startExecutiveDrag(exec.id, exec, e)"
       >
-        <article class="org-node org-node-executive">
-          <InlineField
-            v-model="exec.title"
-            :readonly="readonly"
-            placeholder="Должность"
-            class-name="org-exec-title"
-          />
-          <InlineField
-            v-model="exec.person"
-            :readonly="readonly"
-            placeholder="ФИО"
-            class-name="org-exec-person"
-          />
+        <article
+          class="org-node org-node-executive"
+          :class="`org-node-executive--geo-${execIndex % 3}`"
+        >
+          <div class="org-exec-content">
+            <InlineField
+              v-model="exec.title"
+              :readonly="readonly"
+              placeholder="Должность"
+              class-name="org-exec-title"
+            />
+            <InlineField
+              v-model="exec.person"
+              :readonly="readonly"
+              placeholder="ФИО"
+              class-name="org-exec-person"
+            />
+          </div>
           <button
             v-if="!readonly"
             type="button"
-            class="org-remove-btn"
+            class="org-remove-btn org-remove-btn--exec"
             title="Удалить директора"
             @click.stop="requestRemoveExecutive(exec)"
           >
