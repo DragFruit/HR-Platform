@@ -3144,24 +3144,22 @@ a {
   box-sizing: border-box;
 }
 
+/* Календарь команды: скролл-область таблицы (шапка липнет внутри, пока не кончится tbody) */
+.vac-table-scroll {
+  --vac-calendar-max-h: min(calc(100dvh - 240px), 680px);
+  max-height: var(--vac-calendar-max-h);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #d8d8d2;
+  border-radius: var(--vac-card-radius);
+  background: var(--bg-surface);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 .vac-team-calendar .vacation-calendar-wrap .timeline-scroll-x {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
-  overscroll-behavior: contain;
-}
-
-.vac-team-calendar .vacation-timeline thead th {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--bg-surface-raised);
-}
-
-.vac-team-calendar .vacation-timeline thead .sticky-col-name {
-  left: 0;
-  z-index: 5;
 }
 
 .vac-team-calendar .vacation-timeline {
@@ -3169,6 +3167,26 @@ a {
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.vac-team-calendar .vacation-timeline thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f0f2f5;
+  border-color: #e4e4de;
+  color: var(--text-muted);
+  font-weight: 600;
+  box-shadow: 0 1px 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline thead .sticky-col-name {
+  left: 0;
+  z-index: 5;
+  background: #f0f2f5;
+  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-name {
@@ -3305,31 +3323,26 @@ a {
 .vac-detailed-wrap .vac-detailed-scroll {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: visible;
-  overscroll-behavior: contain;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
 }
 
 .vac-detailed-timeline {
   --vac-detailed-head-r1: 2.05rem;
   --vac-detailed-head-r2: 1.35rem;
   width: max-content;
-  border-collapse: separate;
-  border-spacing: 0;
+  min-width: 100%;
+  border-collapse: collapse;
   font-size: 0.8rem;
 }
 
 .vac-detailed-timeline th,
 .vac-detailed-timeline td {
-  border: 1px solid var(--border);
+  border: 1px solid #e4e4de;
   padding: 0;
   vertical-align: middle;
 }
 
 .vac-detailed-timeline thead th {
-  background: var(--bg-surface-raised);
+  background: #f0f2f5;
   color: var(--text-muted);
   font-weight: 600;
   text-align: center;
@@ -3337,31 +3350,38 @@ a {
   min-width: 22px;
   width: 22px;
   font-size: 0.68rem;
+  border-color: #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-month th {
   position: sticky;
   top: 0;
   z-index: 4;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-days th {
   position: sticky;
   top: var(--vac-detailed-head-r1);
   z-index: 3;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-weekdays th {
   position: sticky;
   top: calc(var(--vac-detailed-head-r1) + var(--vac-detailed-head-r2));
   z-index: 3;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-month-label {
-  font-size: 0.78rem !important;
-  padding: 5px 4px !important;
+  font-family: var(--font-display);
+  font-size: 0.68rem !important;
+  padding: 6px 4px !important;
   color: var(--text) !important;
-  font-weight: 700;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .vac-detailed-timeline th.is-month-start,
@@ -3376,12 +3396,12 @@ a {
   width: auto;
   min-width: 0;
   max-width: none;
-  padding: 6px 10px 6px 8px;
+  padding: 8px 10px 8px 8px;
   background: var(--bg-surface);
   color: var(--text);
   font-weight: 600;
   vertical-align: top;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.28);
+  box-shadow: 1px 0 0 #e4e4de;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head,
@@ -3389,84 +3409,105 @@ a {
 .vac-detailed-timeline thead .sticky-col-name--head-spacer,
 .vac-detailed-timeline thead .sticky-col-balance--head-spacer {
   z-index: 6;
-  background: var(--bg-surface-raised);
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head,
+.vac-detailed-timeline thead .sticky-col-balance--head {
+  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head-spacer,
 .vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+  box-shadow: 1px 0 0 #e4e4de;
   padding: 0;
   min-height: 0;
   line-height: 0;
   font-size: 0;
   color: transparent;
-  box-shadow: none;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head {
   vertical-align: middle;
-  text-align: center;
-  padding: 8px 4px;
+  text-align: left;
+  padding: 10px 8px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .vac-detailed-timeline .vac-employee-head-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 1.75rem;
-  font-size: 0.72rem;
-  font-weight: 700;
+  display: block;
+  min-height: 0;
+  font-size: inherit;
+  font-weight: 600;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {
   vertical-align: middle;
   text-align: left;
-  background: var(--bg-surface-raised);
+  background: #f0f2f5;
   font-size: 0.72rem;
   line-height: 1.15;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name--head {
-  padding: 8px 10px 8px 8px;
+  padding: 10px 8px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .vac-team-calendar .vacation-timeline .vac-employee-head-label {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: inherit;
+  font-weight: 600;
   line-height: 1.2;
   text-align: left;
+}
+
+.vac-team-calendar .vacation-timeline tbody .sticky-col-name {
+  background: var(--bg-surface);
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline th,
+.vac-team-calendar .vacation-timeline td {
+  border-color: #e4e4de;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
   left: var(--vac-name-col-w, 112px);
   z-index: 4;
-  min-width: 44px;
-  width: 44px;
-  max-width: 44px;
-  padding: 4px 0;
+  min-width: 48px;
+  width: 48px;
+  max-width: 48px;
+  padding: 6px 4px;
   background: var(--bg-surface);
   text-align: center;
   font-weight: 600;
   font-size: 0.72rem;
   color: var(--text-muted);
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.28);
+  box-shadow: 1px 0 0 #e4e4de;
   vertical-align: middle;
   overflow: visible;
 }
 
 .vac-detailed-timeline .vac-balance-head-label {
-  display: inline-block;
-  transform: rotate(-45deg);
-  transform-origin: center center;
+  display: block;
+  transform: none;
   white-space: nowrap;
-  font-size: 0.64rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
@@ -3484,10 +3525,13 @@ a {
 }
 
 .vac-detailed-head-month th[colspan] {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
   padding: 6px 8px;
   color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .vac-detailed-timeline th.is-weekend,
@@ -3496,17 +3540,19 @@ a {
 }
 
 .vac-detailed-timeline th.is-today {
-  background: #38bdf8;
-  color: #fff;
+  background: rgba(87, 163, 217, 0.35);
+  color: var(--text);
+  font-weight: 700;
 }
 
 .vac-detailed-dept-row td {
-  background: rgba(116, 81, 244, 0.12);
-  font-weight: 700;
+  background: rgba(116, 81, 244, 0.08);
+  font-weight: 600;
   color: var(--primary-strong);
-  padding: 6px 10px;
+  padding: 8px 12px;
   cursor: pointer;
   user-select: none;
+  border-color: #e4e4de;
 }
 
 .vac-detailed-dept-chevron {

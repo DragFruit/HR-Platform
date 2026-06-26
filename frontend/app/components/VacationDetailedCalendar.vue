@@ -1,6 +1,6 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
-    <div class="timeline-scroll-x vac-detailed-scroll">
+    <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
       <table ref="tableRef" class="vac-detailed-timeline" :style="nameColCssVars">
         <thead>
           <tr class="vac-detailed-head-month">
@@ -133,6 +133,14 @@ const measureNameColumn = () => {
   const cell = tableRef.value?.querySelector('tbody .sticky-col-name') as HTMLElement | null;
   if (cell) {
     nameColWidthPx.value = cell.offsetWidth;
+  }
+  const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
+  const rowDays = tableRef.value?.querySelector('.vac-detailed-head-days') as HTMLElement | null;
+  if (rowMonth && tableRef.value) {
+    tableRef.value.style.setProperty('--vac-detailed-head-r1', `${rowMonth.offsetHeight}px`);
+  }
+  if (rowDays && tableRef.value) {
+    tableRef.value.style.setProperty('--vac-detailed-head-r2', `${rowDays.offsetHeight}px`);
   }
 };
 
@@ -305,7 +313,20 @@ const scheduleScrollToToday = () => {
   });
 };
 
-onMounted(scheduleScrollToToday);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  scheduleScrollToToday();
+  if (typeof ResizeObserver !== 'undefined' && scrollWrapRef.value) {
+    resizeObserver = new ResizeObserver(() => measureNameColumn());
+    resizeObserver.observe(scrollWrapRef.value);
+  }
+});
+
+onUnmounted(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
 
 watch(
   () => props.year,
