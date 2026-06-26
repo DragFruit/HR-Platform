@@ -3,15 +3,27 @@ export type EmployeeIdentity = {
   bitrix_user_id?: number | null;
   platform_user_id: number | null;
   email?: string;
+  name?: string;
 };
+
+function normalizeName(name?: string): string {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
 
 export function employeeIdentityKeys(row: EmployeeIdentity): string[] {
   const keys: string[] = [];
-  const bitrixId = row.bitrix_user_id ?? (row.platform_user_id && row.id === row.platform_user_id ? row.id : null);
+  const bitrixId =
+    row.bitrix_user_id ??
+    (row.platform_user_id && row.id === row.platform_user_id ? row.id : null);
   if (bitrixId) keys.push(`b:${Number(bitrixId)}`);
   if (row.platform_user_id) keys.push(`p:${Number(row.platform_user_id)}`);
   const email = String(row.email || '').trim().toLowerCase();
   if (email) keys.push(`e:${email}`);
+  const name = normalizeName(row.name);
+  if (name) keys.push(`n:${name}`);
   return keys;
 }
 

@@ -44,7 +44,12 @@ export { employeeIdentityKeys };
 export async function readEmployees(): Promise<ServerEmployee[]> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return dedupeEmployees(JSON.parse(raw) as ServerEmployee[]);
+  const parsed = JSON.parse(raw) as ServerEmployee[];
+  const deduped = dedupeEmployees(parsed);
+  if (deduped.length !== parsed.length) {
+    await writeFile(DATA_FILE, JSON.stringify(deduped, null, 2), 'utf8');
+  }
+  return deduped;
 }
 
 export async function writeEmployees(list: ServerEmployee[]): Promise<ServerEmployee[]> {
