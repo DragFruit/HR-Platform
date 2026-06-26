@@ -239,6 +239,7 @@ sudo systemctl restart vbi-hr-staging
 | Симптом | Решение |
 |---------|---------|
 | `Bitrix OAuth не настроен` | нет `BITRIX_*` env на сервере |
+| `invalid_client` | Неверный **CLIENT_SECRET** (или ID) в `frontend/.env`. Откройте **то же** dev-приложение в Битриксе → скопируйте Client ID и Secret заново, без пробелов. Проверка: `/api/auth/oauth-debug` |
 | `Неверный state OAuth` | Вход начали на **localhost**, Битрикс вернул на **сервер** (или другой порт). Создайте **второе** локальное приложение в Битриксе с обработчиком `http://localhost:3000/api/auth/bitrix/callback` и **новыми** CLIENT_ID/SECRET в `frontend/.env`. Не используйте ключи с VPS. |
 | `redirect_uri_mismatch` | Redirect URI в приложении ≠ `BITRIX_REDIRECT_URI` (символ в символ) |
 | `Неверный state OAuth` | cookies заблокированы |

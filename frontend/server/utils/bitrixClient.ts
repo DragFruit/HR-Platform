@@ -55,7 +55,13 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
 
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
-    const message = data.error_description || data.error || `HTTP ${response.status}`;
+    let message = data.error_description || data.error || `HTTP ${response.status}`;
+    if (data.error === 'invalid_client') {
+      message =
+        'invalid_client — неверный CLIENT_ID или CLIENT_SECRET. ' +
+        'Откройте dev-приложение в Битриксе, скопируйте ключи заново в frontend/.env (без кавычек и пробелов). ' +
+        `Client ID в запросе: ${bitrixClientId}`;
+    }
     throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth: ${message}` });
   }
   return data;

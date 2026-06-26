@@ -27,9 +27,9 @@ export function getBitrixConfig(): BitrixRuntimeConfig {
   const env = process.env;
   return {
     bitrixPortalUrl: String(env.BITRIX_PORTAL_URL || config.bitrixPortalUrl || '').replace(/\/+$/, ''),
-    bitrixClientId: String(env.BITRIX_CLIENT_ID || ''),
-    bitrixClientSecret: String(env.BITRIX_CLIENT_SECRET || ''),
-    bitrixRedirectUri: String(env.BITRIX_REDIRECT_URI || ''),
+    bitrixClientId: String(env.BITRIX_CLIENT_ID || '').trim(),
+    bitrixClientSecret: String(env.BITRIX_CLIENT_SECRET || '').trim(),
+    bitrixRedirectUri: String(env.BITRIX_REDIRECT_URI || '').trim(),
     bitrixAdminGroupIds: String(env.BITRIX_ADMIN_GROUP_IDS || config.bitrixAdminGroupIds || '1'),
     bitrixHrGroupIds: String(env.BITRIX_HR_GROUP_IDS || config.bitrixHrGroupIds || ''),
     bitrixManagerGroupIds: String(env.BITRIX_MANAGER_GROUP_IDS || config.bitrixManagerGroupIds || '')

@@ -13,7 +13,7 @@ export default defineEventHandler((event) => {
     throw createError({ statusCode: 404, statusMessage: 'Not found' });
   }
 
-  const { bitrixClientId, bitrixRedirectUri } = getBitrixConfig();
+  const { bitrixClientId, bitrixClientSecret, bitrixRedirectUri } = getBitrixConfig();
   const redirectUri = getBitrixRedirectUri(event);
 
   return {
@@ -21,11 +21,15 @@ export default defineEventHandler((event) => {
     redirectUri,
     bitrixRedirectUriFromEnv: bitrixRedirectUri || null,
     clientId: bitrixClientId,
+    secretConfigured: Boolean(bitrixClientSecret),
+    secretLength: bitrixClientSecret.length,
     usesProdClientId: bitrixClientId === PROD_CLIENT_ID,
     bitrixAuthEnabled: isBitrixAuthConfigured(),
     hint:
       bitrixClientId === PROD_CLIENT_ID
         ? 'В .env всё ещё ключи боя. Сохраните frontend/.env с dev CLIENT_ID и перезапустите npm run dev.'
-        : `В Битриксе у dev-приложения обработчик должен быть ровно: ${redirectUri}`
+        : !bitrixClientSecret
+          ? 'BITRIX_CLIENT_SECRET пустой в frontend/.env'
+          : `В Битриксе у приложения ${bitrixClientId} обработчик: ${redirectUri}. При invalid_client — перекопируйте Client Secret из этого же приложения.`
   };
 });
