@@ -4,6 +4,11 @@
 
 ## 2026-06-26
 
+### Bitrix: fallback на OAuth при битом вебхуке
+
+- `bitrixFetchAll` — при `INVALID_CREDENTIALS` на вебхуке синк идёт через OAuth-токен входа.
+- Локально `BITRIX_WEBHOOK_URL` в `.env` опционален (см. `.env.example`).
+
 ### Bitrix OAuth на production (бой)
 
 - Отдельный env: `/etc/vbi-hr/bitrix-production.env`, redirect `http://45.12.74.25/api/auth/bitrix/callback`.

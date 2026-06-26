@@ -160,13 +160,34 @@ export async function bitrixWebhookAll<T extends Record<string, unknown>>(
   return items;
 }
 
+function isWebhookCredentialsError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes('invalid request credentials') ||
+    m.includes('invalid_credentials') ||
+    m.includes('no_auth_found')
+  );
+}
+
+function errorStatusMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'statusMessage' in err) {
+    return String((err as { statusMessage?: string }).statusMessage || '');
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
 export async function bitrixFetchAll<T extends Record<string, unknown>>(
   method: string,
   params: Record<string, unknown>,
   accessToken?: string
 ): Promise<T[]> {
   if (isBitrixWebhookConfigured()) {
-    return bitrixWebhookAll<T>(method, params);
+    try {
+      return await bitrixWebhookAll<T>(method, params);
+    } catch (err) {
+      if (!accessToken || !isWebhookCredentialsError(errorStatusMessage(err))) throw err;
+      // Битый/устаревший вебхук — синк при OAuth-входе через токен пользователя
+    }
   }
   if (!accessToken) {
     throw createError({ statusCode: 500, statusMessage: 'Нет OAuth-токена для Bitrix REST' });
