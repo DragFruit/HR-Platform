@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { dedupeEmployeeList, employeeIdentityKeys } from '../../app/utils/employeeDedupe';
 
 export type ServerEmployee = {
   id: number;
@@ -28,29 +29,17 @@ async function ensureFile() {
 }
 
 export function dedupeEmployees(list: ServerEmployee[]): ServerEmployee[] {
-  const seenBitrix = new Set<number>();
-  const seenEmail = new Set<string>();
-  const result: ServerEmployee[] = [];
-
-  for (const row of list) {
-    const bitrixId = row.bitrix_user_id ?? (row.platform_user_id && row.id === row.platform_user_id ? row.id : null);
-    if (bitrixId) {
-      const id = Number(bitrixId);
-      if (seenBitrix.has(id)) continue;
-      seenBitrix.add(id);
-      result.push(row);
-      continue;
-    }
-    const email = String(row.email || '').trim().toLowerCase();
-    if (email) {
-      if (seenEmail.has(email)) continue;
-      seenEmail.add(email);
-    }
-    result.push(row);
-  }
-
-  return result;
+  return dedupeEmployeeList(
+    list.map((row) => ({
+      ...row,
+      bitrix_user_id:
+        row.bitrix_user_id ??
+        (row.platform_user_id && row.id === row.platform_user_id ? row.id : row.bitrix_user_id ?? null)
+    }))
+  );
 }
+
+export { employeeIdentityKeys };
 
 export async function readEmployees(): Promise<ServerEmployee[]> {
   await ensureFile();

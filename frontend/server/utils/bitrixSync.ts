@@ -1,6 +1,6 @@
 import type { AuthRole } from './credentials';
 import type { ServerEmployee } from './employeesStore';
-import { readEmployees, writeEmployees } from './employeesStore';
+import { employeeIdentityKeys, readEmployees, writeEmployees } from './employeesStore';
 import {
   bitrixFetchAll,
   bitrixRest,
@@ -223,7 +223,18 @@ export async function syncEmployeesFromBitrix(
   const keptRosterOnly = existing.filter(
     (row) => row.bitrix_user_id && !syncedIds.has(row.bitrix_user_id)
   );
-  const manualOnly = existing.filter((row) => !row.bitrix_user_id);
+
+  const coveredKeys = new Set<string>();
+  [...synced, ...keptRosterOnly].forEach((row) => {
+    employeeIdentityKeys(row).forEach((key) => coveredKeys.add(key));
+  });
+
+  const manualOnly = existing.filter((row) => {
+    if (row.bitrix_user_id) return false;
+    const keys = employeeIdentityKeys(row);
+    if (keys.some((key) => coveredKeys.has(key))) return false;
+    return true;
+  });
 
   await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly]);
 

@@ -1,3 +1,5 @@
+import { dedupeEmployeeList } from '~/utils/employeeDedupe';
+
 export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
 
 export type Employee = {
@@ -8,6 +10,7 @@ export type Employee = {
   manager: string;
   hired_at: string;
   platform_user_id: number | null;
+  bitrix_user_id?: number | null;
   email: string;
   account_role: AccountRole | '';
 };
@@ -30,7 +33,7 @@ export type EmployeeDepartment = {
   employees: Employee[];
 };
 
-const STORAGE_KEY = 'vbi-employees-v3';
+const STORAGE_KEY = 'vbi-employees-v4';
 
 const EMAIL_TO_EMPLOYEE: Record<string, string> = Object.fromEntries(
   Object.values(PLATFORM_ACCOUNTS).map((a) => [a.email.toLowerCase(), a.name])
@@ -82,6 +85,9 @@ export function useEmployees() {
     manager: emp.manager,
     hired_at: emp.hired_at,
     platform_user_id: emp.platform_user_id,
+    bitrix_user_id:
+      emp.bitrix_user_id ??
+      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : undefined),
     email: emp.email || undefined,
     account_role: emp.account_role || undefined
   });
@@ -94,6 +100,7 @@ export function useEmployees() {
     manager: string;
     hired_at: string;
     platform_user_id: number | null;
+    bitrix_user_id?: number | null;
     email?: string;
     account_role?: string;
   }): Employee =>
@@ -105,17 +112,42 @@ export function useEmployees() {
       manager: row.manager,
       hired_at: row.hired_at,
       platform_user_id: row.platform_user_id,
+      bitrix_user_id:
+        row.bitrix_user_id ??
+        (row.platform_user_id && row.id === row.platform_user_id ? row.id : null),
       email: row.email ?? '',
       account_role: (row.account_role as AccountRole) ?? ''
     });
 
+  const applyEmployeeList = (list: Employee[]) => {
+    employees.value = dedupeEmployeeList(list);
+    if (!import.meta.client) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+  };
+
   const syncToServer = async () => {
     if (!import.meta.client) return;
     try {
-      await $fetch('/api/employees', {
+      const saved = await $fetch<
+        {
+          id: number;
+          name: string;
+          title: string;
+          department: string;
+          manager: string;
+          hired_at: string;
+          platform_user_id: number | null;
+          bitrix_user_id?: number | null;
+          email?: string;
+          account_role?: string;
+        }[]
+      >('/api/employees', {
         method: 'PUT',
         body: employees.value.map(toServerShape)
       });
+      if (Array.isArray(saved)) {
+        applyEmployeeList(saved.map(fromServerShape));
+      }
     } catch {
       /* офлайн или нет прав */
     }
@@ -123,7 +155,7 @@ export function useEmployees() {
 
   const persist = () => {
     if (!import.meta.client) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+    applyEmployeeList(employees.value);
     syncToServer();
   };
 
@@ -147,8 +179,7 @@ export function useEmployees() {
         }[]
       >('/api/employees');
       if (Array.isArray(fromServer)) {
-        employees.value = fromServer.map(fromServerShape);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+        applyEmployeeList(fromServer.map(fromServerShape));
         loaded = true;
       }
     } catch {
@@ -159,7 +190,7 @@ export function useEmployees() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
-          employees.value = (JSON.parse(raw) as Employee[]).map(enrichEmployeeRecord);
+          applyEmployeeList((JSON.parse(raw) as Employee[]).map(enrichEmployeeRecord));
         } catch {
           employees.value = [];
         }
