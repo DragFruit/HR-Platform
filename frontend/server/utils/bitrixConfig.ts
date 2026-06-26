@@ -31,6 +31,44 @@ export function getBitrixConfig(): BitrixRuntimeConfig {
   };
 }
 
+export function getAppPublicOrigin(event?: H3Event): string {
+  const appUrl = String(process.env.APP_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  if (appUrl) {
+    try {
+      return new URL(appUrl).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const { bitrixRedirectUri } = getBitrixConfig();
+  if (bitrixRedirectUri) {
+    try {
+      return new URL(bitrixRedirectUri).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  if (!event) {
+    throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
+  }
+
+  const forwardedHost = getRequestHeader(event, 'x-forwarded-host');
+  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto') || 'http';
+  const forwardedPort = getRequestHeader(event, 'x-forwarded-port');
+
+  if (forwardedHost) {
+    const hostHasPort = forwardedHost.includes(':');
+    const needsPort =
+      !hostHasPort && forwardedPort && !['80', '443'].includes(String(forwardedPort));
+    const host = needsPort ? `${forwardedHost}:${forwardedPort}` : forwardedHost;
+    return `${forwardedProto}://${host}`;
+  }
+
+  return getRequestURL(event).origin;
+}
+
 export function isBitrixAuthConfigured(): boolean {
   const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
   return Boolean(bitrixPortalUrl && bitrixClientId && bitrixClientSecret);
@@ -42,6 +80,5 @@ export function getBitrixRedirectUri(event?: H3Event): string {
   if (!event) {
     throw createError({ statusCode: 500, statusMessage: 'BITRIX_REDIRECT_URI не задан' });
   }
-  const url = getRequestURL(event);
-  return `${url.origin}/api/auth/bitrix/callback`;
+  return `${getAppPublicOrigin(event)}/api/auth/bitrix/callback`;
 }

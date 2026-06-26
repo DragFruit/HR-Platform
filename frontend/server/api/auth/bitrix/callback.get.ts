@@ -1,12 +1,12 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
-import { getBitrixRedirectUri, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
+import { getAppPublicOrigin, getBitrixRedirectUri, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
 import { setVbiSession } from '../../../utils/session';
 
 const STATE_COOKIE = 'bitrix-oauth-state';
 
 function redirectWithError(event: Parameters<typeof sendRedirect>[0], message: string) {
-  const url = new URL('/', getRequestURL(event).origin);
+  const url = new URL('/', getAppPublicOrigin(event));
   url.searchParams.set('auth_error', message);
   return sendRedirect(event, url.toString());
 }
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
     const sessionUser = await loginSessionFromBitrix(token.access_token);
     setVbiSession(event, sessionUser);
 
-    const url = new URL('/', getRequestURL(event).origin);
+    const url = new URL('/', getAppPublicOrigin(event));
     url.searchParams.set('auth', 'bitrix');
     return sendRedirect(event, url.toString());
   } catch (err) {

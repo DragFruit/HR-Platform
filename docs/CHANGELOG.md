@@ -4,6 +4,13 @@
 
 ## 2026-06-25
 
+### Auth: канонический URL staging с портом :8080
+
+- После Bitrix OAuth редирект на `BITRIX_REDIRECT_URI` origin (`http://45.12.74.25:8080`), не на порт 80.
+- `/api/auth/config` → `appPublicUrl`; клиент перенаправляет с неверного origin.
+- Env: `APP_PUBLIC_URL` (опционально, иначе из `BITRIX_REDIRECT_URI`).
+- Проверка: вход через Битрикс → в адресной строке `:8080/`; logout → снова `:8080` с кнопкой Битрикс.
+
 ### Auth: кнопка Битрикс после logout
 
 - `useBitrixAuthConfig` — `showBitrixLogin` от `/api/auth/config`, не только от `appEnv` в сборке.

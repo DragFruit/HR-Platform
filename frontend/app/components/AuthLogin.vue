@@ -15,7 +15,7 @@
       </div>
 
       <div v-if="showBitrixLogin" class="auth-form">
-        <button class="button primary auth-submit" type="button" @click="loginWithBitrix">
+        <button class="button primary auth-submit" type="button" @click="goBitrixLogin">
           Войти через Битрикс24
         </button>
         <p v-if="error" class="gift-error">{{ error }}</p>
@@ -74,8 +74,8 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const { isDevelopment } = useAppEnv();
-const { login, loginWithBitrix, demoAccounts } = useAuth();
-const { bitrixAuthEnabled, configReady, preferBitrixLogin } = useBitrixAuthConfig();
+const { login, demoAccounts } = useAuth();
+const { bitrixAuthEnabled, configReady, preferBitrixLogin, bitrixLoginUrl } = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
 const showDemoLogin = computed(() => {
@@ -101,7 +101,7 @@ onMounted(() => {
   readAuthError();
 
   if (route.query.auth === 'bitrix' && preferBitrixLogin.value) {
-    loginWithBitrix();
+    window.location.href = bitrixLoginUrl.value;
   }
 });
 
@@ -113,6 +113,10 @@ watch(
 const fillDemo = (account: { email: string; password: string }) => {
   email.value = account.email;
   password.value = account.password;
+};
+
+const goBitrixLogin = () => {
+  window.location.href = bitrixLoginUrl.value;
 };
 
 const submit = async () => {
