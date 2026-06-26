@@ -181,7 +181,14 @@ export const assessVacationBalance = (
   const filtered = excludeRequestId
     ? requests.filter((r) => r.id !== excludeRequestId)
     : requests;
-  const available = calcAvailableOnDate(employeeName, hireIso, start, filtered, primaryYear, openingBalance);
+  const available = calcAvailableOnDate(
+    employeeName,
+    hireIso,
+    start,
+    filtered,
+    primaryYear,
+    openingBalance
+  );
   if (available === null) {
     return { ...empty, status: 'unknown', neededDays, startLabel };
   }
@@ -267,7 +274,10 @@ export const calcEmployeeBalance = (
   const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
   const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved']);
   const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending']);
-  const remain = Math.max(0, Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10);
+  const remain = Math.max(
+    0,
+    Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10
+  );
 
   return { remain: String(remain), taken, planned };
 };

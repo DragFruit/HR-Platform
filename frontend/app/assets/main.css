@@ -1007,6 +1007,10 @@ a {
   gap: 0;
   padding: 12px 8px 24px;
   min-width: min(100%, 1100px);
+  --org-card-border: #d8d8d2;
+  --org-card-radius: 20px;
+  --org-card-bg: var(--bg-surface);
+  --org-card-hover-bg: var(--bg-surface-raised);
 }
 
 .org-chart-vbi {
@@ -1020,16 +1024,17 @@ a {
   position: relative;
   width: 100%;
   min-height: 280px;
-  padding: 8px 4px 20px;
+  padding: 12px 8px 24px;
   overflow: visible;
 }
 
 .org-chart-canvas--edit {
   background-image:
-    linear-gradient(to right, rgba(120, 113, 140, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(120, 113, 140, 0.1) 1px, transparent 1px);
+    linear-gradient(to right, rgba(216, 216, 210, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(216, 216, 210, 0.45) 1px, transparent 1px);
   background-size: var(--org-canvas-grid) var(--org-canvas-grid);
-  border-radius: 12px;
+  border-radius: var(--org-card-radius);
+  background-color: rgba(255, 255, 255, 0.35);
 }
 
 .org-placed--exec {
@@ -1054,7 +1059,8 @@ a {
 }
 
 .org-placed--exec.is-dragging .org-node-executive {
-  box-shadow: var(--shadow-md);
+  border-color: var(--hero-purple);
+  background: var(--org-card-hover-bg);
 }
 
 .org-placed--unit,
@@ -1081,157 +1087,211 @@ a {
 }
 
 .org-placed.is-dragging {
-  opacity: 0.88;
+  opacity: 0.92;
   z-index: 5;
   cursor: grabbing;
 }
 
 .org-placed.is-dragging .org-node-unit--solo,
 .org-placed.is-dragging .org-group-frame {
-  box-shadow: var(--shadow-md);
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg);
 }
 
 .org-group-frame {
   position: relative;
-  border: 1px solid #d4d4dc;
-  border-radius: 16px;
-  background: var(--bg-surface);
-  padding: 12px 14px 10px;
+  border: 1px solid var(--org-card-border);
+  border-radius: calc(var(--org-card-radius) + 4px);
+  background: var(--bg-surface-raised);
+  padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  min-width: 168px;
+  min-width: 188px;
   min-height: 120px;
   box-sizing: border-box;
   overflow: auto;
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  transition: var(--transition-brutal);
 }
 
 .org-placed.is-resizing .org-group-frame {
-  box-shadow: var(--shadow-md);
+  border-color: #c8c8c2;
+  background: var(--org-card-bg);
 }
 
 .org-resize-handle {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  right: 6px;
+  bottom: 6px;
   width: 14px;
   height: 14px;
   cursor: nwse-resize;
-  border-right: 2px solid #202020;
-  border-bottom: 2px solid #202020;
-  border-radius: 0 0 3px 0;
-  opacity: 0.55;
+  border-right: 2px solid #838383;
+  border-bottom: 2px solid #838383;
+  border-radius: 0 0 4px 0;
+  opacity: 0.45;
   touch-action: none;
+  transition: opacity 0.15s ease;
 }
 
 .org-resize-handle:hover {
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .org-group-label {
-  margin: 4px 0 0;
-  text-align: center;
-  padding-top: 6px;
-  border-top: 1px solid #ececf0;
+  margin: 2px 0 0;
+  text-align: left;
+  padding-top: 10px;
+  border-top: 1px solid #ecece6;
 }
 
 .org-group-label-text {
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+}
+
+.org-group-add-unit {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 5px 10px;
+  border: 1px solid var(--org-card-border, #d8d8d2);
+  border-radius: 999px;
+  background: var(--org-card-bg, var(--bg-surface));
   color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-brutal);
+}
+
+.org-group-add-unit:hover {
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg, var(--bg-surface-raised));
+  color: var(--text);
 }
 
 .org-node.org-node-executive {
   position: relative;
-  text-align: center;
-  min-width: 200px;
-  max-width: 280px;
+  text-align: left;
+  min-width: 220px;
+  max-width: 300px;
   width: auto;
-  border: 1px solid #e8944f;
-  background: linear-gradient(180deg, #fde8d4 0%, #f4a96e 55%, #ef9a5a 100%);
-  box-shadow: 0 4px 16px rgba(232, 148, 79, 0.22);
-  border-radius: 999px;
-  padding: 14px 24px;
+  border: 2px solid var(--hero-purple);
+  background: linear-gradient(180deg, #f8f5ff 0%, var(--org-card-bg) 100%);
+  border-radius: var(--org-card-radius);
+  padding: 16px 20px 15px;
   box-sizing: border-box;
+  transition: var(--transition-brutal);
+}
+
+.org-chart-canvas--edit .org-node-executive:hover {
+  background: linear-gradient(180deg, #f3edff 0%, var(--org-card-hover-bg) 100%);
 }
 
 .org-exec-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .org-exec-person {
-  margin: 4px 0 0;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #6b5a4a;
+  margin: 6px 0 0;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.35;
 }
 
 .org-node-unit {
   position: relative;
   width: 100%;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  text-align: center;
+  padding: 15px 18px 14px;
+  border-radius: var(--org-card-radius);
+  text-align: left;
   box-shadow: none;
+  transition: var(--transition-brutal);
 }
 
 .org-node-unit--solo {
-  border: none;
-  background: var(--bg-soft);
+  border: 1px solid var(--org-card-border);
+  background: var(--org-card-bg);
+}
+
+.org-chart-canvas .org-placed--unit:hover .org-node-unit--solo,
+.org-chart-canvas .org-placed--unit:not(.is-dragging):hover .org-node-unit--solo {
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg);
 }
 
 .org-node-unit--in-group {
-  border: none;
-  background: var(--bg-surface);
+  border: 1px solid var(--org-card-border);
+  background: var(--org-card-bg);
+  padding: 12px 14px;
+}
+
+.org-node-unit--in-group + .org-node-unit--in-group {
+  margin-top: 0;
 }
 
 .org-unit-title {
-  font-size: 0.88rem;
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
   margin: 0;
+  color: var(--text);
 }
 
 .org-unit-head {
-  margin: 4px 0 0;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.35;
 }
 
 .org-unit-fields {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+}
+
+.org-chart .editable-line:not(.readonly):hover {
+  background: rgba(116, 81, 244, 0.06);
+  border-radius: 8px;
 }
 
 .org-remove-btn {
   position: absolute;
-  top: 6px;
+  top: 8px;
   right: 8px;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.08);
-  color: #5c4a3a;
-  font-size: 1rem;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--org-card-border);
+  border-radius: 8px;
+  background: var(--org-card-bg);
+  color: var(--text-soft);
+  font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  transition: var(--transition-brutal);
 }
 
 .org-remove-btn:hover {
-  background: rgba(0, 0, 0, 0.14);
+  border-color: #c8c8c2;
+  color: var(--text);
+  background: var(--org-card-hover-bg);
 }
 
 .org-remove-btn--group {
-  top: 8px;
+  top: 10px;
   right: 10px;
 }
 
@@ -1242,8 +1302,8 @@ a {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(23, 21, 31, 0.35);
-  backdrop-filter: blur(3px);
+  background: rgba(32, 32, 32, 0.28);
+  backdrop-filter: blur(4px);
 }
 
 .org-confirm-card {
@@ -1251,7 +1311,9 @@ a {
   padding: 22px 24px;
   display: grid;
   gap: 14px;
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--org-card-border);
+  border-radius: var(--org-card-radius);
+  background: var(--org-card-bg);
 }
 
 .org-confirm-title {
@@ -2180,6 +2242,14 @@ a {
   padding: 10px 16px;
 }
 
+/* График отпусков: фиолетовая шапка прокручивается вместе со страницей */
+.shell-main:has(.vac-team-calendar) .topbar,
+.shell-main:has(.vac-emp-page--fit) .topbar,
+.shell-main:has(.vac-manager-layout--employee) .topbar {
+  position: static;
+  top: auto;
+}
+
 .shell-main:has(.vac-manager-layout) .content {
   min-width: 0;
   overflow-x: clip;
@@ -2193,36 +2263,13 @@ a {
 }
 
 .app-shell:has(.vac-manager-layout--employee) {
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.shell-main:has(.vac-manager-layout--employee) {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.shell-main:has(.vac-manager-layout--employee) .topbar {
-  padding: 10px 16px;
-  position: static;
-  top: auto;
-  flex-shrink: 0;
-}
-
-.shell-main:has(.vac-manager-layout--employee) .topbar h1 {
-  font-size: 1rem;
+  min-height: 100dvh;
 }
 
 .shell-main:has(.vac-manager-layout--employee) .content {
   padding: 12px 16px 14px;
   overflow: visible;
   min-height: 0;
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3159,23 +3206,22 @@ a {
   box-sizing: border-box;
 }
 
+/* Календарь команды: скролл-область таблицы (шапка липнет внутри, пока не кончится tbody) */
+.vac-table-scroll {
+  --vac-calendar-max-h: min(calc(100dvh - 240px), 680px);
+  max-height: var(--vac-calendar-max-h);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #d8d8d2;
+  border-radius: var(--vac-card-radius);
+  background: var(--bg-surface);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 .vac-team-calendar .vacation-calendar-wrap .timeline-scroll-x {
   width: 100%;
   max-width: 100%;
-  max-height: min(calc(100dvh - 280px), 640px);
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.vac-team-calendar .vacation-timeline thead th {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-}
-
-.vac-team-calendar .vacation-timeline thead .sticky-col-name {
-  left: 0;
-  z-index: 6;
 }
 
 .vac-team-calendar .vacation-timeline {
@@ -3183,6 +3229,26 @@ a {
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.vac-team-calendar .vacation-timeline thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f0f2f5;
+  border-color: #e4e4de;
+  color: var(--text-muted);
+  font-weight: 600;
+  box-shadow: 0 1px 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline thead .sticky-col-name {
+  left: 0;
+  z-index: 5;
+  background: #f0f2f5;
+  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-name {
@@ -3279,13 +3345,41 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.vac-year-chip {
+  appearance: none;
+  min-width: 5.5rem;
+  padding: 7px 2rem 7px 14px;
+  border: 1px solid #d8d8d2;
+  border-radius: 999px;
+  background-color: var(--bg-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23565656' d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.vac-year-chip:hover {
+  border-color: #c8c8c2;
+  background-color: #fafaf6;
+}
+
+.vac-year-chip:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 .vac-view-toggle {
   display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid #d8d8d2;
+  border-radius: 999px;
   overflow: hidden;
   background: var(--bg-surface);
 }
@@ -3298,15 +3392,17 @@ a {
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
+  line-height: 1.2;
 }
 
 .vac-view-toggle__btn.active {
-  background: rgba(56, 189, 248, 0.16);
-  color: #7dd3fc;
+  background: var(--text);
+  color: #fff;
 }
 
 .vac-view-toggle__btn:not(.active):hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: #f0f2f5;
+  color: var(--text);
 }
 
 .vac-detailed-wrap {
@@ -3319,28 +3415,26 @@ a {
 .vac-detailed-wrap .vac-detailed-scroll {
   width: 100%;
   max-width: 100%;
-  max-height: min(calc(100vh - 220px), 640px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
 }
 
 .vac-detailed-timeline {
+  --vac-detailed-head-r1: 2.05rem;
+  --vac-detailed-head-r2: 1.35rem;
   width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.8rem;
 }
 
 .vac-detailed-timeline th,
 .vac-detailed-timeline td {
-  border: 1px solid var(--border);
+  border: 1px solid #e4e4de;
   padding: 0;
   vertical-align: middle;
 }
 
 .vac-detailed-timeline thead th {
-  background: var(--bg-surface-raised);
+  background: #f0f2f5;
   color: var(--text-muted);
   font-weight: 600;
   text-align: center;
@@ -3348,31 +3442,38 @@ a {
   min-width: 22px;
   width: 22px;
   font-size: 0.68rem;
+  border-color: #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-month th {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 4;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-days th {
   position: sticky;
-  top: 2.1rem;
+  top: var(--vac-detailed-head-r1);
   z-index: 3;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-weekdays th {
   position: sticky;
-  top: 3.55rem;
+  top: calc(var(--vac-detailed-head-r1) + var(--vac-detailed-head-r2));
   z-index: 3;
+  box-shadow: 0 1px 0 #e4e4de;
 }
 
 .vac-detailed-month-label {
-  font-size: 0.78rem !important;
-  padding: 5px 4px !important;
+  font-family: var(--font-display);
+  font-size: 0.68rem !important;
+  padding: 6px 4px !important;
   color: var(--text) !important;
-  font-weight: 700;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .vac-detailed-timeline th.is-month-start,
@@ -3387,98 +3488,142 @@ a {
   width: auto;
   min-width: 0;
   max-width: none;
-  padding: 6px 10px 6px 8px;
+  padding: 8px 10px 8px 8px;
   background: var(--bg-surface);
   color: var(--text);
   font-weight: 600;
   vertical-align: top;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.28);
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head,
+.vac-detailed-timeline thead .sticky-col-balance--head,
+.vac-detailed-timeline thead .sticky-col-name--head-spacer,
+.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+  z-index: 6;
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head,
+.vac-detailed-timeline thead .sticky-col-balance--head {
+  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head-spacer,
+.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+  box-shadow: 1px 0 0 #e4e4de;
+  padding: 0;
+  min-height: 0;
+  line-height: 0;
+  font-size: 0;
+  color: transparent;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head {
   vertical-align: middle;
-  text-align: center;
-  padding: 8px 4px;
+  text-align: left;
+  padding: 10px 8px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .vac-detailed-timeline .vac-employee-head-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 3.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
+  display: block;
+  min-height: 0;
+  font-size: inherit;
+  font-weight: 600;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {
   vertical-align: middle;
   text-align: left;
-  background: var(--bg-surface-raised);
+  background: #f0f2f5;
   font-size: 0.72rem;
   line-height: 1.15;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name--head {
-  padding: 8px 10px 8px 8px;
+  padding: 10px 8px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .vac-team-calendar .vacation-timeline .vac-employee-head-label {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: inherit;
+  font-weight: 600;
   line-height: 1.2;
   text-align: left;
+}
+
+.vac-team-calendar .vacation-timeline tbody .sticky-col-name {
+  background: var(--bg-surface);
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline th,
+.vac-team-calendar .vacation-timeline td {
+  border-color: #e4e4de;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
   left: var(--vac-name-col-w, 112px);
   z-index: 4;
-  min-width: 44px;
-  width: 44px;
-  max-width: 44px;
-  padding: 4px 0;
+  min-width: 48px;
+  width: 48px;
+  max-width: 48px;
+  padding: 6px 4px;
   background: var(--bg-surface);
   text-align: center;
   font-weight: 600;
   font-size: 0.72rem;
   color: var(--text-muted);
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.28);
+  box-shadow: 1px 0 0 #e4e4de;
   vertical-align: middle;
   overflow: visible;
 }
 
 .vac-detailed-timeline .vac-balance-head-label {
-  display: inline-block;
-  transform: rotate(-45deg);
-  transform-origin: center center;
+  display: block;
+  transform: none;
   white-space: nowrap;
-  font-size: 0.64rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
-.vac-detailed-timeline thead .sticky-col-balance {
-  z-index: 7;
-  background: var(--bg-surface-raised);
+.vac-detailed-timeline thead .sticky-col-balance,
+.vac-detailed-timeline thead .sticky-col-name--head-spacer,
+.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
   font-size: 0.72rem;
   line-height: 1.15;
 }
 
-.vac-detailed-timeline thead .sticky-col-balance {
+.vac-detailed-timeline thead .sticky-col-balance,
+.vac-detailed-timeline thead .sticky-col-balance--head,
+.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
   padding: 6px 0;
 }
 
 .vac-detailed-head-month th[colspan] {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
   padding: 6px 8px;
   color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .vac-detailed-timeline th.is-weekend,
@@ -3487,17 +3632,19 @@ a {
 }
 
 .vac-detailed-timeline th.is-today {
-  background: #38bdf8;
-  color: #fff;
+  background: rgba(87, 163, 217, 0.35);
+  color: var(--text);
+  font-weight: 700;
 }
 
 .vac-detailed-dept-row td {
-  background: rgba(116, 81, 244, 0.12);
-  font-weight: 700;
+  background: rgba(116, 81, 244, 0.08);
+  font-weight: 600;
   color: var(--primary-strong);
-  padding: 6px 10px;
+  padding: 8px 12px;
   cursor: pointer;
   user-select: none;
+  border-color: #e4e4de;
 }
 
 .vac-detailed-dept-chevron {
@@ -4561,27 +4708,13 @@ a {
 .sw-approved { background: var(--vac-approved); }
 .sw-pending { background: var(--vac-pending); }
 
+.shell-main:has(.vac-manager-layout--employee) .topbar h1 {
+  font-size: 1rem;
+}
+
 /* ——— График отпусков сотрудника: весь год на первом экране ——— */
 .app-shell:has(.vac-emp-page--fit) {
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.shell-main:has(.vac-emp-page--fit) {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.shell-main:has(.vac-emp-page--fit) .topbar {
-  padding: 10px 16px;
-  position: static;
-  top: auto;
-  flex-shrink: 0;
+  min-height: 100dvh;
 }
 
 .shell-main:has(.vac-emp-page--fit) .topbar h1 {
@@ -4592,7 +4725,6 @@ a {
   padding: 12px 16px 14px;
   overflow: visible;
   min-height: 0;
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;

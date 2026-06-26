@@ -1,13 +1,13 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
-    <div class="timeline-scroll-x vac-detailed-scroll">
+    <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
       <table ref="tableRef" class="vac-detailed-timeline" :style="nameColCssVars">
         <thead>
           <tr class="vac-detailed-head-month">
-            <th class="sticky-col-name sticky-col-name--head" rowspan="3">
+            <th class="sticky-col-name sticky-col-name--head">
               <span class="vac-employee-head-label">Сотрудник</span>
             </th>
-            <th class="sticky-col-balance" rowspan="3">
+            <th class="sticky-col-balance sticky-col-balance--head">
               <span class="vac-balance-head-label">Остаток</span>
             </th>
             <th
@@ -20,6 +20,8 @@
             </th>
           </tr>
           <tr class="vac-detailed-head-days">
+            <th class="sticky-col-name sticky-col-name--head-spacer" aria-hidden="true" />
+            <th class="sticky-col-balance sticky-col-balance--head-spacer" aria-hidden="true" />
             <th
               v-for="cell in yearDays"
               :key="`d-${cell.iso}`"
@@ -29,6 +31,8 @@
             </th>
           </tr>
           <tr class="vac-detailed-head-weekdays">
+            <th class="sticky-col-name sticky-col-name--head-spacer" aria-hidden="true" />
+            <th class="sticky-col-balance sticky-col-balance--head-spacer" aria-hidden="true" />
             <th
               v-for="cell in yearDays"
               :key="`w-${cell.iso}`"
@@ -129,6 +133,14 @@ const measureNameColumn = () => {
   const cell = tableRef.value?.querySelector('tbody .sticky-col-name') as HTMLElement | null;
   if (cell) {
     nameColWidthPx.value = cell.offsetWidth;
+  }
+  const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
+  const rowDays = tableRef.value?.querySelector('.vac-detailed-head-days') as HTMLElement | null;
+  if (rowMonth && tableRef.value) {
+    tableRef.value.style.setProperty('--vac-detailed-head-r1', `${rowMonth.offsetHeight}px`);
+  }
+  if (rowDays && tableRef.value) {
+    tableRef.value.style.setProperty('--vac-detailed-head-r2', `${rowDays.offsetHeight}px`);
   }
 };
 
@@ -301,7 +313,20 @@ const scheduleScrollToToday = () => {
   });
 };
 
-onMounted(scheduleScrollToToday);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  scheduleScrollToToday();
+  if (typeof ResizeObserver !== 'undefined' && scrollWrapRef.value) {
+    resizeObserver = new ResizeObserver(() => measureNameColumn());
+    resizeObserver.observe(scrollWrapRef.value);
+  }
+});
+
+onUnmounted(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
 
 watch(
   () => props.year,

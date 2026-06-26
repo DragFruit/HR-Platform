@@ -77,7 +77,7 @@ export function buildPlacedItems(executiveId: string, units: OrgUnit[], groups: 
 
   for (const group of execGroups) {
     const gUnits = execUnits.filter((u) => u.groupId === group.id).sort((a, b) => a.order - b.order);
-    if (gUnits.length) items.push({ kind: 'group', group, units: gUnits });
+    items.push({ kind: 'group', group, units: gUnits });
   }
 
   const solo = execUnits
@@ -364,12 +364,13 @@ export function useOrgStructure() {
     persist();
   };
 
-  const addUnit = (executiveId?: string) => {
+  const addUnit = (executiveId?: string, groupId?: string | null) => {
     const execId = executiveId ?? orgExecutives.value[0]?.id;
     if (!execId) return;
 
+    const inGroup = groupId ?? null;
     const order = Math.max(...orgUnits.value.filter((u) => u.executiveId === execId).map((u) => u.order), 0) + 10;
-    const { x, y } = findFreePosition(execId);
+    const pos = inGroup ? { x: 0, y: 0 } : findFreePosition(execId);
     orgUnits.value.push({
       id: nextId('u'),
       executiveId: execId,
@@ -377,9 +378,9 @@ export function useOrgStructure() {
       head: '',
       order,
       stackId: null,
-      groupId: null,
-      x,
-      y,
+      groupId: inGroup,
+      x: pos.x,
+      y: pos.y,
       employees: 0,
       members: []
     });
@@ -387,7 +388,8 @@ export function useOrgStructure() {
   };
 
   const addGroup = (executiveId?: string) => {
-    const execId = executiveId ?? 'exe-ceo';
+    const execId = executiveId ?? orgExecutives.value[0]?.id;
+    if (!execId) return;
     const order = Math.max(...orgGroups.value.filter((g) => g.executiveId === execId).map((g) => g.order), 0) + 10;
     const { x, y } = findFreePosition(execId);
     const groupId = nextId('grp');
@@ -405,7 +407,6 @@ export function useOrgStructure() {
   };
 
   const removeExecutive = (id: string) => {
-    if (orgExecutives.value.length <= 1) return;
     orgExecutives.value = orgExecutives.value.filter((e) => e.id !== id);
     orgUnits.value = orgUnits.value.filter((u) => u.executiveId !== id);
     orgGroups.value = orgGroups.value.filter((g) => g.executiveId !== id);

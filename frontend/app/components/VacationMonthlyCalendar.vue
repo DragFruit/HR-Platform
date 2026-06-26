@@ -1,6 +1,6 @@
 <template>
   <div class="vacation-calendar-wrap">
-    <div class="timeline-scroll-x">
+    <div class="timeline-scroll-x vac-table-scroll">
       <table class="vacation-timeline">
         <thead>
           <tr>

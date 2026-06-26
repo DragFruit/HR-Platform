@@ -44,7 +44,6 @@
             <VacationTeamCalendar
               v-if="activeTab === 'calendar'"
               :departments="calendarDepartments"
-              :year="viewYear"
               :requests="yearRequests"
               :get-month-entries="getMonthEntries"
             />

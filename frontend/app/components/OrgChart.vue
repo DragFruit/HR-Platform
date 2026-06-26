@@ -31,11 +31,11 @@
             class-name="org-exec-person"
           />
           <button
-            v-if="!readonly && executivesSorted.length > 1"
+            v-if="!readonly"
             type="button"
             class="org-remove-btn"
             title="Удалить директора"
-            @click="removeExecutive(exec.id)"
+            @click.stop="requestRemoveExecutive(exec)"
           >
             ×
           </button>
@@ -106,6 +106,14 @@
                   class-name="org-group-label-text"
                 />
               </p>
+              <button
+                v-if="!readonly"
+                type="button"
+                class="org-group-add-unit"
+                @click.stop="addUnit(item.group.executiveId, item.group.id)"
+              >
+                + Отдел в группу
+              </button>
               <div
                 v-if="!readonly"
                 class="org-resize-handle"
@@ -135,7 +143,8 @@ import { ORG_CANVAS_EXEC_OFFSET } from '~/composables/useOrgStructure';
 
 type ConfirmTarget =
   | { type: 'unit'; id: string; label: string }
-  | { type: 'group'; id: string; label: string; unitsCount: number };
+  | { type: 'group'; id: string; label: string; unitsCount: number }
+  | { type: 'executive'; id: string; label: string; unitsCount: number; groupsCount: number };
 
 type DragState = {
   kind: 'unit' | 'group' | 'executive';
@@ -163,6 +172,8 @@ const readonly = computed(() => props.readonly ?? false);
 const {
   executivesSorted,
   placedByExecutive,
+  orgUnits,
+  orgGroups,
   setUnitPosition,
   setGroupPosition,
   setGroupSize,
@@ -170,6 +181,7 @@ const {
   removeExecutive,
   removeUnit,
   removeGroup,
+  addUnit,
   globalCanvasMinHeight
 } = useOrgStructure();
 
@@ -261,7 +273,7 @@ const isInteractiveTarget = (target: EventTarget | null) =>
   Boolean(
     target &&
       (target as HTMLElement).closest(
-        '.org-remove-btn, .inline-edit-input, .editable-line, .org-resize-handle'
+        '.org-remove-btn, .org-group-add-unit, .inline-edit-input, .editable-line, .org-resize-handle'
       )
   );
 
@@ -432,6 +444,14 @@ const confirmMessage = computed(() => {
   const target = confirmTarget.value;
   if (!target) return '';
 
+  if (target.type === 'executive') {
+    const parts: string[] = [];
+    if (target.unitsCount > 0) parts.push(`${target.unitsCount} отд.`);
+    if (target.groupsCount > 0) parts.push(`${target.groupsCount} групп`);
+    const extra = parts.length ? ` Удалятся также: ${parts.join(', ')}.` : '';
+    return `Удалить «${target.label}»?${extra} Это действие нельзя отменить.`;
+  }
+
   if (target.type === 'unit') {
     return `Удалить отдел «${target.label}»? Это действие нельзя отменить.`;
   }
@@ -451,6 +471,19 @@ const requestRemoveUnit = (unit: OrgUnit) => {
   };
 };
 
+const requestRemoveExecutive = (exec: OrgExecutive) => {
+  const unitsCount = orgUnits.value.filter((u) => u.executiveId === exec.id).length;
+  const groupsCount = orgGroups.value.filter((g) => g.executiveId === exec.id).length;
+  const label = [exec.title.trim(), exec.person.trim()].filter(Boolean).join(' — ') || 'Директор';
+  confirmTarget.value = {
+    type: 'executive',
+    id: exec.id,
+    label,
+    unitsCount,
+    groupsCount
+  };
+};
+
 const requestRemoveGroup = (group: OrgUnitGroup, unitsCount: number) => {
   confirmTarget.value = {
     type: 'group',
@@ -464,7 +497,9 @@ const onConfirmDelete = () => {
   const target = confirmTarget.value;
   if (!target) return;
 
-  if (target.type === 'unit') {
+  if (target.type === 'executive') {
+    removeExecutive(target.id);
+  } else if (target.type === 'unit') {
     removeUnit(target.id);
   } else {
     removeGroup(target.id);

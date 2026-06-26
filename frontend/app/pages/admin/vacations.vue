@@ -1,22 +1,7 @@
 <template>
   <section class="card section-card">
-    <div class="section-head row">
-      <div>
-        <h2 class="section-title">График отпусков (HR)</h2>
-        <p class="muted">Полный календарь команды и очередь согласования. Данные сотрудников — в разделе «Сотрудники».</p>
-      </div>
-      <select v-model.number="viewYear" class="table-input year-select">
-        <option :value="2025">2025</option>
-        <option :value="2026">2026</option>
-        <option :value="2027">2027</option>
-      </select>
-    </div>
-  </section>
-
-  <section class="card section-card">
     <VacationTeamCalendar
       :departments="departmentsGrouped"
-      :year="viewYear"
       :requests="yearRequests"
       :get-month-entries="getMonthEntries"
     />
