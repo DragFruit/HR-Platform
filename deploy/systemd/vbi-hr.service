@@ -5,13 +5,13 @@ After=network.target
 [Service]
 Type=simple
 User=deploy
-Group=www-data
+Group=deploy
 WorkingDirectory=/var/www/vbi-hr
-EnvironmentFile=-/var/www/vbi-hr/bitrix.env
-EnvironmentFile=-/etc/vbi-hr/bitrix.env
+EnvironmentFile=-/var/www/vbi-hr/.env
+EnvironmentFile=-/etc/vbi-hr/bitrix-production.env
 Environment=NITRO_HOST=127.0.0.1
 Environment=NITRO_PORT=3300
-ExecStart=/usr/bin/node /var/www/vbi-hr/.output/server/index.mjs
+ExecStart=/var/www/vbi-hr/run.sh
 Restart=on-failure
 RestartSec=5
 

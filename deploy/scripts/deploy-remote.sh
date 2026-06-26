@@ -50,14 +50,24 @@ echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output'"
 RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az --delete "${OUTPUT_DIR}/" "${REMOTE}:${DEPLOY_PATH}/.output/"
 
-if "${SSH_CMD[@]}" "${REMOTE}" "test -r /etc/vbi-hr/bitrix.env"; then
-  echo "→ копирование /etc/vbi-hr/bitrix.env → ${DEPLOY_PATH}/.env"
-  "${SSH_CMD[@]}" "${REMOTE}" "cp /etc/vbi-hr/bitrix.env '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
+case "$ENV" in
+  staging)
+    BITRIX_ENV_SRC="${BITRIX_ENV_STAGING:-/etc/vbi-hr/bitrix.env}"
+    RUN_SCRIPT="${ROOT}/deploy/scripts/run-staging.sh"
+    ;;
+  production)
+    BITRIX_ENV_SRC="${BITRIX_ENV_PRODUCTION:-/etc/vbi-hr/bitrix-production.env}"
+    RUN_SCRIPT="${ROOT}/deploy/scripts/run-production.sh"
+    ;;
+esac
+
+if "${SSH_CMD[@]}" "${REMOTE}" "test -r '${BITRIX_ENV_SRC}'"; then
+  echo "→ копирование ${BITRIX_ENV_SRC} → ${DEPLOY_PATH}/.env"
+  "${SSH_CMD[@]}" "${REMOTE}" "cp '${BITRIX_ENV_SRC}' '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
 fi
 
-RUN_SCRIPT="${ROOT}/deploy/scripts/run-staging.sh"
-if [[ "$ENV" == "staging" && -f "${RUN_SCRIPT}" ]]; then
-  echo "→ установка run-staging.sh"
+if [[ -f "${RUN_SCRIPT}" ]]; then
+  echo "→ установка $(basename "${RUN_SCRIPT}")"
   SCP_CMD=(scp -o IdentitiesOnly=yes)
   if [[ -n "${DEPLOY_SSH_KEY:-}" && -f "${DEPLOY_SSH_KEY}" ]]; then
     SCP_CMD=(scp -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes)

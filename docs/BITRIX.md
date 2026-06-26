@@ -82,11 +82,17 @@ BITRIX_REDIRECT_URI=http://localhost:3000/api/auth/bitrix/callback
 
 ### Бой на VPS
 
-Ключи из **prod-приложения** — в `/etc/vbi-hr/bitrix.env`:
+Файл `/etc/vbi-hr/bitrix-production.env`, ключи из приложения **«VBI HR Platform»** (не dev):
 
 ```bash
 BITRIX_REDIRECT_URI=http://45.12.74.25/api/auth/bitrix/callback
+APP_PUBLIC_URL=http://45.12.74.25
 ```
+
+В Битриксе у prod-приложения **обработчик** — тот же URL.  
+Деплой: ветка `main` → job `deploy:production` (или `bash deploy/scripts/deploy-remote.sh production`).
+
+Проверка: http://45.12.74.25 → «Войти через Битрикс24»; `GET /api/auth/config` → `bitrixAuthEnabled: true`.
 
 ---
 
