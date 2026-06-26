@@ -135,9 +135,18 @@ export type BitrixSyncResult = {
   created: number;
   updated: number;
   keptManual: number;
+  keptRosterOnly: number;
 };
 
-export async function syncEmployeesFromBitrix(accessToken?: string): Promise<BitrixSyncResult> {
+export type BitrixSyncOptions = {
+  /** Добавлять новых людей из Bitrix, которых нет в справочнике (ручной импорт). */
+  importNew?: boolean;
+};
+
+export async function syncEmployeesFromBitrix(
+  accessToken?: string,
+  options: BitrixSyncOptions = {}
+): Promise<BitrixSyncResult> {
   const [users, departments, existing] = await Promise.all([
     bitrixFetchAll<BitrixUserRow>(
       'user.get',
@@ -177,45 +186,53 @@ export async function syncEmployeesFromBitrix(accessToken?: string): Promise<Bit
     if (bitrixId) existingByBitrixId.set(bitrixId, row);
   });
 
+  const importNew = options.importNew ?? existing.length === 0;
+
   let created = 0;
   let updated = 0;
-  const synced: ServerEmployee[] = users
-    .map((user) => {
-      const bitrixId = toNumberId(user.ID);
-      if (!bitrixId) return null;
+  const synced: ServerEmployee[] = [];
+  for (const user of users) {
+    const bitrixId = toNumberId(user.ID);
+    if (!bitrixId) continue;
 
-      const deptId = primaryDepartmentId(user);
-      const department = deptId ? deptNames.get(deptId) || '' : '';
-      const headId = deptId ? deptHeads.get(deptId) : null;
-      const manager = headId ? userNames.get(headId) || '' : '';
-      const prev = existingByBitrixId.get(bitrixId);
-      if (prev) updated += 1;
-      else created += 1;
+    const prev = existingByBitrixId.get(bitrixId);
+    if (!prev && !importNew) continue;
 
-      return {
-        id: bitrixId,
-        bitrix_user_id: bitrixId,
-        name: formatBitrixUserName(user) || prev?.name || `Сотрудник ${bitrixId}`,
-        title: String(user.WORK_POSITION || '').trim() || prev?.title || '',
-        department: department || prev?.department || '',
-        manager: manager || prev?.manager || '',
-        hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || prev?.hired_at || new Date().toISOString().slice(0, 10),
-        platform_user_id: bitrixId,
-        email: String(user.EMAIL || '').trim().toLowerCase() || prev?.email || '',
-        account_role: prev?.account_role ?? ''
-      } satisfies ServerEmployee;
-    })
-    .filter((row): row is ServerEmployee => row !== null);
+    const deptId = primaryDepartmentId(user);
+    const department = deptId ? deptNames.get(deptId) || '' : '';
+    const headId = deptId ? deptHeads.get(deptId) : null;
+    const manager = headId ? userNames.get(headId) || '' : '';
+    if (prev) updated += 1;
+    else created += 1;
 
+    synced.push({
+      id: bitrixId,
+      bitrix_user_id: bitrixId,
+      name: formatBitrixUserName(user) || prev?.name || `Сотрудник ${bitrixId}`,
+      title: String(user.WORK_POSITION || '').trim() || prev?.title || '',
+      department: department || prev?.department || '',
+      manager: manager || prev?.manager || '',
+      hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || prev?.hired_at || new Date().toISOString().slice(0, 10),
+      platform_user_id: bitrixId,
+      email: String(user.EMAIL || '').trim().toLowerCase() || prev?.email || '',
+      account_role: prev?.account_role ?? ''
+    });
+  }
+
+  const syncedIds = new Set(synced.map((row) => row.bitrix_user_id).filter((id): id is number => id != null));
+  const keptRosterOnly = existing.filter(
+    (row) => row.bitrix_user_id && !syncedIds.has(row.bitrix_user_id)
+  );
   const manualOnly = existing.filter((row) => !row.bitrix_user_id);
 
-  await writeEmployees([...synced, ...manualOnly]);
+  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly]);
 
   return {
-    total: synced.length,
+    total: synced.length + keptRosterOnly.length + manualOnly.length,
     created,
     updated,
-    keptManual: manualOnly.length
+    keptManual: manualOnly.length,
+    keptRosterOnly: keptRosterOnly.length
   };
 }
 

@@ -12,6 +12,6 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const result = await syncEmployeesFromBitrix();
+  const result = await syncEmployeesFromBitrix(undefined, { importNew: true });
   return { ok: true, ...result };
 });

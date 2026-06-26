@@ -73,7 +73,7 @@ import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
 
-const { departmentsGrouped, findByName, hydrate: hydrateEmployees } = useEmployees();
+const { departmentsGrouped, findByName, reloadFromServer: reloadEmployees } = useEmployees();
 const { canSeeAllVacationApprovals } = usePermissions();
 const {
   viewYear,
@@ -115,7 +115,7 @@ const advanceAssessment = (req: VacationRequest) =>
   );
 
 onMounted(() => {
-  hydrateEmployees();
+  reloadEmployees();
   hydrateVacations();
 });
 </script>

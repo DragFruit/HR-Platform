@@ -27,16 +27,42 @@ async function ensureFile() {
   }
 }
 
+export function dedupeEmployees(list: ServerEmployee[]): ServerEmployee[] {
+  const seenBitrix = new Set<number>();
+  const seenEmail = new Set<string>();
+  const result: ServerEmployee[] = [];
+
+  for (const row of list) {
+    const bitrixId = row.bitrix_user_id ?? (row.platform_user_id && row.id === row.platform_user_id ? row.id : null);
+    if (bitrixId) {
+      const id = Number(bitrixId);
+      if (seenBitrix.has(id)) continue;
+      seenBitrix.add(id);
+      result.push(row);
+      continue;
+    }
+    const email = String(row.email || '').trim().toLowerCase();
+    if (email) {
+      if (seenEmail.has(email)) continue;
+      seenEmail.add(email);
+    }
+    result.push(row);
+  }
+
+  return result;
+}
+
 export async function readEmployees(): Promise<ServerEmployee[]> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return JSON.parse(raw) as ServerEmployee[];
+  return dedupeEmployees(JSON.parse(raw) as ServerEmployee[]);
 }
 
 export async function writeEmployees(list: ServerEmployee[]): Promise<ServerEmployee[]> {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(list, null, 2), 'utf8');
-  return list;
+  const normalized = dedupeEmployees(list);
+  await writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+  return normalized;
 }
 
 export async function findEmployeeByPlatformUserId(userId: number): Promise<ServerEmployee | null> {

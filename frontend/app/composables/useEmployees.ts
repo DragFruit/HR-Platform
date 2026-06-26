@@ -170,6 +170,12 @@ export function useEmployees() {
     hydrated.value = true;
   };
 
+  const reloadFromServer = async () => {
+    if (!import.meta.client) return;
+    hydrated.value = false;
+    await hydrate();
+  };
+
   const departmentsGrouped = computed<EmployeeDepartment[]>(() => {
     const map = new Map<string, Employee[]>();
     employees.value.forEach((emp) => {
@@ -356,6 +362,7 @@ export function useEmployees() {
     employeeCount,
     linkedCount,
     hydrate,
+    reloadFromServer,
     persist,
     updateEmployee,
     linkEmployeeToAccount,

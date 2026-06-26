@@ -118,7 +118,7 @@ import { assessVacationBalance } from '~/utils/vacationBalance';
 const { user, authReady } = useAuth();
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { isAdmin: isAdminShell } = usePlatformContext();
-const { departmentsGrouped, directReportsForAuthUser, managerProfileName, findByName, hydrate: hydrateEmployees } =
+const { departmentsGrouped, directReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
   viewYear,
@@ -268,7 +268,7 @@ const onViewYearChange = (year: number) => {
 };
 
 onMounted(() => {
-  hydrateEmployees();
+  reloadEmployees();
   hydrateVacations();
 });
 </script>
