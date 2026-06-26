@@ -8,7 +8,45 @@ OAuth-вход и синхронизация сотрудников из **Ст�
 
 ## 1. OAuth — локальное приложение (для входа)
 
-Нужно **один раз** создать приложение, чтобы работала кнопка «Войти через Битрикс24».
+Нужно создать приложение в Битриксе **для каждого стенда** — отдельно локальная разработка и отдельно бой на сервере.
+
+### Два приложения (рекомендуется)
+
+| Стенд | Где крутится HR | Название в Битриксе | **Путь вашего обработчика** |
+|-------|-----------------|---------------------|-------------------------------|
+| **Тест (локально)** | Mac, `npm run dev` | `VBI HR Platform (dev)` | `http://localhost:3000/api/auth/bitrix/callback` |
+| **Бой (сервер)** | VPS, порт 80 | `VBI HR Platform` | `http://45.12.74.25/api/auth/bitrix/callback` |
+
+Поле **«Путь вашего обработчика»** — это **Redirect URI** для OAuth. Вписывайте URL **точно**, без слэша в конце.
+
+**«Путь для первоначальной установки»** — можно оставить пустым (для входа через OAuth он не нужен).
+
+Если `npm run dev` слушает другой порт — подставьте его в URL (например `http://localhost:3001/...`).
+
+> **Коробка и localhost:** Битрикс должен принять `localhost` в redirect URI. Если при входе ошибка `redirect_uri_mismatch` — уточните у админа портала или используйте туннель (ngrok) и укажите его URL вместо localhost.
+
+### Локальный `.env` (Mac)
+
+Файл `frontend/.env` (не в git), ключи из **dev-приложения**:
+
+```bash
+BITRIX_PORTAL_URL=https://crm.vbi.ru
+BITRIX_CLIENT_ID=local.XXXXXXXX   # из VBI HR Platform (dev)
+BITRIX_CLIENT_SECRET=XXXXXXXX
+BITRIX_REDIRECT_URI=http://localhost:3000/api/auth/bitrix/callback
+```
+
+Запуск: `cd frontend && npm run dev` → http://localhost:3000 → «Войти через Битрикс24».
+
+### Бой на VPS
+
+Ключи из **prod-приложения** — в `/etc/vbi-hr/bitrix.env`:
+
+```bash
+BITRIX_REDIRECT_URI=http://45.12.74.25/api/auth/bitrix/callback
+```
+
+---
 
 ### Шаг 1. Открыть раздел
 
@@ -26,16 +64,9 @@ OAuth-вход и синхронизация сотрудников из **Ст�
 | Название | `VBI HR Platform` |
 | Код (если есть) | `vbi_hr_platform` |
 | Тип | **Серверное** (не «Встраиваемое», если есть выбор) |
-| **Путь вашего обработчика / Redirect URI** | см. ниже |
+| **Путь вашего обработчика** | см. таблицу выше (dev или prod) |
 
-**Redirect URI** — скопируйте **точно**, без лишнего слэша в конце:
-
-| Стенд | Redirect URI |
-|-------|----------------|
-| Staging (тест) | `http://45.12.74.25:8080/api/auth/bitrix/callback` |
-| Production (бой) | `https://ваш-домен/api/auth/bitrix/callback` |
-
-Можно указать **оба** URI в одном приложении, если форма позволяет несколько строк.
+**Redirect URI** — один на приложение; для второго стенда создайте **второе** локальное приложение.
 
 ### Шаг 3. Права (scope)
 
@@ -60,7 +91,7 @@ OAuth-вход и синхронизация сотрудников из **Ст�
 В браузере откройте (подставьте свой Client ID):
 
 ```
-https://crm.vbi.ru/oauth/authorize/?client_id=ВАШ_CLIENT_ID&response_type=code&redirect_uri=http://45.12.74.25:8080/api/auth/bitrix/callback
+https://crm.vbi.ru/oauth/authorize/?client_id=ВАШ_CLIENT_ID&response_type=code&redirect_uri=http://localhost:3000/api/auth/bitrix/callback
 ```
 
 Если вы уже залогинены в Битрикс — должны перекинуть на HR-сайт с `?code=...` в URL (потом будет ошибка без env на сервере — это нормально на этом этапе).

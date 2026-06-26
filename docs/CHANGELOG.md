@@ -4,6 +4,11 @@
 
 ## 2026-06-25
 
+### Bitrix: отдельные OAuth-приложения для local и prod
+
+- Документация: dev → `http://localhost:3000/api/auth/bitrix/callback`, prod → `http://45.12.74.25/api/auth/bitrix/callback`.
+- См. [docs/BITRIX.md](BITRIX.md).
+
 ### Auth: бой и тест не пересекаются при входе/выходе
 
 - OAuth callback редиректит на origin **текущего** запроса (`:8080` — тест, `:80` — бой).
