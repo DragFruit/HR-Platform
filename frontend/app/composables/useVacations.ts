@@ -10,13 +10,13 @@ export type VacationRequest = {
   createdAt: string;
 };
 
-type VacationState = {
+export type VacationState = {
   primaryYear: number;
   requestsByYear: Record<string, VacationRequest[]>;
   nextRequestId: number;
 };
 
-const STORAGE_KEY = 'vbi-vacations-state-v3';
+const STORAGE_KEY = 'vbi-vacations-state-v4';
 
 const defaultState = (): VacationState => ({
   primaryYear: new Date().getFullYear(),
@@ -74,6 +74,27 @@ export function useVacations() {
   const persist = () => {
     if (!import.meta.client) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
+    syncToServer();
+  };
+
+  const syncToServer = async () => {
+    if (!import.meta.client) return;
+    try {
+      const saved = await $fetch<VacationState>('/api/vacations', {
+        method: 'PUT',
+        body: state.value
+      });
+      state.value = saved;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
+    } catch {
+      /* нет прав или офлайн */
+    }
+  };
+
+  const applyVacationState = (next: VacationState) => {
+    state.value = next;
+    if (!import.meta.client) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
   };
 
   const syncViewYearToData = () => {
@@ -93,26 +114,46 @@ export function useVacations() {
     }
   };
 
-  const hydrate = () => {
+  const hydrate = async () => {
     if (!import.meta.client) return;
     if (hydrated.value) {
       syncViewYearToData();
       return;
     }
 
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        state.value = JSON.parse(raw) as VacationState;
-      } catch {
+    let loaded = false;
+    try {
+      const fromServer = await $fetch<VacationState>('/api/vacations');
+      if (fromServer && typeof fromServer === 'object') {
+        applyVacationState(fromServer);
+        loaded = true;
+      }
+    } catch {
+      /* нет сессии */
+    }
+
+    if (!loaded) {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          applyVacationState(JSON.parse(raw) as VacationState);
+        } catch {
+          state.value = defaultState();
+        }
+      } else {
         state.value = defaultState();
       }
-    } else {
-      state.value = defaultState();
+      if (Object.keys(state.value.requestsByYear).length) syncToServer();
     }
 
     syncViewYearToData();
     hydrated.value = true;
+  };
+
+  const reloadFromServer = async () => {
+    if (!import.meta.client) return;
+    hydrated.value = false;
+    await hydrate();
   };
 
   const requestsForYear = (year = viewYear.value) =>
@@ -216,6 +257,7 @@ export function useVacations() {
     pendingRequests,
     pendingRequestsForApprover,
     hydrate,
+    reloadFromServer,
     persist,
     requestsForYear,
     addRequest,

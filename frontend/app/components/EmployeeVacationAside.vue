@@ -172,8 +172,17 @@ const myRequests = computed(() => {
   );
 });
 
+const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
+
 const balance = computed(() =>
-  calcEmployeeBalance(employeeName.value, hireIso.value, yearRequests.value, new Date(), props.viewYear)
+  calcEmployeeBalance(
+    employeeName.value,
+    hireIso.value,
+    yearRequests.value,
+    new Date(),
+    props.viewYear,
+    openingBalance.value
+  )
 );
 
 const statusLabel = (status: VacationStatus) => vacationStatusLabels[status];
@@ -195,7 +204,8 @@ const requestAdvance = (req: VacationRequest) =>
     req.end,
     yearRequests.value,
     state.value.primaryYear,
-    req.id
+    req.id,
+    openingBalance.value
   );
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>

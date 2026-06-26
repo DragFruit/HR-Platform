@@ -9,7 +9,8 @@
     "platform_user_id": 578,
     "email": "ast@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 578
+    "bitrix_user_id": 578,
+    "vacation_opening_balance": 40.6
   },
   {
     "id": 662,
@@ -21,7 +22,8 @@
     "platform_user_id": 662,
     "email": "vlad@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 662
+    "bitrix_user_id": 662,
+    "vacation_opening_balance": 242.9
   },
   {
     "id": 810,
@@ -33,7 +35,8 @@
     "platform_user_id": 810,
     "email": "malinovskaya@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 810
+    "bitrix_user_id": 810,
+    "vacation_opening_balance": 144.9
   },
   {
     "id": 848,
@@ -45,7 +48,8 @@
     "platform_user_id": 848,
     "email": "k.revzina@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 848
+    "bitrix_user_id": 848,
+    "vacation_opening_balance": 65.3
   },
   {
     "id": 896,
@@ -57,7 +61,8 @@
     "platform_user_id": 896,
     "email": "baranova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 896
+    "bitrix_user_id": 896,
+    "vacation_opening_balance": 44.9
   },
   {
     "id": 1284,
@@ -69,7 +74,8 @@
     "platform_user_id": 1284,
     "email": "y.zhukova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 1284
+    "bitrix_user_id": 1284,
+    "vacation_opening_balance": 48.0
   },
   {
     "id": 1300,
@@ -81,7 +87,8 @@
     "platform_user_id": 1300,
     "email": "marketing@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 1300
+    "bitrix_user_id": 1300,
+    "vacation_opening_balance": 34.6
   },
   {
     "id": 2094,
@@ -93,7 +100,8 @@
     "platform_user_id": 2094,
     "email": "v.tshay@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2094
+    "bitrix_user_id": 2094,
+    "vacation_opening_balance": 53.6
   },
   {
     "id": 2121,
@@ -105,7 +113,8 @@
     "platform_user_id": 2121,
     "email": "a.shelobodkina@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2121
+    "bitrix_user_id": 2121,
+    "vacation_opening_balance": 58.7
   },
   {
     "id": 2216,
@@ -117,7 +126,8 @@
     "platform_user_id": 2216,
     "email": "khakimov.o@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2216
+    "bitrix_user_id": 2216,
+    "vacation_opening_balance": 42.3
   },
   {
     "id": 2240,
@@ -129,7 +139,8 @@
     "platform_user_id": 2240,
     "email": "a.pinarin@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2240
+    "bitrix_user_id": 2240,
+    "vacation_opening_balance": 97.2
   },
   {
     "id": 2253,
@@ -141,7 +152,8 @@
     "platform_user_id": 2253,
     "email": "e.suhova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2253
+    "bitrix_user_id": 2253,
+    "vacation_opening_balance": 43.2
   },
   {
     "id": 2293,
@@ -153,7 +165,8 @@
     "platform_user_id": 2293,
     "email": "a.golub@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2293
+    "bitrix_user_id": 2293,
+    "vacation_opening_balance": 30.3
   },
   {
     "id": 2295,
@@ -165,7 +178,8 @@
     "platform_user_id": 2295,
     "email": "lav@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2295
+    "bitrix_user_id": 2295,
+    "vacation_opening_balance": 59.0
   },
   {
     "id": 2305,
@@ -177,7 +191,8 @@
     "platform_user_id": 2305,
     "email": "v.kuharev@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2305
+    "bitrix_user_id": 2305,
+    "vacation_opening_balance": 70.3
   },
   {
     "id": 2319,
@@ -201,7 +216,8 @@
     "platform_user_id": 2353,
     "email": "sm@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2353
+    "bitrix_user_id": 2353,
+    "vacation_opening_balance": 47.6
   },
   {
     "id": 2382,
@@ -213,7 +229,8 @@
     "platform_user_id": 2382,
     "email": "top@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2382
+    "bitrix_user_id": 2382,
+    "vacation_opening_balance": 57.6
   },
   {
     "id": 2417,
@@ -225,7 +242,8 @@
     "platform_user_id": 2417,
     "email": "moschev@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2417
+    "bitrix_user_id": 2417,
+    "vacation_opening_balance": 15.9
   },
   {
     "id": 2503,
@@ -237,7 +255,8 @@
     "platform_user_id": 2503,
     "email": "grosheva@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2503
+    "bitrix_user_id": 2503,
+    "vacation_opening_balance": 44.0
   },
   {
     "id": 2504,
@@ -249,7 +268,8 @@
     "platform_user_id": 2504,
     "email": "gromov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2504
+    "bitrix_user_id": 2504,
+    "vacation_opening_balance": 81.0
   },
   {
     "id": 2524,
@@ -261,7 +281,8 @@
     "platform_user_id": 2524,
     "email": "m.skvorcov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2524
+    "bitrix_user_id": 2524,
+    "vacation_opening_balance": 21.0
   },
   {
     "id": 2533,
@@ -273,7 +294,8 @@
     "platform_user_id": 2533,
     "email": "lunin@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2533
+    "bitrix_user_id": 2533,
+    "vacation_opening_balance": 14.6
   },
   {
     "id": 2556,
@@ -285,7 +307,8 @@
     "platform_user_id": 2556,
     "email": "novotorceva@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2556
+    "bitrix_user_id": 2556,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2574,
@@ -297,7 +320,8 @@
     "platform_user_id": 2574,
     "email": "malenkova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2574
+    "bitrix_user_id": 2574,
+    "vacation_opening_balance": 15.6
   },
   {
     "id": 2579,
@@ -309,7 +333,8 @@
     "platform_user_id": 2579,
     "email": "zhaanastasia@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2579
+    "bitrix_user_id": 2579,
+    "vacation_opening_balance": 16.0
   },
   {
     "id": 2623,
@@ -321,7 +346,8 @@
     "platform_user_id": 2623,
     "email": "bju@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2623
+    "bitrix_user_id": 2623,
+    "vacation_opening_balance": 30.3
   },
   {
     "id": 2637,
@@ -333,7 +359,8 @@
     "platform_user_id": 2637,
     "email": "trifonov-n@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2637
+    "bitrix_user_id": 2637,
+    "vacation_opening_balance": 15.3
   },
   {
     "id": 2641,
@@ -345,7 +372,8 @@
     "platform_user_id": 2641,
     "email": "bulatnikova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2641
+    "bitrix_user_id": 2641,
+    "vacation_opening_balance": 18.6
   },
   {
     "id": 2663,
@@ -357,7 +385,8 @@
     "platform_user_id": 2663,
     "email": "goncharov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2663
+    "bitrix_user_id": 2663,
+    "vacation_opening_balance": 28.0
   },
   {
     "id": 2667,
@@ -369,7 +398,8 @@
     "platform_user_id": 2667,
     "email": "work.daniil.l@yandex.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2667
+    "bitrix_user_id": 2667,
+    "vacation_opening_balance": 28.0
   },
   {
     "id": 2673,
@@ -381,7 +411,8 @@
     "platform_user_id": 2673,
     "email": "noskov@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2673
+    "bitrix_user_id": 2673,
+    "vacation_opening_balance": 17.6
   },
   {
     "id": 2680,
@@ -405,7 +436,8 @@
     "platform_user_id": 2684,
     "email": "drago-hr@vbi.ru",
     "account_role": "admin",
-    "bitrix_user_id": 2684
+    "bitrix_user_id": 2684,
+    "vacation_opening_balance": 19.6
   },
   {
     "id": 2690,
@@ -429,7 +461,8 @@
     "platform_user_id": 2697,
     "email": "nizhegorodtsev@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2697
+    "bitrix_user_id": 2697,
+    "vacation_opening_balance": 9.9
   },
   {
     "id": 2700,
@@ -441,7 +474,8 @@
     "platform_user_id": 2700,
     "email": "v.pavlov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2700
+    "bitrix_user_id": 2700,
+    "vacation_opening_balance": 14.0
   },
   {
     "id": 2707,
@@ -453,7 +487,8 @@
     "platform_user_id": 2707,
     "email": "barmons@yandex.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2707
+    "bitrix_user_id": 2707,
+    "vacation_opening_balance": 28.0
   },
   {
     "id": 2708,
@@ -465,7 +500,8 @@
     "platform_user_id": 2708,
     "email": "mironchikov777@gmail.com",
     "account_role": "employee",
-    "bitrix_user_id": 2708
+    "bitrix_user_id": 2708,
+    "vacation_opening_balance": 32.3
   },
   {
     "id": 2724,
@@ -477,7 +513,8 @@
     "platform_user_id": 2724,
     "email": "aleksandrova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2724
+    "bitrix_user_id": 2724,
+    "vacation_opening_balance": 9.3
   },
   {
     "id": 2726,
@@ -489,7 +526,8 @@
     "platform_user_id": 2726,
     "email": "sedova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2726
+    "bitrix_user_id": 2726,
+    "vacation_opening_balance": 11.9
   },
   {
     "id": 2730,
@@ -501,7 +539,8 @@
     "platform_user_id": 2730,
     "email": "popov-v@vbi.ru",
     "account_role": "manager",
-    "bitrix_user_id": 2730
+    "bitrix_user_id": 2730,
+    "vacation_opening_balance": 8.3
   },
   {
     "id": 2732,
@@ -513,7 +552,8 @@
     "platform_user_id": 2732,
     "email": "wasilisitnikov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2732
+    "bitrix_user_id": 2732,
+    "vacation_opening_balance": 16.3
   },
   {
     "id": 2738,
@@ -525,7 +565,8 @@
     "platform_user_id": 2738,
     "email": "koblikova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2738
+    "bitrix_user_id": 2738,
+    "vacation_opening_balance": 30.9
   },
   {
     "id": 2740,
@@ -537,7 +578,8 @@
     "platform_user_id": 2740,
     "email": "alinaz@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2740
+    "bitrix_user_id": 2740,
+    "vacation_opening_balance": 24.6
   },
   {
     "id": 2744,
@@ -561,7 +603,8 @@
     "platform_user_id": 2753,
     "email": "suhanov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2753
+    "bitrix_user_id": 2753,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2772,
@@ -573,7 +616,8 @@
     "platform_user_id": 2772,
     "email": "ukoblikova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2772
+    "bitrix_user_id": 2772,
+    "vacation_opening_balance": 28.0
   },
   {
     "id": 2775,
@@ -585,7 +629,8 @@
     "platform_user_id": 2775,
     "email": "boyarinova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2775
+    "bitrix_user_id": 2775,
+    "vacation_opening_balance": 7.0
   },
   {
     "id": 2778,
@@ -597,7 +642,8 @@
     "platform_user_id": 2778,
     "email": "moroko@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2778
+    "bitrix_user_id": 2778,
+    "vacation_opening_balance": 11.0
   },
   {
     "id": 2783,
@@ -609,7 +655,8 @@
     "platform_user_id": 2783,
     "email": "chertkov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2783
+    "bitrix_user_id": 2783,
+    "vacation_opening_balance": 14.0
   },
   {
     "id": 2790,
@@ -621,7 +668,8 @@
     "platform_user_id": 2790,
     "email": "marhil@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2790
+    "bitrix_user_id": 2790,
+    "vacation_opening_balance": 16.3
   },
   {
     "id": 2791,
@@ -633,7 +681,8 @@
     "platform_user_id": 2791,
     "email": "vinokurov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2791
+    "bitrix_user_id": 2791,
+    "vacation_opening_balance": 16.3
   },
   {
     "id": 2795,
@@ -645,7 +694,8 @@
     "platform_user_id": 2795,
     "email": "pyatkova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2795
+    "bitrix_user_id": 2795,
+    "vacation_opening_balance": 14.0
   },
   {
     "id": 2796,
@@ -657,7 +707,8 @@
     "platform_user_id": 2796,
     "email": "chirvo@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2796
+    "bitrix_user_id": 2796,
+    "vacation_opening_balance": 11.7
   },
   {
     "id": 2799,
@@ -669,7 +720,8 @@
     "platform_user_id": 2799,
     "email": "goncharova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2799
+    "bitrix_user_id": 2799,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2801,
@@ -681,7 +733,8 @@
     "platform_user_id": 2801,
     "email": "kamneva@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2801
+    "bitrix_user_id": 2801,
+    "vacation_opening_balance": 11.7
   },
   {
     "id": 2802,
@@ -693,7 +746,8 @@
     "platform_user_id": 2802,
     "email": "rublev@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2802
+    "bitrix_user_id": 2802,
+    "vacation_opening_balance": 11.7
   },
   {
     "id": 2806,
@@ -705,7 +759,8 @@
     "platform_user_id": 2806,
     "email": "devochkina@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2806
+    "bitrix_user_id": 2806,
+    "vacation_opening_balance": 4.7
   },
   {
     "id": 2807,
@@ -717,7 +772,8 @@
     "platform_user_id": 2807,
     "email": "strochilin@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2807
+    "bitrix_user_id": 2807,
+    "vacation_opening_balance": 7.0
   },
   {
     "id": 2811,
@@ -729,7 +785,8 @@
     "platform_user_id": 2811,
     "email": "gavrilov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2811
+    "bitrix_user_id": 2811,
+    "vacation_opening_balance": 4.7
   },
   {
     "id": 2812,
@@ -741,7 +798,8 @@
     "platform_user_id": 2812,
     "email": "perishkova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2812
+    "bitrix_user_id": 2812,
+    "vacation_opening_balance": 2.3
   },
   {
     "id": 2814,
@@ -753,7 +811,8 @@
     "platform_user_id": 2814,
     "email": "shamina@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2814
+    "bitrix_user_id": 2814,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2815,
@@ -765,7 +824,8 @@
     "platform_user_id": 2815,
     "email": "telegin@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2815
+    "bitrix_user_id": 2815,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2816,
@@ -777,7 +837,8 @@
     "platform_user_id": 2816,
     "email": "ovechkin@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2816
+    "bitrix_user_id": 2816,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2817,
@@ -789,7 +850,8 @@
     "platform_user_id": 2817,
     "email": "potapov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2817
+    "bitrix_user_id": 2817,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2818,
@@ -801,7 +863,8 @@
     "platform_user_id": 2818,
     "email": "paymetov@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2818
+    "bitrix_user_id": 2818,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2819,
@@ -813,7 +876,8 @@
     "platform_user_id": 2819,
     "email": "kladova@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2819
+    "bitrix_user_id": 2819,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2824,
@@ -825,7 +889,8 @@
     "platform_user_id": 2824,
     "email": "levon@vbi.ru",
     "account_role": "employee",
-    "bitrix_user_id": 2824
+    "bitrix_user_id": 2824,
+    "vacation_opening_balance": 0.0
   },
   {
     "id": 2825,
@@ -835,6 +900,7 @@
     "manager": "",
     "hired_at": "",
     "platform_user_id": null,
-    "account_role": "manager"
+    "account_role": "manager",
+    "vacation_opening_balance": 28.0
   }
 ]

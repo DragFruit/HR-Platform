@@ -4,7 +4,7 @@ export async function bootstrapAppData() {
 
   useState<boolean>('vbi-employees-hydrated').value = false;
   await useEmployees().hydrate();
-  useVacations().hydrate();
+  await useVacations().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
 }

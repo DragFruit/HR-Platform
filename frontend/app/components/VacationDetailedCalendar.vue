@@ -52,7 +52,7 @@
                   <EmployeeNameStacked :name="emp.name" />
                   <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
                 </td>
-                <td class="sticky-col-balance">{{ balanceFor(emp.name, emp.hired_at) }}</td>
+                <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
                 <td :colspan="totalDays" class="vac-detailed-track">
                   <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
                     <span
@@ -85,8 +85,7 @@
 
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
-import type { EmployeeDepartment } from '~/composables/useEmployees';
-import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
 
 type YearDayCell = {
@@ -224,8 +223,15 @@ const toggleDept = (name: string) => {
   collapsedDepts.value = next;
 };
 
-const balanceFor = (name: string, hireIso: string) => {
-  const b = calcEmployeeBalance(name, hireIso || undefined, props.requests, new Date(), props.year);
+const balanceFor = (emp: Employee) => {
+  const b = calcEmployeeBalance(
+    emp.name,
+    emp.hired_at || undefined,
+    props.requests,
+    new Date(),
+    props.year,
+    emp.vacation_opening_balance
+  );
   return b.remain;
 };
 

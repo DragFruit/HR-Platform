@@ -4,6 +4,13 @@
 
 ## 2026-06-26
 
+### Импорт отпусков из Excel (лист 2026)
+
+- Скрипт `scripts/import-vacations-from-xlsx.py` — остаток на 01.01.2026, заявки (зелёный=согласован, жёлтый=бронь).
+- Хранение: `server/data/vacations.json`, API `GET/PUT /api/vacations`.
+- Поле `vacation_opening_balance` у сотрудника; баланс = остаток на 01.01 + начисление ЗУП − отгуляно/забронировано.
+- Проверка: `python3 scripts/import-vacations-from-xlsx.py` → `npm run dev` → график отпусков 2026.
+
 ### UI: убрана плашка «Бой» на production
 
 - `app.vue` — баннер стенда не показывается на бою (ломал вёрстку).

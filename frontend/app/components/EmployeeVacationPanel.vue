@@ -81,7 +81,9 @@ const formAssessment = computed(() =>
     form.start,
     form.end,
     yearRequests.value,
-    state.value.primaryYear
+    state.value.primaryYear,
+    undefined,
+    currentEmployee.value?.vacation_opening_balance
   )
 );
 

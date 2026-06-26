@@ -13,6 +13,7 @@ export type ServerEmployee = {
   bitrix_user_id?: number | null;
   email?: string;
   account_role?: string;
+  vacation_opening_balance?: number | null;
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/employees.json');

@@ -156,7 +156,8 @@ export const assessVacationBalance = (
   end: string,
   requests: VacationRequest[],
   primaryYear: number,
-  excludeRequestId?: number
+  excludeRequestId?: number,
+  openingBalance?: number | null
 ): VacationBalanceAssessment => {
   const empty: VacationBalanceAssessment = {
     status: 'incomplete',
@@ -180,7 +181,7 @@ export const assessVacationBalance = (
   const filtered = excludeRequestId
     ? requests.filter((r) => r.id !== excludeRequestId)
     : requests;
-  const available = calcAvailableOnDate(employeeName, hireIso, start, filtered, primaryYear);
+  const available = calcAvailableOnDate(employeeName, hireIso, start, filtered, primaryYear, openingBalance);
   if (available === null) {
     return { ...empty, status: 'unknown', neededDays, startLabel };
   }
@@ -210,12 +211,27 @@ export const projectedAccruedVacationToDate = (
   return Math.floor((accY + (accT - accY)) * 10) / 10;
 };
 
+const entitledVacationDays = (
+  hireIso: string,
+  asOf: Date,
+  primaryYear: number,
+  openingBalance?: number | null
+) => {
+  const jan1 = normalizeCalendarDate(new Date(primaryYear, 0, 1));
+  const accruedAtJan1 = projectedAccruedVacationToDate(hireIso, jan1, primaryYear) ?? 0;
+  const accruedNow = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;
+  const base = openingBalance ?? accruedAtJan1;
+  const accrualSinceJan1 = Math.max(0, accruedNow - accruedAtJan1);
+  return Math.floor((base + accrualSinceJan1) * 10) / 10;
+};
+
 export const calcEmployeeBalance = (
   employeeName: string,
   hireIso: string | undefined,
   requests: VacationRequest[],
   asOf = new Date(),
-  primaryYear = 2026
+  primaryYear = 2026,
+  openingBalance?: number | null
 ) => {
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
@@ -248,7 +264,7 @@ export const calcEmployeeBalance = (
     }
   });
 
-  const entitled = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;
+  const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
   const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved']);
   const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending']);
   const remain = Math.max(0, Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10);
@@ -261,14 +277,15 @@ export const calcAvailableOnDate = (
   hireIso: string,
   targetIso: string,
   requests: VacationRequest[],
-  primaryYear: number
+  primaryYear: number,
+  openingBalance?: number | null
 ) => {
   const target = new Date(`${targetIso}T12:00:00`);
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   const targetDay = normalizeCalendarDate(target);
   if (targetDay < hireDay) return null;
 
-  const accrued = projectedAccruedVacationToDate(hireIso, target, primaryYear) ?? 0;
+  const accrued = entitledVacationDays(hireIso, target, primaryYear, openingBalance);
   const takenThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'approved', targetDay);
   const pendingThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'pending', targetDay);
   return Math.max(0, Math.floor((accrued - takenThru - pendingThru) * 10) / 10);

@@ -13,6 +13,7 @@ export type Employee = {
   bitrix_user_id?: number | null;
   email: string;
   account_role: AccountRole | '';
+  vacation_opening_balance?: number | null;
 };
 
 /** Данные входа (синхрон с useAuth / server credentials) */
@@ -90,7 +91,8 @@ export function useEmployees() {
       emp.bitrix_user_id ??
       (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : undefined),
     email: emp.email || undefined,
-    account_role: emp.account_role || undefined
+    account_role: emp.account_role || undefined,
+    vacation_opening_balance: emp.vacation_opening_balance ?? undefined
   });
 
   const fromServerShape = (row: {
@@ -104,6 +106,7 @@ export function useEmployees() {
     bitrix_user_id?: number | null;
     email?: string;
     account_role?: string;
+    vacation_opening_balance?: number | null;
   }): Employee =>
     enrichEmployeeRecord({
       id: row.id,
@@ -117,7 +120,8 @@ export function useEmployees() {
         row.bitrix_user_id ??
         (row.platform_user_id && row.id === row.platform_user_id ? row.id : null),
       email: row.email ?? '',
-      account_role: (row.account_role as AccountRole) ?? ''
+      account_role: (row.account_role as AccountRole) ?? '',
+      vacation_opening_balance: row.vacation_opening_balance ?? null
     });
 
   const applyEmployeeList = (list: Employee[]) => {

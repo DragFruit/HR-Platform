@@ -126,7 +126,7 @@ const {
   pendingRequestsForApprover,
   getMonthEntries,
   setRequestStatus,
-  hydrate: hydrateVacations,
+  reloadFromServer: reloadVacations,
   state
 } = useVacations();
 
@@ -257,7 +257,8 @@ const advanceAssessment = (req: VacationRequest) =>
     req.end,
     yearRequests.value,
     state.value.primaryYear,
-    req.id
+    req.id,
+    findByName(req.employee)?.vacation_opening_balance
   );
 
 const approve = (id: number) => setRequestStatus(id, 'approved');
@@ -269,6 +270,6 @@ const onViewYearChange = (year: number) => {
 
 onMounted(() => {
   reloadEmployees();
-  hydrateVacations();
+  reloadVacations();
 });
 </script>
