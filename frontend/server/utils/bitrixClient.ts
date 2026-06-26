@@ -200,7 +200,7 @@ export async function fetchCurrentBitrixUser(accessToken: string): Promise<Bitri
 }
 
 export function formatBitrixUserName(user: BitrixUser): string {
-  return [user.LAST_NAME, user.NAME, user.SECOND_NAME]
+  return [user.LAST_NAME, user.NAME]
     .map((part) => String(part || '').trim())
     .filter(Boolean)
     .join(' ')

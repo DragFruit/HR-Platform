@@ -4,7 +4,7 @@ import { addStepCompletion } from '../../../utils/adaptationStore';
 import { loadTrackFull } from '../../../utils/trackLoader';
 
 export default defineEventHandler(async (event) => {
-  const session = requireVbiSession(event);
+  const session = await requireVbiSession(event);
   const stepId = getRouterParam(event, 'stepId');
   if (!stepId) {
     throw createError({ statusCode: 400, statusMessage: 'Не указан stepId' });

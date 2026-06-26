@@ -3,7 +3,7 @@ import { isBitrixWebhookConfigured } from '../../utils/bitrixConfig';
 import { requireRole } from '../../utils/requireRole';
 
 export default defineEventHandler(async (event) => {
-  requireRole(event, ['admin', 'hr']);
+  await requireRole(event, ['admin', 'hr']);
 
   if (!isBitrixWebhookConfigured()) {
     throw createError({

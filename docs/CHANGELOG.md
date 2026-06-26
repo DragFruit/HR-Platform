@@ -4,6 +4,17 @@
 
 ## 2026-06-26
 
+### Роли из справочника сотрудников, не из Bitrix
+
+- При входе роль берётся из `account_role` в `employees.json`; Bitrix — только если роль ещё не задана.
+- Синк не перезаписывает роли; смена в «Сотрудники» подхватывается при обновлении страницы.
+- Файлы: `server/utils/bitrixAuth.ts`, `bitrixSync.ts`, `session.ts`.
+
+### Bitrix: ФИО без отчества
+
+- `formatBitrixUserName` — только фамилия и имя (`LAST_NAME` + `NAME`).
+- После деплоя: перелогин или синк обновит уже сохранённые имена.
+
 ### Bitrix: fallback на OAuth при битом вебхуке
 
 - `bitrixFetchAll` — при `INVALID_CREDENTIALS` на вебхуке синк идёт через OAuth-токен входа.

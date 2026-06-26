@@ -18,11 +18,28 @@ function toNumberId(value: unknown): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-function accountRoleFromAuthRole(role: AuthRole): string {
-  if (role === 'admin') return 'admin';
-  if (role === 'hr') return 'hr';
-  if (role === 'manager') return 'manager';
-  return 'employee';
+export function authRoleFromAccountRole(accountRole?: string): AuthRole | null {
+  const role = String(accountRole || '').trim();
+  if (role === 'admin' || role === 'hr' || role === 'manager' || role === 'employee') return role;
+  return null;
+}
+
+export async function resolveAuthRoleFromEmployees(userId: number): Promise<AuthRole | null> {
+  const list = await readEmployees();
+  const employee = list.find(
+    (row) => row.bitrix_user_id === userId || row.platform_user_id === userId || row.id === userId
+  );
+  return authRoleFromAccountRole(employee?.account_role);
+}
+
+export async function resolveLoginAuthRole(
+  userId: number,
+  accessToken: string,
+  departmentHeads: Set<number>
+): Promise<AuthRole> {
+  const fromEmployees = await resolveAuthRoleFromEmployees(userId);
+  if (fromEmployees) return fromEmployees;
+  return resolveBitrixUserRole(userId, accessToken, departmentHeads);
 }
 
 async function fetchUsersInGroups(groupIds: number[], accessToken: string): Promise<Set<number>> {
@@ -130,7 +147,6 @@ export async function syncEmployeesFromBitrix(accessToken?: string): Promise<Bit
           'ID',
           'NAME',
           'LAST_NAME',
-          'SECOND_NAME',
           'EMAIL',
           'WORK_POSITION',
           'DATE_REGISTER',
@@ -186,7 +202,7 @@ export async function syncEmployeesFromBitrix(accessToken?: string): Promise<Bit
         hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || prev?.hired_at || new Date().toISOString().slice(0, 10),
         platform_user_id: bitrixId,
         email: String(user.EMAIL || '').trim().toLowerCase() || prev?.email || '',
-        account_role: prev?.account_role || 'employee'
+        account_role: prev?.account_role ?? ''
       } satisfies ServerEmployee;
     })
     .filter((row): row is ServerEmployee => row !== null);
@@ -201,14 +217,6 @@ export async function syncEmployeesFromBitrix(accessToken?: string): Promise<Bit
     updated,
     keptManual: manualOnly.length
   };
-}
-
-export async function applyRoleToSyncedEmployee(userId: number, role: AuthRole): Promise<void> {
-  const list = await readEmployees();
-  const idx = list.findIndex((row) => row.bitrix_user_id === userId || row.platform_user_id === userId);
-  if (idx === -1) return;
-  list[idx] = { ...list[idx], account_role: accountRoleFromAuthRole(role) };
-  await writeEmployees(list);
 }
 
 export { departmentHeadIds };

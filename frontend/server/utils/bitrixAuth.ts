@@ -1,9 +1,8 @@
 import type { SessionUser } from './credentials';
 import { fetchCurrentBitrixUser, formatBitrixUserName, bitrixRestAll, type BitrixDepartment, type BitrixUser } from './bitrixClient';
 import {
-  applyRoleToSyncedEmployee,
   departmentHeadIds,
-  resolveBitrixUserRole,
+  resolveLoginAuthRole,
   syncEmployeesFromBitrix
 } from './bitrixSync';
 
@@ -31,10 +30,9 @@ export async function loginSessionFromBitrix(accessToken: string): Promise<Sessi
   }
 
   const heads = departmentHeadIds(departments);
-  const role = await resolveBitrixUserRole(userId, accessToken, heads);
 
   await syncEmployeesFromBitrix(accessToken);
-  await applyRoleToSyncedEmployee(userId, role);
+  const role = await resolveLoginAuthRole(userId, accessToken, heads);
 
   const email = String(current.EMAIL || '').trim().toLowerCase();
   if (!email) {

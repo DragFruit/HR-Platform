@@ -7,7 +7,7 @@ import { addAttempt } from '../../utils/adaptationStore';
 import type { AdaptationAnswer } from '../../utils/adaptationTypes';
 
 export default defineEventHandler(async (event) => {
-  const session = requireVbiSession(event);
+  const session = await requireVbiSession(event);
   const body = await readBody<{
     quiz_id?: string;
     answers?: AdaptationAnswer[];
