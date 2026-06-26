@@ -1,4 +1,4 @@
-import { getBitrixConfig } from './bitrixConfig';
+import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 
 export type BitrixTokenResponse = {
   access_token: string;
@@ -120,6 +120,58 @@ export async function bitrixRestAll<T extends Record<string, unknown>>(
   }
 
   return items;
+}
+
+async function bitrixWebhookRequest<T>(method: string, params: Record<string, unknown>): Promise<BitrixRestResponse<T>> {
+  const base = getBitrixWebhookUrl();
+  const response = await fetch(`${base}/${method}.json`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+  return (await response.json()) as BitrixRestResponse<T>;
+}
+
+export async function bitrixWebhookAll<T extends Record<string, unknown>>(
+  method: string,
+  params: Record<string, unknown>
+): Promise<T[]> {
+  if (!isBitrixWebhookConfigured()) {
+    throw createError({ statusCode: 500, statusMessage: 'BITRIX_WEBHOOK_URL не задан' });
+  }
+
+  const items: T[] = [];
+  let start = 0;
+
+  for (;;) {
+    const data = await bitrixWebhookRequest<T[]>(method, { ...params, start });
+    if (data.error) {
+      const message = data.error_description || data.error;
+      throw createError({ statusCode: 502, statusMessage: `Bitrix webhook ${method}: ${message}` });
+    }
+
+    const batch = Array.isArray(data.result) ? data.result : [];
+    items.push(...batch);
+
+    if (data.next === undefined || batch.length === 0) break;
+    start = data.next;
+  }
+
+  return items;
+}
+
+export async function bitrixFetchAll<T extends Record<string, unknown>>(
+  method: string,
+  params: Record<string, unknown>,
+  accessToken?: string
+): Promise<T[]> {
+  if (isBitrixWebhookConfigured()) {
+    return bitrixWebhookAll<T>(method, params);
+  }
+  if (!accessToken) {
+    throw createError({ statusCode: 500, statusMessage: 'Нет OAuth-токена для Bitrix REST' });
+  }
+  return bitrixRestAll<T>(method, params, accessToken);
 }
 
 export async function fetchCurrentBitrixUser(accessToken: string): Promise<BitrixUser> {

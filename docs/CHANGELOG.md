@@ -7,6 +7,8 @@
 ### Bitrix OAuth на production (бой)
 
 - Отдельный env: `/etc/vbi-hr/bitrix-production.env`, redirect `http://45.12.74.25/api/auth/bitrix/callback`.
+- Синк сотрудников: при входе через OAuth; на сервере также `BITRIX_WEBHOOK_URL` (надёжнее полного списка).
+- Ручной синк (admin/hr): `POST /api/bitrix/sync-employees`.
 - `run-production.sh`, обновлён `vbi-hr.service` (Group=deploy, `.env` из production env).
 - `deploy-remote.sh` — разные env-файлы для staging и production.
 - Проверка: http://45.12.74.25 → вход через Битрикс; staging :8080 не затрагивается.

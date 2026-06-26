@@ -36,6 +36,14 @@ export function getBitrixConfig(): BitrixRuntimeConfig {
   };
 }
 
+export function getBitrixWebhookUrl(): string {
+  return String(process.env.BITRIX_WEBHOOK_URL || '').trim().replace(/\/+$/, '');
+}
+
+export function isBitrixWebhookConfigured(): boolean {
+  return Boolean(getBitrixWebhookUrl());
+}
+
 export function getRequestPublicOrigin(event: H3Event): string {
   const forwardedHost = getRequestHeader(event, 'x-forwarded-host');
   const forwardedProto = getRequestHeader(event, 'x-forwarded-proto') || 'http';

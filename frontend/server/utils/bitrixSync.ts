@@ -2,13 +2,14 @@ import type { AuthRole } from './credentials';
 import type { ServerEmployee } from './employeesStore';
 import { readEmployees, writeEmployees } from './employeesStore';
 import {
+  bitrixFetchAll,
   bitrixRest,
   bitrixRestAll,
   formatBitrixUserName,
   type BitrixDepartment,
   type BitrixUser
 } from './bitrixClient';
-import { getBitrixConfig, parseGroupIds } from './bitrixConfig';
+import { getBitrixConfig, isBitrixWebhookConfigured, parseGroupIds } from './bitrixConfig';
 
 type BitrixUserRow = BitrixUser & { ID: string };
 
@@ -119,9 +120,9 @@ export type BitrixSyncResult = {
   keptManual: number;
 };
 
-export async function syncEmployeesFromBitrix(accessToken: string): Promise<BitrixSyncResult> {
+export async function syncEmployeesFromBitrix(accessToken?: string): Promise<BitrixSyncResult> {
   const [users, departments, existing] = await Promise.all([
-    bitrixRestAll<BitrixUserRow>(
+    bitrixFetchAll<BitrixUserRow>(
       'user.get',
       {
         filter: { ACTIVE: true },
@@ -138,7 +139,7 @@ export async function syncEmployeesFromBitrix(accessToken: string): Promise<Bitr
       },
       accessToken
     ),
-    bitrixRestAll<BitrixDepartment>(
+    bitrixFetchAll<BitrixDepartment>(
       'department.get',
       { select: ['ID', 'NAME', 'UF_HEAD', 'PARENT'] },
       accessToken
