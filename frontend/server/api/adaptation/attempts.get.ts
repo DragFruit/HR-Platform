@@ -7,12 +7,12 @@ export default defineEventHandler(async (event) => {
   const mine = query.mine === 'true' || query.mine === '1';
 
   if (mine) {
-    const session = requireVbiSession(event);
+    const session = await requireVbiSession(event);
     const attempts = await listAttempts({ platform_user_id: session.id });
     return { attempts, unseen_count: 0 };
   }
 
-  requireRole(event, ['admin', 'hr']);
+  await requireRole(event, ['admin', 'hr']);
   const attempts = await listAttempts({
     employee_id: query.employee_id ? Number(query.employee_id) : undefined,
     phase: query.phase ? String(query.phase) : undefined,

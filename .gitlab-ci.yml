@@ -1,0 +1,87 @@
+# GitLab CI/CD — задача 2: Git → сервер
+# Задача 1 (Mac → Git): scripts/push-to-gitlab.sh, docs/CI-CD.md
+# Variables: SSH_PRIVATE_KEY, DEPLOY_HOST, DEPLOY_USER
+
+stages:
+  - build
+  - deploy
+
+default:
+  image: node:22-bookworm
+
+variables:
+  NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
+  DEPLOY_HOST: "45.12.74.25"
+  DEPLOY_USER: "deploy"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - frontend/node_modules/
+    - .npm/
+
+# --- Сборка (автоматически на push) ---
+
+.build:
+  stage: build
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/.output/
+    expire_in: 14 days
+
+build:staging:
+  extends: .build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging"
+  variables:
+    NUXT_PUBLIC_APP_ENV: staging
+    NUXT_PUBLIC_LAUNCH_SCOPE: full
+
+build:production:
+  extends: .build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  variables:
+    NUXT_PUBLIC_APP_ENV: production
+    NUXT_PUBLIC_LAUNCH_SCOPE: full
+
+# --- Деплой на VPS (только из CI, не с локальной машины в обычном потоке) ---
+
+.deploy:
+  stage: deploy
+  image: alpine:3.21
+  before_script:
+    - apk add --no-cache openssh-client rsync bash openssl
+    - . deploy/scripts/setup-ci-ssh-key.sh
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+.deploy:staging:
+  extends: .deploy
+  needs:
+    - job: build:staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging"
+  script:
+    - bash deploy/scripts/deploy-from-ci.sh staging
+
+deploy:staging:
+  extends: .deploy:staging
+  when: on_success
+
+.deploy:production:
+  extends: .deploy
+  needs:
+    - job: build:production
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - bash deploy/scripts/deploy-from-ci.sh production
+
+deploy:production:
+  extends: .deploy:production
+  when: manual

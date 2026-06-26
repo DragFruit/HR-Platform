@@ -4,7 +4,7 @@ import { listAttempts, listStepCompletions } from '../../utils/adaptationStore';
 import { daysSinceHire, loadTrackForClient } from '../../utils/trackLoader';
 
 export default defineEventHandler(async (event) => {
-  const session = requireVbiSession(event);
+  const session = await requireVbiSession(event);
   const employee = await findEmployeeByPlatformUserId(session.id);
 
   if (!employee) {

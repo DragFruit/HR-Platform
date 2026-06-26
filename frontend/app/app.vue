@@ -1,12 +1,14 @@
 <template>
   <NuxtRouteAnnouncer />
 
-  <div v-if="!authReady" class="auth-loading">Загрузка...</div>
+  <div v-if="!authReady || finishingBitrixLogin" class="auth-loading">
+    {{ finishingBitrixLogin ? 'Завершаем вход через Битрикс24...' : 'Загрузка...' }}
+  </div>
 
-  <AuthLogin v-else-if="!isAuthenticated" @success="onLoginSuccess" />
+  <div v-else class="app-viewport">
+    <AuthLogin v-if="!isAuthenticated" @success="onLoginSuccess" />
 
-  <template v-else>
-    <div class="app-shell">
+    <div v-else class="app-shell">
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-title">VBI HR Gamification</span>
@@ -54,9 +56,6 @@
     </aside>
 
     <div class="shell-main">
-      <div v-if="envLabel" class="env-banner" :class="`env-banner--${appEnv}`" role="status">
-        {{ envLabel }}
-      </div>
       <header class="topbar">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
@@ -69,19 +68,27 @@
       </header>
 
       <main class="content">
-        <NuxtPage />
+        <NuxtPage v-slot="{ Component, route: pageRoute }">
+          <Transition name="page">
+            <div v-if="Component" :key="pageRoute.path" class="page-root">
+              <component :is="Component" />
+            </div>
+          </Transition>
+        </NuxtPage>
       </main>
     </div>
     </div>
 
+    <AppSiteFooter />
+
     <FirstLoginOnboarding
-      v-if="showOnboarding && user"
+      v-if="isAuthenticated && showOnboarding && user"
       :user-name="user.name"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
     />
-  </template>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -92,23 +99,60 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath } = useLaunchScope();
-const { appEnv, envLabel } = useAppEnv();
+
+const route = useRoute();
+const router = useRouter();
+const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
+
+const resolveHomePath = () => homePath(user.value?.role === 'admin');
+
+const clearAuthQuery = () => {
+  if (!route.query.auth && !route.query.auth_error) return;
+  const { auth: _a, auth_error: _e, ...rest } = route.query;
+  router.replace({ path: route.path, query: rest });
+};
+
+const handleBitrixReturn = async () => {
+  if (route.query.auth !== 'bitrix') return false;
+
+  finishingBitrixLogin.value = true;
+
+  if (!isAuthenticated.value) {
+    await restoreSession();
+  }
+
+  if (!isAuthenticated.value) {
+    finishingBitrixLogin.value = false;
+    clearAuthQuery();
+    window.location.href = '/api/auth/bitrix';
+    return true;
+  }
+
+  syncRoleFromAuth();
+  await bootstrapAppData();
+  clearAuthQuery();
+  await router.replace(resolveHomePath());
+  finishingBitrixLogin.value = false;
+  return true;
+};
 
 onMounted(async () => {
   if (!authReady.value) {
     await restoreSession();
   }
+
+  if (await handleBitrixReturn()) {
+    return;
+  }
+
   syncRoleFromAuth();
-  await useEmployees().hydrate();
-  useVacations().hydrate();
-  useTasks().hydrate();
-  useWallet().hydrateWallets();
+  await bootstrapAppData();
 });
 
-const onLoginSuccess = () => {
+const onLoginSuccess = async () => {
   syncRoleFromAuth();
-  const router = useRouter();
-  router.replace(homePath(user.value?.role === 'admin'));
+  await bootstrapAppData();
+  await router.replace(resolveHomePath());
 };
 
 const onOnboardingComplete = (characterId: import('~/composables/useAvatars').AvatarCharacterId) => {

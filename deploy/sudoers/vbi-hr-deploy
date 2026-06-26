@@ -1,0 +1,2 @@
+# /etc/sudoers.d/vbi-hr-deploy — права пользователя deploy для CI/CD
+deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart vbi-hr, /usr/bin/systemctl restart vbi-hr-staging, /usr/bin/systemctl is-active vbi-hr, /usr/bin/systemctl is-active vbi-hr-staging, /usr/bin/chown -R deploy\:www-data /var/www/vbi-hr-staging, /usr/bin/chown -R deploy\:www-data /var/www/vbi-hr

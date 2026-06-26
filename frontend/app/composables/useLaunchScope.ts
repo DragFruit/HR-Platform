@@ -36,8 +36,12 @@ export function useLaunchScope() {
     return false;
   };
 
-  const homePath = (platformAdmin: boolean) =>
-    platformAdmin ? LAUNCH_VACATIONS_ADMIN_PATH : LAUNCH_VACATIONS_EMPLOYEE_PATH;
+  const homePath = (platformAdmin: boolean) => {
+    if (isVacationsOnly.value) {
+      return platformAdmin ? LAUNCH_VACATIONS_ADMIN_PATH : LAUNCH_VACATIONS_EMPLOYEE_PATH;
+    }
+    return platformAdmin ? '/admin' : '/';
+  };
 
   const vacationsEmployeeNav = [{ to: LAUNCH_VACATIONS_EMPLOYEE_PATH, label: 'График отпусков' }];
 

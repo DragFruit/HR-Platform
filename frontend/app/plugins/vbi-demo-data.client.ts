@@ -8,7 +8,7 @@ const LEGACY_STORAGE_KEYS = [
   'vbi-employees-v3',
   'vbi-vacations-state',
   'vbi-vacations-state-v2',
-  'vbi-vacations-state-v3',
+  'vbi-vacations-state-v4',
   'vbi-org-structure-v1',
   'vbi-org-structure-v2',
   'vbi-tasks-state',

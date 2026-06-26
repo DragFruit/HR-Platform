@@ -1,8 +1,17 @@
 import type { OrgMember } from './useAdminData';
 
+/** Legacy grid constants — used only when migrating old saved layouts */
 export const ORG_GRID_COLS = 6;
 export const ORG_GRID_ROW_PX = 60;
 export const ORG_GRID_GAP_PX = 10;
+
+export const ORG_CANVAS_EXEC_OFFSET = 76;
+export const ORG_COL_WIDTH_PX = 122;
+export const ORG_ROW_STEP_PX = 70;
+export const ORG_GROUP_MIN_WIDTH = 168;
+export const ORG_GROUP_MIN_HEIGHT = 120;
+export const ORG_GROUP_DEFAULT_WIDTH = 200;
+export const ORG_GROUP_DEFAULT_HEIGHT = 0;
 
 export type OrgExecutive = {
   id: string;
@@ -11,6 +20,8 @@ export type OrgExecutive = {
   order: number;
   gridCol?: number;
   gridRow?: number;
+  x?: number;
+  y?: number;
 };
 
 export type OrgUnit = {
@@ -23,6 +34,8 @@ export type OrgUnit = {
   groupId: string | null;
   gridCol?: number;
   gridRow?: number;
+  x?: number;
+  y?: number;
   employees: number;
   members: OrgMember[];
 };
@@ -34,6 +47,10 @@ export type OrgUnitGroup = {
   order: number;
   gridCol?: number;
   gridRow?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 };
 
 export type OrgPlacedItem =
@@ -45,6 +62,13 @@ const STORAGE_KEY = 'vbi-org-structure-v1';
 const defaultExecutives: OrgExecutive[] = [];
 const defaultGroups: OrgUnitGroup[] = [];
 const defaultUnits: OrgUnit[] = [];
+
+function posOf(item: OrgPlacedItem): { x: number; y: number } {
+  if (item.kind === 'group') {
+    return { x: item.group.x ?? 0, y: item.group.y ?? ORG_CANVAS_EXEC_OFFSET };
+  }
+  return { x: item.unit.x ?? 0, y: item.unit.y ?? ORG_CANVAS_EXEC_OFFSET };
+}
 
 export function buildPlacedItems(executiveId: string, units: OrgUnit[], groups: OrgUnitGroup[]): OrgPlacedItem[] {
   const execUnits = units.filter((u) => u.executiveId === executiveId);
@@ -65,115 +89,175 @@ export function buildPlacedItems(executiveId: string, units: OrgUnit[], groups: 
   }
 
   return items.sort((a, b) => {
-    const ga = gridOf(a);
-    const gb = gridOf(b);
-    if (ga.row !== gb.row) return ga.row - gb.row;
-    return ga.col - gb.col;
+    const pa = posOf(a);
+    const pb = posOf(b);
+    if (pa.y !== pb.y) return pa.y - pb.y;
+    return pa.x - pb.x;
   });
 }
 
-function gridOf(item: OrgPlacedItem): { col: number; row: number } {
-  if (item.kind === 'group') {
-    return { col: item.group.gridCol ?? 0, row: item.group.gridRow ?? 0 };
-  }
-  return { col: item.unit.gridCol ?? 0, row: item.unit.gridRow ?? 0 };
-}
-
-export function snapGridCell(container: HTMLElement, clientX: number, clientY: number): { col: number; row: number } {
-  const rect = container.getBoundingClientRect();
-  const style = getComputedStyle(container);
-  const gap = Number.parseFloat(style.gap) || ORG_GRID_GAP_PX;
-  const cols = ORG_GRID_COLS;
-  const colWidth = (rect.width - gap * (cols - 1)) / cols;
-  const rowHeight = ORG_GRID_ROW_PX;
-
-  const x = Math.max(0, clientX - rect.left);
-  const y = Math.max(0, clientY - rect.top);
-
-  const col = Math.min(cols - 1, Math.max(0, Math.floor(x / (colWidth + gap))));
-  const row = Math.max(0, Math.floor(y / (rowHeight + gap)));
-
-  return { col, row };
+function gridToCanvas(col: number, row: number): { x: number; y: number } {
+  return {
+    x: col * ORG_COL_WIDTH_PX,
+    y: ORG_CANVAS_EXEC_OFFSET + row * ORG_ROW_STEP_PX
+  };
 }
 
 const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 let persistWatchRegistered = false;
 
-function ensureGridLayout(
+function collectOccupied(
+  executives: OrgExecutive[],
+  units: OrgUnit[],
+  groups: OrgUnitGroup[]
+): { x: number; y: number }[] {
+  const occupied: { x: number; y: number }[] = [];
+  for (const exec of executives) {
+    if (exec.x != null && exec.y != null) occupied.push({ x: exec.x, y: exec.y });
+  }
+  for (const unit of units.filter((u) => !u.groupId)) {
+    if (unit.x != null && unit.y != null) occupied.push({ x: unit.x, y: unit.y });
+  }
+  for (const group of groups) {
+    if (group.x != null && group.y != null) occupied.push({ x: group.x, y: group.y });
+  }
+  return occupied;
+}
+
+function ensureCanvasLayout(
   executives: OrgExecutive[],
   units: OrgUnit[],
   groups: OrgUnitGroup[]
 ) {
   executives.forEach((exec, index) => {
-    if (exec.gridCol == null) exec.gridCol = 0;
-    if (exec.gridRow == null) exec.gridRow = 0;
     if (exec.order !== index) exec.order = index;
+    if (exec.x != null && exec.y != null) return;
+    if (exec.gridCol != null && exec.gridRow != null) {
+      const pos = gridToCanvas(exec.gridCol, exec.gridRow);
+      exec.x = pos.x;
+      exec.y = pos.y;
+    }
   });
+
+  const globalOccupied = collectOccupied(executives, units, groups);
+  for (const exec of executives) {
+    if (exec.x != null && exec.y != null) continue;
+    const slot = findFreeSlot(globalOccupied, 0);
+    exec.x = slot.x;
+    exec.y = slot.y;
+    globalOccupied.push(slot);
+  }
 
   const execIds = [...new Set(units.map((u) => u.executiveId).concat(groups.map((g) => g.executiveId)))];
 
   for (const executiveId of execIds) {
-    const keys = new Set<string>();
-    const mark = (col: number, row: number) => keys.add(`${col}:${row}`);
-    const findFree = () => {
-      for (let row = 0; row < 24; row++) {
-        for (let col = 0; col < ORG_GRID_COLS; col++) {
-          if (!keys.has(`${col}:${row}`)) return { col, row };
+    const mark = (x: number, y: number) => globalOccupied.push({ x, y });
+
+    const migrateUnit = (unit: OrgUnit) => {
+      if (unit.x != null && unit.y != null) return;
+      if (unit.gridCol != null && unit.gridRow != null) {
+        const pos = gridToCanvas(unit.gridCol, unit.gridRow);
+        unit.x = pos.x;
+        unit.y = pos.y;
+        mark(pos.x, pos.y);
+        return;
+      }
+      if (unit.stackId) {
+        const stackMate = units.find(
+          (u) =>
+            u.executiveId === executiveId &&
+            !u.groupId &&
+            u.stackId === unit.stackId &&
+            u.id !== unit.id &&
+            u.x != null &&
+            u.y != null
+        );
+        if (stackMate) {
+          unit.x = stackMate.x;
+          unit.y = (stackMate.y ?? ORG_CANVAS_EXEC_OFFSET) + ORG_ROW_STEP_PX;
+          mark(unit.x, unit.y);
+          return;
         }
       }
-      return { col: 0, row: 0 };
     };
-
-    units
-      .filter((u) => u.executiveId === executiveId && !u.groupId && u.gridCol != null && u.gridRow != null)
-      .forEach((u) => mark(u.gridCol!, u.gridRow!));
-
-    groups
-      .filter((g) => g.executiveId === executiveId && g.gridCol != null && g.gridRow != null)
-      .forEach((g) => mark(g.gridCol!, g.gridRow!));
 
     const solo = units
       .filter((u) => u.executiveId === executiveId && !u.groupId)
       .sort((a, b) => a.order - b.order);
 
-    const stackCols = new Map<string, number>();
-    let fallbackCol = 0;
-
     for (const unit of solo) {
-      if (unit.gridCol != null && unit.gridRow != null) {
-        unit.stackId = null;
-        continue;
-      }
-
-      if (unit.stackId) {
-        let col = stackCols.get(unit.stackId);
-        if (col == null) {
-          col = fallbackCol++;
-          stackCols.set(unit.stackId, col);
-        }
-        let row = 0;
-        while (keys.has(`${col}:${row}`)) row++;
-        unit.gridCol = col;
-        unit.gridRow = row;
-        mark(col, row);
-      } else {
-        const slot = findFree();
-        unit.gridCol = slot.col;
-        unit.gridRow = slot.row;
-        mark(slot.col, slot.row);
+      migrateUnit(unit);
+      if (unit.x == null || unit.y == null) {
+        const slot = findFreeSlot(globalOccupied);
+        unit.x = slot.x;
+        unit.y = slot.y;
+        mark(slot.x, slot.y);
       }
       unit.stackId = null;
     }
 
     for (const group of groups.filter((g) => g.executiveId === executiveId)) {
-      if (group.gridCol != null && group.gridRow != null) continue;
-      const slot = findFree();
-      group.gridCol = slot.col;
-      group.gridRow = slot.row;
-      mark(slot.col, slot.row);
+      if (group.x != null && group.y != null) continue;
+      if (group.gridCol != null && group.gridRow != null) {
+        const pos = gridToCanvas(group.gridCol, group.gridRow);
+        group.x = pos.x;
+        group.y = pos.y;
+        mark(pos.x, pos.y);
+        continue;
+      }
+      const slot = findFreeSlot(globalOccupied);
+      group.x = slot.x;
+      group.y = slot.y;
+      mark(slot.x, slot.y);
     }
   }
+}
+
+function findFreeSlot(
+  occupied: { x: number; y: number }[],
+  minY = ORG_CANVAS_EXEC_OFFSET
+): { x: number; y: number } {
+  const threshold = 80;
+  const yValues: number[] = minY === 0 ? [0] : [];
+  for (let row = 0; row < 32; row++) {
+    yValues.push(ORG_CANVAS_EXEC_OFFSET + row * ORG_ROW_STEP_PX);
+  }
+  for (const y of yValues) {
+    if (y < minY) continue;
+    for (let col = 0; col < 12; col++) {
+      const x = col * ORG_COL_WIDTH_PX;
+      const clash = occupied.some(
+        (p) => Math.abs(p.x - x) < threshold && Math.abs(p.y - y) < threshold
+      );
+      if (!clash) return { x, y };
+    }
+  }
+  const maxY = Math.max(minY, ORG_CANVAS_EXEC_OFFSET, ...occupied.map((p) => p.y + ORG_ROW_STEP_PX));
+  return { x: 0, y: maxY };
+}
+
+export function canvasMinHeight(items: OrgPlacedItem[], executive?: OrgExecutive): number {
+  let max = 280;
+  const execY = executive?.y ?? 0;
+  max = Math.max(max, execY + 80);
+  for (const item of items) {
+    const pos = posOf(item);
+    const itemH = item.kind === 'group' ? item.group.height ?? 160 : 72;
+    max = Math.max(max, pos.y + itemH + 48);
+  }
+  return max;
+}
+
+export function globalCanvasMinHeight(
+  placedByExecutive: Record<string, OrgPlacedItem[]>,
+  executives: OrgExecutive[]
+): number {
+  let max = 280;
+  for (const exec of executives) {
+    max = Math.max(max, canvasMinHeight(placedByExecutive[exec.id] ?? [], exec));
+  }
+  return max;
 }
 
 export function useOrgStructure() {
@@ -210,7 +294,7 @@ export function useOrgStructure() {
 
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      ensureGridLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
+      ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
       return;
     }
 
@@ -223,54 +307,59 @@ export function useOrgStructure() {
       if (data.executives?.length) orgExecutives.value = data.executives;
       if (data.units?.length) orgUnits.value = data.units;
       if (data.groups) orgGroups.value = data.groups;
-      ensureGridLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
+      ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
     } catch {
       /* keep defaults */
     }
   };
 
-  const findFreeCell = (executiveId: string) => {
-    const keys = new Set<string>();
-    orgUnits.value
-      .filter((u) => u.executiveId === executiveId && !u.groupId)
-      .forEach((u) => keys.add(`${u.gridCol ?? 0}:${u.gridRow ?? 0}`));
-    orgGroups.value
-      .filter((g) => g.executiveId === executiveId)
-      .forEach((g) => keys.add(`${g.gridCol ?? 0}:${g.gridRow ?? 0}`));
-
-    for (let row = 0; row < 24; row++) {
-      for (let col = 0; col < ORG_GRID_COLS; col++) {
-        if (!keys.has(`${col}:${row}`)) return { col, row };
-      }
-    }
-    return { col: 0, row: 0 };
-  };
-
-  const setUnitGrid = (unitId: string, col: number, row: number) => {
-    const unit = orgUnits.value.find((u) => u.id === unitId);
-    if (!unit) return;
-    unit.gridCol = Math.min(ORG_GRID_COLS - 1, Math.max(0, col));
-    unit.gridRow = Math.max(0, row);
+  const setExecutivePosition = (executiveId: string, x: number, y: number) => {
+    const exec = orgExecutives.value.find((e) => e.id === executiveId);
+    if (!exec) return;
+    exec.x = Math.max(0, Math.round(x));
+    exec.y = Math.max(0, Math.round(y));
     persist();
   };
 
-  const setGroupGrid = (groupId: string, col: number, row: number) => {
+  const findFreeGlobalPosition = (minY = ORG_CANVAS_EXEC_OFFSET) =>
+    findFreeSlot(collectOccupied(orgExecutives.value, orgUnits.value, orgGroups.value), minY);
+
+  const findFreePosition = (executiveId: string) => findFreeGlobalPosition();
+
+  const setUnitPosition = (unitId: string, x: number, y: number) => {
+    const unit = orgUnits.value.find((u) => u.id === unitId);
+    if (!unit) return;
+    unit.x = Math.max(0, Math.round(x));
+    unit.y = Math.max(0, Math.round(y));
+    persist();
+  };
+
+  const setGroupPosition = (groupId: string, x: number, y: number) => {
     const group = orgGroups.value.find((g) => g.id === groupId);
     if (!group) return;
-    group.gridCol = Math.min(ORG_GRID_COLS - 1, Math.max(0, col));
-    group.gridRow = Math.max(0, row);
+    group.x = Math.max(0, Math.round(x));
+    group.y = Math.max(0, Math.round(y));
+    persist();
+  };
+
+  const setGroupSize = (groupId: string, width: number, height: number) => {
+    const group = orgGroups.value.find((g) => g.id === groupId);
+    if (!group) return;
+    group.width = Math.max(ORG_GROUP_MIN_WIDTH, Math.round(width));
+    group.height = Math.max(ORG_GROUP_MIN_HEIGHT, Math.round(height));
     persist();
   };
 
   const addExecutive = () => {
     const order = Math.max(...orgExecutives.value.map((e) => e.order), -1) + 1;
+    const { x, y } = findFreeGlobalPosition(0);
     orgExecutives.value.push({
       id: nextId('exe'),
       title: 'Директор',
       person: '',
       order,
-      gridCol: 0,
-      gridRow: 0
+      x,
+      y
     });
     persist();
   };
@@ -280,7 +369,7 @@ export function useOrgStructure() {
     if (!execId) return;
 
     const order = Math.max(...orgUnits.value.filter((u) => u.executiveId === execId).map((u) => u.order), 0) + 10;
-    const { col, row } = findFreeCell(execId);
+    const { x, y } = findFreePosition(execId);
     orgUnits.value.push({
       id: nextId('u'),
       executiveId: execId,
@@ -289,8 +378,8 @@ export function useOrgStructure() {
       order,
       stackId: null,
       groupId: null,
-      gridCol: col,
-      gridRow: row,
+      x,
+      y,
       employees: 0,
       members: []
     });
@@ -300,15 +389,16 @@ export function useOrgStructure() {
   const addGroup = (executiveId?: string) => {
     const execId = executiveId ?? 'exe-ceo';
     const order = Math.max(...orgGroups.value.filter((g) => g.executiveId === execId).map((g) => g.order), 0) + 10;
-    const { col, row } = findFreeCell(execId);
+    const { x, y } = findFreePosition(execId);
     const groupId = nextId('grp');
     orgGroups.value.push({
       id: groupId,
       executiveId: execId,
       label: 'Руководитель блока',
       order,
-      gridCol: col,
-      gridRow: row
+      x,
+      y,
+      width: ORG_GROUP_DEFAULT_WIDTH
     });
     persist();
     return groupId;
@@ -350,12 +440,15 @@ export function useOrgStructure() {
     addExecutive,
     addUnit,
     addGroup,
-    setUnitGrid,
-    setGroupGrid,
+    setUnitPosition,
+    setGroupPosition,
+    setGroupSize,
+    setExecutivePosition,
     removeExecutive,
     removeUnit,
     removeGroup,
-    snapGridCell,
-    buildPlacedItems
+    buildPlacedItems,
+    canvasMinHeight,
+    globalCanvasMinHeight
   };
 }

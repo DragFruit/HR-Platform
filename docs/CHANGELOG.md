@@ -2,13 +2,408 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-06-26
+
+### UI: скролл и закрепление в графике отпусков
+
+- У сотрудника фиолетовая шапка прокручивается вместе со страницей.
+- Шапка таблицы (месяцы / дни) закрепляется при вертикальном скролле, как столбец с ФИО.
+- Проверка: `:8080` → график отпусков → прокрутка вниз.
+
+### Импорт отпусков из Excel (лист 2026)
+
+- Скрипт `scripts/import-vacations-from-xlsx.py` — остаток на 01.01.2026, заявки (зелёный=согласован, жёлтый=бронь).
+- Хранение: `server/data/vacations.json`, API `GET/PUT /api/vacations`.
+- Поле `vacation_opening_balance` у сотрудника; баланс = остаток на 01.01 + начисление ЗУП − отгуляно/забронировано.
+- Проверка: `python3 scripts/import-vacations-from-xlsx.py` → `npm run dev` → график отпусков 2026.
+
+### UI: убрана плашка «Бой» на production
+
+- `app.vue` — баннер стенда не показывается на бою (ломал вёрстку).
+
+### Справочник сотрудников — источник для графика отпусков
+
+- Автосинк из Bitrix при входе **не возвращает** удалённых из раздела «Сотрудники» (обновляет только тех, кто уже в справочнике).
+- Исправлены дубликаты: синк не дублировал строки без `bitrix_user_id`; клиент сохраняет `bitrix_user_id`; дедуп по email/platform id/**ФИО**; UI всегда показывает дедуплицированный список.
+- Ключ localStorage справочника: `vbi-employees-v5`.
+- Первый импорт — при пустом справочнике; полный импорт новых — `POST /api/bitrix/sync-employees` (admin/hr).
+- Дедупликация по `bitrix_user_id` / email в `employees.json`.
+- Календарь отпусков при открытии перечитывает справочник с сервера.
+
+### Роли из справочника сотрудников, не из Bitrix
+
+- При входе роль берётся из `account_role` в `employees.json`; Bitrix — только если роль ещё не задана.
+- Синк не перезаписывает роли; смена в «Сотрудники» подхватывается при обновлении страницы.
+- Файлы: `server/utils/bitrixAuth.ts`, `bitrixSync.ts`, `session.ts`.
+
+### Bitrix: ФИО без отчества
+
+- `formatBitrixUserName` — только фамилия и имя (`LAST_NAME` + `NAME`).
+- После деплоя: перелогин или синк обновит уже сохранённые имена.
+
+### Bitrix: fallback на OAuth при битом вебхуке
+
+- `bitrixFetchAll` — при `INVALID_CREDENTIALS` на вебхуке синк идёт через OAuth-токен входа.
+- Локально `BITRIX_WEBHOOK_URL` в `.env` опционален (см. `.env.example`).
+
+### Bitrix OAuth на production (бой)
+
+- Отдельный env: `/etc/vbi-hr/bitrix-production.env`, redirect `http://45.12.74.25/api/auth/bitrix/callback`.
+- Синк сотрудников: при входе через OAuth; на сервере также `BITRIX_WEBHOOK_URL` (надёжнее полного списка).
+- Ручной синк (admin/hr): `POST /api/bitrix/sync-employees`.
+- `run-production.sh`, обновлён `vbi-hr.service` (Group=deploy, `.env` из production env).
+- `deploy-remote.sh` — разные env-файлы для staging и production.
+- Проверка: http://45.12.74.25 → вход через Битрикс; staging :8080 не затрагивается.
+
+### Bitrix OAuth local: hot-reload .env и /api/auth/oauth-debug
+
+- `frontend/.env` перечитывается при каждом запросе в development.
+- `/api/auth/oauth-debug` — проверка Client ID и redirect URI перед входом.
+- Ошибки OAuth на staging возвращают на `:8080`, не на порт 80.
+
+## 2026-06-25
+
+### docs: шпаргалка по 3 локальным приложениям Bitrix
+
+- [docs/BITRIX.md](BITRIX.md) §0 — что оставить (бой + dev), что удалить.
+
+### Bitrix OAuth local: отдельные ключи и callback с порта dev
+
+- В development `getBitrixRedirectUri` берёт origin из запроса (актуальный порт `npm run dev`).
+- Проверка origin перед OAuth; понятная ошибка при «Неверный state» (localhost vs сервер).
+- `.env.example`: CLIENT_ID dev-приложения ≠ prod на VPS.
+
+### Bitrix: отдельные OAuth-приложения для local и prod
+
+- Документация: dev → `http://localhost:3000/api/auth/bitrix/callback`, prod → `http://45.12.74.25/api/auth/bitrix/callback`.
+- См. [docs/BITRIX.md](BITRIX.md).
+
+### Auth: бой и тест не пересекаются при входе/выходе
+
+- OAuth callback редиректит на origin **текущего** запроса (`:8080` — тест, `:80` — бой).
+- Убран автоперенос на staging; кнопка Битрикс — относительный `/api/auth/bitrix`.
+- Проверка: выход на :8080 → вход снова на :8080; выход на :80 → вход на :80.
+
+### Auth: канонический URL staging с портом :8080
+
+- После Bitrix OAuth редирект на `BITRIX_REDIRECT_URI` origin (`http://45.12.74.25:8080`), не на порт 80.
+- `/api/auth/config` → `appPublicUrl`; клиент перенаправляет с неверного origin.
+- Env: `APP_PUBLIC_URL` (опционально, иначе из `BITRIX_REDIRECT_URI`).
+- Проверка: вход через Битрикс → в адресной строке `:8080/`; logout → снова `:8080` с кнопкой Битрикс.
+
+### Auth: кнопка Битрикс после logout
+
+- `useBitrixAuthConfig` — `showBitrixLogin` от `/api/auth/config`, не только от `appEnv` в сборке.
+- Демо-форма скрыта, если на сервере настроен Bitrix OAuth.
+- При logout очищается `?auth=bitrix` из URL; на экране логина с этим query — сразу редирект в OAuth.
+- Проверка: войти через Битрикс → выйти → снова «Войти через Битрикс24», без демо-аккаунтов.
+
+### CI/CD: починен deploy на staging
+
+- `DEPLOY_HOST` и `DEPLOY_USER` в `.gitlab-ci.yml` (не зависят от Protected variables).
+- `deploy-remote.sh` — `sudo chown` перед rsync (после ручного деплоя от root).
+- `deploy/sudoers/vbi-hr-deploy` — право `chown` для пользователя `deploy`.
+- Проверка: push в `staging` → pipeline build + deploy зелёные.
+
+### UI staging: убран баннер «Тестовый стенд»
+
+- `useAppEnv.ts` — `envLabel` на staging пустой; баннер не рендерится в `app.vue`.
+- Проверка: открыть http://45.12.74.25:8080 — полоса «Тестовый стенд» над шапкой отсутствует.
+
+### Bitrix OAuth: навигация и повторный вход
+
+- `useAppBootstrap.ts` — единый hydrate сотрудников, отпусков, задач, кошелька после логина.
+- `homePath` в режиме `full` ведёт на `/` и `/admin` (не только на отпуска).
+- `?auth=bitrix` — ожидание сессии, повторный OAuth при сбое, без демо-формы на staging.
+- `AuthLogin` — кнопка Битрикс на staging/production, демо только в development.
+- Убран `mode="out-in"` у переходов страниц (пустые экраны при навигации).
+- nginx staging: `Host $http_host` для корректного OAuth callback на :8080.
+- `load-bitrix-env`: не падать при EACCES на `/etc/vbi-hr/bitrix.env` (env из `.env` в каталоге приложения).
+- Проверка: войти через Битрикс → переходы по меню; logout → снова «Войти через Битрикс24».
+
+### Битрикс24 (коробка): OAuth и синк сотрудников при входе
+
+- Вход через **«Войти через Битрикс24»** (`/api/auth/bitrix`, callback `/api/auth/bitrix/callback`).
+- Кнопка видна, если на сервере заданы `BITRIX_*` env (`GET /api/auth/config` — runtime, не build).
+- При каждом логине — синхронизация активных сотрудников из `user.get` + `department.get` в `server/data/employees.json`.
+- Env: `BITRIX_PORTAL_URL`, `BITRIX_CLIENT_ID`, `BITRIX_CLIENT_SECRET`, опционально группы ролей.
+- Файлы: `server/utils/bitrix*.ts`, `AuthLogin.vue`, `useAuth.ts`, `frontend/.env.example`.
+- Документация: [docs/BITRIX.md](BITRIX.md).
+- Проверка: создать локальное приложение в коробке → задать env на VPS → войти через Битрикс → раздел «Сотрудники».
+
+### CI/CD: надёжная подготовка SSH-ключа в pipeline
+
+- `deploy/scripts/setup-ci-ssh-key.sh` — приоритет `SSH_PRIVATE_KEY` (File), устойчивый base64 (`openssl`), проверка заголовка и длины B64.
+- `deploy/scripts/verify-ci-key-local.sh` — проверка ключа на Mac и инструкции для GitLab Variables.
+- `.gitlab-ci.yml` — `openssl` в deploy job.
+- Документация: [docs/CI-CD.md](CI-CD.md) — пошагово Type File, снять Expand variable reference.
+- Проверка: `bash deploy/scripts/verify-ci-key-local.sh` → настроить Variables → Retry pipeline.
+
+### CI/CD: две задачи (Mac → Git → сервер)
+
+- **Задача 1:** `scripts/push-to-gitlab.sh` — push с компьютера в GitLab (порт 2222), без деплоя.
+- **Задача 2:** `.gitlab-ci.yml` — build на push, deploy на VPS (`deploy-from-ci.sh`); staging авто, main вручную.
+- Документация: [docs/CI-CD.md](CI-CD.md).
+- Проверка: `bash scripts/push-to-gitlab.sh staging` → [Pipelines](https://ilnizumak.beget.app/vbi/hrplatform/-/pipelines) → build + deploy.
+
+## 2026-06-24
+
+### Деплой: GitLab CI и скрипты для VPS
+
+- `.gitlab-ci.yml` — сборка на `staging`/`main`, manual deploy через rsync + systemd.
+- `deploy/` — nginx, systemd, скрипты выкладки.
+- **Beget:** [deploy/SETUP-ILNIZUMAK.md](../deploy/SETUP-ILNIZUMAK.md) — GitLab `ilnizumak.beget.app/vbi/hrplatform`, VPS `45.12.74.25`.
+- `deploy/scripts/bootstrap-ssh.sh` — SSH-ключ; `push-gitlab.sh` — push в GitLab.
+
+### Отпуска: боковая панель руководителя в режиме «Сотрудник»
+
+- Правая панель совпадает с экраном обычного сотрудника: баланс, таблица, «Мои заявки», легенда — в отдельной карточке с тем же оформлением.
+- Переключатель «Режим» (Руководитель / Сотрудник) сохранён над карточкой в обоих режимах.
+- Файлы: `ManagerVacationAside.vue`, `main.css`.
+- Проверка: `/vacations` под менеджером → «Сотрудник» → панель как у employee + toggle сверху; «Руководитель» в toggle — статистика команды.
+
+### Процесс: документация в каждом коммите
+
+- Правила `.cursor/rules/commit-staging.mdc` и `docs-maintenance.mdc`: CHANGELOG (и при необходимости ARCHITECTURE) обновляются **в том же коммите**, что и код.
+- В `docs/ARCHITECTURE.md` зафиксированы токены ITMO-плашек отпусков, логика «Отгулял/План», формат дат в месячной таблице.
+
+### Отпуска: ITMO-плашки в месячной таблице и полные даты
+
+- Плашки в календаре команды (вид «по месяцам»): solid pill — зелёный согласован (`--vac-pill-approved-bg`), охристый на согласовании (`--vac-pill-pending-bg`), белый жирный текст.
+- Даты в ячейках: `01.07-12.07` вместо `1-12`, без обрезки и многоточия.
+- Из popover аванса убран текст «Праздники в период не входят в счёт отпуска».
+- Файлы: `useVacations.ts` (`formatMonthVacationRange`), `VacAdvancePopover.vue`, `main.css`.
+- Проверка: `/vacations` → календарь команды → месячный вид — плашки с полными датами; hover по «Аванс» — без подписи про праздники.
+
+### Отпуска: единые ITMO-плашки, ромбик у всех подсказок, «План» vs «Отгулял»
+
+- Статусы в «Мои заявки» (согласован / на согласовании / отклонён) — solid pill как пересечение и аванс: белый жирный текст, без обводки (`--vac-pill-approved-bg`, `--vac-pill-overlap-bg`, `--vac-pill-rejected-bg`).
+- У popover аванса в очереди согласования — ромбик-указатель, как у пересечений (все placement).
+- Будущие согласованные отпуска учитываются в колонке **План**, а не **Отгулял**; прошедшие и текущие дни — в **Отгулял**.
+- Файлы: `utils/vacationBalance.ts`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → согласованный июльский отпуск до 1 июля в таблице в **План**; hover по жёлтой и розовой плашкам в очереди — оба popover с ромбиком.
+
+### Отпуска: плашки ITMO (жёлтый пересечение, розовый аванс)
+
+- Предупреждения в формате pill как на itmo.events: насыщенный фон, белый жирный текст, без обводки.
+- Пересечение — `--vac-pill-overlap-bg` `#efc038`; аванс — `--vac-pill-advance-bg` `#e186a9`.
+- Файл: `frontend/app/assets/main.css`, `EmployeeVacationPanel.vue`.
+
+### Отпуска: предупреждение об авансе по дням (без блокировки)
+
+- Расчёт дней в счёт отпуска **без праздников** (`countVacationBillableDays`); баланс и «отгулял/план» синхронизированы.
+- Предупреждение, если к **дате начала** отпуска не хватает дней (аванс); если к тому моменту накопится достаточно — предупреждения нет.
+- Сотрудник: компактная плашка **справа от «Создать заявку»**; руководитель/HR: pill «Аванс N дн.» + popover в очереди согласования; в «Мои заявки» — tag у pending.
+- Файлы: `utils/vacationBalance.ts`, `utils/vacationCalendar.ts`, `VacAdvancePopover.vue`, `EmployeeVacationPanel.vue`, `EmployeeVacationAside.vue`, `pages/vacations.vue`, `pages/admin/vacations.vue`, `main.css`.
+- Проверка: `/vacations` → выбрать период с авансом — плашка у кнопки; очередь согласования — золотой badge; заявка не блокируется.
+
+### Отпуска: превью диапазона — выходные оранжевые, праздники нет
+
+- При выборе периода отпуска кликом в превью оранжевым подсвечиваются будни и выходные в диапазоне; праздничные дни остаются розовыми (не входят в отпуск и не получают класс превью).
+- Файлы: `frontend/app/utils/vacationCalendar.ts` (`isInRangePreview`), `frontend/app/components/EmployeeYearCalendar.vue`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → режим сотрудника → выбрать диапазон через майские/новогодние праздники → выходные в превью оранжевые, праздники розовые.
+
+### Отпуска: превью диапазона включает выходные
+
+- При выборе периода отпуска кликом выходные в диапазоне подсвечиваются оранжевым — как при согласовании; раньше оставались синими из‑за CSS-специфичности.
+- Файлы: `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → режим сотрудника → клик по буднему дню → наведение на другой → в превью оранжевые и будни, и выходные между ними.
+
+### Отпуска: выбор диапазона дат кликом в календаре сотрудника
+
+- В годовом календаре: первый клик — дата начала, наведение подсвечивает диапазон оранжевым (как «на согласовании»), второй клик — дата окончания; поля «с» / «по» в форме «Создать заявку» заполняются автоматически.
+- Нельзя выбрать прошедшие дни и дни с уже одобренным или ожидающим отпуском; клик вне ячеек календаря сбрасывает выбор.
+- Файлы: `frontend/app/components/EmployeeYearCalendar.vue`, `frontend/app/components/EmployeeVacationPanel.vue`, `frontend/app/composables/useVacationRangePick.ts`, `frontend/app/utils/vacationCalendar.ts`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` (режим сотрудника или переключатель «Сотрудник» у руководителя) → клик по свободному дню → наведение на другой → второй клик → поля формы заполнены → «Создать заявку».
+
+### Футер агентства VBI на всех страницах
+
+- Внизу каждой страницы — полоска в стиле ITMO events: логотип **VBI**, разделитель, «Следите за нами» и иконки VK + Telegram.
+- Файлы: `frontend/app/components/AppSiteFooter.vue`, `frontend/app/app.vue`, `frontend/app/assets/main.css`, `frontend/nuxt.config.ts`.
+- Ссылки задаются через `runtimeConfig.public`: `NUXT_PUBLIC_SOCIAL_VK_URL` (по умолчанию `https://vk.com/vbi.agency`), `NUXT_PUBLIC_SOCIAL_TELEGRAM_URL` (`https://t.me/vbi_agency`).
+- Проверка: открыть `/` или экран входа — внизу полоска с VBI и двумя иконками; клик открывает соцсети агентства.
+
+### Отпуска: компактное меню действий заявки
+
+- Меню «⋯» в «Мои заявки» снова компактное: у teleported-варианта сброшены `right`/`top` от абсолютного позиционирования (иначе `left` + `right: 0` растягивали попап на всю ширину viewport).
+- Файл: `frontend/app/assets/main.css` (`.emp-request-menu`, `.emp-request-menu--teleported`).
+- Проверка: `/vacations` → режим сотрудника → «⋯» у заявки — узкий выпадающий список у кнопки.
+
+### Отпуска: всплывающие окна поверх рамок (Teleport)
+
+- Попап «Пересечения отпусков» и меню действий «Мои заявки» рендерятся через `<Teleport to="body">` с `position: fixed` — не обрезаются родительскими `overflow: hidden`.
+- Новые файлы: `frontend/app/composables/useFloatingPosition.ts`, `frontend/app/components/VacOverlapPopover.vue`.
+- Затронуты: `frontend/app/pages/vacations.vue`, `frontend/app/pages/admin/vacations.vue`, `frontend/app/components/EmployeeVacationAside.vue`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → «Согласование» — навести на «Есть пересечение» у верхней/нижней заявки; режим «Сотрудник» в боковой панели → «⋯» у заявки внизу списка — меню полностью видно.
+
+### Календарь отпусков: заголовок «Сотрудник» в месячном виде
+
+- Заголовок первого столбца в режиме «По месяцам» совпадает с детальным видом: отступ слева 8px, кегль 0.72rem, жирность 700.
+- Файлы: `frontend/app/components/VacationMonthlyCalendar.vue`, `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → «По месяцам» — сравнить заголовок «Сотрудник» с режимом «Детально».
+
+## 2026-06-23
+
+### Календарь отпусков: полные даты в месячном виде
+
+- Плашки в режиме «По месяцам» показывают диапазон дней без многоточия (`29-30`, `1-12`); месяц задаётся заголовком столбца.
+- Убраны `text-overflow: ellipsis` и `overflow: hidden` у `.vac-team-calendar .vac-block`.
+- Файлы: `frontend/app/assets/main.css`, `frontend/app/composables/useVacations.ts` (`formatMonthVacationRange`).
+- Проверка: `/vacations` → «По месяцам» — даты целиком, столбцы месяцев одинаковой ширины.
+
+### Календарь отпусков руководителя: равная ширина месяцев
+
+- Таблица по месяцам (`VacationMonthlyCalendar` в `VacationTeamCalendar`): `table-layout: fixed`, столбцы Янв–Дек одинаковой ширины; колонка «Сотрудник» фиксирована.
+- Плашки дат отпуска (`.vac-block`) — `fit-content`, уменьшен правый padding, не растягивают ячейку.
+- Файлы: `frontend/app/assets/main.css`.
+- Проверка: `/vacations` (режим руководителя) и `/admin/vacations` — все месяцы одной ширины, плашки компактнее.
+
+### Структура компании: директора без рамок подразделений, свободный drag
+
+- Директора — отдельные оранжевые pill-карточки на общем холсте, без колонок и рамок подразделений; одиночные отделы без обводки рамки группы.
+- Все элементы (директора, отделы, группы) перемещаются по единому canvas с абсолютными координатами; авторазмещение новых директоров и отделов учитывает глобальные занятые слоты.
+- Файлы: `frontend/app/components/OrgChart.vue`, `frontend/app/composables/useOrgStructure.ts`, `frontend/app/assets/main.css`.
+- Проверка: `/admin/organization` — перетащить директора и отдел в произвольные места; добавить директора — появляется на свободной позиции; обновить страницу — layout сохранён.
+
+### Структура компании: свободное перемещение рамки директора (fix)
+
+- Блок директора на холсте `/admin/organization` перетаскивается так же, как отделы и группы; координаты `x`/`y` на `OrgExecutive` сохраняются в `localStorage`.
+- Файлы: `frontend/app/components/OrgChart.vue`, `frontend/app/composables/useOrgStructure.ts`, `frontend/app/assets/main.css`.
+- Проверка: `/admin/organization` — перетащить оранжевую рамку директора; обновить страницу — позиция сохранена.
+
+### Структура компании: свободное перемещение и изменение размера рамок
+
+- Блоки отделов и групп перемещаются по холсту без привязки к сетке (абсолютные координаты `x`/`y`, плавный drag с `pointer` events).
+- Рамки групп (`org-group-frame`) можно менять по размеру — уголок-ручка в правом нижнем углу; размеры `width`/`height` сохраняются в `localStorage`.
+- Декоративная сетка на холсте (только визуал, не для snap); миграция старых `gridCol`/`gridRow` → `x`/`y` при загрузке.
+- Файлы: `frontend/app/components/OrgChart.vue`, `frontend/app/composables/useOrgStructure.ts`, `frontend/app/assets/main.css`.
+- Проверка: `/admin/organization` — перетащить отдел/группу в произвольное место; потянуть уголок рамки группы; обновить страницу — позиции и размеры сохранены. `/organization` — только просмотр.
+
+### Neo-brutalist дизайн-система ITMO (abit.itmo.ru) на всей платформе
+
+- Светлый контент: `--page-bg` `#eeeee8`, grain (`--noise-url`), тёмный текст `#202020`, границы `--border-brutal` 1px.
+- Фиолетовая полоса topbar (`--hero-purple`); светлый sidebar с чёрной границей; навигация — pill с лаймовым active (`--accent-lime` `#ddf365`).
+- Карточки, списки, таблицы: белый фон, скругление 14–16px, без тяжёлых теней; строки списков с горизонтальными разделителями (задачи, лента, очередь согласования).
+- Кнопки: primary — чёрная pill с белым uppercase; ghost — белая с чёрной обводкой; фильтры — toggle как БЮДЖЕТ/КОНТРАКТ.
+- Формы/инпуты: pill с 1px чёрной границей; теги — лайм или outlined brutalist.
+- Hero главной и auth: фиолетовый фон; контент ниже hero — светлый brutalist.
+- Анимации: `fade-slide-up` для секций, строк ленты и задач; hover lift только у кнопок/pills; `prefers-reduced-motion`.
+- Сохранены: overflow-fix попапа пересечений отпусков, hover без подъёма карточек.
+- Файлы: `frontend/app/assets/main.css`.
+- Проверка: `cd frontend && npm run build`; `/`, `/tasks`, `/vacations`, экран входа — светлый grain, чёрные рамки, фиолетовый topbar, лаймовые toggles.
+
+### Hero главной в стиле ITMO abit.itmo.ru/bachelor
+
+- Hero `/`: насыщенный фиолетовый фон `#7451f4` с grain, лаймовый заголовок и pill-теги KPI (`border-radius: 50px`, тёмный текст на лайме, разделитель «+»).
+- Справа — полукруглый декоративный блок с тёплым жёлтым оверлеем, кольца-контуры и плавающий фиолетовый кружок; полупрозрачная нижняя планка.
+- Кнопки hero: белая primary, ghost с белой обводкой; скругление ~10px.
+- Sidebar/topbar: фиолетовый оттенок (`rgba(36, 28, 58, …)`) для связки с hero.
+- Токены: `--hero-purple`, `--hero-purple-deep`, `--hero-purple-bar`, `--hero-noise-opacity`.
+- Файлы: `frontend/app/assets/main.css`, `frontend/app/pages/index.vue`.
+- Проверка: `cd frontend && npm run build`; открыть `/` — фиолетовый hero, лаймовые pills, боковой визуал; `/vacations` — без регрессий попапа пересечений.
+
+### Убран кастомный курсор и улучшена читаемость текста (fix)
+
+- Удалён `AppInteractiveCursor` из оболочки приложения и связанные стили (`.app-cursor`, `.interactive-cursor-active`).
+- Контраст на тёмных поверхностях: имя в topbar — `--text`, класс `.soft` и KPI-плитки hero — `--text-muted` / белые значения, подписи форм и заголовки таблиц светлее.
+- Токен `--text-soft` осветлён (`#a8a8a8`) для вторичного текста на серых карточках.
+- Файлы: `app.vue`, `assets/main.css` (удалён `AppInteractiveCursor.vue`).
+- Проверка: `cd frontend && npm run build`; открыть `/` — нет круга-курсора, читаемые KPI и имя в шапке.
+
+### Дизайн в духе ITMO abit.itmo.ru/bachelor
+
+- Новая палитра: фиолетовый `#7451f4`, лайм `#ddf365`, бирюза `#388073`, голубой `#57a3d9`, золото `#f3b33e` на тёмном фоне `#202020`.
+- Шрифты: **Golos Text** (текст), **Unbounded** (заголовки) — `nuxt.config.ts`.
+- Текстура grain: SVG noise (`--noise-url`) на body, sidebar, topbar, карточках, hero и экране входа.
+- Плашки-карточки: скругления 20–32px, мягкие тени, градиентные hero/auth-панели, KPI-плитки с цветным акцентом.
+- Сохранены: `overflow-x: clip` для попапа пересечений отпусков, hover без подъёма карточек.
+- Файлы: `frontend/app/assets/main.css`, `frontend/nuxt.config.ts`.
+- Проверка: `cd frontend && npm run build`; открыть `/`, экран входа, `/vacations` — зернистый фон, фиолетово-лаймовые акценты, читаемый текст.
+
+### Очередь согласования: попап пересечений не обрезается (fix)
+
+- Убрано вертикальное обрезание из-за `overflow-x: hidden` на `.content` (заменено на `overflow-x: clip` + `overflow-y: visible`).
+- Панель и список заявок: `overflow: visible`; у нижних 1–2 строк попап «Пересечения» открывается вверх.
+- Файл: `frontend/app/assets/main.css`.
+- Проверка: `/vacations` → вкладка «Согласование», навести на «Есть пересечение» у нижней заявки — весь попап виден.
+
+### Гармоничная тёмная дизайн-система (без белых карточек)
+
+- Убран контраст «чёрный фон + белые блоки»: карточки, hero, задачи, лента, auth, календари отпусков переведены на **слои тёмных поверхностей** (`--bg-surface`, `--bg-surface-raised`).
+- Новые токены: `--bg` `#12141a`, `--bg-elevated`, `--bg-soft`, `--surface-gradient`, мягкие границы `rgba(255,255,255,0.06–0.1)`, приглушённые тени и glow.
+- Активная навигация и фильтры — primary-tinted surface вместо белой pill; ghost-кнопки и формы — тёмный фон.
+- Календари: сетки на `--bg-surface-raised`, выходные/праздники через `--vac-weekend-bg` / `--vac-holiday-bg`; статусы отпусков сохраняют читаемость.
+- Удалён блок принудительного `--text-on-light` на светлых панелях; основной UI — `--text` на тёмных поверхностях.
+- Файл: `frontend/app/assets/main.css`.
+- Проверка: `cd frontend && npm run build`; открыть `/`, `/tasks`, `/vacations` — мягкий тёмный UI без резкого контраста.
+
+### Главная: лента «Новости коллег» и CTA адаптации
+
+- Блок «Ближайшие награды» заменён на **«Новости коллег»** — демо-лента активности (подарки, достижения, отпуска, новички).
+- В «Приоритетные задачи»: кнопка **«Начать адаптацию»** при отсутствии активных задач или низком прогрессе адаптации (`progress_percent < 15`); при активных задачах — список + ссылка на адаптацию.
+- Hero с KPI и быстрыми ссылками (Адаптация, Задачи, Кошелёк) сохранён.
+- Файлы: `pages/index.vue`, `composables/useColleagueFeed.ts`, `assets/main.css`.
+- Проверка: `cd frontend && npm run build`; открыть `/` — лента из 8 пунктов, CTA адаптации при пустых задачах.
+
+### Hover: только кнопки и чипы, без подъёма карточек (fix)
+
+- Убран `transform` и усиление тени при hover у крупных блоков: `.card`, `.creative-hero`, `.direction-card`, `.mode-card`, `.task-item`, `.vac-approval-item`, `.profile-team-member`, `.auth-card` — в базовых стилях и в блоке `.interactive-cursor-active`.
+- Сохранены hover-эффекты у `.button`, `.filter-btn`, `.nav-link`, `.role-btn`, `.tag` (chip-morph), мелких контролов внутри карточек.
+- Файл: `frontend/app/assets/main.css`.
+- Проверка: `cd frontend && npm run build`; навести на карточки и кнопки — карточки статичны, кнопки реагируют.
+
+### Пустой контент на страницах кроме отпусков (fix)
+
+- **Причина:** глобальный `pageTransition` с `mode: 'out-in'` вешал `opacity: 0` на корни страниц с несколькими корневыми узлами (главная, адаптация, задачи); `/vacations` имел один корневой `<div>` и оставался видимым.
+- Переход перенесён в `app.vue`: обёртка `.page-root` вокруг `<NuxtPage>` — единый корень для анимации; `pageTransition` убран из `nuxt.config.ts`.
+- Сетка `.content` → `.page-root`; для layout отпусков обновлены селекторы `:has(.vac-manager-layout)`.
+- Проверка: `cd frontend && npm run build`; открыть `/`, `/adaptation`, `/tasks` — белые карточки и hero на тёмном фоне.
+
+### Контраст текста на светлых панелях (fix)
+
+- Семантические токены `--text-on-light`, `--text-muted-on-light`, `--text-soft-on-light` — тёмные оттенки для белых карточек и календарей.
+- Переопределение `--text` / `--text-muted` / `--text-soft` внутри светлых контейнеров: календари отпусков, боковая панель руководителя, aside сотрудника.
+- Исправлены: ФИО в таблице (`.emp-name`, `.sticky-col-name`), заголовки месяцев, метки «Заявки» в `ManagerVacationAside`.
+- Проверка: `cd frontend && npm run build`; `/vacations` — имена, заголовки и статистика читаемы на белом фоне.
+
+### Тёмная молодёжная дизайн-система (dark + white accents)
+
+- Глобальная тёмная тема: фон `#0a0a0f`, светлые акцентные карточки (`.card`, `.creative-hero`), градиентные KPI.
+- Шрифты Google Fonts: **Syne** (заголовки) + **DM Sans** (текст) — `nuxt.config.ts`, `main.css`.
+- Сайдбар и навигация: тёмный glass, активный пункт — белая pill; топбар — blur на тёмном.
+- Главная: hero-блок с инфографикой показателей (`pages/index.vue`); экран входа — светящиеся орбы (`AuthLogin.vue`).
+- Анимации: переходы страниц (`page` transition), плавающие blob, `prefers-reduced-motion`.
+- Интерактивный курсор и chip-morph адаптированы под тёмный фон (белая обводка → белая pill).
+- Календари отпусков: светлые inset-панели сохранены для читаемости таблиц.
+- Проверка: `cd frontend && npm run build`; открыть главную, логин, задачи, `/vacations` — контраст и акценты.
+
 ## 2026-05-28
 
-### main: только график отпусков; разработка на staging
+### Интерактивный курсор и hover-анимации (как design.google)
 
-- Ветка `main` (бой): `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` по умолчанию в `nuxt.config.ts` и в CI.
-- Ветка `staging` (тест): полная платформа (`full`). Дальнейшие фичи — коммиты в `staging`.
-- Пути: `frontend/nuxt.config.ts`, `.github/workflows/ci.yml`, `release-artifact.yml`.
+- Курсор следует за мышью без задержки; инверсия через `mix-blend-mode: difference`.
+- Чипы/кнопки: обводка → залитая pill при hover (теги, фильтры, ghost-кнопки, навигация).
+- `AppInteractiveCursor.vue`, `main.css`.
+
+### Календарь команды: ФИО в две строки
+
+- Имя и фамилия — на отдельных строках (`EmployeeNameStacked.vue`); одно слово — одна строка.
+- Экономия ширины колонки «Сотрудник» в месячном и детальном виде.
+
+### Календарь команды: ширина колонки «Сотрудник»
+
+- Колонка подстраивается под самое длинное ФИО в одну строку + небольшой отступ справа (месячный и детальный вид).
+- `main.css`, `VacationDetailedCalendar.vue` — `--vac-name-col-w` для sticky «Остаток».
+
+### Календарь руководителя: автопрокрутка детального вида
+
+- При открытии «Детально» текущая дата — ~3 ячейки от левого края сетки (не начало месяца).
+- `VacationDetailedCalendar.vue` — `scrollToToday`.
+
+### Календарь руководителя: формат дат в таблице по месяцам
+
+- Диапазоны в ячейках: `20.07-26.07` вместо «20 июл. – 26 июл.»; несколько отпусков — отдельные строки в ячейке.
+- `formatMonthVacationRange` в `useVacations.ts`, `VacationMonthlyCalendar.vue`.
 
 ### Git: ветки staging / main и CI
 

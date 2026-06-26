@@ -147,7 +147,7 @@ const {
   linkEmployeeToAccount,
   addEmployee,
   removeEmployee,
-  hydrate
+  reloadFromServer
 } = useEmployees();
 
 const updateField = (id: number, field: keyof Employee, value: string) => {
@@ -159,6 +159,6 @@ const onAccountSelect = (employeeId: number, value: string) => {
 };
 
 onMounted(() => {
-  hydrate();
+  reloadFromServer();
 });
 </script>

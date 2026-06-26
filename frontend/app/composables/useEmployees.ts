@@ -1,3 +1,5 @@
+import { dedupeEmployeeList } from '~/utils/employeeDedupe';
+
 export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
 
 export type Employee = {
@@ -8,8 +10,10 @@ export type Employee = {
   manager: string;
   hired_at: string;
   platform_user_id: number | null;
+  bitrix_user_id?: number | null;
   email: string;
   account_role: AccountRole | '';
+  vacation_opening_balance?: number | null;
 };
 
 /** Данные входа (синхрон с useAuth / server credentials) */
@@ -30,7 +34,7 @@ export type EmployeeDepartment = {
   employees: Employee[];
 };
 
-const STORAGE_KEY = 'vbi-employees-v3';
+const STORAGE_KEY = 'vbi-employees-v5';
 
 const EMAIL_TO_EMPLOYEE: Record<string, string> = Object.fromEntries(
   Object.values(PLATFORM_ACCOUNTS).map((a) => [a.email.toLowerCase(), a.name])
@@ -63,14 +67,15 @@ const enrichEmployeeRecord = (emp: Employee): Employee => {
 };
 
 export function useEmployees() {
-  const employees = useState<Employee[]>('vbi-employees', () => []);
+  const employeesRaw = useState<Employee[]>('vbi-employees', () => []);
+  const employees = computed(() => dedupeEmployeeList(employeesRaw.value));
   const hydrated = useState<boolean>('vbi-employees-hydrated', () => false);
 
   const platformAccounts = computed(() =>
     Object.entries(PLATFORM_ACCOUNTS).map(([id, acc]) => ({
       id: Number(id),
       ...acc,
-      linked: employees.value.some((e) => e.platform_user_id === Number(id))
+      linked: employeesRaw.value.some((e) => e.platform_user_id === Number(id))
     }))
   );
 
@@ -82,8 +87,12 @@ export function useEmployees() {
     manager: emp.manager,
     hired_at: emp.hired_at,
     platform_user_id: emp.platform_user_id,
+    bitrix_user_id:
+      emp.bitrix_user_id ??
+      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : undefined),
     email: emp.email || undefined,
-    account_role: emp.account_role || undefined
+    account_role: emp.account_role || undefined,
+    vacation_opening_balance: emp.vacation_opening_balance ?? undefined
   });
 
   const fromServerShape = (row: {
@@ -94,8 +103,10 @@ export function useEmployees() {
     manager: string;
     hired_at: string;
     platform_user_id: number | null;
+    bitrix_user_id?: number | null;
     email?: string;
     account_role?: string;
+    vacation_opening_balance?: number | null;
   }): Employee =>
     enrichEmployeeRecord({
       id: row.id,
@@ -105,17 +116,43 @@ export function useEmployees() {
       manager: row.manager,
       hired_at: row.hired_at,
       platform_user_id: row.platform_user_id,
+      bitrix_user_id:
+        row.bitrix_user_id ??
+        (row.platform_user_id && row.id === row.platform_user_id ? row.id : null),
       email: row.email ?? '',
-      account_role: (row.account_role as AccountRole) ?? ''
+      account_role: (row.account_role as AccountRole) ?? '',
+      vacation_opening_balance: row.vacation_opening_balance ?? null
     });
+
+  const applyEmployeeList = (list: Employee[]) => {
+    employeesRaw.value = dedupeEmployeeList(list);
+    if (!import.meta.client) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(employeesRaw.value));
+  };
 
   const syncToServer = async () => {
     if (!import.meta.client) return;
     try {
-      await $fetch('/api/employees', {
+      const saved = await $fetch<
+        {
+          id: number;
+          name: string;
+          title: string;
+          department: string;
+          manager: string;
+          hired_at: string;
+          platform_user_id: number | null;
+          bitrix_user_id?: number | null;
+          email?: string;
+          account_role?: string;
+        }[]
+      >('/api/employees', {
         method: 'PUT',
-        body: employees.value.map(toServerShape)
+        body: employeesRaw.value.map(toServerShape)
       });
+      if (Array.isArray(saved)) {
+        applyEmployeeList(saved.map(fromServerShape));
+      }
     } catch {
       /* офлайн или нет прав */
     }
@@ -123,7 +160,7 @@ export function useEmployees() {
 
   const persist = () => {
     if (!import.meta.client) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+    applyEmployeeList(employeesRaw.value);
     syncToServer();
   };
 
@@ -147,8 +184,7 @@ export function useEmployees() {
         }[]
       >('/api/employees');
       if (Array.isArray(fromServer)) {
-        employees.value = fromServer.map(fromServerShape);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(employees.value));
+        applyEmployeeList(fromServer.map(fromServerShape));
         loaded = true;
       }
     } catch {
@@ -159,15 +195,21 @@ export function useEmployees() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
-          employees.value = (JSON.parse(raw) as Employee[]).map(enrichEmployeeRecord);
+          applyEmployeeList((JSON.parse(raw) as Employee[]).map(enrichEmployeeRecord));
         } catch {
-          employees.value = [];
+          employeesRaw.value = [];
         }
       }
-      if (employees.value.length) syncToServer();
+      if (employeesRaw.value.length) syncToServer();
     }
 
     hydrated.value = true;
+  };
+
+  const reloadFromServer = async () => {
+    if (!import.meta.client) return;
+    hydrated.value = false;
+    await hydrate();
   };
 
   const departmentsGrouped = computed<EmployeeDepartment[]>(() => {
@@ -185,7 +227,7 @@ export function useEmployees() {
   });
 
   const updateEmployee = (id: number, patch: Partial<Employee>) => {
-    const emp = employees.value.find((item) => item.id === id);
+    const emp = employeesRaw.value.find((item) => item.id === id);
     if (!emp) return;
     Object.assign(emp, patch);
     const enriched = enrichEmployeeRecord(emp);
@@ -194,7 +236,7 @@ export function useEmployees() {
   };
 
   const linkEmployeeToAccount = (employeeId: number, platformUserId: number | null) => {
-    const emp = employees.value.find((item) => item.id === employeeId);
+    const emp = employeesRaw.value.find((item) => item.id === employeeId);
     if (!emp) return;
     if (!platformUserId) {
       emp.platform_user_id = null;
@@ -203,7 +245,7 @@ export function useEmployees() {
     }
     const acc = PLATFORM_ACCOUNTS[platformUserId];
     if (!acc) return;
-    employees.value.forEach((row) => {
+    employeesRaw.value.forEach((row) => {
       if (row.id !== employeeId && row.platform_user_id === platformUserId) {
         row.platform_user_id = null;
         row.email = '';
@@ -218,8 +260,8 @@ export function useEmployees() {
   };
 
   const addEmployee = () => {
-    const nextId = Math.max(0, ...employees.value.map((e) => e.id)) + 1;
-    employees.value.push({
+    const nextId = Math.max(0, ...employeesRaw.value.map((e) => e.id)) + 1;
+    employeesRaw.value.push({
       id: nextId,
       name: '',
       title: '',
@@ -234,7 +276,7 @@ export function useEmployees() {
   };
 
   const removeEmployee = (id: number) => {
-    employees.value = employees.value.filter((emp) => emp.id !== id);
+    employeesRaw.value = employeesRaw.value.filter((emp) => emp.id !== id);
     persist();
   };
 
@@ -351,11 +393,13 @@ export function useEmployees() {
 
   return {
     employees,
+    employeesRaw,
     departmentsGrouped,
     platformAccounts,
     employeeCount,
     linkedCount,
     hydrate,
+    reloadFromServer,
     persist,
     updateEmployee,
     linkEmployeeToAccount,

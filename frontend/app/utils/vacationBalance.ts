@@ -1,5 +1,13 @@
 import type { VacationRequest } from '~/composables/useVacations';
-import { countInclusiveCalendarDays } from '~/utils/vacationCalendar';
+import { countVacationBillableDays, isRuHoliday, toIso } from '~/utils/vacationCalendar';
+
+export type VacationBalanceAssessment = {
+  status: 'ok' | 'advance' | 'unknown' | 'incomplete';
+  neededDays: number;
+  availableAtStart: number;
+  deficit: number;
+  startLabel: string;
+};
 
 const ANNUAL_NORM = 28;
 
@@ -103,7 +111,8 @@ const countBookedDays = (
     const from = start > hireDay ? start : hireDay;
     const cursor = new Date(from);
     while (cursor <= end) {
-      n += 1;
+      const iso = toIso(cursor);
+      if (!isRuHoliday(iso)) n += 1;
       cursor.setDate(cursor.getDate() + 1);
     }
   });
@@ -129,11 +138,62 @@ const countBookedDaysUpTo = (
     if (from > to) return;
     const cursor = new Date(from);
     while (cursor <= to) {
-      n += 1;
+      const iso = toIso(cursor);
+      if (!isRuHoliday(iso)) n += 1;
       cursor.setDate(cursor.getDate() + 1);
     }
   });
   return n;
+};
+
+const formatStartLabel = (startIso: string) =>
+  new Date(`${startIso}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+export const assessVacationBalance = (
+  employeeName: string,
+  hireIso: string | undefined,
+  start: string,
+  end: string,
+  requests: VacationRequest[],
+  primaryYear: number,
+  excludeRequestId?: number,
+  openingBalance?: number | null
+): VacationBalanceAssessment => {
+  const empty: VacationBalanceAssessment = {
+    status: 'incomplete',
+    neededDays: 0,
+    availableAtStart: 0,
+    deficit: 0,
+    startLabel: ''
+  };
+
+  if (!start || !end || end < start) return empty;
+  if (!hireIso || !employeeName) {
+    return { ...empty, status: 'unknown' };
+  }
+
+  const neededDays = countVacationBillableDays(start, end);
+  const startLabel = formatStartLabel(start);
+  if (neededDays === 0) {
+    return { status: 'ok', neededDays: 0, availableAtStart: 0, deficit: 0, startLabel };
+  }
+
+  const filtered = excludeRequestId
+    ? requests.filter((r) => r.id !== excludeRequestId)
+    : requests;
+  const available = calcAvailableOnDate(employeeName, hireIso, start, filtered, primaryYear, openingBalance);
+  if (available === null) {
+    return { ...empty, status: 'unknown', neededDays, startLabel };
+  }
+
+  const deficit = Math.max(0, neededDays - available);
+  return {
+    status: deficit > 0 ? 'advance' : 'ok',
+    neededDays,
+    availableAtStart: available,
+    deficit,
+    startLabel
+  };
 };
 
 export const projectedAccruedVacationToDate = (
@@ -151,25 +211,60 @@ export const projectedAccruedVacationToDate = (
   return Math.floor((accY + (accT - accY)) * 10) / 10;
 };
 
+const entitledVacationDays = (
+  hireIso: string,
+  asOf: Date,
+  primaryYear: number,
+  openingBalance?: number | null
+) => {
+  const jan1 = normalizeCalendarDate(new Date(primaryYear, 0, 1));
+  const accruedAtJan1 = projectedAccruedVacationToDate(hireIso, jan1, primaryYear) ?? 0;
+  const accruedNow = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;
+  const base = openingBalance ?? accruedAtJan1;
+  const accrualSinceJan1 = Math.max(0, accruedNow - accruedAtJan1);
+  return Math.floor((base + accrualSinceJan1) * 10) / 10;
+};
+
 export const calcEmployeeBalance = (
   employeeName: string,
   hireIso: string | undefined,
   requests: VacationRequest[],
   asOf = new Date(),
-  primaryYear = 2026
+  primaryYear = 2026,
+  openingBalance?: number | null
 ) => {
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
   const yearRequests = requests.filter((r) => r.employee === employeeName);
+  const today = normalizeCalendarDate(asOf);
+  const todayIso = toIso(today);
   let taken = 0;
   let planned = 0;
   yearRequests.forEach((r) => {
-    const days = countInclusiveCalendarDays(r.start, r.end);
-    if (r.status === 'approved') taken += days;
-    if (r.status === 'pending') planned += days;
+    if (r.status === 'pending') {
+      planned += countVacationBillableDays(r.start, r.end);
+      return;
+    }
+    if (r.status !== 'approved') return;
+
+    const start = normalizeCalendarDate(new Date(`${r.start}T00:00:00`));
+    const end = normalizeCalendarDate(new Date(`${r.end}T00:00:00`));
+    if (end < today) {
+      taken += countVacationBillableDays(r.start, r.end);
+    } else if (start > today) {
+      planned += countVacationBillableDays(r.start, r.end);
+    } else {
+      taken += countVacationBillableDays(r.start, todayIso);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowIso = toIso(tomorrow);
+      if (tomorrowIso <= r.end) {
+        planned += countVacationBillableDays(tomorrowIso, r.end);
+      }
+    }
   });
 
-  const entitled = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;
+  const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
   const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved']);
   const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending']);
   const remain = Math.max(0, Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10);
@@ -182,14 +277,15 @@ export const calcAvailableOnDate = (
   hireIso: string,
   targetIso: string,
   requests: VacationRequest[],
-  primaryYear: number
+  primaryYear: number,
+  openingBalance?: number | null
 ) => {
   const target = new Date(`${targetIso}T12:00:00`);
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   const targetDay = normalizeCalendarDate(target);
   if (targetDay < hireDay) return null;
 
-  const accrued = projectedAccruedVacationToDate(hireIso, target, primaryYear) ?? 0;
+  const accrued = entitledVacationDays(hireIso, target, primaryYear, openingBalance);
   const takenThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'approved', targetDay);
   const pendingThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'pending', targetDay);
   return Math.max(0, Math.floor((accrued - takenThru - pendingThru) * 10) / 10);

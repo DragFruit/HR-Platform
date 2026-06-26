@@ -8,9 +8,10 @@
 
 ## Быстрый старт
 
-1. Дважды кликните **`Open Frontend.command`** в корне проекта (macOS).
-2. Откроется `http://127.0.0.1:3300/` — экран входа и разделы платформы (на ветке `staging` — всё; на `main` — только график отпусков).
-3. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
+1. **macOS:** дважды кликните **`Open Frontend.command`** в корне проекта.
+2. **Windows:** дважды кликните **`Open Frontend.bat`** (нужен [Node.js LTS](https://nodejs.org/)).
+3. Откроется `http://127.0.0.1:3300/` — экран входа, затем главная со всеми разделами.
+4. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
 
 **Ветки:** `main` (бой) — только отпуска; `staging` (тест) — полная платформа. Разработка ведётся на `staging`.
 
@@ -57,7 +58,13 @@ VBI HR платформа/
 ├── README.md               # Этот файл
 ├── docs/
 │   ├── ARCHITECTURE.md     # Архитектура, модули, localStorage
-│   └── CHANGELOG.md        # История версий и фич
+│   ├── CHANGELOG.md        # История версий и фич
+│   └── DEPLOYMENT.md       # GitLab CI, VPS, nginx, systemd
+├── deploy/                 # Выкладка на сервер (см. DEPLOYMENT.md)
+│   ├── nginx/
+│   ├── systemd/
+│   └── scripts/
+├── .gitlab-ci.yml          # Сборка и deploy на VPS
 ├── frontend/               # Nuxt 4 приложение (основной код)
 │   └── app/
 │       ├── app.vue         # Shell: auth, sidebar, NuxtPage
@@ -166,11 +173,7 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 | `staging` | Тест | Вся платформа | `full` |
 | `main` | Бой | Только график отпусков | `vacations` |
 
-1. Создайте репозиторий на GitHub и привяжите remote (см. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
-2. Первый push: `main`, затем `./scripts/setup-git-branches.sh` и `git push -u origin staging`.
-3. CI собирает проект на push/PR; артефакт `.output` — workflow **Build artifact**.
-
-На тестовом стенде в шапке отображается плашка **«Тестовый стенд»**. Локально — `frontend/.env.example` → `.env`.
+**Публикация (2 задачи):** [docs/CI-CD.md](docs/CI-CD.md) — `scripts/push-to-gitlab.sh` (Mac→Git), GitLab CI (Git→сервер).
 
 ---
 

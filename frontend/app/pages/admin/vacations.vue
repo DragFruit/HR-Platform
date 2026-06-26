@@ -43,32 +43,15 @@
             <div class="vac-approval-item__info">
               <strong class="vac-approval-item__name">{{ req.employee }}</strong>
               <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
-              <span v-if="overlapDetails(req).length" class="vac-overlap-badge-wrap">
-                <span class="vac-overlap-badge" tabindex="0">
-                  <span class="vac-overlap-badge__dot" aria-hidden="true" />
-                  Есть пересечение
-                </span>
-                <div class="vac-overlap-popover" role="tooltip">
-                  <p class="vac-overlap-popover__title">Пересечения отпусков</p>
-                  <div
-                    v-for="(item, index) in overlapDetails(req)"
-                    :key="`${item.employee}-${item.vacationStart}-${index}`"
-                    class="vac-overlap-popover__item"
-                  >
-                    <strong>{{ item.employee }}</strong>
-                    <dl class="vac-overlap-popover__meta">
-                      <div>
-                        <dt>Отпуск</dt>
-                        <dd>{{ formatRange(item.vacationStart, item.vacationEnd) }}</dd>
-                      </div>
-                      <div>
-                        <dt>Пересечение</dt>
-                        <dd>{{ formatRange(item.overlapStart, item.overlapEnd) }}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </span>
+              <VacOverlapPopover
+                v-if="overlapDetails(req).length"
+                :items="overlapDetails(req)"
+                :format-range="formatRange"
+              />
+              <VacAdvancePopover
+                v-if="advanceAssessment(req).status === 'advance'"
+                :assessment="advanceAssessment(req)"
+              />
             </div>
           </div>
           <div class="vac-approval-item__actions">
@@ -87,9 +70,10 @@
 
 <script setup lang="ts">
 import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
+import { assessVacationBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
 
-const { departmentsGrouped, hydrate: hydrateEmployees } = useEmployees();
+const { departmentsGrouped, findByName, reloadFromServer: reloadEmployees } = useEmployees();
 const { canSeeAllVacationApprovals } = usePermissions();
 const {
   viewYear,
@@ -97,7 +81,8 @@ const {
   pendingRequestsForApprover,
   getMonthEntries,
   setRequestStatus,
-  hydrate: hydrateVacations
+  reloadFromServer: reloadVacations,
+  state
 } = useVacations();
 
 const approvalQueue = computed(() => pendingRequestsForApprover(null, canSeeAllVacationApprovals.value));
@@ -118,8 +103,20 @@ const employeeInitials = (name: string) => {
 
 const overlapDetails = (req: VacationRequest) => findVacationOverlapDetails(req, yearRequests.value);
 
+const advanceAssessment = (req: VacationRequest) =>
+  assessVacationBalance(
+    req.employee,
+    findByName(req.employee)?.hired_at,
+    req.start,
+    req.end,
+    yearRequests.value,
+    state.value.primaryYear,
+    req.id,
+    findByName(req.employee)?.vacation_opening_balance
+  );
+
 onMounted(() => {
-  hydrateEmployees();
-  hydrateVacations();
+  reloadEmployees();
+  reloadVacations();
 });
 </script>

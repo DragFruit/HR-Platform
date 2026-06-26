@@ -1,5 +1,8 @@
 <template>
-  <aside class="vac-manager-aside-panel">
+  <aside
+    class="vac-manager-aside-panel"
+    :class="{ 'vac-manager-aside-panel--employee-view': modelValue === 'employee' }"
+  >
     <div class="emp-aside-role-strip">
       <span class="emp-aside-role-strip-label">Режим</span>
 
@@ -30,23 +33,14 @@
         </div>
       </div>
 
-      <div v-if="showHrTab" class="role-switch role-switch--aside" role="group" aria-label="Раздел платформы">
-        <button
-          type="button"
-          class="role-btn"
-          :class="{ active: modelValue === 'manager' }"
-          @click="setMode('manager')"
-        >
-          Руководитель
-        </button>
-        <button
-          type="button"
-          class="role-btn"
-          :class="{ active: modelValue === 'employee' }"
-          @click="setMode('employee')"
-        >
-          Сотрудник
-        </button>
+      <div
+        v-if="showHrTab && modelValue === 'manager'"
+        class="role-switch role-switch--aside"
+        role="group"
+        aria-label="Раздел платформы"
+      >
+        <button type="button" class="role-btn active">Руководитель</button>
+        <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
         <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
       </div>
     </div>
@@ -89,7 +83,9 @@
       </div>
     </template>
 
-    <EmployeeVacationAside v-else :view-year="viewYear" embedded />
+    <template v-else>
+      <EmployeeVacationAside :view-year="viewYear" />
+    </template>
   </aside>
 </template>
 

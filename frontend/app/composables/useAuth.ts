@@ -6,6 +6,8 @@ export type AuthSessionUser = {
   email: string;
   role: 'employee' | 'manager' | 'hr' | 'admin';
   department: string;
+  bitrix_user_id?: number | null;
+  auth_source?: 'demo' | 'bitrix';
 };
 
 type Credential = AuthSessionUser & {
@@ -112,6 +114,14 @@ export function useAuth() {
 
       try {
         const parsed = JSON.parse(raw) as AuthSessionUser;
+
+        if (parsed.auth_source === 'bitrix') {
+          user.value = null;
+          localStorage.removeItem(SESSION_KEY);
+          authReady.value = true;
+          return;
+        }
+
         const match = credentials.find(
           (item) => item.id === parsed.id && item.email.toLowerCase() === parsed.email.toLowerCase()
         );
@@ -192,6 +202,11 @@ export function useAuth() {
     showOnboarding.value = false;
   };
 
+  const loginWithBitrix = () => {
+    if (!import.meta.client) return;
+    window.location.href = '/api/auth/bitrix';
+  };
+
   const login = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const found = credentials.find(
@@ -234,6 +249,12 @@ export function useAuth() {
       useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
       localStorage.removeItem(SESSION_KEY);
       await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+
+      const router = useRouter();
+      const route = useRoute();
+      if (route.query.auth || route.query.auth_error) {
+        await router.replace({ path: route.path, query: {} });
+      }
     }
   };
 
@@ -253,6 +274,7 @@ export function useAuth() {
     isAuthenticated,
     restoreSession,
     login,
+    loginWithBitrix,
     logout,
     finishOnboarding,
     demoAccounts

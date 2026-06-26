@@ -47,6 +47,12 @@
               <span class="emp-request-period">{{ formatRequestPeriod(req) }}</span>
               <div class="emp-request-meta">
                 <span class="pill" :class="req.status">{{ statusLabel(req.status) }}</span>
+                <span
+                  v-if="req.status === 'pending' && requestAdvance(req).status === 'advance'"
+                  class="vac-advance-tag"
+                >
+                  Аванс {{ requestAdvance(req).deficit }} дн.
+                </span>
               </div>
             </div>
             <div class="emp-request-menu-wrap">
@@ -54,22 +60,12 @@
                 type="button"
                 class="emp-request-menu-btn"
                 aria-label="Действия с заявкой"
-                @click.stop="toggleRequestMenu(req.id)"
+                aria-haspopup="menu"
+                :aria-expanded="openMenuRequest?.id === req.id"
+                @click.stop="toggleRequestMenu(req, $event)"
               >
                 ⋯
               </button>
-              <div v-if="openMenuId === req.id" class="emp-request-menu" @click.stop>
-                <button type="button" class="emp-request-menu-item" @click="startEditRequest(req)">
-                  Изменить даты
-                </button>
-                <button
-                  type="button"
-                  class="emp-request-menu-item emp-request-menu-item--danger"
-                  @click="removeRequest(req)"
-                >
-                  Удалить
-                </button>
-              </div>
             </div>
           </div>
 
@@ -94,6 +90,29 @@
       </div>
     </section>
 
+    <Teleport to="body">
+      <div
+        v-if="openMenuRequest"
+        ref="menuRef"
+        class="emp-request-menu emp-request-menu--teleported"
+        role="menu"
+        :style="{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }"
+        @click.stop
+      >
+        <button type="button" class="emp-request-menu-item" role="menuitem" @click="startEditRequest(openMenuRequest)">
+          Изменить даты
+        </button>
+        <button
+          type="button"
+          class="emp-request-menu-item emp-request-menu-item--danger"
+          role="menuitem"
+          @click="removeRequest(openMenuRequest)"
+        >
+          Удалить
+        </button>
+      </div>
+    </Teleport>
+
     <h4 class="employee-legend-title">Легенда</h4>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-weekend" /> Выходной день</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-holiday" /> Праздничный день</div>
@@ -103,8 +122,8 @@
 </template>
 
 <script setup lang="ts">
-import { calcAvailableOnDate, calcEmployeeBalance } from '~/utils/vacationBalance';
-import { countInclusiveCalendarDays } from '~/utils/vacationCalendar';
+import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
+import { countVacationBillableDays } from '~/utils/vacationCalendar';
 import type { VacationRequest, VacationStatus } from '~/composables/useVacations';
 
 const props = defineProps<{
@@ -127,7 +146,17 @@ const yearRequests = computed(() => requestsForYear(props.viewYear));
 
 const projectionDate = ref('');
 const projectionText = ref('');
-const openMenuId = ref<number | null>(null);
+const openMenuRequest = ref<VacationRequest | null>(null);
+const menuAnchorRef = ref<HTMLElement | null>(null);
+const menuRef = ref<HTMLElement | null>(null);
+const menuOpen = computed(() => openMenuRequest.value !== null);
+
+const { position: menuPosition, updatePosition: updateMenuPosition } = useFloatingPosition(
+  menuAnchorRef,
+  menuRef,
+  menuOpen,
+  { placement: 'bottom-end', offset: 4 }
+);
 const editingId = ref<number | null>(null);
 const editForm = reactive({ start: '', end: '' });
 const editError = ref('');
@@ -143,8 +172,17 @@ const myRequests = computed(() => {
   );
 });
 
+const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
+
 const balance = computed(() =>
-  calcEmployeeBalance(employeeName.value, hireIso.value, yearRequests.value, new Date(), props.viewYear)
+  calcEmployeeBalance(
+    employeeName.value,
+    hireIso.value,
+    yearRequests.value,
+    new Date(),
+    props.viewYear,
+    openingBalance.value
+  )
 );
 
 const statusLabel = (status: VacationStatus) => vacationStatusLabels[status];
@@ -154,9 +192,21 @@ const formatRequestPeriod = (req: VacationRequest) => {
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
   };
-  const days = countInclusiveCalendarDays(req.start, req.end);
+  const days = countVacationBillableDays(req.start, req.end);
   return `${fmt(req.start)} — ${fmt(req.end)} (${days} дн.)`;
 };
+
+const requestAdvance = (req: VacationRequest) =>
+  assessVacationBalance(
+    employeeName.value,
+    hireIso.value,
+    req.start,
+    req.end,
+    yearRequests.value,
+    state.value.primaryYear,
+    req.id,
+    openingBalance.value
+  );
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(
@@ -168,14 +218,23 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
   );
 
 const closeRequestMenu = () => {
-  openMenuId.value = null;
+  openMenuRequest.value = null;
+  menuAnchorRef.value = null;
 };
 
-const toggleRequestMenu = (id: number) => {
-  openMenuId.value = openMenuId.value === id ? null : id;
+const toggleRequestMenu = (req: VacationRequest, event: MouseEvent) => {
+  if (openMenuRequest.value?.id === req.id) {
+    closeRequestMenu();
+    return;
+  }
+  menuAnchorRef.value = event.currentTarget as HTMLElement;
+  openMenuRequest.value = req;
   editingId.value = null;
   editError.value = '';
+  updateMenuPosition();
 };
+
+useDismissOnEscape(menuOpen, closeRequestMenu);
 
 const startEditRequest = (req: VacationRequest) => {
   editingId.value = req.id;
@@ -241,7 +300,9 @@ const showProjection = () => {
   projectionText.value = `К ${d}.${m} доступно <span class="emp-projection-days-accent">${available}</span> дней.`;
 };
 
-const onDocumentClick = () => {
+const onDocumentClick = (event: MouseEvent) => {
+  const target = event.target as Node;
+  if (menuRef.value?.contains(target) || menuAnchorRef.value?.contains(target)) return;
   closeRequestMenu();
 };
 

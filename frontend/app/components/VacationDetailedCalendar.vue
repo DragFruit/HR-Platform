@@ -1,7 +1,7 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
     <div class="timeline-scroll-x vac-detailed-scroll">
-      <table class="vac-detailed-timeline">
+      <table ref="tableRef" class="vac-detailed-timeline" :style="nameColCssVars">
         <thead>
           <tr class="vac-detailed-head-month">
             <th class="sticky-col-name sticky-col-name--head" rowspan="3">
@@ -49,10 +49,10 @@
             <template v-if="!isCollapsed(dep.name)">
               <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
                 <td class="sticky-col-name">
-                  <span class="emp-name">{{ emp.name }}</span>
+                  <EmployeeNameStacked :name="emp.name" />
                   <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
                 </td>
-                <td class="sticky-col-balance">{{ balanceFor(emp.name, emp.hired_at) }}</td>
+                <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
                 <td :colspan="totalDays" class="vac-detailed-track">
                   <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
                     <span
@@ -85,8 +85,7 @@
 
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
-import type { EmployeeDepartment } from '~/composables/useEmployees';
-import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
 
 type YearDayCell = {
@@ -114,9 +113,24 @@ const props = defineProps<{
 }>();
 
 const DAY_COL_PX = 22;
+/** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
+const TODAY_SCROLL_OFFSET_COLS = 3;
 
 const scrollWrapRef = ref<HTMLElement | null>(null);
+const tableRef = ref<HTMLTableElement | null>(null);
+const nameColWidthPx = ref(112);
 const collapsedDepts = ref<Set<string>>(new Set());
+
+const nameColCssVars = computed(() => ({
+  '--vac-name-col-w': `${nameColWidthPx.value}px`
+}));
+
+const measureNameColumn = () => {
+  const cell = tableRef.value?.querySelector('tbody .sticky-col-name') as HTMLElement | null;
+  if (cell) {
+    nameColWidthPx.value = cell.offsetWidth;
+  }
+};
 
 const parseIso = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number);
@@ -209,8 +223,15 @@ const toggleDept = (name: string) => {
   collapsedDepts.value = next;
 };
 
-const balanceFor = (name: string, hireIso: string) => {
-  const b = calcEmployeeBalance(name, hireIso || undefined, props.requests, new Date(), props.year);
+const balanceFor = (emp: Employee) => {
+  const b = calcEmployeeBalance(
+    emp.name,
+    emp.hired_at || undefined,
+    props.requests,
+    new Date(),
+    props.year,
+    emp.vacation_opening_balance
+  );
   return b.remain;
 };
 
@@ -256,26 +277,42 @@ const barStyle = (bar: GanttBar) => {
   };
 };
 
-const scrollToCurrentMonth = () => {
+const scrollToToday = () => {
   const wrap = scrollWrapRef.value?.querySelector('.vac-detailed-scroll') as HTMLElement | null;
   if (!wrap) return;
 
   const now = new Date();
   if (now.getFullYear() !== props.year) return;
 
-  const monthStartIdx = yearDays.value.find((cell) => cell.month === now.getMonth() && cell.day === 1)?.index;
-  if (monthStartIdx === undefined) return;
+  const todayIdx = yearDays.value.find((cell) => cell.today)?.index;
+  if (todayIdx === undefined) return;
 
-  const stickyWidth = 138 + 72;
-  wrap.scrollLeft = Math.max(0, monthStartIdx * DAY_COL_PX - stickyWidth - 24);
+  const target = Math.max(0, (todayIdx - TODAY_SCROLL_OFFSET_COLS) * DAY_COL_PX);
+  const maxScroll = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+  wrap.scrollLeft = Math.min(target, maxScroll);
 };
 
-onMounted(() => {
-  nextTick(scrollToCurrentMonth);
-});
+const scheduleScrollToToday = () => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      measureNameColumn();
+      scrollToToday();
+    });
+  });
+};
+
+onMounted(scheduleScrollToToday);
 
 watch(
   () => props.year,
-  () => nextTick(scrollToCurrentMonth)
+  () => scheduleScrollToToday()
 );
+
+watch(
+  () => props.departments,
+  () => nextTick(measureNameColumn),
+  { deep: true }
+);
+
+watch(collapsedDepts, () => nextTick(measureNameColumn));
 </script>

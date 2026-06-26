@@ -70,35 +70,15 @@
                       <div class="vac-approval-item__info">
                         <strong class="vac-approval-item__name">{{ req.employee }}</strong>
                         <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
-                        <span
+                        <VacOverlapPopover
                           v-if="overlapDetails(req).length"
-                          class="vac-overlap-badge-wrap"
-                        >
-                          <span class="vac-overlap-badge" tabindex="0">
-                            <span class="vac-overlap-badge__dot" aria-hidden="true" />
-                            Есть пересечение
-                          </span>
-                          <div class="vac-overlap-popover" role="tooltip">
-                            <p class="vac-overlap-popover__title">Пересечения отпусков</p>
-                            <div
-                              v-for="(item, index) in overlapDetails(req)"
-                              :key="`${item.employee}-${item.vacationStart}-${index}`"
-                              class="vac-overlap-popover__item"
-                            >
-                              <strong>{{ item.employee }}</strong>
-                              <dl class="vac-overlap-popover__meta">
-                                <div>
-                                  <dt>Отпуск</dt>
-                                  <dd>{{ formatRange(item.vacationStart, item.vacationEnd) }}</dd>
-                                </div>
-                                <div>
-                                  <dt>Пересечение</dt>
-                                  <dd>{{ formatRange(item.overlapStart, item.overlapEnd) }}</dd>
-                                </div>
-                              </dl>
-                            </div>
-                          </div>
-                        </span>
+                          :items="overlapDetails(req)"
+                          :format-range="formatRange"
+                        />
+                        <VacAdvancePopover
+                          v-if="advanceAssessment(req).status === 'advance'"
+                          :assessment="advanceAssessment(req)"
+                        />
                       </div>
                     </div>
                     <div class="vac-approval-item__actions">
@@ -134,10 +114,11 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
+import { assessVacationBalance } from '~/utils/vacationBalance';
 const { user, authReady } = useAuth();
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { isAdmin: isAdminShell } = usePlatformContext();
-const { departmentsGrouped, directReportsForAuthUser, managerProfileName, hydrate: hydrateEmployees } =
+const { departmentsGrouped, directReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
   viewYear,
@@ -145,7 +126,8 @@ const {
   pendingRequestsForApprover,
   getMonthEntries,
   setRequestStatus,
-  hydrate: hydrateVacations
+  reloadFromServer: reloadVacations,
+  state
 } = useVacations();
 
 const activeTab = ref<'calendar' | 'approval'>('calendar');
@@ -267,6 +249,18 @@ const overlapScopeNames = computed(() => {
 const overlapDetails = (req: VacationRequest) =>
   findVacationOverlapDetails(req, yearRequests.value, overlapScopeNames.value);
 
+const advanceAssessment = (req: VacationRequest) =>
+  assessVacationBalance(
+    req.employee,
+    findByName(req.employee)?.hired_at,
+    req.start,
+    req.end,
+    yearRequests.value,
+    state.value.primaryYear,
+    req.id,
+    findByName(req.employee)?.vacation_opening_balance
+  );
+
 const approve = (id: number) => setRequestStatus(id, 'approved');
 const reject = (id: number) => setRequestStatus(id, 'rejected');
 
@@ -275,7 +269,7 @@ const onViewYearChange = (year: number) => {
 };
 
 onMounted(() => {
-  hydrateEmployees();
-  hydrateVacations();
+  reloadEmployees();
+  reloadVacations();
 });
 </script>

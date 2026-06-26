@@ -1,0 +1,19 @@
+[Unit]
+Description=VBI HR Platform (production)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/vbi-hr
+EnvironmentFile=-/var/www/vbi-hr/.env
+EnvironmentFile=-/etc/vbi-hr/bitrix-production.env
+Environment=NITRO_HOST=127.0.0.1
+Environment=NITRO_PORT=3300
+ExecStart=/var/www/vbi-hr/run.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

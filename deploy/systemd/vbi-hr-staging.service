@@ -1,0 +1,19 @@
+[Unit]
+Description=VBI HR Platform (staging)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/var/www/vbi-hr-staging
+EnvironmentFile=-/var/www/vbi-hr-staging/bitrix.env
+EnvironmentFile=-/etc/vbi-hr/bitrix.env
+Environment=NITRO_HOST=127.0.0.1
+Environment=NITRO_PORT=3301
+ExecStart=/var/www/vbi-hr-staging/run.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

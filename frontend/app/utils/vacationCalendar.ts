@@ -24,6 +24,39 @@ export const toIso = (date: Date) => {
   return `${y}-${m}-${d}`;
 };
 
+export const todayIso = () => toIso(new Date());
+
+export const normalizeRange = (start: string, end: string): [string, string] =>
+  start <= end ? [start, end] : [end, start];
+
+export const isIsoInRange = (iso: string, start: string, end: string) => {
+  const [lo, hi] = normalizeRange(start, end);
+  return iso >= lo && iso <= hi;
+};
+
+export const isDaySelectable = (
+  cell: Pick<CalendarDayCell, 'empty' | 'iso' | 'approved' | 'pending'>,
+  minIso: string
+) => !cell.empty && cell.iso >= minIso && !cell.approved && !cell.pending;
+
+export const isRangeFullySelectable = (
+  start: string,
+  end: string,
+  minIso: string,
+  blocked: Set<string>
+) => {
+  const [lo, hi] = normalizeRange(start, end);
+  if (lo < minIso) return false;
+  const cursor = new Date(`${lo}T00:00:00`);
+  const endDate = new Date(`${hi}T00:00:00`);
+  while (cursor <= endDate) {
+    const iso = toIso(cursor);
+    if (blocked.has(iso) || iso < minIso) return false;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return true;
+};
+
 export const isWeekendDay = (date: Date) => {
   const w = date.getDay();
   return w === 0 || w === 6;
@@ -33,6 +66,31 @@ export const isRuHoliday = (iso: string) => {
   const y = Number(iso.slice(0, 4));
   const set = RU_PROD_CAL_OFF_BY_YEAR[y];
   return Boolean(set?.has(iso));
+};
+
+export const isInRangePreview = (
+  iso: string,
+  start: string,
+  hover: string | null
+) => {
+  const end = hover ?? start;
+  if (!isIsoInRange(iso, start, end)) return false;
+  return !isRuHoliday(iso);
+};
+
+export const rangePreviewSegmentClass = (
+  iso: string,
+  start: string,
+  hover: string | null
+): string => {
+  if (isRuHoliday(iso)) return '';
+  const end = hover ?? start;
+  const [lo, hi] = normalizeRange(start, end);
+  if (iso < lo || iso > hi) return '';
+  if (lo === hi) return 'emp-range-seg-single';
+  if (iso === lo) return 'emp-range-seg-start';
+  if (iso === hi) return 'emp-range-seg-end';
+  return 'emp-range-seg-mid';
 };
 
 export type CalendarDayCell = {
@@ -153,6 +211,20 @@ export const countInclusiveCalendarDays = (startStr: string, endStr: string) => 
   const cursor = new Date(start);
   while (cursor <= end) {
     n += 1;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return n;
+};
+
+/** Дни в счёт отпуска: календарные, без праздников (выходные входят). */
+export const countVacationBillableDays = (startStr: string, endStr: string) => {
+  const start = new Date(`${startStr}T00:00:00`);
+  const end = new Date(`${endStr}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+  let n = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    if (!isRuHoliday(toIso(cursor))) n += 1;
     cursor.setDate(cursor.getDate() + 1);
   }
   return n;

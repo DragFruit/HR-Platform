@@ -13,17 +13,10 @@ export function useAppEnv() {
   const isProduction = computed(() => appEnv.value === 'production');
   const isDevelopment = computed(() => appEnv.value === 'development');
 
-  const envLabel = computed(() => {
-    if (isStaging.value) return 'Тестовый стенд';
-    if (isProduction.value) return 'Бой';
-    return '';
-  });
-
   return {
     appEnv,
     isStaging,
     isProduction,
-    isDevelopment,
-    envLabel
+    isDevelopment
   };
 }
