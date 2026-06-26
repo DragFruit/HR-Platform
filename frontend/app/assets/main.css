@@ -1007,6 +1007,10 @@ a {
   gap: 0;
   padding: 12px 8px 24px;
   min-width: min(100%, 1100px);
+  --org-card-border: #d8d8d2;
+  --org-card-radius: 20px;
+  --org-card-bg: var(--bg-surface);
+  --org-card-hover-bg: var(--bg-surface-raised);
 }
 
 .org-chart-vbi {
@@ -1020,16 +1024,17 @@ a {
   position: relative;
   width: 100%;
   min-height: 280px;
-  padding: 8px 4px 20px;
+  padding: 12px 8px 24px;
   overflow: visible;
 }
 
 .org-chart-canvas--edit {
   background-image:
-    linear-gradient(to right, rgba(120, 113, 140, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(120, 113, 140, 0.1) 1px, transparent 1px);
+    linear-gradient(to right, rgba(216, 216, 210, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(216, 216, 210, 0.45) 1px, transparent 1px);
   background-size: var(--org-canvas-grid) var(--org-canvas-grid);
-  border-radius: 12px;
+  border-radius: var(--org-card-radius);
+  background-color: rgba(255, 255, 255, 0.35);
 }
 
 .org-placed--exec {
@@ -1054,7 +1059,8 @@ a {
 }
 
 .org-placed--exec.is-dragging .org-node-executive {
-  box-shadow: var(--shadow-md);
+  border-color: var(--hero-purple);
+  background: var(--org-card-hover-bg);
 }
 
 .org-placed--unit,
@@ -1081,157 +1087,211 @@ a {
 }
 
 .org-placed.is-dragging {
-  opacity: 0.88;
+  opacity: 0.92;
   z-index: 5;
   cursor: grabbing;
 }
 
 .org-placed.is-dragging .org-node-unit--solo,
 .org-placed.is-dragging .org-group-frame {
-  box-shadow: var(--shadow-md);
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg);
 }
 
 .org-group-frame {
   position: relative;
-  border: 1px solid #d4d4dc;
-  border-radius: 16px;
-  background: var(--bg-surface);
-  padding: 12px 14px 10px;
+  border: 1px solid var(--org-card-border);
+  border-radius: calc(var(--org-card-radius) + 4px);
+  background: var(--bg-surface-raised);
+  padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  min-width: 168px;
+  min-width: 188px;
   min-height: 120px;
   box-sizing: border-box;
   overflow: auto;
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  transition: var(--transition-brutal);
 }
 
 .org-placed.is-resizing .org-group-frame {
-  box-shadow: var(--shadow-md);
+  border-color: #c8c8c2;
+  background: var(--org-card-bg);
 }
 
 .org-resize-handle {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  right: 6px;
+  bottom: 6px;
   width: 14px;
   height: 14px;
   cursor: nwse-resize;
-  border-right: 2px solid #202020;
-  border-bottom: 2px solid #202020;
-  border-radius: 0 0 3px 0;
-  opacity: 0.55;
+  border-right: 2px solid #838383;
+  border-bottom: 2px solid #838383;
+  border-radius: 0 0 4px 0;
+  opacity: 0.45;
   touch-action: none;
+  transition: opacity 0.15s ease;
 }
 
 .org-resize-handle:hover {
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .org-group-label {
-  margin: 4px 0 0;
-  text-align: center;
-  padding-top: 6px;
-  border-top: 1px solid #ececf0;
+  margin: 2px 0 0;
+  text-align: left;
+  padding-top: 10px;
+  border-top: 1px solid #ecece6;
 }
 
 .org-group-label-text {
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+}
+
+.org-group-add-unit {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 5px 10px;
+  border: 1px solid var(--org-card-border, #d8d8d2);
+  border-radius: 999px;
+  background: var(--org-card-bg, var(--bg-surface));
   color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-brutal);
+}
+
+.org-group-add-unit:hover {
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg, var(--bg-surface-raised));
+  color: var(--text);
 }
 
 .org-node.org-node-executive {
   position: relative;
-  text-align: center;
-  min-width: 200px;
-  max-width: 280px;
+  text-align: left;
+  min-width: 220px;
+  max-width: 300px;
   width: auto;
-  border: 1px solid #e8944f;
-  background: linear-gradient(180deg, #fde8d4 0%, #f4a96e 55%, #ef9a5a 100%);
-  box-shadow: 0 4px 16px rgba(232, 148, 79, 0.22);
-  border-radius: 999px;
-  padding: 14px 24px;
+  border: 2px solid var(--hero-purple);
+  background: linear-gradient(180deg, #f8f5ff 0%, var(--org-card-bg) 100%);
+  border-radius: var(--org-card-radius);
+  padding: 16px 20px 15px;
   box-sizing: border-box;
+  transition: var(--transition-brutal);
+}
+
+.org-chart-canvas--edit .org-node-executive:hover {
+  background: linear-gradient(180deg, #f3edff 0%, var(--org-card-hover-bg) 100%);
 }
 
 .org-exec-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .org-exec-person {
-  margin: 4px 0 0;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #6b5a4a;
+  margin: 6px 0 0;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.35;
 }
 
 .org-node-unit {
   position: relative;
   width: 100%;
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  text-align: center;
+  padding: 15px 18px 14px;
+  border-radius: var(--org-card-radius);
+  text-align: left;
   box-shadow: none;
+  transition: var(--transition-brutal);
 }
 
 .org-node-unit--solo {
-  border: none;
-  background: var(--bg-soft);
+  border: 1px solid var(--org-card-border);
+  background: var(--org-card-bg);
+}
+
+.org-chart-canvas .org-placed--unit:hover .org-node-unit--solo,
+.org-chart-canvas .org-placed--unit:not(.is-dragging):hover .org-node-unit--solo {
+  border-color: #c8c8c2;
+  background: var(--org-card-hover-bg);
 }
 
 .org-node-unit--in-group {
-  border: none;
-  background: var(--bg-surface);
+  border: 1px solid var(--org-card-border);
+  background: var(--org-card-bg);
+  padding: 12px 14px;
+}
+
+.org-node-unit--in-group + .org-node-unit--in-group {
+  margin-top: 0;
 }
 
 .org-unit-title {
-  font-size: 0.88rem;
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
   margin: 0;
+  color: var(--text);
 }
 
 .org-unit-head {
-  margin: 4px 0 0;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  line-height: 1.35;
 }
 
 .org-unit-fields {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+}
+
+.org-chart .editable-line:not(.readonly):hover {
+  background: rgba(116, 81, 244, 0.06);
+  border-radius: 8px;
 }
 
 .org-remove-btn {
   position: absolute;
-  top: 6px;
+  top: 8px;
   right: 8px;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.08);
-  color: #5c4a3a;
-  font-size: 1rem;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--org-card-border);
+  border-radius: 8px;
+  background: var(--org-card-bg);
+  color: var(--text-soft);
+  font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  transition: var(--transition-brutal);
 }
 
 .org-remove-btn:hover {
-  background: rgba(0, 0, 0, 0.14);
+  border-color: #c8c8c2;
+  color: var(--text);
+  background: var(--org-card-hover-bg);
 }
 
 .org-remove-btn--group {
-  top: 8px;
+  top: 10px;
   right: 10px;
 }
 
@@ -1242,8 +1302,8 @@ a {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(23, 21, 31, 0.35);
-  backdrop-filter: blur(3px);
+  background: rgba(32, 32, 32, 0.28);
+  backdrop-filter: blur(4px);
 }
 
 .org-confirm-card {
@@ -1251,7 +1311,9 @@ a {
   padding: 22px 24px;
   display: grid;
   gap: 14px;
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--org-card-border);
+  border-radius: var(--org-card-radius);
+  background: var(--org-card-bg);
 }
 
 .org-confirm-title {

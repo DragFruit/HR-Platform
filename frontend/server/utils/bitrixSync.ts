@@ -202,20 +202,31 @@ export async function syncEmployeesFromBitrix(
     const department = deptId ? deptNames.get(deptId) || '' : '';
     const headId = deptId ? deptHeads.get(deptId) : null;
     const manager = headId ? userNames.get(headId) || '' : '';
-    if (prev) updated += 1;
-    else created += 1;
+    if (prev) {
+      updated += 1;
+      synced.push({
+        ...prev,
+        bitrix_user_id: bitrixId,
+        platform_user_id: prev.platform_user_id ?? bitrixId,
+        email: prev.email?.trim() || String(user.EMAIL || '').trim().toLowerCase() || ''
+      });
+      continue;
+    }
 
+    if (!importNew) continue;
+
+    created += 1;
     synced.push({
       id: bitrixId,
       bitrix_user_id: bitrixId,
-      name: formatBitrixUserName(user) || prev?.name || `Сотрудник ${bitrixId}`,
-      title: String(user.WORK_POSITION || '').trim() || prev?.title || '',
-      department: department || prev?.department || '',
-      manager: manager || prev?.manager || '',
-      hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || prev?.hired_at || new Date().toISOString().slice(0, 10),
+      name: formatBitrixUserName(user) || `Сотрудник ${bitrixId}`,
+      title: String(user.WORK_POSITION || '').trim(),
+      department,
+      manager,
+      hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
       platform_user_id: bitrixId,
-      email: String(user.EMAIL || '').trim().toLowerCase() || prev?.email || '',
-      account_role: prev?.account_role ?? ''
+      email: String(user.EMAIL || '').trim().toLowerCase(),
+      account_role: ''
     });
   }
 

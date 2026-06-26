@@ -2,7 +2,7 @@
 # Задача 2 (из GitLab CI): выкладка артефакта build на VPS.
 set -euo pipefail
 
-export DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-${HOME}/.ssh/id_rsa}"
+export DEPLOY_SSH_KEY="${DEPLOY_SSH_KEY:-${HOME}/.ssh/id_ci_deploy}"
 
 if [[ ! -f "${DEPLOY_SSH_KEY}" ]]; then
   echo "CI: не найден SSH-ключ ${DEPLOY_SSH_KEY}. Задайте переменную SSH_PRIVATE_KEY в GitLab." >&2
