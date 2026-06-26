@@ -12,6 +12,11 @@
         </span>
       </div>
       <div class="vac-team-calendar__controls">
+        <select v-model.number="viewYear" class="vac-year-chip" aria-label="Год">
+          <option :value="2025">2025</option>
+          <option :value="2026">2026</option>
+          <option :value="2027">2027</option>
+        </select>
         <div class="vac-view-toggle" role="group" aria-label="Вид календаря">
           <button
             type="button"
@@ -36,13 +41,13 @@
     <VacationDetailedCalendar
       v-if="viewMode === 'detailed'"
       :departments="departments"
-      :year="year"
+      :year="viewYear"
       :requests="requests"
     />
     <VacationMonthlyCalendar
       v-else
       :departments="departments"
-      :year="year"
+      :year="viewYear"
       :get-month-entries="getMonthEntries"
     />
   </div>
@@ -52,15 +57,16 @@
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
 
-const props = defineProps<{
+defineProps<{
   departments: EmployeeDepartment[];
-  year: number;
   requests: VacationRequest[];
   getMonthEntries: (employeeName: string, month: number, year: number) => {
     status: string;
     label: string;
   }[];
 }>();
+
+const { viewYear } = useVacations();
 
 const viewMode = ref<'detailed' | 'months'>('detailed');
 </script>
