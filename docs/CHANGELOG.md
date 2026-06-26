@@ -4,6 +4,10 @@
 
 ## 2026-06-25
 
+### docs: шпаргалка по 3 локальным приложениям Bitrix
+
+- [docs/BITRIX.md](BITRIX.md) §0 — что оставить (бой + dev), что удалить.
+
 ### Bitrix OAuth local: отдельные ключи и callback с порта dev
 
 - В development `getBitrixRedirectUri` берёт origin из запроса (актуальный порт `npm run dev`).
