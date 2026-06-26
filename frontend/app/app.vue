@@ -56,9 +56,6 @@
     </aside>
 
     <div class="shell-main">
-      <div v-if="envLabel" class="env-banner" :class="`env-banner--${appEnv}`" role="status">
-        {{ envLabel }}
-      </div>
       <header class="topbar">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
@@ -102,7 +99,6 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath } = useLaunchScope();
-const { appEnv, envLabel } = useAppEnv();
 
 const route = useRoute();
 const router = useRouter();
