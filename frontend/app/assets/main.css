@@ -2196,10 +2196,22 @@ a {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
+  min-height: 0;
+}
+
+.shell-main:has(.vac-manager-layout--employee) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .shell-main:has(.vac-manager-layout--employee) .topbar {
   padding: 10px 16px;
+  position: static;
+  top: auto;
+  flex-shrink: 0;
 }
 
 .shell-main:has(.vac-manager-layout--employee) .topbar h1 {
@@ -2208,8 +2220,9 @@ a {
 
 .shell-main:has(.vac-manager-layout--employee) .content {
   padding: 12px 16px 14px;
-  overflow: auto;
+  overflow: visible;
   min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3149,8 +3162,20 @@ a {
 .vac-team-calendar .vacation-calendar-wrap .timeline-scroll-x {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
+  max-height: min(calc(100dvh - 280px), 640px);
+  overflow: auto;
   overscroll-behavior: contain;
+}
+
+.vac-team-calendar .vacation-timeline thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.vac-team-calendar .vacation-timeline thead .sticky-col-name {
+  left: 0;
+  z-index: 6;
 }
 
 .vac-team-calendar .vacation-timeline {
@@ -3325,6 +3350,24 @@ a {
   font-size: 0.68rem;
 }
 
+.vac-detailed-timeline tr.vac-detailed-head-month th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-days th {
+  position: sticky;
+  top: 2.1rem;
+  z-index: 3;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-weekdays th {
+  position: sticky;
+  top: 3.55rem;
+  z-index: 3;
+}
+
 .vac-detailed-month-label {
   font-size: 0.78rem !important;
   padding: 5px 4px !important;
@@ -3421,7 +3464,7 @@ a {
 
 .vac-detailed-timeline thead .sticky-col-name,
 .vac-detailed-timeline thead .sticky-col-balance {
-  z-index: 5;
+  z-index: 7;
   background: var(--bg-surface-raised);
   font-size: 0.72rem;
   line-height: 1.15;
@@ -4519,24 +4562,37 @@ a {
 .sw-pending { background: var(--vac-pending); }
 
 /* ——— График отпусков сотрудника: весь год на первом экране ——— */
+.app-shell:has(.vac-emp-page--fit) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.shell-main:has(.vac-emp-page--fit) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
 .shell-main:has(.vac-emp-page--fit) .topbar {
   padding: 10px 16px;
+  position: static;
+  top: auto;
+  flex-shrink: 0;
 }
 
 .shell-main:has(.vac-emp-page--fit) .topbar h1 {
   font-size: 1rem;
 }
 
-.app-shell:has(.vac-emp-page--fit) {
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-}
-
 .shell-main:has(.vac-emp-page--fit) .content {
   padding: 12px 16px 14px;
-  overflow: auto;
+  overflow: visible;
   min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
