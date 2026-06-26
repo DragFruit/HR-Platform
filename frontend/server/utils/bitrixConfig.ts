@@ -31,7 +31,28 @@ export function getBitrixConfig(): BitrixRuntimeConfig {
   };
 }
 
+export function getRequestPublicOrigin(event: H3Event): string {
+  const forwardedHost = getRequestHeader(event, 'x-forwarded-host');
+  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto') || 'http';
+  const forwardedPort = getRequestHeader(event, 'x-forwarded-port');
+  const hostHeader = getRequestHeader(event, 'host');
+  const host = forwardedHost || hostHeader;
+
+  if (host) {
+    const hostHasPort = host.includes(':');
+    const needsPort =
+      !hostHasPort && forwardedPort && !['80', '443'].includes(String(forwardedPort));
+    const fullHost = needsPort ? `${host}:${forwardedPort}` : host;
+    return `${forwardedProto}://${fullHost}`;
+  }
+
+  return getRequestURL(event).origin;
+}
+
+/** Origin текущего запроса; без event — только из APP_PUBLIC_URL (fallback для скриптов). */
 export function getAppPublicOrigin(event?: H3Event): string {
+  if (event) return getRequestPublicOrigin(event);
+
   const appUrl = String(process.env.APP_PUBLIC_URL || '').trim().replace(/\/+$/, '');
   if (appUrl) {
     try {
@@ -41,32 +62,7 @@ export function getAppPublicOrigin(event?: H3Event): string {
     }
   }
 
-  const { bitrixRedirectUri } = getBitrixConfig();
-  if (bitrixRedirectUri) {
-    try {
-      return new URL(bitrixRedirectUri).origin;
-    } catch {
-      /* fall through */
-    }
-  }
-
-  if (!event) {
-    throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
-  }
-
-  const forwardedHost = getRequestHeader(event, 'x-forwarded-host');
-  const forwardedProto = getRequestHeader(event, 'x-forwarded-proto') || 'http';
-  const forwardedPort = getRequestHeader(event, 'x-forwarded-port');
-
-  if (forwardedHost) {
-    const hostHasPort = forwardedHost.includes(':');
-    const needsPort =
-      !hostHasPort && forwardedPort && !['80', '443'].includes(String(forwardedPort));
-    const host = needsPort ? `${forwardedHost}:${forwardedPort}` : forwardedHost;
-    return `${forwardedProto}://${host}`;
-  }
-
-  return getRequestURL(event).origin;
+  throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
 }
 
 export function isBitrixAuthConfigured(): boolean {
@@ -80,5 +76,5 @@ export function getBitrixRedirectUri(event?: H3Event): string {
   if (!event) {
     throw createError({ statusCode: 500, statusMessage: 'BITRIX_REDIRECT_URI не задан' });
   }
-  return `${getAppPublicOrigin(event)}/api/auth/bitrix/callback`;
+  return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
 }

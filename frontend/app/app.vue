@@ -128,9 +128,7 @@ const handleBitrixReturn = async () => {
   if (!isAuthenticated.value) {
     finishingBitrixLogin.value = false;
     clearAuthQuery();
-    const { appPublicUrl } = await $fetch<{ appPublicUrl: string }>('/api/auth/config');
-    const base = appPublicUrl?.replace(/\/+$/, '') || '';
-    window.location.href = base ? `${base}/api/auth/bitrix` : '/api/auth/bitrix';
+    window.location.href = '/api/auth/bitrix';
     return true;
   }
 

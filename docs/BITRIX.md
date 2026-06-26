@@ -129,7 +129,7 @@ sudo systemctl restart vbi-hr-staging
 
 Сессия в cookie — **14 дней**, без разлогина при неактивности.
 
-**Nginx на staging:** в `proxy_set_header` используйте `Host $http_host`, иначе callback может потерять порт `:8080` в redirect URI.
+**Nginx:** в `proxy_set_header` используйте `Host $http_host` и `X-Forwarded-Port`, чтобы callback возвращал на тот же стенд (тест `:8080`, бой `:80`), без перекрёстных редиректов.
 
 ---
 

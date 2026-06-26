@@ -75,7 +75,9 @@ const route = useRoute();
 const router = useRouter();
 const { isDevelopment } = useAppEnv();
 const { login, demoAccounts } = useAuth();
-const { bitrixAuthEnabled, configReady, preferBitrixLogin, bitrixLoginUrl } = useBitrixAuthConfig();
+const BITRIX_LOGIN_PATH = '/api/auth/bitrix';
+
+const { bitrixAuthEnabled, configReady, preferBitrixLogin } = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
 const showDemoLogin = computed(() => {
@@ -101,7 +103,7 @@ onMounted(() => {
   readAuthError();
 
   if (route.query.auth === 'bitrix' && preferBitrixLogin.value) {
-    window.location.href = bitrixLoginUrl.value;
+    window.location.href = BITRIX_LOGIN_PATH;
   }
 });
 
@@ -116,7 +118,7 @@ const fillDemo = (account: { email: string; password: string }) => {
 };
 
 const goBitrixLogin = () => {
-  window.location.href = bitrixLoginUrl.value;
+  window.location.href = BITRIX_LOGIN_PATH;
 };
 
 const submit = async () => {

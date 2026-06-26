@@ -1,6 +1,5 @@
-import { isBitrixAuthConfigured, getAppPublicOrigin } from '../../utils/bitrixConfig';
+import { isBitrixAuthConfigured } from '../../utils/bitrixConfig';
 
-export default defineEventHandler((event) => ({
-  bitrixAuthEnabled: isBitrixAuthConfigured(),
-  appPublicUrl: getAppPublicOrigin(event)
+export default defineEventHandler(() => ({
+  bitrixAuthEnabled: isBitrixAuthConfigured()
 }));
