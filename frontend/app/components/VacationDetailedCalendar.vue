@@ -4,10 +4,10 @@
       <table ref="tableRef" class="vac-detailed-timeline" :style="nameColCssVars">
         <thead>
           <tr class="vac-detailed-head-month">
-            <th class="sticky-col-name sticky-col-name--head" rowspan="3">
+            <th class="sticky-col-name sticky-col-name--head">
               <span class="vac-employee-head-label">Сотрудник</span>
             </th>
-            <th class="sticky-col-balance" rowspan="3">
+            <th class="sticky-col-balance sticky-col-balance--head">
               <span class="vac-balance-head-label">Остаток</span>
             </th>
             <th
@@ -20,6 +20,8 @@
             </th>
           </tr>
           <tr class="vac-detailed-head-days">
+            <th class="sticky-col-name sticky-col-name--head-spacer" aria-hidden="true" />
+            <th class="sticky-col-balance sticky-col-balance--head-spacer" aria-hidden="true" />
             <th
               v-for="cell in yearDays"
               :key="`d-${cell.iso}`"
@@ -29,6 +31,8 @@
             </th>
           </tr>
           <tr class="vac-detailed-head-weekdays">
+            <th class="sticky-col-name sticky-col-name--head-spacer" aria-hidden="true" />
+            <th class="sticky-col-balance sticky-col-balance--head-spacer" aria-hidden="true" />
             <th
               v-for="cell in yearDays"
               :key="`w-${cell.iso}`"
