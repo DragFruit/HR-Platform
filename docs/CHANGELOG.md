@@ -4,6 +4,12 @@
 
 ## 2025-06-17
 
+### Hotfix CI: сборка без QA seed (production)
+
+- Добавлены `app/data/qaTestDepartment.ts` и `app/data/departments.ts` как безопасные дефолты для production-сборки.
+- Убрана зависимость сборки от локальных QA/demo-файлов: imports в `useAuth`, `useEmployees`, `vacationApproval`, `server/utils/credentials`, `server/utils/employeesStore` теперь резолвятся в репозитории.
+- Проверка: `NUXT_PUBLIC_APP_ENV=production NUXT_PUBLIC_LAUNCH_SCOPE=vacations npm run build` проходит локально.
+
 ### Квест-обучение: шаги 3 и 6, финальная награда (localhost)
 
 - Шаг 3 (календарь) и шаг 6 (мои заявки): только светлая подсветка, без PNG-обводки.
