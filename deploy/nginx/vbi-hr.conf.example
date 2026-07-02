@@ -14,5 +14,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+
+        # Карта кликов / Вебвизор: сайт открывается в iframe на metrika.yandex.*
+        # https://yandex.ru/support/metrica/ru/behavior/click-map#iframe
+        add_header Content-Security-Policy "frame-ancestors 'self' https://metrika.yandex.ru https://metrika.yandex.by https://metrika.yandex.com https://metrika.yandex.com.tr https://metrica.yandex.ru https://metrica.yandex.by https://metrica.yandex.com https://webvisor.com https://*.webvisor.com https://*.metrika.yandex.ru https://*.metrika.yandex.by" always;
     }
 }

@@ -24,3 +24,7 @@ vendor/
 !**/.env.example
 deploy/env/*.env
 !deploy/env/*.example
+
+# Руководители сотрудников — runtime на сервере, не из репозитория
+frontend/server/data/employee-managers.json
+frontend/server/data/admin-notifications.json
