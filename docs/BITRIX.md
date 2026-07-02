@@ -146,11 +146,11 @@ https://crm.vbi.ru/oauth/authorize/?client_id=ВАШ_CLIENT_ID&response_type=cod
 
 ---
 
-## 2. Вебхук (для синка сотрудников)
+## 2. Вебхук (для синка сотрудников и отпусков)
 
 Отдельно от OAuth: **Разработчикам** → **Входящий вебхук**.
 
-Права: **user** + **структура/department**.
+Права: **user** + **структура/department** + **lists** (универсальные списки) + **calendar** (календарь, запасной канал для отсутствий).
 
 Базовый URL (без метода в конце):
 
@@ -158,9 +158,28 @@ https://crm.vbi.ru/oauth/authorize/?client_id=ВАШ_CLIENT_ID&response_type=cod
 https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 ```
 
-Проверка в генераторе: методы `user.get` и `department.get` (параметры — в конце документа).
-
 Переменная на сервере: `BITRIX_WEBHOOK_URL=...`
+
+### Отпуска → график отсутствий (пальма)
+
+После **согласования** заявки в VBI HR сервер создаёт запись «отпуск ежегодный» в Битриксе:
+
+1. `lists.element.add` в инфоблок **График отсутствий** (основной путь, появляется пальма).
+2. Если не удалось — `calendar.event.add` с `accessibility: absent` (запасной путь).
+
+Опционально в env:
+
+| Переменная | Назначение |
+|------------|------------|
+| `BITRIX_ABSENCE_IBLOCK_ID` | ID инфоблока графика отсутствий (если не задан — автопоиск по имени) |
+| `BITRIX_ABSENCE_IBLOCK_TYPE_ID` | Тип инфоблока, по умолчанию `structure` |
+| `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «отпуск ежегодный», по умолчанию `1` |
+
+Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
+
+Проверка: согласовать отпуск в `/vacations` → в «Мои заявки» тег **Битрикс ✓** → в портале `crm.vbi.ru` пальма у сотрудника на даты отпуска.
+
+Проверка вебхука в генераторе: методы `user.get`, `department.get`, `lists.get`, `lists.element.add`.
 
 ---
 
@@ -177,6 +196,10 @@ BITRIX_REDIRECT_URI=http://45.12.74.25:8080/api/auth/bitrix/callback
 
 # Вебхук — синк (база без profile.json / user.get)
 BITRIX_WEBHOOK_URL=https://crm.vbi.ru/rest/ID/СЕКРЕТ/
+# График отсутствий (пальма после согласования отпуска в VBI HR)
+# BITRIX_ABSENCE_IBLOCK_ID=12
+# BITRIX_ABSENCE_IBLOCK_TYPE_ID=structure
+# BITRIX_ABSENCE_TYPE_ENUM=1
 
 # Роли по группам Битрикса (ID через запятую)
 BITRIX_ADMIN_GROUP_IDS=1

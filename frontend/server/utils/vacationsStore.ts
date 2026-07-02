@@ -2,6 +2,8 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 
+export type { VacationRequest };
+
 export type VacationStoreState = {
   primaryYear: number;
   requestsByYear: Record<string, VacationRequest[]>;

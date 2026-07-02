@@ -1,5 +1,6 @@
 <template>
   <footer class="app-site-footer" aria-label="Ссылки агентства VBI">
+    <VacationTrainingHud />
     <div class="app-site-footer__inner">
       <span class="app-site-footer__logo" aria-hidden="true">VBI</span>
 

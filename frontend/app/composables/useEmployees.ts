@@ -1,4 +1,7 @@
+import { canApproverReviewRequest } from '~/utils/vacationApproval';
+import { listDepartmentsForUi } from '~/data/departments';
 import { dedupeEmployeeList } from '~/utils/employeeDedupe';
+import { normalizeEmployeeNameKey, resolveManagerFromList } from '~/utils/employeeName';
 
 export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
 
@@ -36,6 +39,9 @@ export type EmployeeDepartment = {
 
 const STORAGE_KEY = 'vbi-employees-v5';
 
+export type EmployeeSyncResult = { ok: true } | { ok: false; error: string };
+export type EmployeeSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 const EMAIL_TO_EMPLOYEE: Record<string, string> = Object.fromEntries(
   Object.values(PLATFORM_ACCOUNTS).map((a) => [a.email.toLowerCase(), a.name])
 );
@@ -70,6 +76,9 @@ export function useEmployees() {
   const employeesRaw = useState<Employee[]>('vbi-employees', () => []);
   const employees = computed(() => dedupeEmployeeList(employeesRaw.value));
   const hydrated = useState<boolean>('vbi-employees-hydrated', () => false);
+  const saveStatus = useState<EmployeeSaveStatus>('vbi-employees-save-status', () => 'idle');
+  const saveError = useState<string>('vbi-employees-save-error', () => '');
+  const reloadLoading = useState<boolean>('vbi-employees-reload-loading', () => false);
 
   const platformAccounts = computed(() =>
     Object.entries(PLATFORM_ACCOUNTS).map(([id, acc]) => ({
@@ -130,8 +139,10 @@ export function useEmployees() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employeesRaw.value));
   };
 
-  const syncToServer = async () => {
-    if (!import.meta.client) return;
+  const syncToServer = async (): Promise<EmployeeSyncResult> => {
+    if (!import.meta.client) return { ok: true };
+    saveStatus.value = 'saving';
+    saveError.value = '';
     try {
       const saved = await $fetch<
         {
@@ -153,8 +164,18 @@ export function useEmployees() {
       if (Array.isArray(saved)) {
         applyEmployeeList(saved.map(fromServerShape));
       }
-    } catch {
-      /* офлайн или нет прав */
+      saveStatus.value = 'saved';
+      return { ok: true };
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err && 'statusMessage' in err
+            ? String((err as { statusMessage?: string }).statusMessage)
+            : 'Не удалось сохранить на сервер';
+      saveStatus.value = 'error';
+      saveError.value = message;
+      return { ok: false, error: message };
     }
   };
 
@@ -208,8 +229,13 @@ export function useEmployees() {
 
   const reloadFromServer = async () => {
     if (!import.meta.client) return;
-    hydrated.value = false;
-    await hydrate();
+    reloadLoading.value = true;
+    try {
+      hydrated.value = false;
+      await hydrate();
+    } finally {
+      reloadLoading.value = false;
+    }
   };
 
   const departmentsGrouped = computed<EmployeeDepartment[]>(() => {
@@ -226,9 +252,28 @@ export function useEmployees() {
     }));
   });
 
+  const isAllowedManager = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return true;
+    return managerOptions.value.some(
+      (option) => normalizeEmployeeNameKey(option) === normalizeEmployeeNameKey(trimmed)
+    );
+  };
+
   const updateEmployee = (id: number, patch: Partial<Employee>) => {
     const emp = employeesRaw.value.find((item) => item.id === id);
     if (!emp) return;
+
+    if (patch.manager !== undefined) {
+      const resolved = resolveManagerFromList(String(patch.manager), managerOptions.value);
+      if (resolved === null) {
+        saveStatus.value = 'error';
+        saveError.value = `«${patch.manager}» нет в списке руководителей`;
+        return;
+      }
+      patch = { ...patch, manager: resolved };
+    }
+
     Object.assign(emp, patch);
     const enriched = enrichEmployeeRecord(emp);
     Object.assign(emp, enriched);
@@ -305,6 +350,27 @@ export function useEmployees() {
     );
   };
 
+  /** Прямые и косвенные подчинённые (вся цепочка manager → …). */
+  const allReports = (managerName: string) => {
+    const normalized = managerName.trim();
+    if (!normalized) return [];
+
+    const result: Employee[] = [];
+    const seen = new Set<number>();
+
+    const walk = (leadName: string) => {
+      for (const emp of directReports(leadName)) {
+        if (seen.has(emp.id)) continue;
+        seen.add(emp.id);
+        result.push(emp);
+        walk(emp.name.trim());
+      }
+    };
+
+    walk(normalized);
+    return result;
+  };
+
   const managerProfileName = (
     user: { id: number; email: string; name: string } | null | undefined
   ) => {
@@ -316,6 +382,10 @@ export function useEmployees() {
   const directReportsForAuthUser = (
     user: { id: number; email: string; name: string } | null | undefined
   ) => directReports(managerProfileName(user));
+
+  const allReportsForAuthUser = (
+    user: { id: number; email: string; name: string } | null | undefined
+  ) => allReports(managerProfileName(user));
 
   type ProfileTeamContext = {
     mode: 'reports' | 'department';
@@ -369,20 +439,33 @@ export function useEmployees() {
   const canManagerApproveRequest = (managerProfileName: string, employeeName: string) => {
     const employee = findByName(employeeName);
     if (!employee) return false;
-    return employee.manager.trim() === managerProfileName.trim();
+    return canApproverReviewRequest(
+      managerProfileName,
+      { status: 'pending', employee: employeeName },
+      employee
+    );
   };
 
   const managerOptions = computed(() => {
     const names = new Set<string>();
-    employees.value.forEach((emp) => {
-      if (emp.name.trim()) names.add(emp.name);
-    });
+    for (const emp of employees.value) {
+      const name = emp.name.trim();
+      if (!name) continue;
+      const role = emp.account_role;
+      if (role === 'manager' || role === 'admin' || role === 'hr') {
+        names.add(name);
+      }
+    }
+    for (const emp of employees.value) {
+      const manager = emp.manager.trim();
+      if (manager) names.add(manager);
+    }
     return [...names].sort((a, b) => a.localeCompare(b, 'ru'));
   });
 
   const departmentOptions = computed(() => {
-    const names = new Set(employees.value.map((e) => e.department).filter(Boolean));
-    return [...names].sort((a, b) => a.localeCompare(b, 'ru'));
+    const config = useRuntimeConfig();
+    return listDepartmentsForUi(Boolean(config.public.qaTestDepartment));
   });
 
   const employeeCount = computed(() => employees.value.length);
@@ -409,12 +492,18 @@ export function useEmployees() {
     findByUserForAuth,
     findByName,
     directReports,
+    allReports,
     directReportsForAuthUser,
+    allReportsForAuthUser,
     managerProfileName,
     profileTeamForUser,
     canManagerApproveRequest,
     managerOptions,
+    isAllowedManager,
     departmentOptions,
-    syncToServer
+    syncToServer,
+    saveStatus,
+    saveError,
+    reloadLoading
   };
 }

@@ -1,13 +1,14 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import type {
   AdaptationPhaseTemplate,
   AdaptationQuizTemplate,
   AdaptationTrackTemplate,
   QuizQuestion
 } from './adaptationTypes';
+import trackSeed from '../data/adaptation-track.json';
 
-const TRACK_FILE = join(process.cwd(), 'server/data/adaptation-track.json');
+function cloneTrack(track: AdaptationTrackTemplate): AdaptationTrackTemplate {
+  return structuredClone(track);
+}
 
 function stripCorrect(q: QuizQuestion): Omit<QuizQuestion, 'correct'> & { correct?: never } {
   const { correct: _c, ...rest } = q;
@@ -29,8 +30,7 @@ function stripPhase(phase: AdaptationPhaseTemplate) {
 }
 
 export async function loadTrackForClient(): Promise<AdaptationTrackTemplate> {
-  const raw = await readFile(TRACK_FILE, 'utf8');
-  const track = JSON.parse(raw) as AdaptationTrackTemplate;
+  const track = cloneTrack(trackSeed as AdaptationTrackTemplate);
   return {
     ...track,
     phases: track.phases.map(stripPhase)
@@ -38,8 +38,7 @@ export async function loadTrackForClient(): Promise<AdaptationTrackTemplate> {
 }
 
 export async function loadTrackFull(): Promise<AdaptationTrackTemplate> {
-  const raw = await readFile(TRACK_FILE, 'utf8');
-  return JSON.parse(raw) as AdaptationTrackTemplate;
+  return cloneTrack(trackSeed as AdaptationTrackTemplate);
 }
 
 export async function findQuizById(quizId: string): Promise<AdaptationQuizTemplate | null> {

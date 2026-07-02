@@ -28,6 +28,9 @@
             <div class="vac-approval-item__info">
               <strong class="vac-approval-item__name">{{ req.employee }}</strong>
               <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
+              <span v-if="req.status === 'pending'" class="vac-approval-item__step soft">
+                {{ approvalStepLabel(req) }}
+              </span>
               <VacOverlapPopover
                 v-if="overlapDetails(req).length"
                 :items="overlapDetails(req)"
@@ -40,10 +43,10 @@
             </div>
           </div>
           <div class="vac-approval-item__actions">
-            <button class="button vac-btn-approve" type="button" @click="setRequestStatus(req.id, 'approved')">
+            <button class="button vac-btn-approve" type="button" @click="approve(req.id)">
               Согласовать
             </button>
-            <button class="button vac-btn-reject" type="button" @click="setRequestStatus(req.id, 'rejected')">
+            <button class="button vac-btn-reject" type="button" @click="reject(req.id)">
               Отклонить
             </button>
           </div>
@@ -65,12 +68,20 @@ const {
   yearRequests,
   pendingRequestsForApprover,
   getMonthEntries,
+  approveRequest,
   setRequestStatus,
+  requestStatusLabel,
   reloadFromServer: reloadVacations,
   state
 } = useVacations();
 
 const approvalQueue = computed(() => pendingRequestsForApprover(null, canSeeAllVacationApprovals.value));
+
+const approvalStepLabel = (req: VacationRequest) =>
+  requestStatusLabel(req, findByName(req.employee));
+
+const approve = (id: number) => approveRequest(id, null, { force: true });
+const reject = (id: number) => setRequestStatus(id, 'rejected');
 
 const formatRange = (start: string, end: string) => {
   const fmt = (iso: string) =>

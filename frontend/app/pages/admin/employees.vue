@@ -1,25 +1,30 @@
 <template>
-  <section class="card section-card">
+  <section class="card section-card personnel-admin">
     <div class="section-head row">
       <div>
-        <h2 class="section-title">Сотрудники и аккаунты</h2>
+        <h2 class="section-title">Сотрудники</h2>
         <p class="muted">
           Даты трудоустройства и колонка «Руководитель» — путь подчинения и согласования отпусков.
-          Данные синхронизируются с сервером.
+          Руководителя выбирайте только из списка: от этого зависит, кому уйдёт заявка на согласование.
+        </p>
+        <p v-if="saveStatus === 'saving'" class="save-hint muted">Сохранение…</p>
+        <p v-else-if="saveStatus === 'saved'" class="save-hint muted">Сохранено</p>
+        <p v-else-if="saveStatus === 'error'" class="save-hint save-hint--error">
+          Ошибка: {{ saveError }}
         </p>
       </div>
-      <button class="button primary" type="button" @click="addEmployee">+ Сотрудник</button>
+      <button class="button primary" type="button" :disabled="reloadLoading" @click="addEmployee">
+        + Сотрудник
+      </button>
     </div>
 
-    <article v-if="employees.length === 0" class="state-box onboarding-box">
+    <p v-if="reloadLoading" class="muted state-box">Загрузка с сервера…</p>
+
+    <article v-else-if="employees.length === 0" class="state-box onboarding-box">
       <h3>Справочник пуст — это нормально</h3>
       <ol class="onboarding-steps">
         <li>Нажмите «+ Сотрудник» и заполните ФИО, отдел, дату выхода.</li>
-        <li>
-          Укажите <strong>email</strong> как при входе (например <code>katya@vbi.local</code>) — аккаунт
-          привяжется автоматически.
-        </li>
-        <li>В колонке «Руководитель» укажите менеджера — по этому пути идут согласования отпусков.</li>
+        <li>В колонке «Руководитель» выберите менеджера из списка — по этому пути идут согласования отпусков.</li>
       </ol>
       <p class="soft">Переключатель «Сотрудник / Администратор» в сайдбаре — для просмотра графика и настройки справочника.</p>
     </article>
@@ -33,47 +38,65 @@
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
             <th class="col-manager">Руководитель</th>
-            <th class="col-date">Дата трудоустройства</th>
-            <th class="col-email">Email / аккаунт</th>
+            <th class="col-date">Дата приёма</th>
             <th class="col-role">Роль</th>
-            <th class="col-actions" />
+            <th class="col-actions" aria-label="Действия" />
           </tr>
         </thead>
         <tbody>
           <tr v-for="emp in employees" :key="emp.id">
             <td class="col-avatar">
-              <UserAvatar :user-id="emp.platform_user_id" :name="emp.name" :size="32" />
+              <UserAvatar :user-id="emp.platform_user_id" :name="emp.name" :size="28" />
             </td>
             <td class="col-name">
-              <input
+              <textarea
                 :value="emp.name"
-                class="table-input"
+                class="table-input table-textarea"
+                rows="2"
                 placeholder="ФИО"
-                @change="updateField(emp.id, 'name', ($event.target as HTMLInputElement).value)"
+                @input="onFieldInput(emp.id, 'name', $event)"
+                @blur="onFieldBlur(emp.id, 'name', $event)"
               />
             </td>
             <td class="col-title">
-              <input
+              <textarea
                 :value="emp.title"
-                class="table-input"
-                @change="updateField(emp.id, 'title', ($event.target as HTMLInputElement).value)"
+                class="table-input table-textarea"
+                rows="2"
+                placeholder="Должность"
+                @input="onFieldInput(emp.id, 'title', $event)"
+                @blur="onFieldBlur(emp.id, 'title', $event)"
               />
             </td>
             <td class="col-dept">
-              <input
+              <select
                 :value="emp.department"
-                class="table-input"
-                list="department-options"
-                @change="updateField(emp.id, 'department', ($event.target as HTMLInputElement).value)"
-              />
+                class="table-input table-input--select"
+                @change="updateField(emp.id, 'department', ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">—</option>
+                <option
+                  v-if="emp.department && !departmentOptions.includes(emp.department)"
+                  :value="emp.department"
+                >
+                  {{ emp.department }}
+                </option>
+                <option v-for="dep in departmentOptions" :key="dep" :value="dep">{{ dep }}</option>
+              </select>
             </td>
-            <td class="col-manager">
+            <td class="col-manager" @paste.capture="onManagerPaste(emp.id, $event)">
               <select
                 :value="emp.manager"
-                class="table-input"
+                class="table-input table-input--select"
                 @change="updateField(emp.id, 'manager', ($event.target as HTMLSelectElement).value)"
               >
                 <option value="">—</option>
+                <option
+                  v-if="emp.manager && !managerOptions.includes(emp.manager)"
+                  :value="emp.manager"
+                >
+                  {{ emp.manager }} (устаревшее)
+                </option>
                 <option v-for="name in managerOptions" :key="name" :value="name">{{ name }}</option>
               </select>
             </td>
@@ -81,31 +104,15 @@
               <input
                 :value="emp.hired_at"
                 type="date"
-                class="table-input"
-                @change="updateField(emp.id, 'hired_at', ($event.target as HTMLInputElement).value)"
+                class="table-input table-input--date"
+                @input="onFieldInput(emp.id, 'hired_at', $event)"
+                @blur="onFieldBlur(emp.id, 'hired_at', $event)"
               />
-            </td>
-            <td class="col-email">
-              <select
-                class="table-input"
-                :value="emp.platform_user_id ?? ''"
-                @change="onAccountSelect(emp.id, ($event.target as HTMLSelectElement).value)"
-              >
-                <option value="">— не привязан —</option>
-                <option
-                  v-for="acc in platformAccounts"
-                  :key="acc.id"
-                  :value="acc.id"
-                  :disabled="acc.linked && emp.platform_user_id !== acc.id"
-                >
-                  {{ acc.email }} ({{ acc.name }})
-                </option>
-              </select>
             </td>
             <td class="col-role">
               <select
                 :value="emp.account_role"
-                class="table-input"
+                class="table-input table-input--select"
                 @change="
                   updateField(
                     emp.id,
@@ -121,44 +128,167 @@
               </select>
             </td>
             <td class="col-actions">
-              <button class="button ghost" type="button" @click="removeEmployee(emp.id)">Удалить</button>
+              <button
+                class="personnel-delete-btn"
+                type="button"
+                aria-label="Удалить сотрудника"
+                title="Удалить"
+                @click="removeEmployee(emp.id)"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+                  <path
+                    d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M10 11v6M14 11v6"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
-    <datalist id="department-options">
-      <option v-for="dep in departmentOptions" :key="dep" :value="dep" />
-    </datalist>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { AccountRole, Employee } from '~/composables/useEmployees';
 import { roleLabels } from '~/composables/usePermissions';
+import { resolveManagerFromList } from '~/utils/employeeName';
+
+const DEBOUNCE_MS = 400;
 
 const {
   employees,
-  platformAccounts,
   managerOptions,
   departmentOptions,
   updateEmployee,
-  linkEmployeeToAccount,
   addEmployee,
   removeEmployee,
-  reloadFromServer
+  reloadFromServer,
+  saveStatus,
+  saveError,
+  reloadLoading
 } = useEmployees();
+
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+const fieldKey = (id: number, field: keyof Employee) => `${id}:${field}`;
+
+const fieldValue = (event: Event) =>
+  (event.target as HTMLInputElement | HTMLTextAreaElement).value;
 
 const updateField = (id: number, field: keyof Employee, value: string) => {
   updateEmployee(id, { [field]: value } as Partial<Employee>);
 };
 
-const onAccountSelect = (employeeId: number, value: string) => {
-  linkEmployeeToAccount(employeeId, value ? Number(value) : null);
+const immediateUpdate = (id: number, field: keyof Employee, value: string) => {
+  const key = fieldKey(id, field);
+  const pending = debounceTimers.get(key);
+  if (pending) {
+    clearTimeout(pending);
+    debounceTimers.delete(key);
+  }
+  updateField(id, field, value);
+};
+
+const debouncedUpdate = (id: number, field: keyof Employee, value: string) => {
+  const key = fieldKey(id, field);
+  const pending = debounceTimers.get(key);
+  if (pending) clearTimeout(pending);
+  debounceTimers.set(
+    key,
+    setTimeout(() => {
+      debounceTimers.delete(key);
+      updateField(id, field, value);
+    }, DEBOUNCE_MS)
+  );
+};
+
+const onFieldInput = (id: number, field: keyof Employee, event: Event) => {
+  debouncedUpdate(id, field, fieldValue(event));
+};
+
+const onFieldBlur = (id: number, field: keyof Employee, event: Event) => {
+  immediateUpdate(id, field, fieldValue(event));
+};
+
+const onManagerPaste = (empId: number, event: ClipboardEvent) => {
+  const text = event.clipboardData?.getData('text') ?? '';
+  const lines = text
+    .split(/\r?\n|\t/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return;
+
+  event.preventDefault();
+  const options = managerOptions.value;
+  const startIndex = employees.value.findIndex((emp) => emp.id === empId);
+  if (startIndex < 0) return;
+
+  let skipped = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const emp = employees.value[startIndex + i];
+    if (!emp) break;
+    const resolved = resolveManagerFromList(lines[i]!, options);
+    if (resolved === null) {
+      skipped++;
+      continue;
+    }
+    updateField(emp.id, 'manager', resolved);
+  }
+
+  if (skipped > 0) {
+    saveStatus.value = 'error';
+    saveError.value = `${skipped} строк не совпали со списком руководителей — выберите вручную`;
+  }
 };
 
 onMounted(() => {
   reloadFromServer();
 });
 </script>
+
+<style scoped>
+.save-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+
+.save-hint--error {
+  color: var(--danger, #c0392b);
+}
+
+.personnel-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.personnel-delete-btn:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.personnel-delete-btn:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+</style>

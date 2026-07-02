@@ -1,13 +1,13 @@
 <template>
   <aside class="employee-aside employee-aside--fit" :class="{ 'employee-aside--embedded': embedded }">
-    <div class="emp-balance-card">
+    <div class="emp-balance-card" data-tour="vac-balance">
       <div class="emp-balance-card-label">Доступно дней отпуска</div>
       <div class="emp-balance-figures emp-balance-figures-single">
         <span class="emp-balance-big">{{ balance.remain }}</span>
       </div>
     </div>
 
-    <details class="emp-projection-details">
+    <details class="emp-projection-details" data-tour="vac-projection">
       <summary class="emp-projection-summary">Рассчитать доступные дни к дате</summary>
       <div class="emp-projection-panel">
         <label class="emp-projection-label">
@@ -36,26 +36,37 @@
       </tbody>
     </table>
 
-    <section class="emp-requests-block">
+    <section class="emp-requests-block" data-tour="vac-my-requests">
       <h4 class="emp-requests-heading">Мои заявки</h4>
       <div class="emp-requests-list">
         <p v-if="!employeeName" class="emp-requests-empty">Профиль не привязан к справочнику.</p>
         <p v-else-if="myRequests.length === 0" class="emp-requests-empty">Заявок пока нет.</p>
-        <div v-for="req in myRequests" :key="req.id" class="emp-request-row">
+        <div v-for="req in myRequests" :key="req.id" class="emp-request-row" :class="{ 'emp-request-row--training': isTrainingRequest(req) }">
           <div class="emp-request-row__top">
             <div class="emp-request-main">
               <span class="emp-request-period">{{ formatRequestPeriod(req) }}</span>
               <div class="emp-request-meta">
-                <span class="pill" :class="req.status">{{ statusLabel(req.status) }}</span>
+                <span class="pill" :class="req.status">{{ statusLabel(req) }}</span>
+                <span v-if="isTrainingRequest(req)" class="vac-training-tag">Учебная</span>
                 <span
                   v-if="req.status === 'pending' && requestAdvance(req).status === 'advance'"
                   class="vac-advance-tag"
                 >
-                  Аванс {{ requestAdvance(req).deficit }} дн.
+                  Не хватает {{ requestAdvance(req).deficit }} дн.
+                </span>
+                <span v-if="req.status === 'approved' && req.bitrix_sync_status === 'synced'" class="vac-bitrix-tag">
+                  Битрикс ✓
+                </span>
+                <span
+                  v-else-if="req.status === 'approved' && req.bitrix_sync_status === 'failed'"
+                  class="vac-bitrix-tag vac-bitrix-tag--error"
+                  :title="req.bitrix_sync_error || 'Не удалось отправить в Битрикс'"
+                >
+                  Битрикс ✗
                 </span>
               </div>
             </div>
-            <div class="emp-request-menu-wrap">
+            <div v-if="!isTrainingRequest(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
                 class="emp-request-menu-btn"
@@ -118,13 +129,16 @@
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-holiday" /> Праздничный день</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-approved" /> Отпуск (одобрен)</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-pending" /> На согласовании</div>
+
+    <VacationTrainingPrompt v-if="!embedded" />
   </aside>
 </template>
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
 import { countVacationBillableDays } from '~/utils/vacationCalendar';
-import type { VacationRequest, VacationStatus } from '~/composables/useVacations';
+import type { VacationRequest } from '~/composables/useVacations';
+import type { TrainingVacationRequest } from '~/composables/useVacationTraining';
 
 const props = defineProps<{
   viewYear: number;
@@ -138,11 +152,15 @@ const {
   employeeRequests,
   updateRequestDates,
   deleteRequest,
-  vacationStatusLabels,
+  requestStatusLabel,
   state
 } = useVacations();
+const { mergeRequestsForDisplay } = useVacationTraining();
 
-const yearRequests = computed(() => requestsForYear(props.viewYear));
+const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest =>
+  'isTraining' in req && Boolean((req as TrainingVacationRequest).isTraining);
+
+const yearRequests = computed(() => mergeRequestsForDisplay(props.viewYear, requestsForYear(props.viewYear)));
 
 const projectionDate = ref('');
 const projectionText = ref('');
@@ -167,9 +185,11 @@ const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  return [...employeeRequests(employeeName.value, props.viewYear)].sort((a, b) =>
-    a.start.localeCompare(b.start)
-  );
+  const real = employeeRequests(employeeName.value, props.viewYear);
+  const merged = mergeRequestsForDisplay(props.viewYear, real);
+  return merged
+    .filter((r) => r.employee === employeeName.value)
+    .sort((a, b) => a.start.localeCompare(b.start));
 });
 
 const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
@@ -180,12 +200,13 @@ const balance = computed(() =>
     hireIso.value,
     yearRequests.value,
     new Date(),
-    props.viewYear,
+    state.value.primaryYear,
     openingBalance.value
   )
 );
 
-const statusLabel = (status: VacationStatus) => vacationStatusLabels[status];
+const statusLabel = (req: VacationRequest) =>
+  requestStatusLabel(req, currentEmployee.value ?? undefined);
 
 const formatRequestPeriod = (req: VacationRequest) => {
   const fmt = (iso: string) => {
@@ -223,6 +244,7 @@ const closeRequestMenu = () => {
 };
 
 const toggleRequestMenu = (req: VacationRequest, event: MouseEvent) => {
+  if (isTrainingRequest(req)) return;
   if (openMenuRequest.value?.id === req.id) {
     closeRequestMenu();
     return;
@@ -290,7 +312,8 @@ const showProjection = () => {
     hireIso.value,
     projectionDate.value,
     yearRequests.value,
-    state.value.primaryYear
+    state.value.primaryYear,
+    openingBalance.value
   );
   if (available == null) {
     projectionText.value = 'Раньше даты приёма.';

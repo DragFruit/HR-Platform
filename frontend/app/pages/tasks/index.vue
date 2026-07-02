@@ -60,7 +60,17 @@
           </p>
           <div class="row">
             <span class="pill">+{{ task.reward_amount }}</span>
-            <button class="button primary" type="button" @click="handleTake(task.id)">Взять задачу</button>
+            <button
+              v-if="isHrKnowledgeTask(task)"
+              class="button primary"
+              type="button"
+              @click="handleTakeQuiz(task.id)"
+            >
+              Взять и пройти
+            </button>
+            <button v-else class="button primary" type="button" @click="handleTake(task.id)">
+              Взять задачу
+            </button>
           </div>
         </article>
       </div>
@@ -112,7 +122,15 @@
           <div class="row">
             <span class="pill">+{{ task.reward_amount }}</span>
             <button
-              v-if="task.status === 'active'"
+              v-if="isHrKnowledgeTask(task)"
+              class="button primary"
+              type="button"
+              @click="openHrAssessment(task.id)"
+            >
+              {{ task.status === 'completed' ? 'Пройти снова' : 'Пройти тест' }}
+            </button>
+            <button
+              v-else-if="task.status === 'active'"
               class="button primary"
               type="button"
               @click="handleComplete(task.id)"
@@ -138,6 +156,7 @@ const {
   completeTask,
   filterByMotivation,
   filterByStatus,
+  isHrKnowledgeTask,
   taskStatusLabels,
   motivationLabels,
   difficultyLabels
@@ -166,16 +185,22 @@ const statusFilters = [
 
 const filteredPool = computed(() => filterByMotivation(poolTasks.value, poolFilter.value));
 
-const filteredMine = computed(() => {
-  const byStatus = filterByStatus(myTasks.value, myStatusFilter.value);
-  return byStatus;
-});
+const filteredMine = computed(() => filterByStatus(myTasks.value, myStatusFilter.value));
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 
+const openHrAssessment = async (taskId: number) => {
+  await navigateTo(`/tasks/hr-assessment?taskId=${taskId}`);
+};
+
 const handleTake = (taskId: number) => {
   takeTask(taskId);
+};
+
+const handleTakeQuiz = async (taskId: number) => {
+  takeTask(taskId);
+  await openHrAssessment(taskId);
 };
 
 const handleComplete = (taskId: number) => {

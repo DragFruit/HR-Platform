@@ -1,10 +1,24 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { buildYandexMetrikaHead, resolveYandexMetrikaId, YANDEX_METRIKA_FRAME_ANCESTORS_CSP } from './app/utils/yandexMetrika';
+
+const yandexMetrikaId = resolveYandexMetrikaId(process.env.NUXT_PUBLIC_YANDEX_METRIKA_ID);
+const metrikaHead = buildYandexMetrikaHead(yandexMetrikaId);
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   css: ['~/assets/main.css'],
+  routeRules: {
+    '/**': {
+      headers: {
+        'Content-Security-Policy': YANDEX_METRIKA_FRAME_ANCESTORS_CSP
+      }
+    }
+  },
   app: {
     head: {
+      script: metrikaHead.script,
+      noscript: metrikaHead.noscript,
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
@@ -26,11 +40,28 @@ export default defineNuxtConfig({
     public: {
       /** development | staging | production — для плашки стенда и логики окружения */
       appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
+      /** Связи между блоками оргструктуры (рисование линий) — на бое пока выключено */
+      orgLinksEnabled:
+        process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED === 'true' ||
+        (process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED !== 'false' &&
+          (process.env.NUXT_PUBLIC_APP_ENV || 'development') !== 'production'),
       /** `vacations` — только график отпусков; `full` — вся платформа */
       launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full',
+      /** QA-отдел «Тестировщики» для локальной проверки согласования (не для production) */
+      qaTestDepartment:
+        process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT === '1' ||
+        (process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT !== '0' &&
+          process.env.NODE_ENV === 'development'),
+      /** Квест-обучение по отпускам — только не на production */
+      vacationTrainingEnabled:
+        process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED === 'true' ||
+        (process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED !== 'false' &&
+          (process.env.NUXT_PUBLIC_APP_ENV || 'development') !== 'production'),
       /** Соцсети агентства VBI — переопределяются через NUXT_PUBLIC_SOCIAL_* */
       socialVkUrl: process.env.NUXT_PUBLIC_SOCIAL_VK_URL || 'https://vk.com/vbi.agency',
-      socialTelegramUrl: process.env.NUXT_PUBLIC_SOCIAL_TELEGRAM_URL || 'https://t.me/vbi_agency'
+      socialTelegramUrl: process.env.NUXT_PUBLIC_SOCIAL_TELEGRAM_URL || 'https://t.me/vbi_agency',
+      /** Яндекс Метрика (SPA). По умолчанию 110244372 */
+      yandexMetrikaId: process.env.NUXT_PUBLIC_YANDEX_METRIKA_ID || yandexMetrikaId
     }
   }
-})
+});

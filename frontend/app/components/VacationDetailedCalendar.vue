@@ -91,6 +91,9 @@
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
+import { calcEmployeeBalance } from '~/utils/vacationBalance';
+
+const { state: vacationState } = useVacations();
 
 type YearDayCell = {
   month: number;
@@ -241,7 +244,7 @@ const balanceFor = (emp: Employee) => {
     emp.hired_at || undefined,
     props.requests,
     new Date(),
-    props.year,
+    vacationState.value.primaryYear,
     emp.vacation_opening_balance
   );
   return b.remain;

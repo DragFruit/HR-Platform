@@ -53,6 +53,10 @@
           Адаптация
           <span v-if="adaptationUnseen > 0" class="tag learning">{{ adaptationUnseen }}</span>
         </NuxtLink>
+        <NuxtLink to="/admin/notifications" class="button ghost">
+          Уведомления
+          <span v-if="adminNotificationsUnseen > 0" class="tag learning">{{ adminNotificationsUnseen }}</span>
+        </NuxtLink>
       </div>
     </article>
     <article class="card">
@@ -78,10 +82,12 @@ const setupIncomplete = computed(
 );
 
 const { unseenCount: adaptationUnseen, loadAdminAttempts } = useAdaptation();
+const { unseenCount: adminNotificationsUnseen, loadNotifications } = useAdminNotifications();
 
 onMounted(() => {
   hydrateEmployees();
   hydrateTasks();
   loadAdminAttempts().catch(() => {});
+  loadNotifications().catch(() => {});
 });
 </script>
