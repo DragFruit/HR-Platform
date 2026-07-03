@@ -3829,24 +3829,22 @@ a {
   width: var(--vac-day-col-w);
 }
 
-.vac-detailed-timeline tr.vac-detailed-head-month th {
+.vac-detailed-timeline thead {
   position: sticky;
   top: 0;
-  z-index: 4;
-  box-shadow: 0 1px 0 #e4e4de;
+  z-index: 5;
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-month th {
+  box-shadow: none;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-days th {
-  position: sticky;
-  top: var(--vac-detailed-head-r1);
-  z-index: 3;
-  box-shadow: 0 1px 0 #e4e4de;
+  box-shadow: none;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-weekdays th {
-  position: sticky;
-  top: calc(var(--vac-detailed-head-r1) + var(--vac-detailed-head-r2));
-  z-index: 3;
   box-shadow: 0 1px 0 #e4e4de;
 }
 
