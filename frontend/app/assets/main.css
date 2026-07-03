@@ -3601,7 +3601,9 @@ a {
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {
+  position: sticky;
   left: 0;
+  top: 0;
   z-index: 5;
   background: #f0f2f5;
   box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
@@ -3818,10 +3820,13 @@ a {
   font-weight: 600;
   text-align: center;
   padding: 4px 1px;
-  min-width: var(--vac-day-col-w);
-  width: var(--vac-day-col-w);
   font-size: 0.68rem;
   border-color: #e4e4de;
+}
+
+.vac-detailed-timeline thead th:not(.sticky-col-name):not(.sticky-col-balance) {
+  min-width: var(--vac-day-col-w);
+  width: var(--vac-day-col-w);
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-month th {
@@ -3876,29 +3881,16 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head,
-.vac-detailed-timeline thead .sticky-col-balance--head,
-.vac-detailed-timeline thead .sticky-col-name--head-spacer,
-.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
-  z-index: 6;
-  background: #f0f2f5;
-}
-
-.vac-detailed-timeline thead .sticky-col-name--head,
 .vac-detailed-timeline thead .sticky-col-balance--head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f0f2f5;
   box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
 }
 
-.vac-detailed-timeline thead .sticky-col-name--head-spacer,
-.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
-  box-shadow: 1px 0 0 #e4e4de;
-  padding: 0;
-  min-height: 0;
-  line-height: 0;
-  font-size: 0;
-  color: transparent;
-}
-
 .vac-detailed-timeline thead .sticky-col-name--head {
+  left: 0;
   vertical-align: middle;
   text-align: left;
   padding: 10px 8px;
@@ -3906,6 +3898,22 @@ a {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.vac-detailed-timeline thead .sticky-col-balance--head {
+  left: var(--vac-name-col-w);
+  vertical-align: middle;
+  text-align: center;
+  padding: 10px 4px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head-spacer,
+.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+  display: none;
 }
 
 .vac-detailed-timeline .vac-employee-head-label {
@@ -3982,16 +3990,12 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
-.vac-detailed-timeline thead .sticky-col-balance,
-.vac-detailed-timeline thead .sticky-col-name--head-spacer,
-.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+.vac-detailed-timeline thead .sticky-col-balance {
   font-size: 0.72rem;
   line-height: 1.15;
 }
 
-.vac-detailed-timeline thead .sticky-col-balance,
-.vac-detailed-timeline thead .sticky-col-balance--head,
-.vac-detailed-timeline thead .sticky-col-balance--head-spacer {
+.vac-detailed-timeline thead .sticky-col-balance {
   padding: 6px 0;
 }
 
