@@ -1,7 +1,6 @@
 import type { VacationRequest } from '~/composables/useVacations';
 import {
   EMPLOYEE_VACATION_TRAINING_STEPS,
-  VACATION_TRAINING_REWARD_COINS,
   type VacationTrainingStep
 } from '~/data/vacationTrainingQuest';
 
@@ -123,7 +122,6 @@ export function useVacationTraining() {
       store.completed.push(id);
       writeStorage(store);
     }
-    useWallet().creditUser(id, VACATION_TRAINING_REWARD_COINS, 'Квест: обучение по отпускам');
     isActive.value = false;
     trainingRequests.value = [];
     stepIndex.value = 0;

@@ -7,6 +7,7 @@ import {
   vacationPendingStatusLabel,
   type VacationApprovalStep
 } from '~/utils/vacationApproval';
+import { isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
 
 export type VacationStatus = 'pending' | 'approved' | 'rejected';
 
@@ -316,7 +317,7 @@ export function useVacations() {
 
   const updateRequestDates = (id: number, start: string, end: string) => {
     const found = findRequestById(id);
-    if (!found) return false;
+    if (!found || isPastApprovedVacationRequest(found.item)) return false;
     found.item.start = start;
     found.item.end = end;
     persist();
@@ -324,6 +325,9 @@ export function useVacations() {
   };
 
   const deleteRequest = (id: number) => {
+    const found = findRequestById(id);
+    if (!found || isPastApprovedVacationRequest(found.item)) return false;
+
     let removed = false;
     Object.keys(state.value.requestsByYear).forEach((yearKey) => {
       const list = state.value.requestsByYear[yearKey];

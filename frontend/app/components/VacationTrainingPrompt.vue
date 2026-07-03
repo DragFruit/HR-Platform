@@ -26,7 +26,7 @@
         :d="arrowPath"
         class="vac-training-prompt__arrow-path"
         fill="none"
-        stroke="#ec4899"
+        stroke="currentColor"
         stroke-width="2.5"
         stroke-linecap="round"
         stroke-linejoin="round"

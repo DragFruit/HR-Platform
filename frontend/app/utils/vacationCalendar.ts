@@ -297,3 +297,9 @@ export const findVacationOverlapDetails = (
     return a.vacationStart.localeCompare(b.vacationStart);
   });
 };
+
+/** Согласованный отпуск с прошедшими датами — только просмотр, без правок. */
+export const isPastApprovedVacationRequest = (
+  request: { status: string; end: string },
+  asOf = todayIso()
+) => request.status === 'approved' && request.end < asOf;

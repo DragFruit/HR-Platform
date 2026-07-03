@@ -66,7 +66,7 @@
                 </span>
               </div>
             </div>
-            <div v-if="!isTrainingRequest(req)" class="emp-request-menu-wrap">
+            <div v-if="canManageRequest(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
                 class="emp-request-menu-btn"
@@ -136,7 +136,7 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
-import { countVacationBillableDays } from '~/utils/vacationCalendar';
+import { countVacationBillableDays, isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest } from '~/composables/useVacationTraining';
 
@@ -159,6 +159,9 @@ const { mergeRequestsForDisplay } = useVacationTraining();
 
 const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest =>
   'isTraining' in req && Boolean((req as TrainingVacationRequest).isTraining);
+
+const canManageRequest = (req: VacationRequest) =>
+  !isTrainingRequest(req) && !isPastApprovedVacationRequest(req);
 
 const yearRequests = computed(() => mergeRequestsForDisplay(props.viewYear, requestsForYear(props.viewYear)));
 
@@ -244,7 +247,7 @@ const closeRequestMenu = () => {
 };
 
 const toggleRequestMenu = (req: VacationRequest, event: MouseEvent) => {
-  if (isTrainingRequest(req)) return;
+  if (!canManageRequest(req)) return;
   if (openMenuRequest.value?.id === req.id) {
     closeRequestMenu();
     return;
@@ -259,6 +262,7 @@ const toggleRequestMenu = (req: VacationRequest, event: MouseEvent) => {
 useDismissOnEscape(menuOpen, closeRequestMenu);
 
 const startEditRequest = (req: VacationRequest) => {
+  if (!canManageRequest(req)) return;
   editingId.value = req.id;
   editForm.start = req.start;
   editForm.end = req.end;
@@ -293,6 +297,7 @@ const saveEditRequest = (id: number) => {
 };
 
 const removeRequest = (req: VacationRequest) => {
+  if (!canManageRequest(req)) return;
   closeRequestMenu();
   if (editingId.value === req.id) cancelEditRequest();
   deleteRequest(req.id);

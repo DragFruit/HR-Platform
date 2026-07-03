@@ -86,7 +86,46 @@
         />
       </svg>
 
+      <div
+        v-if="showRewardReveal"
+        class="vac-training-reward"
+        :class="{ 'vac-training-reward--close-ready': showRewardClose }"
+        role="dialog"
+        aria-labelledby="vac-training-reward-title"
+        aria-modal="true"
+      >
+        <div class="vac-training-reward__backdrop" aria-hidden="true" />
+
+        <div class="vac-training-reward__content">
+          <div class="vac-training-reward__badge-wrap">
+            <img
+              class="vac-training-reward__badge"
+              :src="trainingAchievement.imageSrc"
+              :alt="`Ачивка: ${trainingAchievement.title}`"
+              width="300"
+              height="300"
+            />
+          </div>
+
+          <div class="vac-training-reward__caption">
+            <h2 id="vac-training-reward-title" class="vac-training-reward__title">
+              {{ trainingAchievement.title }}
+            </h2>
+            <p class="vac-training-reward__subtitle">{{ trainingAchievement.subtitle }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="vac-training-reward__close"
+            @click="dismissReward"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+
       <article
+        v-show="!showRewardReveal"
         ref="cardRef"
         class="vac-training-overlay__card"
         role="dialog"
@@ -124,15 +163,9 @@
               {{ item.title }}
             </span>
           </div>
-          <div class="vac-training-achievement" role="status">
-            <span class="vac-training-achievement__icon" aria-hidden="true">🏅</span>
-            <div class="vac-training-achievement__body">
-              <strong class="vac-training-achievement__title">{{ trainingAchievement.title }}</strong>
-              <span class="vac-training-achievement__meta muted">
-                {{ trainingAchievement.subtitle }} · +{{ rewardCoins }} монет
-              </span>
-            </div>
-          </div>
+          <p class="vac-training-overlay__reward-hint muted">
+            Отлично! Теперь вы знаете, как пользоваться Графиком отпусков.
+          </p>
         </template>
         <p v-else class="vac-training-overlay__text">{{ currentStep.text }}</p>
 
@@ -170,7 +203,7 @@
               class="vac-training-overlay__reward-btn"
               @click="onAcknowledge"
             >
-              Забрать награду
+              Получить награду
             </button>
             <button
               v-else
@@ -237,7 +270,6 @@
 <script setup lang="ts">
 import {
   VACATION_TRAINING_ACHIEVEMENT,
-  VACATION_TRAINING_REWARD_COINS,
   VACATION_TRAINING_REQUEST_STATUS_ITEMS,
   VACATION_TRAINING_WARNING_ITEMS
 } from '~/data/vacationTrainingQuest';
@@ -259,6 +291,7 @@ const {
   totalSteps,
   progressLabel,
   acknowledgeStep,
+  finishTraining,
   skipTraining,
   goPrevStep
 } = useVacationTraining();
@@ -266,7 +299,6 @@ const {
 const warningItems = VACATION_TRAINING_WARNING_ITEMS;
 const requestStatusItems = VACATION_TRAINING_REQUEST_STATUS_ITEMS;
 const trainingAchievement = VACATION_TRAINING_ACHIEVEMENT;
-const rewardCoins = VACATION_TRAINING_REWARD_COINS;
 
 const TARGET_ACTIVE_CLASS = 'vac-training-target--active';
 const CARD_WIDTH = 340;
@@ -278,6 +310,9 @@ const SPOTLIGHT_PAD = 6;
 const targetRect = ref<DOMRect | null>(null);
 const cardStyle = ref<Record<string, string>>({});
 const cardRef = ref<HTMLElement | null>(null);
+const showRewardReveal = ref(false);
+const showRewardClose = ref(false);
+let rewardCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showAcknowledge = computed(() => currentStep.value?.action === 'acknowledge');
 const isLastStep = computed(() => stepIndex.value >= totalSteps.value - 1);
@@ -583,19 +618,50 @@ const underlineLayout = computed(() => {
 let confettiFn: ((opts: { position: { x: number; y: number }; count: number; velocity: number }) => void) | null =
   null;
 
-const burstConfetti = async () => {
+const burstConfetti = async (yRatio = 0.45) => {
   if (!import.meta.client) return;
   if (!confettiFn) {
     const mod = await import('@hiseb/confetti');
     confettiFn = mod.default as typeof confettiFn;
   }
   if (!confettiFn) return;
-  confettiFn({ position: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.45 }, count: 100, velocity: 200 });
+  confettiFn({
+    position: { x: window.innerWidth * 0.5, y: window.innerHeight * yRatio },
+    count: 120,
+    velocity: 220
+  });
+};
+
+const clearRewardCloseTimer = () => {
+  if (rewardCloseTimer) {
+    clearTimeout(rewardCloseTimer);
+    rewardCloseTimer = null;
+  }
+};
+
+const dismissReward = () => {
+  if (!showRewardReveal.value) return;
+  clearRewardCloseTimer();
+  showRewardClose.value = false;
+  showRewardReveal.value = false;
+  finishTraining();
+};
+
+const revealReward = async () => {
+  showRewardReveal.value = true;
+  showRewardClose.value = false;
+  await burstConfetti(0.42);
+  window.setTimeout(() => burstConfetti(0.5), 180);
+  clearRewardCloseTimer();
+  rewardCloseTimer = setTimeout(() => {
+    showRewardClose.value = true;
+  }, 5000);
 };
 
 const onAcknowledge = async () => {
   if (isLastStep.value) {
-    await burstConfetti();
+    await revealReward();
+    return;
   }
   acknowledgeStep();
 };
@@ -616,8 +682,17 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearRewardCloseTimer();
   clearActiveTarget();
   window.removeEventListener('resize', updateGeometry);
   window.removeEventListener('scroll', updateGeometry, true);
+});
+
+watch(isActive, (active) => {
+  if (!active) {
+    showRewardReveal.value = false;
+    showRewardClose.value = false;
+    clearRewardCloseTimer();
+  }
 });
 </script>

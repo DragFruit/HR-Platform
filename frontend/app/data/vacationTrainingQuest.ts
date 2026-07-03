@@ -82,8 +82,11 @@ export const VACATION_TRAINING_REQUEST_STATUS_ITEMS = [
 ] as const;
 
 export const VACATION_TRAINING_ACHIEVEMENT = {
-  title: 'Проводник отпусков',
-  subtitle: 'Пройдено обучение по заявкам на отпуск'
+  id: 'kalendar-otpuskov',
+  title: 'Календарь отпусков',
+  subtitle: 'Пройдено обучение по заявкам на отпуск',
+  imageSrc: '/achievements/kalendar-otpuskov.png',
+  tier: 1
 } as const;
 
 export const VACATION_TRAINING_WARNING_ITEMS = [
@@ -105,4 +108,3 @@ export const VACATION_TRAINING_WARNING_ITEMS = [
   }
 ] as const;
 
-export const VACATION_TRAINING_REWARD_COINS = 15;
