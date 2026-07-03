@@ -1,7 +1,7 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
     <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
-      <table ref="tableRef" class="vac-detailed-timeline" :style="nameColCssVars">
+      <table ref="tableRef" class="vac-detailed-timeline">
         <thead>
           <tr class="vac-detailed-head-month">
             <th class="sticky-col-name sticky-col-name--head">
@@ -53,7 +53,7 @@
             <template v-if="!isCollapsed(dep.name)">
               <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
                 <td class="sticky-col-name">
-                  <EmployeeNameStacked :name="emp.name" />
+                  <span class="emp-name emp-name--inline">{{ emp.name }}</span>
                   <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
                 </td>
                 <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
@@ -125,18 +125,9 @@ const TODAY_SCROLL_OFFSET_COLS = 3;
 
 const scrollWrapRef = ref<HTMLElement | null>(null);
 const tableRef = ref<HTMLTableElement | null>(null);
-const nameColWidthPx = ref(112);
 const collapsedDepts = ref<Set<string>>(new Set());
 
-const nameColCssVars = computed(() => ({
-  '--vac-name-col-w': `${nameColWidthPx.value}px`
-}));
-
-const measureNameColumn = () => {
-  const cell = tableRef.value?.querySelector('tbody .sticky-col-name') as HTMLElement | null;
-  if (cell) {
-    nameColWidthPx.value = cell.offsetWidth;
-  }
+const measureStickyHeaderHeights = () => {
   const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
   const rowDays = tableRef.value?.querySelector('.vac-detailed-head-days') as HTMLElement | null;
   if (rowMonth && tableRef.value) {
@@ -310,7 +301,7 @@ const scrollToToday = () => {
 const scheduleScrollToToday = () => {
   nextTick(() => {
     requestAnimationFrame(() => {
-      measureNameColumn();
+      measureStickyHeaderHeights();
       scrollToToday();
     });
   });
@@ -321,7 +312,7 @@ let resizeObserver: ResizeObserver | null = null;
 onMounted(() => {
   scheduleScrollToToday();
   if (typeof ResizeObserver !== 'undefined' && scrollWrapRef.value) {
-    resizeObserver = new ResizeObserver(() => measureNameColumn());
+    resizeObserver = new ResizeObserver(() => measureStickyHeaderHeights());
     resizeObserver.observe(scrollWrapRef.value);
   }
 });
@@ -338,9 +329,9 @@ watch(
 
 watch(
   () => props.departments,
-  () => nextTick(measureNameColumn),
+  () => nextTick(measureStickyHeaderHeights),
   { deep: true }
 );
 
-watch(collapsedDepts, () => nextTick(measureNameColumn));
+watch(collapsedDepts, () => nextTick(measureStickyHeaderHeights));
 </script>

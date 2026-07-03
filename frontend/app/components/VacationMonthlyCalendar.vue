@@ -17,7 +17,7 @@
             </tr>
             <tr v-for="emp in dep.employees" :key="emp.id">
               <td class="sticky-col-name">
-                <EmployeeNameStacked :name="emp.name" />
+                <span class="emp-name emp-name--inline">{{ emp.name }}</span>
                 <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
               </td>
               <td

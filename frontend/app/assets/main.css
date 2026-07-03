@@ -3581,7 +3581,7 @@ a {
 }
 
 .vac-team-calendar .vacation-timeline {
-  --vac-team-name-col-w: 148px;
+  --vac-team-name-col-w: 104px;
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
@@ -3611,12 +3611,30 @@ a {
   width: var(--vac-team-name-col-w);
   min-width: var(--vac-team-name-col-w);
   max-width: var(--vac-team-name-col-w);
-  padding: 6px 10px 6px 8px;
+  padding: 6px 6px 6px 8px;
   text-align: left;
+  vertical-align: top;
+}
+
+.vac-team-calendar .vacation-timeline .emp-name--inline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: normal;
 }
 
 .vac-team-calendar .vacation-timeline .emp-title {
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.15;
+  font-size: 0.68rem;
+  margin-top: 2px;
 }
 
 .vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name),
@@ -3776,6 +3794,11 @@ a {
 .vac-detailed-timeline {
   --vac-detailed-head-r1: 2.05rem;
   --vac-detailed-head-r2: 1.35rem;
+  --vac-day-col-w: 22px;
+  --vac-name-col-span: 8;
+  --vac-balance-col-span: 3;
+  --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
+  --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
@@ -3795,8 +3818,8 @@ a {
   font-weight: 600;
   text-align: center;
   padding: 4px 1px;
-  min-width: 22px;
-  width: 22px;
+  min-width: var(--vac-day-col-w);
+  width: var(--vac-day-col-w);
   font-size: 0.68rem;
   border-color: #e4e4de;
 }
@@ -3841,10 +3864,10 @@ a {
   position: sticky;
   left: 0;
   z-index: 4;
-  width: auto;
-  min-width: 0;
-  max-width: none;
-  padding: 8px 10px 8px 8px;
+  width: var(--vac-name-col-w);
+  min-width: var(--vac-name-col-w);
+  max-width: var(--vac-name-col-w);
+  padding: 6px 6px 6px 8px;
   background: var(--bg-surface);
   color: var(--text);
   font-weight: 600;
@@ -3930,11 +3953,11 @@ a {
 
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
-  left: var(--vac-name-col-w, 112px);
+  left: var(--vac-name-col-w);
   z-index: 4;
-  min-width: 48px;
-  width: 48px;
-  max-width: 48px;
+  min-width: var(--vac-balance-col-w);
+  width: var(--vac-balance-col-w);
+  max-width: var(--vac-balance-col-w);
   padding: 6px 4px;
   background: var(--bg-surface);
   text-align: center;
@@ -4013,16 +4036,27 @@ a {
   transform: rotate(-90deg);
 }
 
-.vac-detailed-emp-row .emp-name--stacked {
-  line-height: 1.12;
+.vac-detailed-emp-row .emp-name--inline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: normal;
 }
 
 .vac-detailed-emp-row .emp-title {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 2px;
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 500;
-  white-space: nowrap;
+  line-height: 1.15;
+  white-space: normal;
 }
 
 .vac-detailed-track {
@@ -4034,7 +4068,7 @@ a {
 .vac-detailed-track-inner {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--days), 22px);
+  grid-template-columns: repeat(var(--days), var(--vac-day-col-w, 22px));
   height: 44px;
   align-items: center;
   min-width: max-content;
