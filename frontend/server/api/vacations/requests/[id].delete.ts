@@ -1,5 +1,5 @@
-import { requireVbiSession } from '../../utils/session';
-import { deleteVacationRequest } from '../../utils/vacationRequestMutations';
+import { requireVbiSession } from '../../../utils/session';
+import { deleteVacationRequest } from '../../../utils/vacationRequestMutations';
 
 export default defineEventHandler(async (event) => {
   await requireVbiSession(event);

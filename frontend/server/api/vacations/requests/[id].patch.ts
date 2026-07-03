@@ -1,8 +1,8 @@
-import { requireVbiSession } from '../../utils/session';
+import { requireVbiSession } from '../../../utils/session';
 import {
   patchVacationRequest,
   type PatchVacationRequestBody
-} from '../../utils/vacationRequestMutations';
+} from '../../../utils/vacationRequestMutations';
 
 export default defineEventHandler(async (event) => {
   await requireVbiSession(event);
