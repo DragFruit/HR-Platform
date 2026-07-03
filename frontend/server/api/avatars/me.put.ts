@@ -1,0 +1,13 @@
+import { requireVbiSession } from '../../utils/session';
+import { setUserAvatar } from '../../utils/userAvatarsStore';
+
+export default defineEventHandler(async (event) => {
+  const session = await requireVbiSession(event);
+  const body = await readBody<{ characterId?: string }>(event);
+  if (!body?.characterId) {
+    throw createError({ statusCode: 400, statusMessage: 'Укажите characterId' });
+  }
+
+  const avatars = await setUserAvatar(session.id, body.characterId);
+  return { ok: true, avatars };
+});

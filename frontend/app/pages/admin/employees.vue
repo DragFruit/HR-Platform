@@ -46,7 +46,11 @@
         <tbody>
           <tr v-for="emp in employees" :key="emp.id">
             <td class="col-avatar">
-              <UserAvatar :user-id="emp.platform_user_id" :name="emp.name" :size="28" />
+              <UserAvatar
+                :user-id="emp.platform_user_id ?? emp.bitrix_user_id"
+                :name="emp.name"
+                :size="28"
+              />
             </td>
             <td class="col-name">
               <textarea

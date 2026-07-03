@@ -173,6 +173,15 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Сервер: `employeesStore.ts` + `employeeManagersStore.ts` — при чтении подмешивается `employee-managers.json`; при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
 
+### Аватары сотрудников (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/avatars` | Все аватары `{ avatars: { [userId]: "character_01" } }` (сессия) |
+| `PUT /api/avatars/me` | Сохранить свой аватар `{ characterId }` |
+
+Сервер: `server/data/user-avatars.json`. Клиент: `useAvatars` + плагин `avatars.client.ts` (гидратация после входа). Локальный `vbi-user-avatars-v1` — кэш; при входе локальный аватар без записи на сервере подгружается автоматически.
+
 ### Уведомления администратора (Bitrix)
 
 | Endpoint | Назначение |
@@ -248,7 +257,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 |------|---------------------|
 | `vbi-auth-session` | `useAuth` |
 | `vbi-welcomed-users` | `useAuth` (IDs, завершивших онбординг) |
-| `vbi-user-avatars-v1` | `useAvatars` — `{ [userId]: "character_01" }` |
+| `vbi-user-avatars-v1` | `useAvatars` — локальный кэш; источник правды `server/data/user-avatars.json`, API `/api/avatars` |
 | `vbi-platform-demo-version` | `vbi-demo-data.client.ts` (сейчас `4`) |
 | `vbi-employees-v3` | `useEmployees` |
 | `vbi-vacations-state-v5` | `useVacations` (шаг согласования `approval_step` для Digital) |
