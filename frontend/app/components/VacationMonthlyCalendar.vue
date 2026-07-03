@@ -12,8 +12,9 @@
         </thead>
         <tbody>
           <template v-for="dep in departments" :key="dep.name">
-            <tr class="dept-row">
-              <td :colspan="13">{{ dep.name }}</td>
+            <tr class="dept-row vac-team-dept-row">
+              <td class="sticky-col-dept">{{ dep.name }}</td>
+              <td colspan="12" class="vac-dept-row-fill" aria-hidden="true" />
             </tr>
             <tr v-for="emp in dep.employees" :key="emp.id">
               <td class="sticky-col-name">

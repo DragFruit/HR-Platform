@@ -41,10 +41,11 @@
         <tbody>
           <template v-for="dep in visibleDepartments" :key="dep.name">
             <tr class="dept-row vac-detailed-dept-row" @click="toggleDept(dep.name)">
-              <td :colspan="totalDays + 2">
+              <td colspan="2" class="sticky-col-dept">
                 <span class="vac-detailed-dept-chevron" :class="{ collapsed: isCollapsed(dep.name) }">▾</span>
                 {{ dep.name }}
               </td>
+              <td :colspan="totalDays" class="vac-detailed-dept-fill" aria-hidden="true" />
             </tr>
             <template v-if="!isCollapsed(dep.name)">
               <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">

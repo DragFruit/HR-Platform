@@ -3639,6 +3639,29 @@ a {
   margin-top: 2px;
 }
 
+.vac-team-calendar .vacation-timeline .dept-row td {
+  background: rgba(116, 81, 244, 0.12);
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.vac-team-calendar .vacation-timeline .sticky-col-dept {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: var(--vac-team-name-col-w);
+  min-width: var(--vac-team-name-col-w);
+  max-width: var(--vac-team-name-col-w);
+  padding: 8px 10px 8px 8px;
+  background: rgba(116, 81, 244, 0.12);
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline .vac-dept-row-fill {
+  padding: 0;
+  background: rgba(116, 81, 244, 0.12);
+}
+
 .vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name),
 .vac-team-calendar .vacation-timeline td.vac-cell {
   width: calc((100% - var(--vac-team-name-col-w)) / 12);
@@ -4019,13 +4042,32 @@ a {
 }
 
 .vac-detailed-dept-row td {
+  border-color: #e4e4de;
+}
+
+.vac-detailed-dept-row .sticky-col-dept,
+.vac-detailed-dept-row .vac-detailed-dept-fill {
   background: rgba(116, 81, 244, 0.08);
+}
+
+.vac-detailed-dept-row .sticky-col-dept {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  min-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  max-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  padding: 8px 12px;
   font-weight: 600;
   color: var(--primary-strong);
-  padding: 8px 12px;
   cursor: pointer;
   user-select: none;
-  border-color: #e4e4de;
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-detailed-dept-row .vac-detailed-dept-fill {
+  padding: 0;
+  cursor: pointer;
 }
 
 .vac-detailed-dept-chevron {
