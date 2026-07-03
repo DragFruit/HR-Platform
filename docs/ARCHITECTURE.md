@@ -186,6 +186,18 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v5` — кэш.
 
+### Уведомления пользователей (отпуска)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/notifications` | Уведомления текущего пользователя по отпускам |
+| `PATCH /api/notifications/:id/seen` | Прочитано |
+| `PATCH /api/notifications/seen-all` | Прочитать все |
+
+Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`.
+
+Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
+
 ### Аватары сотрудников (API)
 
 | Endpoint | Назначение |

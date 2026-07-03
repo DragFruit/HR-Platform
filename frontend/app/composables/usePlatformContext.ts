@@ -13,6 +13,7 @@ const employeeNav: NavItem[] = [
   { to: '/adaptation', label: 'Адаптация' },
   { to: '/organization', label: 'Структура' },
   { to: '/vacations', label: 'График отпусков' },
+  { to: '/notifications', label: 'Уведомления' },
   { to: '/tasks', label: 'Задачи' },
   { to: '/store', label: 'Магазин' },
   { to: '/wallet', label: 'Кошелёк' },
@@ -101,6 +102,9 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/tasks/hr-assessment')) {
       return 'HR-тест';
+    }
+    if (route.path.startsWith('/notifications')) {
+      return 'Уведомления';
     }
     const current = navItems.value.find((item) => item.to === route.path);
     return current?.label ?? (isAdmin.value ? 'Администрирование' : 'Платформа');

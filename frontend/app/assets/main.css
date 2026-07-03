@@ -7181,15 +7181,27 @@ a {
   text-decoration: none;
 }
 
+.admin-notifications-bell__footer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+
 .admin-notifications-bell__footer {
   display: block;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(32, 32, 32, 0.1);
+  padding: 10px 12px;
   font-weight: 700;
   color: var(--primary-strong);
   text-decoration: none;
   text-align: center;
+}
+
+.admin-notifications-bell__footer--secondary {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(32, 32, 32, 0.06);
 }
 
 .admin-notifications-page {
