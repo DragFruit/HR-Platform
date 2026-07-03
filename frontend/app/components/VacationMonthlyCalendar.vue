@@ -16,7 +16,7 @@
               <td class="sticky-col-dept">{{ dep.name }}</td>
               <td colspan="12" class="vac-dept-row-fill" aria-hidden="true" />
             </tr>
-            <tr v-for="emp in dep.employees" :key="emp.id">
+              <tr v-for="emp in dep.employees" :key="emp.id" class="vac-team-emp-row">
               <td class="sticky-col-name">
                 <span class="emp-name emp-name--inline">{{ emp.name }}</span>
                 <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
