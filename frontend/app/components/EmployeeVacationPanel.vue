@@ -190,6 +190,19 @@ watch(
   { immediate: true }
 );
 
+watch(
+  () => trainingStep.value?.id,
+  (stepId, prevStepId) => {
+    if (!isTrainingActive.value) return;
+    if (stepId === 'calendar' && prevStepId === 'create') {
+      form.start = '';
+      form.end = '';
+      formError.value = null;
+      clearSelection();
+    }
+  }
+);
+
 onMounted(() => {
   refreshData();
 });

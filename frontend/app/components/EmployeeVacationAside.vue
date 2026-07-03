@@ -124,13 +124,13 @@
       </div>
     </Teleport>
 
+    <VacationTrainingPrompt v-if="!embedded" />
+
     <h4 class="employee-legend-title">Легенда</h4>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-weekend" /> Выходной день</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-holiday" /> Праздничный день</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-approved" /> Отпуск (одобрен)</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-pending" /> На согласовании</div>
-
-    <VacationTrainingPrompt v-if="!embedded" />
   </aside>
 </template>
 

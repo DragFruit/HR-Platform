@@ -173,28 +173,11 @@
           <div class="vac-training-overlay__nav">
             <button
               type="button"
-              class="vac-training-overlay__back"
+              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
               :disabled="stepIndex === 0"
-              aria-label="Назад"
               @click="goPrevStep"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M15 12 H9"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M11 8 L7 12 L11 16"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              Назад
             </button>
 
             <button
@@ -208,27 +191,10 @@
             <button
               v-else
               type="button"
-              class="vac-training-overlay__next-pill"
-              aria-label="Далее"
+              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--next"
               @click="onAcknowledge"
             >
-              <svg viewBox="0 0 120 16" class="vac-training-overlay__next-pill-svg" aria-hidden="true">
-                <path
-                  d="M 10 8 H 86"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M 74 4 L 94 8 L 74 12"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              Продолжить
             </button>
           </div>
         </div>
@@ -236,28 +202,11 @@
           <div class="vac-training-overlay__nav vac-training-overlay__nav--hint">
             <button
               type="button"
-              class="vac-training-overlay__back"
+              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
               :disabled="stepIndex === 0"
-              aria-label="Назад"
               @click="goPrevStep"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M15 12 H9"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M11 8 L7 12 L11 16"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              Назад
             </button>
             <p class="vac-training-overlay__hint muted">Выполните действие на экране ↑</p>
           </div>
