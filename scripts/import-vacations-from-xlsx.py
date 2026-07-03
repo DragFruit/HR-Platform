@@ -21,6 +21,7 @@ from vacation_balance_py import calc_remain
 
 ROOT = SCRIPT_DIR.parent
 EMPLOYEES_FILE = ROOT / "frontend/server/data/employees.json"
+MANAGERS_FILE = ROOT / "frontend/server/data/employee-managers.json"
 VACATIONS_FILE = ROOT / "frontend/server/data/vacations.json"
 DEFAULT_XLSX = Path.home() / "Downloads/График отпусков (HR)  (1).xlsx"
 
@@ -37,7 +38,8 @@ TOLERANCE = 0.15
 
 
 def norm_name(value: str) -> str:
-    return " ".join(str(value or "").strip().lower().split())
+    s = str(value or "").strip().lower().replace("ё", "е")
+    return " ".join(s.split())
 
 
 def name_keys(value: str) -> set[str]:
@@ -105,6 +107,42 @@ def match_employee(xlsx_name: str, employees: list[dict]) -> dict | None:
     return None
 
 
+def load_manager_overrides() -> tuple[dict[str, str], dict[str, str]]:
+    if not MANAGERS_FILE.exists():
+        return {}, {}
+    try:
+        payload = json.loads(MANAGERS_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}, {}
+    by_id = payload.get("byId") if isinstance(payload.get("byId"), dict) else {}
+    by_name = payload.get("byName") if isinstance(payload.get("byName"), dict) else {}
+    return by_id, by_name
+
+
+def snapshot_managers(employees: list[dict]) -> dict[int, str]:
+    return {int(emp["id"]): str(emp.get("manager", "")).strip() for emp in employees if "id" in emp}
+
+
+def restore_managers(
+    employees: list[dict],
+    snapshot: dict[int, str],
+    by_id: dict[str, str],
+    by_name: dict[str, str],
+) -> None:
+    for emp in employees:
+        emp_id = int(emp["id"])
+        manager = ""
+        if str(emp_id) in by_id and str(by_id[str(emp_id)]).strip():
+            manager = str(by_id[str(emp_id)]).strip()
+        else:
+            name_key = norm_name(str(emp.get("name", "")))
+            if name_key in by_name and str(by_name[name_key]).strip():
+                manager = str(by_name[name_key]).strip()
+            elif emp_id in snapshot:
+                manager = snapshot[emp_id]
+        emp["manager"] = manager
+
+
 def main() -> int:
     xlsx_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     if not xlsx_path.exists():
@@ -112,6 +150,8 @@ def main() -> int:
         return 1
 
     employees = json.loads(EMPLOYEES_FILE.read_text(encoding="utf-8"))
+    manager_snapshot = snapshot_managers(employees)
+    manager_by_id, manager_by_name = load_manager_overrides()
     wb_data = openpyxl.load_workbook(xlsx_path, data_only=True)
     wb_colors = openpyxl.load_workbook(xlsx_path, data_only=False)
     if "2026" not in wb_data.sheetnames:
@@ -168,6 +208,8 @@ def main() -> int:
                     "status": status,
                 }
             )
+
+    restore_managers(employees, manager_snapshot, manager_by_id, manager_by_name)
 
     vacation_state = {
         "primaryYear": YEAR,

@@ -52,6 +52,9 @@ const props = defineProps<{
   compact?: boolean;
   rangePickStart?: string | null;
   rangePickHover?: string | null;
+  /** Зафиксированный период из формы — подсветка после выбора на календаре */
+  selectedRangeStart?: string | null;
+  selectedRangeEnd?: string | null;
   minSelectableIso?: string;
 }>();
 
@@ -75,11 +78,21 @@ const months = computed(() => {
   }));
 });
 
-const previewEnd = computed(() => props.rangePickHover ?? props.rangePickStart ?? null);
+const previewEnd = computed(() => {
+  if (props.rangePickStart) return props.rangePickHover ?? props.rangePickStart;
+  if (props.selectedRangeStart && props.selectedRangeEnd) return props.selectedRangeEnd;
+  return props.rangePickStart;
+});
+
+const previewStart = computed(() => {
+  if (props.rangePickStart) return props.rangePickStart;
+  if (props.selectedRangeStart && props.selectedRangeEnd) return props.selectedRangeStart;
+  return null;
+});
 
 const isInPreview = (cell: CalendarDayCell) => {
-  if (!props.rangePickStart || !previewEnd.value || cell.empty) return false;
-  return isInRangePreview(cell.iso, props.rangePickStart, previewEnd.value);
+  if (!previewStart.value || !previewEnd.value || cell.empty) return false;
+  return isInRangePreview(cell.iso, previewStart.value, previewEnd.value);
 };
 
 const cellClass = (cell: CalendarDayCell) => {
@@ -103,9 +116,9 @@ const cellClass = (cell: CalendarDayCell) => {
     classes.push('emp-day-unselectable');
   }
 
-  if (props.rangePickStart && isInPreview(cell) && !cell.approved && !cell.pending) {
+  if (previewStart.value && isInPreview(cell) && !cell.approved && !cell.pending) {
     classes.push('emp-day-range-preview');
-    const seg = rangePreviewSegmentClass(cell.iso, props.rangePickStart, previewEnd.value);
+    const seg = rangePreviewSegmentClass(cell.iso, previewStart.value, previewEnd.value!);
     if (seg) classes.push(seg);
   }
 

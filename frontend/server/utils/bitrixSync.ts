@@ -1,5 +1,6 @@
 import type { AuthRole } from './credentials';
 import type { ServerEmployee } from './employeesStore';
+import { upsertBitrixFieldNotification, normalizeNotificationText } from './adminNotificationsStore';
 import { employeeIdentityKeys, readEmployees, writeEmployees } from './employeesStore';
 import {
   bitrixFetchAll,
@@ -130,12 +131,78 @@ function departmentHeadIds(departments: BitrixDepartment[]): Set<number> {
   return ids;
 }
 
+const BITRIX_USER_SELECT = [
+  'ID',
+  'NAME',
+  'LAST_NAME',
+  'EMAIL',
+  'WORK_POSITION',
+  'DATE_REGISTER',
+  'UF_DEPARTMENT'
+] as const;
+
+type BitrixFieldChange = {
+  field: 'name' | 'title';
+  platform_value: string;
+  bitrix_value: string;
+};
+
+function collectBitrixFieldChanges(
+  prev: ServerEmployee,
+  bitrixName: string,
+  bitrixTitle: string
+): BitrixFieldChange[] {
+  const fieldChanges: BitrixFieldChange[] = [];
+  if (bitrixName && normalizeNotificationText(prev.name) !== normalizeNotificationText(bitrixName)) {
+    fieldChanges.push({ field: 'name', platform_value: prev.name, bitrix_value: bitrixName });
+  }
+  if (normalizeNotificationText(prev.title) !== normalizeNotificationText(bitrixTitle)) {
+    fieldChanges.push({ field: 'title', platform_value: prev.title, bitrix_value: bitrixTitle });
+  }
+  return fieldChanges;
+}
+
+async function upsertEmployeeBitrixNotifications(
+  prev: ServerEmployee,
+  bitrixId: number,
+  bitrixName: string,
+  bitrixTitle: string
+): Promise<number> {
+  let created = 0;
+  for (const change of collectBitrixFieldChanges(prev, bitrixName, bitrixTitle)) {
+    const notification = await upsertBitrixFieldNotification({
+      employee_id: prev.id,
+      bitrix_user_id: bitrixId,
+      employee_name: prev.name,
+      ...change
+    });
+    if (notification) created += 1;
+  }
+  return created;
+}
+
+async function fetchBitrixUserById(
+  bitrixId: number,
+  accessToken?: string
+): Promise<BitrixUserRow | null> {
+  const rows = await bitrixFetchAll<BitrixUserRow>(
+    'user.get',
+    {
+      filter: { ID: bitrixId },
+      select: [...BITRIX_USER_SELECT]
+    },
+    accessToken
+  );
+  return rows[0] ?? null;
+}
+
 export type BitrixSyncResult = {
   total: number;
   created: number;
   updated: number;
   keptManual: number;
   keptRosterOnly: number;
+  notificationsCreated: number;
 };
 
 export type BitrixSyncOptions = {
@@ -152,15 +219,7 @@ export async function syncEmployeesFromBitrix(
       'user.get',
       {
         filter: { ACTIVE: true },
-        select: [
-          'ID',
-          'NAME',
-          'LAST_NAME',
-          'EMAIL',
-          'WORK_POSITION',
-          'DATE_REGISTER',
-          'UF_DEPARTMENT'
-        ]
+        select: [...BITRIX_USER_SELECT]
       },
       accessToken
     ),
@@ -190,6 +249,7 @@ export async function syncEmployeesFromBitrix(
 
   let created = 0;
   let updated = 0;
+  let notificationsCreated = 0;
   const synced: ServerEmployee[] = [];
   for (const user of users) {
     const bitrixId = toNumberId(user.ID);
@@ -202,8 +262,17 @@ export async function syncEmployeesFromBitrix(
     const department = deptId ? deptNames.get(deptId) || '' : '';
     const headId = deptId ? deptHeads.get(deptId) : null;
     const manager = headId ? userNames.get(headId) || '' : '';
+    const bitrixName = formatBitrixUserName(user) || '';
+    const bitrixTitle = String(user.WORK_POSITION || '').trim();
     if (prev) {
       updated += 1;
+      notificationsCreated += await upsertEmployeeBitrixNotifications(
+        prev,
+        bitrixId,
+        bitrixName,
+        bitrixTitle
+      );
+
       synced.push({
         ...prev,
         bitrix_user_id: bitrixId,
@@ -235,6 +304,35 @@ export async function syncEmployeesFromBitrix(
     (row) => row.bitrix_user_id && !syncedIds.has(row.bitrix_user_id)
   );
 
+  if (keptRosterOnly.length > 0) {
+    const bitrixLinkedCount = existing.filter((row) => row.bitrix_user_id).length;
+    if (users.length < bitrixLinkedCount) {
+      console.warn(
+        `[bitrixSync] Bulk user.get: ${users.length} users, ${bitrixLinkedCount} employees with bitrix_user_id; ` +
+          `checking ${keptRosterOnly.length} individually`
+      );
+    }
+
+    for (const prev of keptRosterOnly) {
+      const bitrixId = prev.bitrix_user_id;
+      if (!bitrixId) continue;
+      try {
+        const user = await fetchBitrixUserById(bitrixId, accessToken);
+        if (!user) continue;
+        const bitrixName = formatBitrixUserName(user) || '';
+        const bitrixTitle = String(user.WORK_POSITION || '').trim();
+        notificationsCreated += await upsertEmployeeBitrixNotifications(
+          prev,
+          bitrixId,
+          bitrixName,
+          bitrixTitle
+        );
+      } catch (err) {
+        console.warn(`[bitrixSync] user.get ID=${bitrixId} failed:`, err);
+      }
+    }
+  }
+
   const coveredKeys = new Set<string>();
   [...synced, ...keptRosterOnly].forEach((row) => {
     employeeIdentityKeys(row).forEach((key) => coveredKeys.add(key));
@@ -247,14 +345,15 @@ export async function syncEmployeesFromBitrix(
     return true;
   });
 
-  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly]);
+  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly], { preserveManagers: true });
 
   return {
     total: synced.length + keptRosterOnly.length + manualOnly.length,
     created,
     updated,
     keptManual: manualOnly.length,
-    keptRosterOnly: keptRosterOnly.length
+    keptRosterOnly: keptRosterOnly.length,
+    notificationsCreated
   };
 }
 

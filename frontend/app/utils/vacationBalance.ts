@@ -149,6 +149,8 @@ const countBookedDaysUpTo = (
 const formatStartLabel = (startIso: string) =>
   new Date(`${startIso}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
+const roundToTenth = (value: number) => Math.round(value * 10) / 10;
+
 export const assessVacationBalance = (
   employeeName: string,
   hireIso: string | undefined,
@@ -193,7 +195,7 @@ export const assessVacationBalance = (
     return { ...empty, status: 'unknown', neededDays, startLabel };
   }
 
-  const deficit = Math.max(0, neededDays - available);
+  const deficit = roundToTenth(Math.max(0, neededDays - available));
   return {
     status: deficit > 0 ? 'advance' : 'ok',
     neededDays,

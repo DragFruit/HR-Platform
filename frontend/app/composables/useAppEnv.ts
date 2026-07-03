@@ -13,10 +13,13 @@ export function useAppEnv() {
   const isProduction = computed(() => appEnv.value === 'production');
   const isDevelopment = computed(() => appEnv.value === 'development');
 
+  const orgLinksEnabled = computed(() => Boolean(config.public.orgLinksEnabled));
+
   return {
     appEnv,
     isStaging,
     isProduction,
-    isDevelopment
+    isDevelopment,
+    orgLinksEnabled
   };
 }

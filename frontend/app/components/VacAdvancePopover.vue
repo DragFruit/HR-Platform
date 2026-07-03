@@ -9,7 +9,7 @@
   >
     <span class="vac-advance-badge" tabindex="0">
       <span class="vac-advance-badge__dot" aria-hidden="true" />
-      Аванс {{ assessment.deficit }} дн.
+      Не хватает {{ assessment.deficit }} дн.
     </span>
 
     <Teleport to="body">
@@ -34,7 +34,7 @@
             <dd>{{ assessment.availableAtStart }} дн.</dd>
           </div>
           <div>
-            <dt>Аванс</dt>
+            <dt>Не хватает</dt>
             <dd class="vac-advance-popover__deficit">{{ assessment.deficit }} дн.</dd>
           </div>
         </dl>

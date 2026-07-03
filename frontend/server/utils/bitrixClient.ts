@@ -122,6 +122,25 @@ export async function bitrixRestAll<T extends Record<string, unknown>>(
   return items;
 }
 
+export async function bitrixWebhookRest<T>(
+  method: string,
+  params: Record<string, unknown>
+): Promise<T> {
+  if (!isBitrixWebhookConfigured()) {
+    throw createError({ statusCode: 500, statusMessage: 'BITRIX_WEBHOOK_URL не задан' });
+  }
+
+  const data = await bitrixWebhookRequest<T>(method, params);
+  if (data.error) {
+    const message = data.error_description || data.error;
+    throw createError({ statusCode: 502, statusMessage: `Bitrix webhook ${method}: ${message}` });
+  }
+  if (data.result === undefined) {
+    throw createError({ statusCode: 502, statusMessage: `Bitrix webhook ${method}: пустой ответ` });
+  }
+  return data.result;
+}
+
 async function bitrixWebhookRequest<T>(method: string, params: Record<string, unknown>): Promise<BitrixRestResponse<T>> {
   const base = getBitrixWebhookUrl();
   const response = await fetch(`${base}/${method}.json`, {

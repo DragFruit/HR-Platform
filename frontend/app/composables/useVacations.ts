@@ -1,4 +1,17 @@
+import {
+  canApproverReviewRequest,
+  initialApprovalStep,
+  isHandedOffToDirectorForGroupLead,
+  nextStateAfterApproval,
+  resolveRequestApprovalStep,
+  vacationPendingStatusLabel,
+  type VacationApprovalStep
+} from '~/utils/vacationApproval';
+import { isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
+
 export type VacationStatus = 'pending' | 'approved' | 'rejected';
+
+export type BitrixVacationSyncStatus = 'synced' | 'failed' | 'skipped';
 
 export type VacationRequest = {
   id: number;
@@ -6,8 +19,15 @@ export type VacationRequest = {
   start: string;
   end: string;
   status: VacationStatus;
+  /** Шаг согласования, пока status === pending */
+  approval_step?: VacationApprovalStep;
   comment: string;
   createdAt: string;
+  bitrix_absence_id?: number;
+  bitrix_sync_status?: BitrixVacationSyncStatus;
+  bitrix_sync_method?: string;
+  bitrix_synced_at?: string;
+  bitrix_sync_error?: string;
 };
 
 export type VacationState = {
@@ -16,7 +36,7 @@ export type VacationState = {
   nextRequestId: number;
 };
 
-const STORAGE_KEY = 'vbi-vacations-state-v4';
+const STORAGE_KEY = 'vbi-vacations-state-v5';
 
 const defaultState = (): VacationState => ({
   primaryYear: new Date().getFullYear(),
@@ -65,36 +85,75 @@ export const formatMonthVacationRange = (
   return `${fmt(from)}-${fmt(to)}`;
 };
 
+export function requestStatusLabel(
+  request: Pick<VacationRequest, 'status' | 'approval_step'>,
+  employee?: { department: string; manager: string }
+): string {
+  if (request.status === 'pending') {
+    return vacationPendingStatusLabel(resolveRequestApprovalStep(request, employee), employee);
+  }
+  return vacationStatusLabels[request.status];
+}
+
 export function useVacations() {
-  const { canManagerApproveRequest } = useEmployees();
+  const { findByName } = useEmployees();
   const state = useState<VacationState>('vbi-vacations', defaultState);
   const viewYear = useState<number>('vbi-vacations-year', () => new Date().getFullYear());
   const hydrated = useState<boolean>('vbi-vacations-hydrated', () => false);
 
-  const persist = () => {
+  const persistLocal = () => {
     if (!import.meta.client) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
-    syncToServer();
   };
 
-  const syncToServer = async () => {
-    if (!import.meta.client) return;
-    try {
-      const saved = await $fetch<VacationState>('/api/vacations', {
-        method: 'PUT',
-        body: state.value
-      });
-      state.value = saved;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
-    } catch {
-      /* нет прав или офлайн */
+  const applyServerState = (saved: VacationState) => {
+    state.value = saved;
+    persistLocal();
+  };
+
+  const syncCreateRequest = async (payload: {
+    employee: string;
+    start: string;
+    end: string;
+    comment?: string;
+  }) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>('/api/vacations/requests', {
+      method: 'POST',
+      body: {
+        year: viewYear.value,
+        ...payload
+      }
+    });
+    applyServerState(saved);
+    return saved;
+  };
+
+  const syncPatchRequest = async (
+    id: number,
+    patch: {
+      start?: string;
+      end?: string;
+      status?: VacationStatus;
+      approval_step?: VacationApprovalStep | null;
     }
+  ) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>(`/api/vacations/requests/${id}`, {
+      method: 'PATCH',
+      body: patch
+    });
+    applyServerState(saved);
+    return saved;
   };
 
-  const applyVacationState = (next: VacationState) => {
-    state.value = next;
-    if (!import.meta.client) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
+  const syncDeleteRequest = async (id: number) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>(`/api/vacations/requests/${id}`, {
+      method: 'DELETE'
+    });
+    applyServerState(saved);
+    return saved;
   };
 
   const syncViewYearToData = () => {
@@ -125,7 +184,7 @@ export function useVacations() {
     try {
       const fromServer = await $fetch<VacationState>('/api/vacations');
       if (fromServer && typeof fromServer === 'object') {
-        applyVacationState(fromServer);
+        applyServerState(fromServer);
         loaded = true;
       }
     } catch {
@@ -136,17 +195,17 @@ export function useVacations() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
-          applyVacationState(JSON.parse(raw) as VacationState);
+          applyServerState(JSON.parse(raw) as VacationState);
         } catch {
           state.value = defaultState();
         }
       } else {
         state.value = defaultState();
       }
-      if (Object.keys(state.value.requestsByYear).length) syncToServer();
     }
 
     syncViewYearToData();
+    await migratePendingApprovalSteps();
     hydrated.value = true;
   };
 
@@ -165,45 +224,115 @@ export function useVacations() {
     yearRequests.value.filter((item) => item.status === 'pending')
   );
 
+  const migratePendingApprovalSteps = async () => {
+    const patches: { id: number; approval_step: VacationApprovalStep }[] = [];
+    for (const list of Object.values(state.value.requestsByYear)) {
+      for (const req of list) {
+        if (req.status !== 'pending' || req.approval_step !== undefined) continue;
+        const employee = findByName(req.employee);
+        if (!employee) continue;
+        patches.push({ id: req.id, approval_step: initialApprovalStep(employee) });
+      }
+    }
+    for (const patch of patches) {
+      try {
+        await syncPatchRequest(patch.id, { approval_step: patch.approval_step });
+      } catch {
+        /* офлайн или нет сессии */
+      }
+    }
+  };
+
   const pendingRequestsForApprover = (
     approverEmployeeName: string | null,
     seeAll: boolean
   ) => {
     const pending = pendingRequests.value;
     if (seeAll || !approverEmployeeName) return pending;
-    return pending.filter((request) =>
-      canManagerApproveRequest(approverEmployeeName, request.employee)
-    );
+    return pending.filter((request) => {
+      const employee = findByName(request.employee);
+      return canApproverReviewRequest(approverEmployeeName, request, employee);
+    });
   };
 
-  const addRequest = (payload: {
+  const handedOffRequestsForApprover = (
+    approverEmployeeName: string | null,
+    seeAll: boolean
+  ) => {
+    if (seeAll || !approverEmployeeName) return [];
+    return pendingRequests.value.filter((request) => {
+      const employee = findByName(request.employee);
+      return isHandedOffToDirectorForGroupLead(approverEmployeeName, request, employee);
+    });
+  };
+
+  const addRequest = async (payload: {
     employee: string;
     start: string;
     end: string;
     comment?: string;
   }) => {
-    const yearKey = String(viewYear.value);
-    const list = state.value.requestsByYear[yearKey] ?? [];
-    const request: VacationRequest = {
-      id: state.value.nextRequestId++,
-      employee: payload.employee,
-      start: payload.start,
-      end: payload.end,
-      status: 'pending',
-      comment: payload.comment?.trim() || 'Заявка из платформы',
-      createdAt: new Date().toLocaleDateString('ru-RU')
-    };
-    state.value.requestsByYear[yearKey] = [...list, request];
-    persist();
-    return request;
+    const beforeIds = new Set(
+      Object.values(state.value.requestsByYear)
+        .flat()
+        .map((item) => item.id)
+    );
+    await syncCreateRequest(payload);
+    const created = Object.values(state.value.requestsByYear)
+      .flat()
+      .find((item) => !beforeIds.has(item.id));
+    return created ?? null;
   };
 
-  const setRequestStatus = (id: number, status: VacationStatus) => {
+  const setRequestStatus = async (id: number, status: VacationStatus) => {
     const found = findRequestById(id);
     if (!found) return false;
-    found.item.status = status;
-    persist();
-    return true;
+    try {
+      await syncPatchRequest(id, { status });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const approveRequest = async (
+    id: number,
+    approverEmployeeName: string | null,
+    options?: { force?: boolean }
+  ) => {
+    const found = findRequestById(id);
+    if (!found || found.item.status !== 'pending') return false;
+
+    const employee = findByName(found.item.employee);
+    if (!employee) return false;
+
+    if (
+      !options?.force &&
+      (!approverEmployeeName ||
+        !canApproverReviewRequest(approverEmployeeName, found.item, employee))
+    ) {
+      return false;
+    }
+
+    let status: VacationStatus;
+    let approval_step: VacationApprovalStep | null = null;
+
+    if (options?.force) {
+      status = 'approved';
+    } else {
+      const step = resolveRequestApprovalStep(found.item, employee);
+      if (!step) return false;
+      const next = nextStateAfterApproval(employee, step);
+      status = next.status;
+      approval_step = next.approval_step ?? null;
+    }
+
+    try {
+      await syncPatchRequest(id, { status, approval_step });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const findRequestById = (id: number) => {
@@ -214,27 +343,26 @@ export function useVacations() {
     return null;
   };
 
-  const updateRequestDates = (id: number, start: string, end: string) => {
+  const updateRequestDates = async (id: number, start: string, end: string) => {
     const found = findRequestById(id);
-    if (!found) return false;
-    found.item.start = start;
-    found.item.end = end;
-    persist();
-    return true;
+    if (!found || isPastApprovedVacationRequest(found.item)) return false;
+    try {
+      await syncPatchRequest(id, { start, end });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
-  const deleteRequest = (id: number) => {
-    let removed = false;
-    Object.keys(state.value.requestsByYear).forEach((yearKey) => {
-      const list = state.value.requestsByYear[yearKey];
-      const next = list.filter((r) => r.id !== id);
-      if (next.length !== list.length) {
-        state.value.requestsByYear[yearKey] = next;
-        removed = true;
-      }
-    });
-    if (removed) persist();
-    return removed;
+  const deleteRequest = async (id: number) => {
+    const found = findRequestById(id);
+    if (!found || isPastApprovedVacationRequest(found.item)) return false;
+    try {
+      await syncDeleteRequest(id);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const getMonthEntries = (employeeName: string, month: number, year = viewYear.value) => {
@@ -256,11 +384,14 @@ export function useVacations() {
     yearRequests,
     pendingRequests,
     pendingRequestsForApprover,
+    handedOffRequestsForApprover,
+    migratePendingApprovalSteps,
     hydrate,
     reloadFromServer,
-    persist,
+    persistLocal,
     requestsForYear,
     addRequest,
+    approveRequest,
     setRequestStatus,
     updateRequestDates,
     deleteRequest,
@@ -268,6 +399,7 @@ export function useVacations() {
     getMonthEntries,
     employeeRequests,
     vacationStatusLabels,
+    requestStatusLabel,
     MONTHS_RU
   };
 }

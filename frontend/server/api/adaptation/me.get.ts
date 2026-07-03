@@ -1,11 +1,11 @@
 import { requireVbiSession } from '../../utils/session';
-import { findEmployeeByPlatformUserId } from '../../utils/employeesStore';
+import { findEmployeeForSession } from '../../utils/employeesStore';
 import { listAttempts, listStepCompletions } from '../../utils/adaptationStore';
 import { daysSinceHire, loadTrackForClient } from '../../utils/trackLoader';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
-  const employee = await findEmployeeByPlatformUserId(session.id);
+  const employee = await findEmployeeForSession(session);
 
   if (!employee) {
     return {

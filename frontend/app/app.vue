@@ -46,9 +46,40 @@
 
       <ul class="nav-list">
         <li v-for="item in navItems" :key="item.to">
-          <NuxtLink :to="item.to" class="nav-link">
+          <NuxtLink
+            v-if="!item.locked"
+            :to="item.to"
+            class="nav-link"
+            :class="{ 'router-link-active': isNavItemActive(item.to) }"
+          >
             {{ item.label }}
           </NuxtLink>
+          <span
+            v-else
+            class="nav-link nav-link--locked"
+            role="link"
+            aria-disabled="true"
+            :title="lockedNavHint"
+          >
+            <span class="nav-link__label">{{ item.label }}</span>
+            <svg class="nav-link__lock" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <rect
+                x="3.25"
+                y="7"
+                width="9.5"
+                height="6.75"
+                rx="1.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+            </svg>
+          </span>
         </li>
       </ul>
 
@@ -59,6 +90,7 @@
       <header class="topbar">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
+          <AdminNotificationsBell v-if="isAdmin" />
           <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
           <span class="soft">{{ user?.name }}</span>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>
@@ -100,9 +132,17 @@ const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRol
   usePlatformContext();
 const { homePath } = useLaunchScope();
 
+const lockedNavHint = 'Раздел скоро откроется';
+
 const route = useRoute();
 const router = useRouter();
 const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
+
+const isNavItemActive = (to: string) => {
+  if (to === '/') return route.path === '/';
+  if (to === '/profile') return route.path === '/profile' || route.path.startsWith('/profile/');
+  return route.path === to || route.path.startsWith(`${to}/`);
+};
 
 const resolveHomePath = () => homePath(user.value?.role === 'admin');
 

@@ -66,7 +66,7 @@ const props = withDefaults(
   defineProps<{
     userName: string;
     userId: number;
-    /** welcome — приветствие; avatar — только выбор (уже видели конфетти) */
+    /** welcome — приветствие; avatar — только выбор аватара */
     initialStep?: 'welcome' | 'avatar';
   }>(),
   {
@@ -89,14 +89,18 @@ const goToAvatarStep = () => {
   step.value = 'avatar';
 };
 
-const burstFromButton = async () => {
+const burstAt = async (x: number, y: number, count: number, velocity: number) => {
   const confetti = await loadConfetti();
   if (!confetti) return;
+  confetti({ position: { x, y }, count, velocity });
+};
+
+const burstFromButton = async () => {
   const btn = startBtnRef.value;
   const x = btn ? btn.getBoundingClientRect().left + btn.offsetWidth / 2 : window.innerWidth * 0.5;
   const y = btn ? btn.getBoundingClientRect().top + btn.offsetHeight / 2 : window.innerHeight * 0.5;
 
-  confetti({ position: { x, y }, count: 120, velocity: 220 });
+  await burstAt(x, y, 120, 220);
 };
 
 const finishOnboarding = async () => {
@@ -104,23 +108,12 @@ const finishOnboarding = async () => {
   isStarting.value = true;
 
   await burstFromButton();
-  const confetti = await loadConfetti();
-  if (confetti) {
-    window.setTimeout(() => {
-      confetti({
-        position: { x: window.innerWidth * 0.35, y: window.innerHeight * 0.45 },
-        count: 80,
-        velocity: 180
-      });
-    }, 200);
-    window.setTimeout(() => {
-      confetti({
-        position: { x: window.innerWidth * 0.65, y: window.innerHeight * 0.45 },
-        count: 80,
-        velocity: 180
-      });
-    }, 400);
-  }
+  window.setTimeout(() => {
+    void burstAt(window.innerWidth * 0.35, window.innerHeight * 0.45, 80, 180);
+  }, 200);
+  window.setTimeout(() => {
+    void burstAt(window.innerWidth * 0.65, window.innerHeight * 0.45, 80, 180);
+  }, 400);
 
   window.setTimeout(() => emit('complete', selectedId.value!), 900);
 };

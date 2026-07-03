@@ -1,11 +1,11 @@
 import { requireVbiSession } from '../../utils/session';
-import { writeVacations, type VacationStoreState } from '../../utils/vacationsStore';
 
+/** @deprecated Клиент сохраняет заявки по одной: POST/PATCH/DELETE /api/vacations/requests */
 export default defineEventHandler(async (event) => {
   await requireVbiSession(event);
-  const body = await readBody<VacationStoreState>(event);
-  if (!body || typeof body !== 'object' || !body.requestsByYear) {
-    throw createError({ statusCode: 400, statusMessage: 'Некорректное состояние отпусков' });
-  }
-  return writeVacations(body);
+  throw createError({
+    statusCode: 410,
+    statusMessage:
+      'Полная перезапись отключена. Используйте POST/PATCH/DELETE /api/vacations/requests'
+  });
 });

@@ -1,3 +1,4 @@
+import { QA_DEMO_ACCOUNT_HINTS } from '~/data/qaTestDepartment';
 import type { PlatformRole } from '~/composables/usePlatformContext';
 
 export type AuthSessionUser = {
@@ -258,13 +259,22 @@ export function useAuth() {
     }
   };
 
-  const demoAccounts = credentials.map(({ email, role, password, description, name }) => ({
-    email,
-    role,
-    password,
-    description,
-    name
-  }));
+  const runtimeConfig = useRuntimeConfig();
+
+  const demoAccounts = computed(() =>
+    credentials.map(({ email, role, password, description, name }) => {
+      const qaHint = runtimeConfig.public.qaTestDepartment
+        ? QA_DEMO_ACCOUNT_HINTS[email.toLowerCase()]
+        : undefined;
+      return {
+        email,
+        role,
+        password,
+        description: qaHint ?? description,
+        name
+      };
+    })
+  );
 
   return {
     user,

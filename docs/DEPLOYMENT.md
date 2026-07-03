@@ -72,7 +72,7 @@ bash deploy/scripts/build-and-deploy.sh production # бой
 | Переменная | Тест | Бой | Локально |
 |------------|------|-----|----------|
 | `NUXT_PUBLIC_APP_ENV` | `staging` | `production` | `development` |
-| `NUXT_PUBLIC_LAUNCH_SCOPE` | `full` | `full` | `full` |
+| `NUXT_PUBLIC_LAUNCH_SCOPE` | `full` | `vacations` | `full` |
 
 `NUXT_PUBLIC_*` задаются **при сборке** (`npm run build`), не в runtime на сервере.
 

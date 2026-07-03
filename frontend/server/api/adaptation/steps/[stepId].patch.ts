@@ -1,5 +1,5 @@
 import { requireVbiSession } from '../../../utils/session';
-import { findEmployeeByPlatformUserId } from '../../../utils/employeesStore';
+import { findEmployeeForSession } from '../../../utils/employeesStore';
 import { addStepCompletion } from '../../../utils/adaptationStore';
 import { loadTrackFull } from '../../../utils/trackLoader';
 
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Не указан stepId' });
   }
 
-  const employee = await findEmployeeByPlatformUserId(session.id);
+  const employee = await findEmployeeForSession(session);
   if (!employee) {
     throw createError({ statusCode: 400, statusMessage: 'Сотрудник не найден в справочнике' });
   }

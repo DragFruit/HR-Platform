@@ -34,21 +34,55 @@ REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
 
 SSH_CMD=(ssh)
 RSYNC_SSH=(ssh)
+SCP_CMD=(scp -o IdentitiesOnly=yes)
 if [[ -n "${DEPLOY_SSH_KEY:-}" && -f "${DEPLOY_SSH_KEY}" ]]; then
   SSH_CMD+=( -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes )
   RSYNC_SSH+=( -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes )
+  SCP_CMD=(scp -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes)
 elif [[ -f "${HOME}/.ssh/id_rsa" && -n "${CI:-}" ]]; then
   SSH_CMD+=( -i "${HOME}/.ssh/id_rsa" -o IdentitiesOnly=yes )
   RSYNC_SSH+=( -i "${HOME}/.ssh/id_rsa" -o IdentitiesOnly=yes )
+  SCP_CMD=(scp -i "${HOME}/.ssh/id_rsa" -o IdentitiesOnly=yes)
 elif [[ -f "${HOME}/.ssh/vbi_hr_deploy" ]]; then
   SSH_CMD+=( -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes )
   RSYNC_SSH+=( -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes )
+  SCP_CMD=(scp -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes)
 fi
 
 echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo chown -R '${DEPLOY_USER}:www-data' '${DEPLOY_PATH}'"
-"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output'"
+"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output' '${DEPLOY_PATH}/server/data'"
 RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az --delete "${OUTPUT_DIR}/" "${REMOTE}:${DEPLOY_PATH}/.output/"
+
+SEED_DATA_DIR="${ROOT}/frontend/server/data"
+MERGE_SCRIPT="${ROOT}/deploy/scripts/merge-employees-seed.mjs"
+REMOTE_DATA="${DEPLOY_PATH}/server/data"
+REMOTE_MANAGERS="${REMOTE_DATA}/employee-managers.json"
+
+"${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_MANAGERS}' || printf '%s\\n' '{\"byId\":{},\"byName\":{}}' > '${REMOTE_MANAGERS}'"
+
+for seed in adaptation-track.json employees.json vacations.json; do
+  if [[ ! -f "${SEED_DATA_DIR}/${seed}" ]]; then
+    continue
+  fi
+
+  if [[ "${seed}" == "employees.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
+    echo "→ merge ${seed} (production — данные с сервера, +новые из репо, руководители из overlay)"
+    INCOMING="${REMOTE_DATA}/.employees-incoming.json"
+    "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${INCOMING}"
+    "${SCP_CMD[@]}" "${MERGE_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/merge-employees-seed.mjs"
+    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-employees-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' '${REMOTE_MANAGERS}' && rm -f '${INCOMING}'"
+    continue
+  fi
+
+  if [[ "${seed}" == "vacations.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
+    echo "→ skip ${seed} (заявки и primaryYear остаются с сервера)"
+    continue
+  fi
+
+  echo "→ seed ${seed} → ${REMOTE_DATA}/"
+  "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${REMOTE_DATA}/${seed}"
+done
 
 case "$ENV" in
   staging)
@@ -68,12 +102,6 @@ fi
 
 if [[ -f "${RUN_SCRIPT}" ]]; then
   echo "→ установка $(basename "${RUN_SCRIPT}")"
-  SCP_CMD=(scp -o IdentitiesOnly=yes)
-  if [[ -n "${DEPLOY_SSH_KEY:-}" && -f "${DEPLOY_SSH_KEY}" ]]; then
-    SCP_CMD=(scp -i "${DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes)
-  elif [[ -f "${HOME}/.ssh/vbi_hr_deploy" ]]; then
-    SCP_CMD=(scp -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes)
-  fi
   "${SCP_CMD[@]}" "${RUN_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/run.sh"
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/run.sh'"
 fi

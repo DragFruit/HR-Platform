@@ -47,7 +47,7 @@
           </button>
         </form>
 
-        <details class="auth-demo" :open="!showBitrixLogin">
+        <details class="auth-demo" :open="showDemoLogin">
           <summary>Учётные записи для входа (пароли в описании)</summary>
           <ul class="list-reset demo-accounts-list">
             <li v-for="account in demoAccounts" :key="account.email">
@@ -77,13 +77,14 @@ const { isDevelopment } = useAppEnv();
 const { login, demoAccounts } = useAuth();
 const BITRIX_LOGIN_PATH = '/api/auth/bitrix';
 
-const { bitrixAuthEnabled, configReady, preferBitrixLogin } = useBitrixAuthConfig();
+const { configReady, preferBitrixLogin } = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
 const showDemoLogin = computed(() => {
+  if (!isDevelopment.value) return false;
   if (!configReady.value && preferBitrixLogin.value) return false;
-  if (bitrixAuthEnabled.value) return false;
-  return isDevelopment.value;
+  // На localhost демо-вход рядом с Bitrix (QA-отдел «Тестировщики» и т.д.)
+  return true;
 });
 
 const email = ref('');

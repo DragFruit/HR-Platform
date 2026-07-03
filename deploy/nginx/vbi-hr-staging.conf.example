@@ -14,5 +14,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+
+        add_header Content-Security-Policy "frame-ancestors 'self' https://metrika.yandex.ru https://metrika.yandex.by https://metrika.yandex.com https://metrika.yandex.com.tr https://metrica.yandex.ru https://metrica.yandex.by https://metrica.yandex.com https://webvisor.com https://*.webvisor.com https://*.metrika.yandex.ru https://*.metrika.yandex.by" always;
     }
 }

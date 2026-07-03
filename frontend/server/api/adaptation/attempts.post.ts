@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { requireVbiSession } from '../../utils/session';
-import { findEmployeeByPlatformUserId } from '../../utils/employeesStore';
+import { findEmployeeForSession } from '../../utils/employeesStore';
 import { findQuizById } from '../../utils/trackLoader';
 import { scoreQuiz } from '../../utils/scoreQuiz';
 import { addAttempt } from '../../utils/adaptationStore';
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Укажите quiz_id и answers' });
   }
 
-  const employee = await findEmployeeByPlatformUserId(session.id);
+  const employee = await findEmployeeForSession(session);
   if (!employee) {
     throw createError({
       statusCode: 400,

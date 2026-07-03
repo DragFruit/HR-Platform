@@ -2,6 +2,10 @@ import type { MotivationBlock } from '~/composables/useMockData';
 
 export type TaskStatus = 'pool' | 'active' | 'completed' | 'cancelled';
 
+export type TaskKind = 'standard' | 'hr_knowledge_quiz';
+
+export const HR_KNOWLEDGE_TASK_ID = 9001;
+
 export type Task = {
   id: number;
   title: string;
@@ -10,9 +14,21 @@ export type Task = {
   deadline: string;
   difficulty: 'easy' | 'medium' | 'hard';
   status: TaskStatus;
+  task_kind?: TaskKind;
   assignee_id?: number;
   taken_at?: string;
   completed_at?: string;
+};
+
+const DEFAULT_HR_KNOWLEDGE_TASK: Task = {
+  id: HR_KNOWLEDGE_TASK_ID,
+  title: 'Тест на оценку HR-знаний',
+  motivation_block: 'learning',
+  reward_amount: 150,
+  deadline: '2026-12-31',
+  difficulty: 'medium',
+  status: 'pool',
+  task_kind: 'hr_knowledge_quiz'
 };
 
 const STORAGE_KEY = 'vbi-tasks-state';
@@ -57,6 +73,24 @@ export function useTasks() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks.value));
   };
 
+  const ensureHrKnowledgeTask = () => {
+    const existing = tasks.value.find((t) => t.id === HR_KNOWLEDGE_TASK_ID);
+    if (!existing) {
+      tasks.value.push({ ...DEFAULT_HR_KNOWLEDGE_TASK });
+      persist();
+      return;
+    }
+    if (!existing.task_kind) {
+      existing.task_kind = 'hr_knowledge_quiz';
+      persist();
+    }
+  };
+
+  const isHrKnowledgeTask = (task: Task) =>
+    task.task_kind === 'hr_knowledge_quiz' ||
+    task.id === HR_KNOWLEDGE_TASK_ID ||
+    task.title.trim().toLowerCase() === DEFAULT_HR_KNOWLEDGE_TASK.title.trim().toLowerCase();
+
   const hydrate = () => {
     if (!import.meta.client || hydrated.value) return;
 
@@ -69,6 +103,7 @@ export function useTasks() {
       }
     }
 
+    ensureHrKnowledgeTask();
     hydrated.value = true;
   };
 
@@ -147,6 +182,8 @@ export function useTasks() {
     completeTask,
     filterByMotivation,
     filterByStatus,
+    isHrKnowledgeTask,
+    HR_KNOWLEDGE_TASK_ID,
     taskStatusLabels,
     motivationLabels,
     difficultyLabels

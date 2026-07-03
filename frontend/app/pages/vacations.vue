@@ -2,6 +2,8 @@
   <div v-if="!authReady" class="auth-loading">Загрузка...</div>
 
   <template v-else>
+    <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
+
     <div v-if="showEmployeePanel" class="vacations-employee-shell">
       <EmployeeVacationPanel :view-year="viewYear" @update:view-year="onViewYearChange" />
     </div>
@@ -56,37 +58,53 @@
                 </span>
               </header>
 
-              <div v-if="approvalQueue.length === 0" class="vac-approval-empty">
+              <div v-if="approvalPanelEntries.length === 0" class="vac-approval-empty">
                 <p>Нет заявок на согласование за {{ viewYear }} год</p>
               </div>
 
               <ul v-else class="list-reset vac-approval-list">
-                <li v-for="req in approvalQueue" :key="req.id" class="vac-approval-item">
+                <li
+                  v-for="entry in approvalPanelEntries"
+                  :key="entry.request.id"
+                  class="vac-approval-item"
+                  :class="{ 'vac-approval-item--handed-off': entry.handedOff }"
+                >
                   <div class="vac-approval-item__accent" aria-hidden="true" />
                   <div class="vac-approval-item__body">
                     <div class="vac-approval-item__lead">
-                      <span class="vac-approval-item__avatar">{{ employeeInitials(req.employee) }}</span>
+                      <span class="vac-approval-item__avatar">{{ employeeInitials(entry.request.employee) }}</span>
                       <div class="vac-approval-item__info">
-                        <strong class="vac-approval-item__name">{{ req.employee }}</strong>
-                        <span class="vac-approval-item__dates">{{ formatRange(req.start, req.end) }}</span>
+                        <strong class="vac-approval-item__name">{{ entry.request.employee }}</strong>
+                        <span class="vac-approval-item__dates">{{ formatRange(entry.request.start, entry.request.end) }}</span>
+                        <span
+                          v-if="entry.request.status === 'pending' && !entry.handedOff"
+                          class="vac-approval-item__step soft"
+                        >
+                          {{ approvalStepLabel(entry.request) }}
+                        </span>
                         <VacOverlapPopover
-                          v-if="overlapDetails(req).length"
-                          :items="overlapDetails(req)"
+                          v-if="overlapDetails(entry.request).length"
+                          :items="overlapDetails(entry.request)"
                           :format-range="formatRange"
                         />
                         <VacAdvancePopover
-                          v-if="advanceAssessment(req).status === 'advance'"
-                          :assessment="advanceAssessment(req)"
+                          v-if="advanceAssessment(entry.request).status === 'advance'"
+                          :assessment="advanceAssessment(entry.request)"
                         />
                       </div>
                     </div>
                     <div class="vac-approval-item__actions">
-                      <button class="button vac-btn-approve" type="button" @click="approve(req.id)">
-                        Согласовать
-                      </button>
-                      <button class="button vac-btn-reject" type="button" @click="reject(req.id)">
-                        Отклонить
-                      </button>
+                      <span v-if="entry.handedOff" class="vac-approval-handoff-badge">
+                        {{ handoffStatusLabel(entry.request) }}
+                      </span>
+                      <template v-else>
+                        <button class="button vac-btn-approve" type="button" @click="approve(entry.request.id)">
+                          Согласовать
+                        </button>
+                        <button class="button vac-btn-reject" type="button" @click="reject(entry.request.id)">
+                          Отклонить
+                        </button>
+                      </template>
                     </div>
                   </div>
                 </li>
@@ -112,19 +130,25 @@
 
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
+import { vacationPendingStatusLabel } from '~/utils/vacationApproval';
 import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 const { user, authReady } = useAuth();
+const runtimeConfig = useRuntimeConfig();
+const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { isAdmin: isAdminShell } = usePlatformContext();
-const { departmentsGrouped, directReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
+const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
   viewYear,
   yearRequests,
   pendingRequestsForApprover,
+  handedOffRequestsForApprover,
   getMonthEntries,
+  approveRequest,
   setRequestStatus,
+  requestStatusLabel,
   reloadFromServer: reloadVacations,
   state
 } = useVacations();
@@ -151,7 +175,7 @@ const visibleTabs = computed(() => {
   return tabs;
 });
 
-const groupByDepartment = (list: ReturnType<typeof directReportsForAuthUser>) => {
+const groupByDepartment = (list: ReturnType<typeof allReportsForAuthUser>) => {
   const map = new Map<string, typeof list>();
   list.forEach((emp) => {
     const bucket = map.get(emp.department) ?? [];
@@ -164,10 +188,10 @@ const groupByDepartment = (list: ReturnType<typeof directReportsForAuthUser>) =>
   }));
 };
 
-/** Руководитель видит подчинённых из справочника (колонка «Руководитель») */
+/** Руководитель видит подчинённых из справочника (прямых и через тимлидов). */
 const managerTeam = computed(() => {
   if (!isManager.value || canSeeAllVacationApprovals.value) return [];
-  return directReportsForAuthUser(user.value);
+  return allReportsForAuthUser(user.value);
 });
 
 const calendarDepartments = computed(() => {
@@ -180,6 +204,22 @@ const calendarDepartments = computed(() => {
 const approvalQueue = computed(() =>
   pendingRequestsForApprover(managerProfileName(user.value) || null, canSeeAllVacationApprovals.value)
 );
+
+type ApprovalPanelEntry = { request: VacationRequest; handedOff: boolean };
+
+const approvalPanelEntries = computed<ApprovalPanelEntry[]>(() => {
+  const approver = managerProfileName(user.value) || null;
+  const seeAll = canSeeAllVacationApprovals.value;
+  const actionable = pendingRequestsForApprover(approver, seeAll);
+  const handedOff = handedOffRequestsForApprover(approver, seeAll);
+  const actionableIds = new Set(actionable.map((row) => row.id));
+  return [
+    ...actionable.map((request) => ({ request, handedOff: false })),
+    ...handedOff
+      .filter((request) => !actionableIds.has(request.id))
+      .map((request) => ({ request, handedOff: true }))
+  ];
+});
 
 const teamMembers = computed(() => {
   if (isManager.value && !canSeeAllVacationApprovals.value) {
@@ -260,7 +300,13 @@ const advanceAssessment = (req: VacationRequest) =>
     findByName(req.employee)?.vacation_opening_balance
   );
 
-const approve = (id: number) => setRequestStatus(id, 'approved');
+const approvalStepLabel = (req: VacationRequest) =>
+  requestStatusLabel(req, findByName(req.employee));
+
+const handoffStatusLabel = (req: VacationRequest) =>
+  vacationPendingStatusLabel('director', findByName(req.employee) ?? undefined);
+
+const approve = (id: number) => approveRequest(id, managerProfileName(user.value) || null);
 const reject = (id: number) => setRequestStatus(id, 'rejected');
 
 const onViewYearChange = (year: number) => {

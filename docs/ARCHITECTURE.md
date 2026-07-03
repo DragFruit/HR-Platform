@@ -58,6 +58,7 @@ flowchart TB
 - Ветки Git: `staging` → тест, `main` → бой. Подробно: [DEPLOYMENT.md](DEPLOYMENT.md).
 - CI: GitLab `.gitlab-ci.yml` (сборка + deploy на VPS); опционально GitHub Actions `ci.yml`, `release-artifact.yml`.
 - На сервере: `deploy/systemd/`, `deploy/nginx/`, порты 3300 (бой) / 3301 (тест).
+- **Данные на production/staging** — рабочие: `employees.json` merge (`merge-employees-seed.mjs`, сервер + overlay руководителей); `vacations.json` при деплое не перезаписывается, если файл уже на сервере.
 
 ### Битрикс24 (коробка)
 
@@ -85,7 +86,7 @@ flowchart TB
 | `useLaunchScope` | `useLaunchScope.ts` | Поэтапный запуск (`vacations` / `full`) |
 | `usePermissions` | `usePermissions.ts` | Подписи ролей, `roleLabel` |
 | `useEmployees` | `useEmployees.ts` | Справочник ФИО, руководители, связь с аккаунтами |
-| `useVacations` | `useVacations.ts` | Заявки, календарь, согласование |
+| `useVacations` | `useVacations.ts` | Заявки, календарь, двухэтапное согласование Digital (`vacationApproval.ts`) |
 | `useOrgStructure` | `useOrgStructure.ts` | Директора, отделы, группы, сетка |
 | `useTasks` | `useTasks.ts` | Задачи геймификации |
 | `useWallet` | `useWallet.ts` | Баланс и транзакции |
@@ -146,6 +147,8 @@ flowchart TB
 | `adaptation-track.json` | Шаблон трека и вопросы (с `correct` только на сервере) |
 | `adaptation-state.json` | Попытки тестов и отметки шагов |
 | `employees.json` | Справочник для привязки `platform_user_id` → ФИО |
+| `employee-managers.json` | Назначения руководителей (overlay по `id`/ФИО); не перезаписывается импортом, деплоем и синком Bitrix |
+| `admin-notifications.json` | Уведомления admin/hr о расхождениях ФИО/должности с Битрикс24 |
 
 Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/session`.
 
@@ -167,6 +170,42 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `PUT /api/employees` | Сохранение справочника (admin/hr) |
 
 Клиент: `useEmployees` — `localStorage` + синхронизация через `persist()` → `PUT`.
+
+Сервер: `employeesStore.ts` + `employeeManagersStore.ts` — при чтении подмешивается `employee-managers.json`; при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
+
+### Заявки на отпуск (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/vacations` | Полное состояние (`primaryYear`, `requestsByYear`, `nextRequestId`) |
+| `POST /api/vacations/requests` | Создать одну заявку (тело: `year`, `employee`, `start`, `end`, `comment?`) |
+| `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
+| `DELETE /api/vacations/requests/:id` | Удалить заявку |
+
+Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`; при финальном согласовании — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
+
+Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v5` — кэш.
+
+### Аватары сотрудников (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/avatars` | Все аватары `{ avatars: { [userId]: "character_01" } }` (сессия) |
+| `PUT /api/avatars/me` | Сохранить свой аватар `{ characterId }` |
+
+Сервер: `server/data/user-avatars.json`. Клиент: `useAvatars` + плагин `avatars.client.ts` (гидратация после входа). Локальный `vbi-user-avatars-v1` — кэш; при входе локальный аватар без записи на сервере подгружается автоматически.
+
+### Уведомления администратора (Bitrix)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/admin/notifications` | Список уведомлений, `unseen_count` |
+| `PATCH /api/admin/notifications/:id/seen` | Отметить прочитанным |
+| `PATCH /api/admin/notifications/seen-all` | Прочитать все |
+
+Клиент: `useAdminNotifications.ts`, `AdminNotificationsBell.vue`, страница `/admin/notifications`.
+
+Создание: `bitrixSync.ts` при расхождении `name`/`title` с Bitrix → `adminNotificationsStore.ts` (без авто-применения на платформе).
 
 ---
 
@@ -209,6 +248,20 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 
 Референс бизнес-логики: `_vacation_source/График отпусков/`.
 
+### Учётный год и переход 31.12 → 01.01
+
+| Поле | Назначение |
+|------|------------|
+| `vacations.primaryYear` | Учётный год ЗУП: база `vacation_opening_balance` — остаток на 1 января этого года |
+| `viewYear` (UI) | Год календаря и бакета `requestsByYear` — **не** влияет на формулу баланса |
+| `employee.vacation_opening_balance` | Остаток на 01.01 `primaryYear` (из Excel или после rollover) |
+
+**Переход на новый год:** остаток на 31.12.N (`calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
+
+- Код: `server/utils/vacationYearRollover.ts`
+- CLI: `node scripts/rollover-vacation-year.mjs 2026 2027` (cwd: `frontend/`)
+- API: `POST /api/admin/vacations/rollover` `{ fromYear, toYear }` (admin/hr)
+
 ---
 
 ## localStorage
@@ -217,10 +270,10 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 |------|---------------------|
 | `vbi-auth-session` | `useAuth` |
 | `vbi-welcomed-users` | `useAuth` (IDs, завершивших онбординг) |
-| `vbi-user-avatars-v1` | `useAvatars` — `{ [userId]: "character_01" }` |
+| `vbi-user-avatars-v1` | `useAvatars` — локальный кэш; источник правды `server/data/user-avatars.json`, API `/api/avatars` |
 | `vbi-platform-demo-version` | `vbi-demo-data.client.ts` (сейчас `4`) |
 | `vbi-employees-v3` | `useEmployees` |
-| `vbi-vacations-state-v3` | `useVacations` |
+| `vbi-vacations-state-v5` | `useVacations` (шаг согласования `approval_step` для Digital) |
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |
 

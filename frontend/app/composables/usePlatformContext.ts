@@ -3,6 +3,7 @@ export type PlatformRole = 'employee' | 'admin';
 export type NavItem = {
   to: string;
   label: string;
+  locked?: boolean;
 };
 
 const profileNavItem: NavItem = { to: '/profile', label: 'Профиль' };
@@ -20,6 +21,7 @@ const employeeNav: NavItem[] = [
 
 const adminNav: NavItem[] = [
   { to: '/admin', label: 'Панель' },
+  { to: '/admin/notifications', label: 'Уведомления' },
   { to: '/admin/organization', label: 'Структура' },
   { to: '/admin/employees', label: 'Сотрудники' },
   { to: '/admin/tasks', label: 'Задачи' },
@@ -34,14 +36,18 @@ export function usePlatformContext() {
   const router = useRouter();
   const route = useRoute();
   const { user, authReady } = useAuth();
-  const { isVacationsOnly, isPathAllowed, homePath, navForLaunchScope } = useLaunchScope();
+  const { isVacationsOnly, isPathAllowed, homePath, isNavPathUnlocked } = useLaunchScope();
 
   const isAdmin = computed(() => role.value === 'admin');
-  const navItems = computed(() => {
-    if (isVacationsOnly.value) {
-      return navForLaunchScope(isAdmin.value);
+  const navItems = computed<NavItem[]>(() => {
+    const base = isAdmin.value ? adminNav : employeeNav;
+    if (!isVacationsOnly.value) {
+      return base.map((item) => ({ ...item, locked: false }));
     }
-    return isAdmin.value ? adminNav : employeeNav;
+    return base.map((item) => ({
+      ...item,
+      locked: !isNavPathUnlocked(item.to)
+    }));
   });
   const canSwitchRole = computed(() => user.value?.role === 'admin');
 
@@ -83,7 +89,19 @@ export function usePlatformContext() {
 
   watch([role, () => route.path], guardRoute, { immediate: true });
 
+  const profilePageTitles: Record<string, string> = {
+    '/profile': 'Профиль',
+    '/profile/assessment': 'Оценка',
+    '/profile/development': 'Развитие'
+  };
+
   const pageTitle = computed(() => {
+    if (route.path.startsWith('/profile')) {
+      return profilePageTitles[route.path] ?? 'Профиль';
+    }
+    if (route.path.startsWith('/tasks/hr-assessment')) {
+      return 'HR-тест';
+    }
     const current = navItems.value.find((item) => item.to === route.path);
     return current?.label ?? (isAdmin.value ? 'Администрирование' : 'Платформа');
   });
