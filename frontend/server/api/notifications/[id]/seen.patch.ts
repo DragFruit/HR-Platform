@@ -1,5 +1,5 @@
-import { requireVbiSession } from '../../utils/session';
-import { markUserNotificationSeen } from '../../utils/userNotificationsStore';
+import { requireVbiSession } from '../../../utils/session';
+import { markUserNotificationSeen } from '../../../utils/userNotificationsStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
