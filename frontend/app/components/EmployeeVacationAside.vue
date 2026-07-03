@@ -275,7 +275,7 @@ const cancelEditRequest = () => {
   editError.value = '';
 };
 
-const saveEditRequest = (id: number) => {
+const saveEditRequest = async (id: number) => {
   editError.value = '';
   if (!editForm.start || !editForm.end) {
     editError.value = 'Укажите обе даты.';
@@ -289,18 +289,18 @@ const saveEditRequest = (id: number) => {
     editError.value = 'Пересечение с другим отпуском.';
     return;
   }
-  if (updateRequestDates(id, editForm.start, editForm.end)) {
+  if (await updateRequestDates(id, editForm.start, editForm.end)) {
     editingId.value = null;
   } else {
     editError.value = 'Не удалось сохранить.';
   }
 };
 
-const removeRequest = (req: VacationRequest) => {
+const removeRequest = async (req: VacationRequest) => {
   if (!canManageRequest(req)) return;
   closeRequestMenu();
   if (editingId.value === req.id) cancelEditRequest();
-  deleteRequest(req.id);
+  await deleteRequest(req.id);
 };
 
 const showProjection = () => {

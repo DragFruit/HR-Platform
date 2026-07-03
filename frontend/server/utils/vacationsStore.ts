@@ -38,3 +38,18 @@ export async function writeVacations(state: VacationStoreState): Promise<Vacatio
   await writeFile(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
   return state;
 }
+
+/** Сериализует все правки отпусков — без гонок при параллельных POST/PATCH. */
+let mutationQueue: Promise<unknown> = Promise.resolve();
+
+export async function mutateVacations(
+  mutator: (state: VacationStoreState) => VacationStoreState | Promise<VacationStoreState>
+): Promise<VacationStoreState> {
+  const run = mutationQueue.then(async () => {
+    const current = await readVacations();
+    const next = await mutator(current);
+    return writeVacations(next);
+  });
+  mutationQueue = run.catch(() => {});
+  return run;
+}

@@ -7,7 +7,9 @@
         <input v-model="form.start" type="date" class="vac-emp-input" aria-label="Дата начала" />
         <span class="vac-emp-toolbar__word">по</span>
         <input v-model="form.end" type="date" class="vac-emp-input" aria-label="Дата окончания" />
-        <button class="vac-emp-btn" type="submit">Создать заявку</button>
+        <button class="vac-emp-btn" type="submit" :disabled="submitting">
+          {{ submitting ? 'Сохранение…' : 'Создать заявку' }}
+        </button>
         <p
           v-if="formAssessment.status === 'advance'"
           class="vac-advance-notice vac-advance-notice--toolbar"
@@ -103,6 +105,7 @@ const formAssessment = computed(() =>
 
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
+const submitting = ref(false);
 
 const blockedDays = computed(() => {
   if (!employeeName.value) return new Set<string>();
@@ -140,7 +143,7 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
       !(end < r.start || start > r.end)
   );
 
-const submitRequest = () => {
+const submitRequest = async () => {
   formError.value = null;
   if (!employeeName.value || !form.start || !form.end) {
     formError.value = { title: 'Заполните даты', text: 'Укажите дату начала и окончания отпуска.' };
@@ -173,10 +176,20 @@ const submitRequest = () => {
     return;
   }
 
-  addRequest({ employee: employeeName.value, start: form.start, end: form.end });
-  form.start = '';
-  form.end = '';
-  clearSelection();
+  submitting.value = true;
+  try {
+    await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
+    form.start = '';
+    form.end = '';
+    clearSelection();
+  } catch {
+    formError.value = {
+      title: 'Не сохранилось',
+      text: 'Заявка не дошла до сервера. Проверьте сеть и попробуйте ещё раз.'
+    };
+  } finally {
+    submitting.value = false;
+  }
 };
 
 const refreshData = () => {

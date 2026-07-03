@@ -173,6 +173,19 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Сервер: `employeesStore.ts` + `employeeManagersStore.ts` — при чтении подмешивается `employee-managers.json`; при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
 
+### Заявки на отпуск (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/vacations` | Полное состояние (`primaryYear`, `requestsByYear`, `nextRequestId`) |
+| `POST /api/vacations/requests` | Создать одну заявку (тело: `year`, `employee`, `start`, `end`, `comment?`) |
+| `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
+| `DELETE /api/vacations/requests/:id` | Удалить заявку |
+
+Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`; при финальном согласовании — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
+
+Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v5` — кэш.
+
 ### Аватары сотрудников (API)
 
 | Endpoint | Назначение |
