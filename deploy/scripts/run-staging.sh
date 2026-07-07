@@ -3,7 +3,6 @@ set -eu
 cd "$(dirname "$0")"
 export NITRO_HOST="${NITRO_HOST:-127.0.0.1}"
 export NITRO_PORT="${NITRO_PORT:-3301}"
-export NUXT_PUBLIC_APP_ENV="${NUXT_PUBLIC_APP_ENV:-staging}"
 if [ -f .env ]; then
   set -a
   # shellcheck disable=SC1091

@@ -2,11 +2,11 @@ import type { H3Event } from 'h3';
 import type { SessionUser } from './credentials';
 import { findCredentialById } from './credentials';
 import { resolveAuthRoleFromEmployees } from './bitrixSync';
-import { sessionCookieName } from './appEnv';
+
+const COOKIE_NAME = 'vbi-session';
 
 export function setVbiSession(event: H3Event, user: SessionUser) {
-  const cookieName = sessionCookieName();
-  setCookie(event, cookieName, JSON.stringify(user), {
+  setCookie(event, COOKIE_NAME, JSON.stringify(user), {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
@@ -15,7 +15,7 @@ export function setVbiSession(event: H3Event, user: SessionUser) {
 }
 
 export function clearVbiSession(event: H3Event) {
-  deleteCookie(event, sessionCookieName(), { path: '/' });
+  deleteCookie(event, COOKIE_NAME, { path: '/' });
 }
 
 export async function refreshBitrixSessionRoleIfNeeded(
@@ -32,7 +32,7 @@ export async function refreshBitrixSessionRoleIfNeeded(
 }
 
 export function getVbiSession(event: H3Event): SessionUser | null {
-  const raw = getCookie(event, sessionCookieName());
+  const raw = getCookie(event, COOKIE_NAME);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as SessionUser;

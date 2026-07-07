@@ -25,15 +25,28 @@
                 v-for="monthIndex in 12"
                 :key="`${emp.id}-${monthIndex}`"
                 class="vac-cell"
+                :class="{ 'vac-cell--compact': compactCells }"
               >
-                <span
-                  v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
-                  :key="idx"
-                  class="vac-block"
-                  :class="block.status"
-                >
-                  {{ block.label }}
-                </span>
+                <div v-if="compactCells" class="vac-cell-blocks">
+                  <span
+                    v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                    :key="idx"
+                    class="vac-block"
+                    :class="block.status"
+                  >
+                    {{ block.label }}
+                  </span>
+                </div>
+                <template v-else>
+                  <span
+                    v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                    :key="idx"
+                    class="vac-block"
+                    :class="block.status"
+                  >
+                    {{ block.label }}
+                  </span>
+                </template>
               </td>
             </tr>
           </template>
@@ -53,6 +66,8 @@ const props = defineProps<{
     status: string;
     label: string;
   }[];
+  /** Узкие ячейки сотрудника: плашки в flex-обёртке, без съезда текста */
+  compactCells?: boolean;
 }>();
 
 const { MONTHS_RU } = useVacations();

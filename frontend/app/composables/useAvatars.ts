@@ -6,7 +6,7 @@ export const AVATAR_CHARACTER_IDS = Array.from({ length: 40 }, (_, index) => {
 
 export type AvatarCharacterId = (typeof AVATAR_CHARACTER_IDS)[number];
 
-const STORAGE_KEY_BASE = 'vbi-user-avatars-v1';
+const STORAGE_KEY = 'vbi-user-avatars-v1';
 
 export function avatarImageUrl(characterId: string): string {
   return `/avatars/${characterId}.png`;
@@ -16,27 +16,23 @@ export function isAvatarCharacterId(value: string): value is AvatarCharacterId {
   return AVATAR_CHARACTER_IDS.includes(value as AvatarCharacterId);
 }
 
+function readStore(): Record<string, string> {
+  if (!import.meta.client) return {};
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeStore(store: Record<string, string>) {
+  if (!import.meta.client) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
 export function useAvatars() {
-  const config = useRuntimeConfig();
-  const storageKey = () =>
-    clientStorageKey(STORAGE_KEY_BASE, config.public.appEnv as import('~/composables/useAppEnv').AppEnv);
-
-  const readStore = (): Record<string, string> => {
-    if (!import.meta.client) return {};
-    const raw = localStorage.getItem(storageKey());
-    if (!raw) return {};
-    try {
-      return JSON.parse(raw) as Record<string, string>;
-    } catch {
-      return {};
-    }
-  };
-
-  const writeStore = (store: Record<string, string>) => {
-    if (!import.meta.client) return;
-    localStorage.setItem(storageKey(), JSON.stringify(store));
-  };
-
   const serverStore = useState<Record<string, string>>('vbi-avatars-server', () => ({}));
   const hydrated = useState<boolean>('vbi-avatars-hydrated', () => false);
   const storeRevision = useState<number>('vbi-avatars-revision', () => 0);

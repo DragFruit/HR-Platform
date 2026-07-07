@@ -1,11 +1,5 @@
-import { isBitrixAuthConfigured, isStagingUsingProductionBitrixApp, stagingBitrixMisconfigMessage } from '../../utils/bitrixConfig';
+import { isBitrixAuthConfigured } from '../../utils/bitrixConfig';
 
-export default defineEventHandler(() => {
-  const oauthMisconfigured = isStagingUsingProductionBitrixApp();
-
-  return {
-    bitrixAuthEnabled: isBitrixAuthConfigured(),
-    oauthMisconfigured,
-    oauthMisconfiguredHint: oauthMisconfigured ? stagingBitrixMisconfigMessage() : null
-  };
-});
+export default defineEventHandler(() => ({
+  bitrixAuthEnabled: isBitrixAuthConfigured()
+}));

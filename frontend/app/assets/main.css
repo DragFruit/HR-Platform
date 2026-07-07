@@ -5388,6 +5388,8 @@ a {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  --vac-cal-gutter-x: clamp(10px, 1.8vw, 24px);
+  --vac-aside-width: 268px;
 }
 
 /* Как у руководителя: панель справа с верхнего края рабочей зоны, не под тулбаром */
@@ -5400,7 +5402,7 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 6px 14px;
+  gap: 6px 8px;
   overflow: hidden;
   align-content: stretch;
 }
@@ -5421,15 +5423,22 @@ a {
   grid-row: 2;
 }
 
-.vacations-employee-shell .vac-emp-calendar-pane {
+.vacations-employee-shell .vac-emp-calendar-slot {
   grid-column: 1;
   grid-row: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   min-height: 0;
   height: 100%;
   max-height: 100%;
+  min-width: 0;
+  margin-left: var(--vac-cal-gutter-x);
+  margin-right: clamp(6px, 1.2vw, 14px);
+  overflow: visible;
 }
 
-.vacations-employee-shell .vac-emp-error ~ .vac-emp-calendar-pane {
+.vacations-employee-shell .vac-emp-error ~ .vac-emp-calendar-slot {
   grid-row: 3;
 }
 
@@ -5465,13 +5474,13 @@ a {
   overflow: hidden;
 }
 
-.vacations-employee-shell .vac-emp-calendar-pane {
+.vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane {
   display: flex;
   flex-direction: column;
-  min-height: 0;
   flex: 1;
-  margin-left: var(--vac-cal-gutter-x);
-  margin-right: var(--vac-cal-gutter-x);
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
   width: auto;
   max-width: none;
   padding: 14px 16px;
@@ -5480,7 +5489,7 @@ a {
   flex-shrink: 0;
 }
 
-.vacations-employee-shell .vac-emp-calendar-pane .emp-cal-grid {
+.vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -5500,6 +5509,101 @@ a {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 10px;
+}
+
+/* Вкладки «Мой календарь / Общий» — ярлыки папки справа от рамки */
+.vac-emp-calendar-slot {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.vac-emp-calendar-slot--with-tabs {
+  overflow: visible;
+}
+
+.vac-cal-side-tabs {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding-top: 14px;
+  gap: 5px;
+  z-index: 2;
+}
+
+.vac-cal-side-tab {
+  position: relative;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  padding: 14px 6px;
+  width: 32px;
+  box-sizing: border-box;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.6);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.vac-cal-side-tab:hover:not(.vac-cal-side-tab--active) {
+  background: var(--bg-surface-raised);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
+}
+
+.vac-cal-side-tab--active {
+  margin-left: -1px;
+  padding-left: 7px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-weight: 600;
+  border-color: var(--border-strong);
+  z-index: 1;
+  box-shadow:
+    -4px 0 14px rgba(116, 81, 244, 0.07),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.vac-cal-side-tab--mine.vac-cal-side-tab--active::before,
+.vac-cal-side-tab--team.vac-cal-side-tab--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+}
+
+.vac-cal-side-tab--mine.vac-cal-side-tab--active::before {
+  background: var(--accent-blue);
+}
+
+.vac-cal-side-tab--team.vac-cal-side-tab--active::before {
+  background: var(--primary);
+}
+
+.vac-cal-side-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .vac-emp-toolbar__title {
@@ -5669,6 +5773,93 @@ a {
   border-radius: var(--vac-frame-radius);
   padding: 14px 16px;
   box-shadow: var(--vac-frame-shadow);
+}
+
+.vac-emp-calendar-pane--team {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  overflow: hidden;
+}
+
+.vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane--team {
+  padding: 14px 12px;
+}
+
+.vac-emp-calendar-pane--team .vac-team-calendar {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.vac-team-calendar--employee-team .vac-team-calendar__frame {
+  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 108px);
+  height: 100%;
+  max-height: 100%;
+}
+
+.vac-team-calendar--employee-team .vacation-timeline {
+  --vac-team-name-col-w: 124px;
+}
+
+.vac-team-calendar--employee-team .vacation-timeline .sticky-col-name,
+.vac-team-calendar--employee-team .vacation-timeline .sticky-col-dept {
+  padding-left: 7px;
+  padding-right: 5px;
+}
+
+.vac-team-calendar--employee-team .vacation-calendar-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.vac-team-calendar--employee-team .vac-table-scroll {
+  flex: 1;
+  max-height: none;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--vac-card-radius);
+  overflow: auto;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.vac-team-calendar--employee-team .vac-cell--compact {
+  padding: 4px 2px;
+  vertical-align: top;
+  overflow: hidden;
+  text-align: center;
+}
+
+.vac-team-calendar--employee-team .vac-cell-blocks {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vac-team-calendar--employee-team .vac-cell--compact .vac-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 3px;
+  font-size: 0.52rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 /* 4 колонки × 3 ряда — как в макете */
