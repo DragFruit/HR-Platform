@@ -4,6 +4,13 @@
 
 ## 2026-07-07
 
+### Auth: подписанный OAuth state (фикс «Неверный state»)
+
+- `server/utils/oauthState.ts` — state с HMAC; callback проверяет подпись, не только cookie.
+- Выход очищает cookie `bitrix-oauth-state*`.
+- На :8080 с ключами боя — предупреждение на экране входа (`/api/auth/config` → `oauthMisconfigured`).
+- Пути: `bitrix.get.ts`, `bitrix/callback.get.ts`, `session.delete.ts`, `useBitrixAuthConfig.ts`.
+
 ### Отпуска: убран отдельный режим «Отдел DEV» для Барановой Юлии
 
 - Удалена из `DEPARTMENT_VACATION_VIEWERS` — общий календарь отдела через вкладку «Общий» (`vacationTeamScope.ts`).

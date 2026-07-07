@@ -165,7 +165,10 @@ const handleBitrixReturn = async () => {
   if (!isAuthenticated.value) {
     finishingBitrixLogin.value = false;
     clearAuthQuery();
-    window.location.href = '/api/auth/bitrix';
+    await router.replace({
+      path: route.path,
+      query: { auth_error: 'Сессия после Битрикс не сохранилась. Нажмите «Войти через Битрикс24» ещё раз.' }
+    });
     return true;
   }
 

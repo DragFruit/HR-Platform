@@ -1,14 +1,14 @@
-import { randomBytes } from 'node:crypto';
 import { getBitrixConfig, getBitrixRedirectUri, isBitrixAuthConfigured, assertBitrixOAuthOrigin, assertStagingBitrixAppConfigured } from '../../utils/bitrixConfig';
 import { bitrixOAuthStateCookieName } from '../../utils/appEnv';
+import { createOAuthState } from '../../utils/oauthState';
 
 export default defineEventHandler((event) => {
   if (!isBitrixAuthConfigured()) {
     throw createError({ statusCode: 503, statusMessage: 'Bitrix OAuth не настроен на сервере' });
   }
 
-  const { bitrixPortalUrl, bitrixClientId } = getBitrixConfig();
-  const state = randomBytes(16).toString('hex');
+  const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
+  const state = createOAuthState(bitrixClientSecret);
   const redirectUri = getBitrixRedirectUri(event);
   assertStagingBitrixAppConfigured(event);
   assertBitrixOAuthOrigin(event, redirectUri);
