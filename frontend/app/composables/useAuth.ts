@@ -74,14 +74,20 @@ const credentials: Credential[] = [
   }
 ];
 
-const SESSION_KEY = 'vbi-auth-session';
-const WELCOMED_KEY = 'vbi-welcomed-users';
+const SESSION_KEY_BASE = 'vbi-auth-session';
+const WELCOMED_KEY_BASE = 'vbi-welcomed-users';
 
 let restoreSessionPromise: Promise<void> | null = null;
 
 export type OnboardingStep = 'welcome' | 'avatar';
 
 export function useAuth() {
+  const runtimeConfig = useRuntimeConfig();
+  const sessionKey = () =>
+    clientStorageKey(SESSION_KEY_BASE, runtimeConfig.public.appEnv as import('~/composables/useAppEnv').AppEnv);
+  const welcomedKey = () =>
+    clientStorageKey(WELCOMED_KEY_BASE, runtimeConfig.public.appEnv as import('~/composables/useAppEnv').AppEnv);
+
   const user = useState<AuthSessionUser | null>('auth-user', () => null);
   const showOnboarding = useState<boolean>('auth-show-onboarding', () => false);
   const onboardingStep = useState<OnboardingStep>('auth-onboarding-step', () => 'welcome');
@@ -98,7 +104,7 @@ export function useAuth() {
         const server = await $fetch<{ ok: boolean; user: AuthSessionUser | null }>('/api/auth/session');
         if (server.ok && server.user) {
           user.value = server.user;
-          localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
+          localStorage.setItem(sessionKey(), JSON.stringify(server.user));
           syncOnboardingState(server.user.id);
           authReady.value = true;
           return;
@@ -107,7 +113,7 @@ export function useAuth() {
         /* cookie expired — fall through to localStorage */
       }
 
-      const raw = localStorage.getItem(SESSION_KEY);
+      const raw = localStorage.getItem(sessionKey());
       if (!raw) {
         authReady.value = true;
         return;
@@ -118,7 +124,7 @@ export function useAuth() {
 
         if (parsed.auth_source === 'bitrix') {
           user.value = null;
-          localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem(sessionKey());
           authReady.value = true;
           return;
         }
@@ -141,10 +147,10 @@ export function useAuth() {
           syncOnboardingState(match.id);
         } else {
           user.value = null;
-          localStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem(sessionKey());
         }
       } catch {
-        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(sessionKey());
       }
 
       authReady.value = true;
@@ -159,7 +165,7 @@ export function useAuth() {
 
   const getWelcomedUsers = (): number[] => {
     if (!import.meta.client) return [];
-    const raw = localStorage.getItem(WELCOMED_KEY);
+    const raw = localStorage.getItem(welcomedKey());
     if (!raw) return [];
     try {
       return JSON.parse(raw) as number[];
@@ -172,7 +178,7 @@ export function useAuth() {
     if (!import.meta.client) return;
     const welcomed = new Set(getWelcomedUsers());
     welcomed.add(userId);
-    localStorage.setItem(WELCOMED_KEY, JSON.stringify([...welcomed]));
+    localStorage.setItem(welcomedKey(), JSON.stringify([...welcomed]));
   };
 
   const syncOnboardingState = (userId: number) => {
@@ -231,7 +237,7 @@ export function useAuth() {
     const sessionUser = user.value!;
 
     if (import.meta.client) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      localStorage.setItem(sessionKey(), JSON.stringify(sessionUser));
       syncOnboardingState(sessionUser.id);
     }
 
@@ -248,7 +254,7 @@ export function useAuth() {
     if (import.meta.client) {
       useAdaptation().resetUserSession();
       useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(sessionKey());
       await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
 
       const router = useRouter();
@@ -258,8 +264,6 @@ export function useAuth() {
       }
     }
   };
-
-  const runtimeConfig = useRuntimeConfig();
 
   const demoAccounts = computed(() =>
     credentials.map(({ email, role, password, description, name }) => {

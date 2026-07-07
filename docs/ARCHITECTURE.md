@@ -64,7 +64,7 @@ flowchart TB
 
 - OAuth 2.0 локального приложения: `GET /api/auth/bitrix` → портал → `GET /api/auth/bitrix/callback`.
 - Синк сотрудников при входе: `server/utils/bitrixSync.ts` → `server/data/employees.json`.
-- Сессия: cookie `vbi-session`, `auth_source: 'bitrix'`, `id` = `bitrix_user_id`.
+- Сессия: cookie `vbi-session` (бой) / `vbi-session-staging` (тест `:8080`); `auth_source: 'bitrix'`, `id` = `bitrix_user_id`. Имена в `server/utils/appEnv.ts`.
 - Env (сервер): `BITRIX_PORTAL_URL`, `BITRIX_CLIENT_ID`, `BITRIX_CLIENT_SECRET` — см. [BITRIX.md](BITRIX.md).
 
 ### Плагины (только client)
@@ -150,7 +150,7 @@ flowchart TB
 | `employee-managers.json` | Назначения руководителей (overlay по `id`/ФИО); не перезаписывается импортом, деплоем и синком Bitrix |
 | `admin-notifications.json` | Уведомления admin/hr о расхождениях ФИО/должности с Битрикс24 |
 
-Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/session`.
+Cookie сессии (httpOnly): `vbi-session` на бою, `vbi-session-staging` на тесте — `POST /api/auth/session`, `server/utils/appEnv.ts`.
 
 | Endpoint | Назначение |
 |----------|------------|

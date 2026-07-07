@@ -86,7 +86,10 @@ done
 
 case "$ENV" in
   staging)
-    BITRIX_ENV_SRC="${BITRIX_ENV_STAGING:-/etc/vbi-hr/bitrix.env}"
+    BITRIX_ENV_SRC="${BITRIX_ENV_STAGING:-/etc/vbi-hr/bitrix-staging.env}"
+    if ! "${SSH_CMD[@]}" "${REMOTE}" "test -r '${BITRIX_ENV_SRC}'"; then
+      BITRIX_ENV_SRC="${BITRIX_ENV_STAGING_FALLBACK:-/etc/vbi-hr/bitrix.env}"
+    fi
     RUN_SCRIPT="${ROOT}/deploy/scripts/run-staging.sh"
     ;;
   production)

@@ -1,9 +1,8 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
-import { getOAuthReturnOrigin, getRequestPublicOrigin, getBitrixRedirectUri, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
+import { getOAuthReturnOrigin, getBitrixRedirectUri, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
 import { setVbiSession } from '../../../utils/session';
-
-const STATE_COOKIE = 'bitrix-oauth-state';
+import { bitrixOAuthStateCookieName } from '../../../utils/appEnv';
 
 function redirectWithError(event: Parameters<typeof sendRedirect>[0], message: string) {
   const url = new URL('/', getOAuthReturnOrigin(event));
@@ -25,8 +24,9 @@ export default defineEventHandler(async (event) => {
 
   const code = String(query.code || '');
   const state = String(query.state || '');
-  const savedState = getCookie(event, STATE_COOKIE);
-  deleteCookie(event, STATE_COOKIE, { path: '/' });
+  const stateCookie = bitrixOAuthStateCookieName();
+  const savedState = getCookie(event, stateCookie);
+  deleteCookie(event, stateCookie, { path: '/' });
 
   if (!code) {
     return redirectWithError(event, 'Нет кода авторизации от Битрикс');

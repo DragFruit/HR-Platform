@@ -101,21 +101,8 @@ export function getBitrixRedirectUri(event?: H3Event): string {
   return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
 }
 
-/** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */
+/** После OAuth возвращаем на тот origin, куда пришёл callback (тест :8080 / бой :80). */
 export function getOAuthReturnOrigin(event: H3Event): string {
-  if (isLocalDevelopment()) {
-    return getRequestPublicOrigin(event);
-  }
-
-  const { bitrixRedirectUri } = getBitrixConfig();
-  if (bitrixRedirectUri) {
-    try {
-      return new URL(bitrixRedirectUri).origin;
-    } catch {
-      /* fall through */
-    }
-  }
-
   return getRequestPublicOrigin(event);
 }
 
