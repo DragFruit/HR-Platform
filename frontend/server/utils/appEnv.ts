@@ -1,8 +1,24 @@
 export type DeployAppEnv = 'development' | 'staging' | 'production';
 
+/** Окружение из сборки (NUXT_PUBLIC_APP_ENV) или из BITRIX_REDIRECT_URI на VPS. */
 export function getDeployAppEnv(): DeployAppEnv {
-  const raw = process.env.NUXT_PUBLIC_APP_ENV || 'development';
-  if (raw === 'staging' || raw === 'production') return raw;
+  try {
+    const { public: pub } = useRuntimeConfig();
+    const baked = String(pub.appEnv || '');
+    if (baked === 'staging' || baked === 'production') return baked;
+  } catch {
+    /* вне Nitro-контекста */
+  }
+
+  const fromProcess = process.env.NUXT_PUBLIC_APP_ENV;
+  if (fromProcess === 'staging' || fromProcess === 'production') return fromProcess;
+
+  const redirect = String(process.env.BITRIX_REDIRECT_URI || '').trim();
+  if (redirect.includes(':8080')) return 'staging';
+  if (redirect.includes('/api/auth/bitrix/callback') && !redirect.includes(':8080')) {
+    return 'production';
+  }
+
   return 'development';
 }
 

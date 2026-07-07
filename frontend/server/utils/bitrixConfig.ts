@@ -84,8 +84,10 @@ export function getAppPublicOrigin(event?: H3Event): string {
 }
 
 export function isStagingUsingProductionBitrixApp(): boolean {
-  if (getDeployAppEnv() !== 'staging') return false;
-  const { bitrixClientId } = getBitrixConfig();
+  const { bitrixClientId, bitrixRedirectUri } = getBitrixConfig();
+  const onStagingContour =
+    getDeployAppEnv() === 'staging' || bitrixRedirectUri.includes(':8080');
+  if (!onStagingContour) return false;
   return isProductionBitrixClientId(bitrixClientId);
 }
 
