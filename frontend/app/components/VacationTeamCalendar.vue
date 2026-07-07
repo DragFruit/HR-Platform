@@ -1,7 +1,7 @@
 <template>
-  <div class="vac-team-calendar">
+  <div class="vac-team-calendar" :class="{ 'vac-team-calendar--employee-team': variant === 'employee-team' }">
     <div class="vac-team-calendar__frame">
-      <div class="vac-team-calendar__toolbar">
+      <div v-if="variant === 'manager'" class="vac-team-calendar__toolbar">
         <div class="vac-team-calendar__legend">
           <span class="vac-legend-item">
             <span class="vac-legend-dot vac-legend-dot--approved" />
@@ -18,7 +18,12 @@
             <option :value="2026">2026</option>
             <option :value="2027">2027</option>
           </select>
-          <div class="vac-view-toggle" role="group" aria-label="Вид календаря">
+          <div
+            class="vac-view-toggle"
+            role="group"
+            aria-label="Вид календаря"
+            data-tour="vac-calendar-view-toggle"
+          >
             <button
               type="button"
               class="vac-view-toggle__btn"
@@ -40,7 +45,7 @@
       </div>
 
       <VacationDetailedCalendar
-        v-if="viewMode === 'detailed'"
+        v-if="variant === 'manager' && viewMode === 'detailed'"
         :departments="departments"
         :year="viewYear"
         :requests="requests"
@@ -48,8 +53,9 @@
       <VacationMonthlyCalendar
         v-else
         :departments="departments"
-        :year="viewYear"
+        :year="calendarYear"
         :get-month-entries="getMonthEntries"
+        :compact-cells="variant === 'employee-team'"
       />
     </div>
   </div>
@@ -59,16 +65,24 @@
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
 
-defineProps<{
-  departments: EmployeeDepartment[];
-  requests: VacationRequest[];
-  getMonthEntries: (employeeName: string, month: number, year: number) => {
-    status: string;
-    label: string;
-  }[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    departments: EmployeeDepartment[];
+    requests: VacationRequest[];
+    getMonthEntries: (employeeName: string, month: number, year: number) => {
+      status: string;
+      label: string;
+    }[];
+    /** manager — полный тулбар; employee-team — только таблица по месяцам */
+    variant?: 'manager' | 'employee-team';
+    defaultViewMode?: 'detailed' | 'months';
+    year?: number;
+  }>(),
+  { variant: 'manager', defaultViewMode: 'detailed' }
+);
 
 const { viewYear } = useVacations();
 
-const viewMode = ref<'detailed' | 'months'>('detailed');
+const calendarYear = computed(() => props.year ?? viewYear.value);
+const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
 </script>

@@ -242,7 +242,8 @@ const {
   acknowledgeStep,
   finishTraining,
   skipTraining,
-  goPrevStep
+  goPrevStep,
+  canClaimVacationAchievement
 } = useVacationTraining();
 
 const warningItems = VACATION_TRAINING_WARNING_ITEMS;
@@ -609,7 +610,11 @@ const revealReward = async () => {
 
 const onAcknowledge = async () => {
   if (isLastStep.value) {
-    await revealReward();
+    if (canClaimVacationAchievement()) {
+      await revealReward();
+      return;
+    }
+    finishTraining();
     return;
   }
   acknowledgeStep();

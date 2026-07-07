@@ -186,6 +186,18 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v5` — кэш.
 
+### Уведомления пользователей (отпуска)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/notifications` | Уведомления текущего пользователя по отпускам |
+| `PATCH /api/notifications/:id/seen` | Прочитано |
+| `PATCH /api/notifications/seen-all` | Прочитать все |
+
+Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`.
+
+Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
+
 ### Аватары сотрудников (API)
 
 | Endpoint | Назначение |
@@ -244,7 +256,9 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 
 Классы: `.vac-block` (месячный календарь), `.vac-overlap-badge`, `.vac-advance-badge`, `.emp-request-meta .pill`. Popover пересечений и аванса — Teleport + ромбик `::before`.
 
-**Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. Руководитель/HR — `ManagerVacationAside`: переключатель «Режим» (slide toggle) всегда сверху; в режиме «Сотрудник» под ним тот же `EmployeeVacationAside`, что у сотрудника; в режиме «Руководитель» — статистика команды.
+**Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. У сотрудников с командным календарём — вкладки «Мой календарь / Общий» (`VacationCalendarScopeToggle`, `useEmployeeVacationTeamView`, `vacationTeamScope.ts`); «Общий» — `VacationTeamCalendar` variant `employee-team`. Руководитель/HR — `ManagerVacationAside`: переключатель «Режим» (slide toggle) всегда сверху; в режиме «Сотрудник» под ним тот же `EmployeeVacationAside`, что у сотрудника; в режиме «Руководитель» — статистика команды и блок обучалки `ManagerVacationTrainingPrompt` под «Заявки». **Наблюдатель отдела** (сейчас Баранова Юлия → DEV): тот же shell, подпись «Отдел DEV», календарь всего отдела, без вкладки согласования — `vacationDepartmentView.ts`, `useVacationDepartmentView.ts`.
+
+**Обучалки отпусков:** сотрудник — `useVacationTraining` + `VacationTrainingPrompt/Overlay`; руководитель — `useManagerVacationTraining` + `ManagerVacationTrainingPrompt/Overlay`. Для роли руководителя ачивка «Календарь отпусков» выдаётся только после завершения обоих квестов.
 
 Референс бизнес-логики: `_vacation_source/График отпусков/`.
 
@@ -274,6 +288,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-platform-demo-version` | `vbi-demo-data.client.ts` (сейчас `4`) |
 | `vbi-employees-v3` | `useEmployees` |
 | `vbi-vacations-state-v5` | `useVacations` (шаг согласования `approval_step` для Digital) |
+| `vbi-employee-vac-calendar-scope-v1` | `useEmployeeVacationTeamView` — «Мой календарь» / «Общий» |
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |
 

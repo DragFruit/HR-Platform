@@ -53,6 +53,22 @@ export type OrgUnitGroup = {
   height?: number;
 };
 
+export type OrgNodeKind = 'executive' | 'unit' | 'group';
+
+export type OrgPortSide = 'top' | 'right' | 'bottom' | 'left';
+
+export type OrgLinkAnchor = {
+  kind: OrgNodeKind;
+  id: string;
+  side: OrgPortSide;
+};
+
+export type OrgLink = {
+  id: string;
+  from: OrgLinkAnchor;
+  to: OrgLinkAnchor;
+};
+
 export type OrgPlacedItem =
   | { kind: 'unit'; unit: OrgUnit }
   | { kind: 'group'; group: OrgUnitGroup; units: OrgUnit[] };
@@ -60,8 +76,42 @@ export type OrgPlacedItem =
 const STORAGE_KEY = 'vbi-org-structure-v1';
 
 const defaultExecutives: OrgExecutive[] = [];
-const defaultGroups: OrgUnitGroup[] = [];
 const defaultUnits: OrgUnit[] = [];
+const defaultGroups: OrgUnitGroup[] = [];
+const defaultLinks: OrgLink[] = [];
+
+const ORG_PORT_SIDES_SET = new Set<OrgPortSide>(['top', 'right', 'bottom', 'left']);
+
+const isValidPortSide = (side: unknown): side is OrgPortSide =>
+  typeof side === 'string' && ORG_PORT_SIDES_SET.has(side as OrgPortSide);
+
+const isValidLinkAnchor = (anchor: unknown): anchor is OrgLinkAnchor => {
+  if (!anchor || typeof anchor !== 'object') return false;
+  const a = anchor as Partial<OrgLinkAnchor>;
+  return (
+    (a.kind === 'executive' || a.kind === 'unit' || a.kind === 'group') &&
+    typeof a.id === 'string' &&
+    Boolean(a.id) &&
+    isValidPortSide(a.side)
+  );
+};
+
+const sanitizeLinks = (links: unknown): OrgLink[] => {
+  if (!Array.isArray(links)) return [];
+  return links.filter((link): link is OrgLink => {
+    if (!link || typeof link !== 'object') return false;
+    const row = link as Partial<OrgLink>;
+    return (
+      typeof row.id === 'string' &&
+      Boolean(row.id) &&
+      isValidLinkAnchor(row.from) &&
+      isValidLinkAnchor(row.to)
+    );
+  });
+};
+
+const sameAnchor = (a: OrgLinkAnchor, b: OrgLinkAnchor) =>
+  a.kind === b.kind && a.id === b.id && a.side === b.side;
 
 function posOf(item: OrgPlacedItem): { x: number; y: number } {
   if (item.kind === 'group') {
@@ -106,6 +156,7 @@ function gridToCanvas(col: number, row: number): { x: number; y: number } {
 const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 let persistWatchRegistered = false;
+let persistSuspended = false;
 
 function collectOccupied(
   executives: OrgExecutive[],
@@ -264,6 +315,7 @@ export function useOrgStructure() {
   const orgExecutives = useState<OrgExecutive[]>('vbi-org-executives', () => [...defaultExecutives]);
   const orgUnits = useState<OrgUnit[]>('vbi-org-units', () => [...defaultUnits]);
   const orgGroups = useState<OrgUnitGroup[]>('vbi-org-groups', () => [...defaultGroups]);
+  const orgLinks = useState<OrgLink[]>('vbi-org-links', () => [...defaultLinks]);
   const orgHydrated = useState<boolean>('vbi-org-hydrated', () => false);
 
   const executivesSorted = computed(() => [...orgExecutives.value].sort((a, b) => a.order - b.order));
@@ -277,15 +329,20 @@ export function useOrgStructure() {
   });
 
   const persist = () => {
-    if (!import.meta.client) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        executives: orgExecutives.value,
-        units: orgUnits.value,
-        groups: orgGroups.value
-      })
-    );
+    if (!import.meta.client || persistSuspended) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          executives: orgExecutives.value,
+          units: orgUnits.value,
+          groups: orgGroups.value,
+          links: orgLinks.value
+        })
+      );
+    } catch {
+      /* quota / private mode */
+    }
   };
 
   const hydrate = () => {
@@ -303,13 +360,34 @@ export function useOrgStructure() {
         executives?: OrgExecutive[];
         units?: OrgUnit[];
         groups?: OrgUnitGroup[];
+        links?: OrgLink[];
       };
+      persistSuspended = true;
       if (data.executives?.length) orgExecutives.value = data.executives;
       if (data.units?.length) orgUnits.value = data.units;
       if (data.groups) orgGroups.value = data.groups;
+      orgLinks.value = sanitizeLinks(data.links ?? []);
       ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
     } catch {
       /* keep defaults */
+    } finally {
+      persistSuspended = false;
+    }
+  };
+
+  const syncLinksFromStorage = () => {
+    if (!import.meta.client) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw) as { links?: OrgLink[] };
+      if (!Array.isArray(data.links)) return;
+      const stored = sanitizeLinks(data.links);
+      if (stored.length > orgLinks.value.length) {
+        orgLinks.value = stored;
+      }
+    } catch {
+      /* ignore */
     }
   };
 
@@ -406,7 +484,34 @@ export function useOrgStructure() {
     return groupId;
   };
 
+  const removeLinksForNode = (kind: OrgNodeKind, id: string) => {
+    orgLinks.value = orgLinks.value.filter((link) => {
+      const from = link.from;
+      const to = link.to;
+      return !((from.kind === kind && from.id === id) || (to.kind === kind && to.id === id));
+    });
+    persist();
+  };
+
+  const addLink = (from: OrgLinkAnchor, to: OrgLinkAnchor) => {
+    if (sameAnchor(from, to)) return;
+    const exists = orgLinks.value.some(
+      (link) =>
+        (sameAnchor(link.from, from) && sameAnchor(link.to, to)) ||
+        (sameAnchor(link.from, to) && sameAnchor(link.to, from))
+    );
+    if (exists) return;
+    orgLinks.value = [...orgLinks.value, { id: nextId('lnk'), from, to }];
+    persist();
+  };
+
+  const removeLink = (linkId: string) => {
+    orgLinks.value = orgLinks.value.filter((l) => l.id !== linkId);
+    persist();
+  };
+
   const removeExecutive = (id: string) => {
+    removeLinksForNode('executive', id);
     orgExecutives.value = orgExecutives.value.filter((e) => e.id !== id);
     orgUnits.value = orgUnits.value.filter((u) => u.executiveId !== id);
     orgGroups.value = orgGroups.value.filter((g) => g.executiveId !== id);
@@ -414,11 +519,13 @@ export function useOrgStructure() {
   };
 
   const removeUnit = (unitId: string) => {
+    removeLinksForNode('unit', unitId);
     orgUnits.value = orgUnits.value.filter((u) => u.id !== unitId);
     persist();
   };
 
   const removeGroup = (groupId: string) => {
+    removeLinksForNode('group', groupId);
     orgUnits.value.forEach((u) => {
       if (u.groupId === groupId) u.groupId = null;
     });
@@ -428,16 +535,18 @@ export function useOrgStructure() {
 
   if (import.meta.client && !persistWatchRegistered) {
     persistWatchRegistered = true;
-    watch([orgExecutives, orgUnits, orgGroups], persist, { deep: true });
+    watch([orgExecutives, orgUnits, orgGroups, orgLinks], persist, { deep: true });
   }
 
   return {
     orgExecutives,
     orgUnits,
     orgGroups,
+    orgLinks,
     executivesSorted,
     placedByExecutive,
     hydrate,
+    syncLinksFromStorage,
     addExecutive,
     addUnit,
     addGroup,
@@ -448,6 +557,8 @@ export function useOrgStructure() {
     removeExecutive,
     removeUnit,
     removeGroup,
+    addLink,
+    removeLink,
     buildPlacedItems,
     canvasMinHeight,
     globalCanvasMinHeight

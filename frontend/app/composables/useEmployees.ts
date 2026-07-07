@@ -387,6 +387,14 @@ export function useEmployees() {
     user: { id: number; email: string; name: string } | null | undefined
   ) => allReports(managerProfileName(user));
 
+  const employeesInDepartment = (department: string) => {
+    const normalized = department.trim();
+    if (!normalized) return [];
+    return employees.value
+      .filter((emp) => emp.department.trim() === normalized && emp.name.trim())
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  };
+
   type ProfileTeamContext = {
     mode: 'reports' | 'department';
     department: string;
@@ -495,6 +503,7 @@ export function useEmployees() {
     allReports,
     directReportsForAuthUser,
     allReportsForAuthUser,
+    employeesInDepartment,
     managerProfileName,
     profileTeamForUser,
     canManagerApproveRequest,

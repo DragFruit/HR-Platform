@@ -28,32 +28,53 @@
     </p>
 
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
-      <section
-        class="vac-emp-calendar-pane"
-        :class="{ 'vac-emp-calendar-pane--embedded': embedded }"
-        data-tour="vac-calendar"
+      <div
+        class="vac-emp-calendar-slot"
+        :class="{ 'vac-emp-calendar-slot--with-tabs': hasTeamCalendar }"
       >
-        <EmployeeYearCalendar
-          v-if="employeeName"
-          compact
-          :employee-name="employeeName"
-          :year="props.viewYear"
-          :requests="displayRequests"
-          :range-pick-start="rangePickStart"
-          :range-pick-hover="rangePickHover"
-          :selected-range-start="form.start || null"
-          :selected-range-end="form.end || null"
-          :min-selectable-iso="minIso"
-          @day-click="handleDayClick"
-          @day-hover="handleDayHover"
+        <section
+          class="vac-emp-calendar-pane"
+          :class="{
+            'vac-emp-calendar-pane--embedded': embedded,
+            'vac-emp-calendar-pane--team': showTeamCalendar
+          }"
+          data-tour="vac-calendar"
+        >
+          <VacationTeamCalendar
+            v-if="showTeamCalendar"
+            variant="employee-team"
+            :departments="teamDepartments"
+            :requests="yearRequests"
+            :get-month-entries="getMonthEntries"
+            :year="props.viewYear"
+          />
+          <EmployeeYearCalendar
+            v-else-if="employeeName"
+            compact
+            :employee-name="employeeName"
+            :year="props.viewYear"
+            :requests="displayRequests"
+            :range-pick-start="rangePickStart"
+            :range-pick-hover="rangePickHover"
+            :selected-range-start="form.start || null"
+            :selected-range-end="form.end || null"
+            :min-selectable-iso="minIso"
+            @day-click="handleDayClick"
+            @day-hover="handleDayHover"
+          />
+          <p v-else class="vac-emp-empty">
+            Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
+            вашим email.
+          </p>
+        </section>
+        <VacationCalendarScopeToggle
+          v-if="hasTeamCalendar"
+          :model-value="calendarScope"
+          @update:model-value="setCalendarScope"
         />
-        <p v-else class="vac-emp-empty">
-          Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
-          вашим email.
-        </p>
-      </section>
+      </div>
 
-      <EmployeeVacationAside v-if="!embedded" :view-year="viewYear" />
+      <EmployeeVacationAside v-if="!embedded" :view-year="viewYear" :ui-mode="uiMode" :team-mode-label="teamModeLabel" @update:ui-mode="onUiModeChange" />
     </div>
   </div>
 </template>
@@ -66,15 +87,35 @@ const props = defineProps<{
   viewYear: number;
   /** Календарь в колонке руководителя; боковая панель — в ManagerVacationAside */
   embedded?: boolean;
+  /** Переключатель «отдел / сотрудник» для наблюдателя отдела (полный экран сотрудника). */
+  uiMode?: 'manager' | 'employee';
+  teamModeLabel?: string;
 }>();
 
 const emit = defineEmits<{
   'update:viewYear': [value: number];
+  'update:uiMode': [value: 'manager' | 'employee'];
 }>();
+
+const onUiModeChange = (mode: 'manager' | 'employee') => {
+  emit('update:uiMode', mode);
+};
 
 const { user } = useAuth();
 const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
-const { requestsForYear, addRequest, hydrate: hydrateVacations, state } = useVacations();
+const {
+  requestsForYear,
+  addRequest,
+  hydrate: hydrateVacations,
+  state,
+  getMonthEntries
+} = useVacations();
+const {
+  hasTeamCalendar,
+  teamDepartments,
+  calendarScope,
+  setCalendarScope
+} = useEmployeeVacationTeamView();
 const {
   isActive: isTrainingActive,
   currentStep: trainingStep,
@@ -88,6 +129,10 @@ const displayRequests = computed(() => mergeRequestsForDisplay(props.viewYear, y
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
+
+const showTeamCalendar = computed(
+  () => hasTeamCalendar.value && calendarScope.value === 'team' && Boolean(employeeName.value)
+);
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
 const formAssessment = computed(() =>

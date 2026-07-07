@@ -44,6 +44,12 @@ function getTwoStepConfig(department: string): TwoStepDepartmentConfig | undefin
   return TWO_STEP_DEPARTMENTS.find((cfg) => cfg.department === department.trim());
 }
 
+/** Директор отдела при двухэтапном согласовании (Digital, QA-тест и т.д.). */
+export function resolveDepartmentDirectorName(employee: VacationEmployeeRef): string | null {
+  const cfg = getTwoStepConfig(employee.department);
+  return cfg?.directorName ?? null;
+}
+
 export function isDigitalDepartment(department: string): boolean {
   return department.trim() === 'Digital';
 }
@@ -102,6 +108,23 @@ export function canApproverReviewRequest(
   }
 
   return approver === employee.manager.trim();
+}
+
+/** Имя сотрудника в справочнике, который сейчас должен согласовать заявку. */
+export function resolveApproverEmployeeName(
+  request: { status: string; approval_step?: VacationApprovalStep },
+  employee: VacationEmployeeRef
+): string | null {
+  const step = resolveRequestApprovalStep(request, employee);
+  if (!step) return null;
+  if (step === 'manager') {
+    const name = employee.manager.trim();
+    return name || null;
+  }
+  const cfg = getTwoStepConfig(employee.department);
+  if (cfg) return cfg.directorName;
+  const fallback = employee.manager.trim();
+  return fallback || null;
 }
 
 /** Заявка ушла на директора после согласования тимлидом — только для отображения. */

@@ -1,4 +1,5 @@
 import type { VacationRequest } from '~/composables/useVacations';
+import { isManagerVacationTrainingCompleted } from '~/composables/useManagerVacationTraining';
 import {
   EMPLOYEE_VACATION_TRAINING_STEPS,
   type VacationTrainingStep
@@ -35,8 +36,12 @@ const writeStorage = (data: TrainingStorage) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 };
 
+export const isEmployeeVacationTrainingCompleted = (userId: number): boolean =>
+  readStorage().completed.includes(userId);
+
 export function useVacationTraining() {
   const { user } = useAuth();
+  const { isManager, isHr } = usePermissions();
   const runtimeConfig = useRuntimeConfig();
   const isEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 
@@ -59,7 +64,7 @@ export function useVacationTraining() {
     return `Квест ${Math.min(stepIndex.value + 1, totalSteps.value)} из ${totalSteps.value}`;
   });
 
-  const isCompletedForUser = (userId: number) => readStorage().completed.includes(userId);
+  const isCompletedForUser = (userId: number) => isEmployeeVacationTrainingCompleted(userId);
   const isSkippedForUser = (userId: number) => readStorage().skipped.includes(userId);
 
   const shouldShowPrompt = computed(() => {
@@ -184,6 +189,13 @@ export function useVacationTraining() {
     stepIndex.value = 0;
   };
 
+  const canClaimVacationAchievement = () => {
+    const id = user.value?.id;
+    if (!id) return false;
+    if (!isManager.value && !isHr.value) return true;
+    return isManagerVacationTrainingCompleted(id);
+  };
+
   return {
     isEnabled,
     isActive,
@@ -203,6 +215,7 @@ export function useVacationTraining() {
     addTrainingRequest,
     mergeRequestsForDisplay,
     trainingRequestsForViewYear,
-    resetTrainingProgress
+    resetTrainingProgress,
+    canClaimVacationAchievement
   };
 }

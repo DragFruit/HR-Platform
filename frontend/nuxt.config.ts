@@ -52,11 +52,8 @@ export default defineNuxtConfig({
         process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT === '1' ||
         (process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT !== '0' &&
           process.env.NODE_ENV === 'development'),
-      /** Квест-обучение по отпускам — только не на production */
-      vacationTrainingEnabled:
-        process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED === 'true' ||
-        (process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED !== 'false' &&
-          (process.env.NUXT_PUBLIC_APP_ENV || 'development') !== 'production'),
+      /** Квест-обучение по отпускам — включено везде; отключить: NUXT_PUBLIC_VACATION_TRAINING_ENABLED=false */
+      vacationTrainingEnabled: process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED !== 'false',
       /** Соцсети агентства VBI — переопределяются через NUXT_PUBLIC_SOCIAL_* */
       socialVkUrl: process.env.NUXT_PUBLIC_SOCIAL_VK_URL || 'https://vk.com/vbi.agency',
       socialTelegramUrl: process.env.NUXT_PUBLIC_SOCIAL_TELEGRAM_URL || 'https://t.me/vbi_agency',

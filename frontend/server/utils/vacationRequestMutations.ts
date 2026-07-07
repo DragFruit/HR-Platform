@@ -2,6 +2,11 @@ import { initialApprovalStep, type VacationApprovalStep } from '../../app/utils/
 import type { VacationRequest, VacationStatus } from '../../app/composables/useVacations';
 import { syncApprovedVacationsToBitrix } from './bitrixVacationAbsence';
 import { findEmployeeByName } from './employeesStore';
+import {
+  notifyVacationRequestCreated,
+  notifyVacationRequestDeleted,
+  notifyVacationRequestPatched
+} from './vacationNotifications';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
 
 const cloneState = (state: VacationStoreState): VacationStoreState =>
@@ -47,24 +52,38 @@ export async function createVacationRequest(
     createdAt: new Date().toLocaleDateString('ru-RU')
   };
 
-  return mutateVacations((state) => {
+  let createdRequest: VacationRequest | null = null;
+
+  const result = await mutateVacations((state) => {
     request.id = state.nextRequestId++;
     const list = state.requestsByYear[yearKey] ?? [];
     state.requestsByYear[yearKey] = [...list, request];
+    createdRequest = { ...request };
     return state;
   });
+
+  if (createdRequest) {
+    await notifyVacationRequestCreated(createdRequest);
+  }
+
+  return result;
 }
 
 export async function patchVacationRequest(
   id: number,
   patch: PatchVacationRequestBody
 ): Promise<VacationStoreState> {
-  return mutateVacations(async (state) => {
+  let previousRequest: VacationRequest | null = null;
+  let nextRequest: VacationRequest | null = null;
+
+  const result = await mutateVacations(async (state) => {
     const previous = cloneState(state);
     const found = findRequest(state, id);
     if (!found) {
       throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
     }
+
+    previousRequest = { ...found.item };
 
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
@@ -82,18 +101,34 @@ export async function patchVacationRequest(
       }
     }
 
+    nextRequest = { ...found.item };
     return syncApprovedVacationsToBitrix(previous, state);
   });
+
+  if (previousRequest && nextRequest) {
+    await notifyVacationRequestPatched(previousRequest, nextRequest);
+  }
+
+  return result;
 }
 
 export async function deleteVacationRequest(id: number): Promise<VacationStoreState> {
-  return mutateVacations((state) => {
+  let removedRequest: VacationRequest | null = null;
+
+  const result = await mutateVacations((state) => {
     const found = findRequest(state, id);
     if (!found) {
       throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
     }
+    removedRequest = { ...found.item };
     const nextList = found.list.filter((item) => item.id !== id);
     state.requestsByYear[found.yearKey] = nextList;
     return state;
   });
+
+  if (removedRequest) {
+    await notifyVacationRequestDeleted(removedRequest);
+  }
+
+  return result;
 }

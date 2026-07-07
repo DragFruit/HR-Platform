@@ -3,9 +3,16 @@
 
   <template v-else>
     <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
+    <ManagerVacationTrainingOverlay v-if="vacationTrainingEnabled" />
 
-    <div v-if="showEmployeePanel" class="vacations-employee-shell">
-      <EmployeeVacationPanel :view-year="viewYear" @update:view-year="onViewYearChange" />
+    <div v-if="showFullEmployeeVacations" class="vacations-employee-shell">
+      <EmployeeVacationPanel
+        :view-year="viewYear"
+        :ui-mode="isDepartmentVacationViewer ? managerUiMode : undefined"
+        :team-mode-label="isDepartmentVacationViewer ? managerAsideModeLabel : undefined"
+        @update:ui-mode="managerUiMode = $event"
+        @update:view-year="onViewYearChange"
+      />
     </div>
 
     <template v-else>
@@ -18,7 +25,7 @@
       >
         <div class="vac-manager-main">
           <EmployeeVacationPanel
-            v-if="showManagerShell && managerUiMode === 'employee'"
+            v-if="showManagerShell && managerUiMode === 'employee' && !isDepartmentVacationViewer"
             embedded
             :view-year="viewYear"
             @update:view-year="onViewYearChange"
@@ -32,8 +39,9 @@
                   :key="tab.id"
                   type="button"
                   class="filter-btn"
+                  :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
                   :class="{ active: activeTab === tab.id }"
-                  @click="activeTab = tab.id"
+                  @click="setActiveTab(tab.id)"
                 >
                   {{ tab.label }}
                   <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
@@ -122,6 +130,7 @@
           :team-total="teamTotal"
           :stats="teamRequestStats"
           :show-hr-tab="isHr"
+          :manager-mode-label="managerAsideModeLabel"
         />
       </div>
     </template>
@@ -137,7 +146,10 @@ const { user, authReady } = useAuth();
 const runtimeConfig = useRuntimeConfig();
 const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
+const { notifyApprovalTabOpened, currentStep, isActive: isManagerTrainingActive } = useManagerVacationTraining();
 const { isAdmin: isAdminShell } = usePlatformContext();
+const { isViewer: isDepartmentVacationViewer, departmentTeam, viewDepartment } =
+  useVacationDepartmentView();
 const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
@@ -156,18 +168,30 @@ const {
 const activeTab = ref<'calendar' | 'approval'>('calendar');
 const managerUiMode = ref<'manager' | 'employee'>('manager');
 
-const showEmployeePanel = computed(() => {
+const showFullEmployeeVacations = computed(() => {
   if (!user.value) return false;
+  if (isDepartmentVacationViewer.value && managerUiMode.value === 'employee') return true;
+  if (isDepartmentVacationViewer.value) return false;
   if (user.value.role === 'employee') return true;
-  // Админ в режиме «Сотрудник» в оболочке — тот же экран отпусков
   if (user.value.role === 'admin' && !isAdminShell.value) return true;
   return false;
 });
 
 const showManagerShell = computed(() => {
   if (!user.value) return false;
+  if (isDepartmentVacationViewer.value) return managerUiMode.value === 'manager';
   return user.value.role === 'manager' || user.value.role === 'hr';
 });
+
+const managerAsideModeLabel = computed(() =>
+  isDepartmentVacationViewer.value && viewDepartment.value ? `Отдел ${viewDepartment.value}` : 'Руководитель'
+);
+
+/** Календарь и статистика по ограниченной команде (подчинённые или весь отдел для наблюдателя). */
+const usesScopedTeamView = computed(
+  () =>
+    (isManager.value && !canSeeAllVacationApprovals.value) || isDepartmentVacationViewer.value
+);
 
 const visibleTabs = computed(() => {
   const tabs = [{ id: 'calendar' as const, label: 'Календарь' }];
@@ -194,9 +218,15 @@ const managerTeam = computed(() => {
   return allReportsForAuthUser(user.value);
 });
 
+const scopedTeamMembers = computed(() => {
+  if (isDepartmentVacationViewer.value) return departmentTeam.value;
+  if (isManager.value && !canSeeAllVacationApprovals.value) return managerTeam.value;
+  return [];
+});
+
 const calendarDepartments = computed(() => {
-  if (isManager.value && !canSeeAllVacationApprovals.value) {
-    return groupByDepartment(managerTeam.value);
+  if (usesScopedTeamView.value) {
+    return groupByDepartment(scopedTeamMembers.value);
   }
   return departmentsGrouped.value;
 });
@@ -222,8 +252,8 @@ const approvalPanelEntries = computed<ApprovalPanelEntry[]>(() => {
 });
 
 const teamMembers = computed(() => {
-  if (isManager.value && !canSeeAllVacationApprovals.value) {
-    return managerTeam.value;
+  if (usesScopedTeamView.value) {
+    return scopedTeamMembers.value;
   }
   return departmentsGrouped.value.flatMap((dep) => dep.employees);
 });
@@ -279,7 +309,7 @@ const employeeInitials = (name: string) => {
 };
 
 const overlapScopeNames = computed(() => {
-  if (isManager.value && !canSeeAllVacationApprovals.value) {
+  if (usesScopedTeamView.value) {
     return teamEmployeeNames.value;
   }
   return undefined;
@@ -312,6 +342,19 @@ const reject = (id: number) => setRequestStatus(id, 'rejected');
 const onViewYearChange = (year: number) => {
   viewYear.value = year;
 };
+
+const setActiveTab = (tab: 'calendar' | 'approval') => {
+  activeTab.value = tab;
+  if (tab === 'approval') notifyApprovalTabOpened();
+};
+
+watch(
+  () => currentStep.value?.id,
+  (stepId) => {
+    if (!isManagerTrainingActive.value) return;
+    if (stepId === 'calendar-view') activeTab.value = 'calendar';
+  }
+);
 
 onMounted(() => {
   reloadEmployees();

@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { getBitrixConfig, getBitrixRedirectUri, isBitrixAuthConfigured, assertBitrixOAuthOrigin } from '../../utils/bitrixConfig';
-
-const STATE_COOKIE = 'bitrix-oauth-state';
+import { getBitrixConfig, getBitrixRedirectUri, isBitrixAuthConfigured, assertBitrixOAuthOrigin, assertStagingBitrixAppConfigured } from '../../utils/bitrixConfig';
+import { bitrixOAuthStateCookieName } from '../../utils/appEnv';
 
 export default defineEventHandler((event) => {
   if (!isBitrixAuthConfigured()) {
@@ -11,9 +10,11 @@ export default defineEventHandler((event) => {
   const { bitrixPortalUrl, bitrixClientId } = getBitrixConfig();
   const state = randomBytes(16).toString('hex');
   const redirectUri = getBitrixRedirectUri(event);
+  assertStagingBitrixAppConfigured(event);
   assertBitrixOAuthOrigin(event, redirectUri);
 
-  setCookie(event, STATE_COOKIE, state, {
+  const stateCookie = bitrixOAuthStateCookieName();
+  setCookie(event, stateCookie, state, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',

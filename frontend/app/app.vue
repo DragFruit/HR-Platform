@@ -91,6 +91,7 @@
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
           <AdminNotificationsBell v-if="isAdmin" />
+          <VacationNotificationsBell v-else />
           <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
           <span class="soft">{{ user?.name }}</span>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>

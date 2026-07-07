@@ -33,4 +33,5 @@ export default defineNuxtPlugin(() => {
   useOrgStructure().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
+  useHrKnowledgeTest().hydrate();
 });

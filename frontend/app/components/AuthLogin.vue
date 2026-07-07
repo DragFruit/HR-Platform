@@ -15,7 +15,15 @@
       </div>
 
       <div v-if="showBitrixLogin" class="auth-form">
-        <button class="button primary auth-submit" type="button" @click="goBitrixLogin">
+        <p v-if="oauthMisconfigured && oauthMisconfiguredHint" class="gift-error auth-oauth-misconfig">
+          {{ oauthMisconfiguredHint }}
+        </p>
+        <button
+          class="button primary auth-submit"
+          type="button"
+          :disabled="oauthMisconfigured"
+          @click="goBitrixLogin"
+        >
           Войти через Битрикс24
         </button>
         <p v-if="error" class="gift-error">{{ error }}</p>
@@ -77,7 +85,7 @@ const { isDevelopment } = useAppEnv();
 const { login, demoAccounts } = useAuth();
 const BITRIX_LOGIN_PATH = '/api/auth/bitrix';
 
-const { configReady, preferBitrixLogin } = useBitrixAuthConfig();
+const { configReady, preferBitrixLogin, oauthMisconfigured, oauthMisconfiguredHint } = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
 const showDemoLogin = computed(() => {
@@ -145,6 +153,12 @@ const submit = async () => {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.45;
+}
+
+.auth-oauth-misconfig {
+  margin: 0 0 12px;
+  line-height: 1.45;
+  font-size: 0.86rem;
 }
 
 .auth-divider {

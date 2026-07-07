@@ -1,5 +1,10 @@
 import type { H3Event } from 'h3';
 import { refreshLocalEnv } from './loadEnvFile';
+import { getDeployAppEnv } from './appEnv';
+import {
+  BITRIX_STAGING_CALLBACK,
+  isProductionBitrixClientId
+} from './bitrixOAuthConstants';
 
 export type BitrixRuntimeConfig = {
   bitrixPortalUrl: string;
@@ -78,6 +83,34 @@ export function getAppPublicOrigin(event?: H3Event): string {
   throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
 }
 
+export function isStagingUsingProductionBitrixApp(): boolean {
+  const { bitrixClientId, bitrixRedirectUri } = getBitrixConfig();
+  const onStagingContour =
+    getDeployAppEnv() === 'staging' || bitrixRedirectUri.includes(':8080');
+  if (!onStagingContour) return false;
+  return isProductionBitrixClientId(bitrixClientId);
+}
+
+export function stagingBitrixMisconfigMessage(): string {
+  return (
+    'На тестовом стенде (:8080) указан CLIENT_ID боевого приложения Битрикс. ' +
+    'У одного приложения в коробке только один обработчик — Битрикс всегда вернёт на :80, отсюда «Неверный state». ' +
+    `Создайте отдельное локальное приложение в crm.vbi.ru с обработчиком ${BITRIX_STAGING_CALLBACK} ` +
+    'и пропишите его CLIENT_ID и SECRET в /etc/vbi-hr/bitrix.env, затем: sudo systemctl restart vbi-hr-staging'
+  );
+}
+
+export function assertStagingBitrixAppConfigured(event: H3Event) {
+  if (!isStagingUsingProductionBitrixApp()) return;
+
+  const requestOrigin = getRequestPublicOrigin(event);
+  throw createError({
+    statusCode: 503,
+    statusMessage: stagingBitrixMisconfigMessage(),
+    data: { requestOrigin, expectedCallback: BITRIX_STAGING_CALLBACK }
+  });
+}
+
 export function isBitrixAuthConfigured(): boolean {
   const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
   return Boolean(bitrixPortalUrl && bitrixClientId && bitrixClientSecret);
@@ -101,21 +134,8 @@ export function getBitrixRedirectUri(event?: H3Event): string {
   return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
 }
 
-/** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */
+/** После OAuth возвращаем на тот origin, куда пришёл callback (тест :8080 / бой :80). */
 export function getOAuthReturnOrigin(event: H3Event): string {
-  if (isLocalDevelopment()) {
-    return getRequestPublicOrigin(event);
-  }
-
-  const { bitrixRedirectUri } = getBitrixConfig();
-  if (bitrixRedirectUri) {
-    try {
-      return new URL(bitrixRedirectUri).origin;
-    } catch {
-      /* fall through */
-    }
-  }
-
   return getRequestPublicOrigin(event);
 }
 
