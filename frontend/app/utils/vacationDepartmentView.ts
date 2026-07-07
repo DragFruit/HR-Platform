@@ -5,7 +5,6 @@ import { QA_EMPLOYEE_NAME, QA_TEST_DEPARTMENT_NAME } from '~/data/qaTestDepartme
  * Ключ — ФИО из справочника, значение — код отдела (как в employees.department).
  */
 export const DEPARTMENT_VACATION_VIEWERS: Record<string, string> = {
-  'Баранова Юлия': 'DEV',
   /** Демо: katya@vbi.local → Даша Тестова, отдел «Тестировщики». */
   [QA_EMPLOYEE_NAME]: QA_TEST_DEPARTMENT_NAME
 };
