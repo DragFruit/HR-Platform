@@ -1,5 +1,12 @@
 <template>
   <aside class="employee-aside employee-aside--fit" :class="{ 'employee-aside--embedded': embedded }">
+    <VacationUiModeToggle
+      v-if="uiMode !== undefined"
+      :model-value="uiMode"
+      :team-mode-label="teamModeLabel ?? 'Руководитель'"
+      @update:model-value="(mode) => emit('update:uiMode', mode)"
+    />
+
     <div class="emp-balance-card" data-tour="vac-balance">
       <div class="emp-balance-card-label">Доступно дней отпуска</div>
       <div class="emp-balance-figures emp-balance-figures-single">
@@ -143,6 +150,12 @@ import type { TrainingVacationRequest } from '~/composables/useVacationTraining'
 const props = defineProps<{
   viewYear: number;
   embedded?: boolean;
+  uiMode?: 'manager' | 'employee';
+  teamModeLabel?: string;
+}>();
+
+const emit = defineEmits<{
+  'update:uiMode': [value: 'manager' | 'employee'];
 }>();
 
 const { user } = useAuth();

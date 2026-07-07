@@ -6,6 +6,8 @@ export type VacationTrainingStepId =
   | 'warnings'
   | 'requests';
 
+export type ManagerVacationTrainingStepId = 'approval' | 'warnings' | 'calendar-view';
+
 export type VacationTrainingHighlightKind = 'outline' | 'underline' | 'circle' | 'none';
 
 export type VacationTrainingStep = {
@@ -17,6 +19,16 @@ export type VacationTrainingStep = {
   kind: VacationTrainingHighlightKind;
   /** Шаг засчитывается после действия пользователя */
   action?: 'acknowledge' | 'calendar-range' | 'create-request';
+};
+
+export type ManagerVacationTrainingStepAction = 'acknowledge' | 'open-approval-tab';
+
+export type ManagerVacationTrainingStep = {
+  id: ManagerVacationTrainingStepId;
+  target: string | null;
+  title: string;
+  text: string;
+  action?: ManagerVacationTrainingStepAction;
 };
 
 export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
@@ -105,6 +117,52 @@ export const VACATION_TRAINING_WARNING_ITEMS = [
     title: 'Ошибка дат',
     badgeClass: 'vac-training-warnings__badge--error',
     text: 'Если не заполнены даты или конец раньше начала — заявка не отправится.'
+  }
+] as const;
+
+export const MANAGER_VACATION_TRAINING_STEPS: ManagerVacationTrainingStep[] = [
+  {
+    id: 'approval',
+    target: 'vac-approval-tab',
+    title: 'Квест руководителя 1 · Согласование',
+    text: 'Откройте вкладку «Согласование»: здесь вы подтверждаете или отклоняете заявки сотрудников.',
+    action: 'open-approval-tab'
+  },
+  {
+    id: 'warnings',
+    target: null,
+    title: 'Квест руководителя 2 · Плашки-предупреждения',
+    text: 'Плашки в очереди помогают принять решение быстрее: видно риски по остаткам, пересечениям и этапам.',
+    action: 'acknowledge'
+  },
+  {
+    id: 'calendar-view',
+    target: 'vac-calendar-view-toggle',
+    title: 'Квест руководителя 3 · Виды календаря',
+    text: 'Переключатель «Детально / По месяцам» — попробуйте оба вида. Когда посмотрите, нажмите «Завершить».',
+    action: 'acknowledge'
+  }
+];
+
+export const MANAGER_VACATION_TRAINING_WARNING_ITEMS = [
+  {
+    id: 'advance',
+    title: 'Не хватает дней',
+    badgeClass: 'vac-training-warnings__badge--advance',
+    text: 'Сотрудник запрашивает отпуск авансом — можно согласовать, но это риск перерасхода баланса.'
+  },
+  {
+    id: 'overlap',
+    title: 'Пересечение с коллегами',
+    badgeClass: 'vac-training-warnings__badge--overlap',
+    text: 'На эти даты есть пересечения в команде — проверьте нагрузку и заменяемость перед согласованием.'
+  },
+  {
+    id: 'next-stage',
+    title: 'Следующий этап',
+    badgeClass: 'vac-training-warnings__badge--pending',
+    text: 'После вашего согласования заявка может уйти на следующий этап (директору отдела).',
+    groupLeadsOnly: true
   }
 ] as const;
 

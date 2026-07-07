@@ -3,46 +3,21 @@
     class="vac-manager-aside-panel"
     :class="{ 'vac-manager-aside-panel--employee-view': modelValue === 'employee' }"
   >
-    <div class="emp-aside-role-strip">
-      <span class="emp-aside-role-strip-label">Режим</span>
+    <VacationUiModeToggle
+      :model-value="modelValue"
+      :team-mode-label="props.managerModeLabel"
+      @update:model-value="setMode"
+    />
 
-      <div
-        class="mgr-emp-slide mgr-emp-slide--interactive"
-        :class="{ 'mgr-emp-slide--employee': modelValue === 'employee' }"
-        role="group"
-        aria-label="Режим интерфейса"
-      >
-        <span class="mgr-emp-slide-thumb" aria-hidden="true" />
-        <div class="mgr-emp-slide-inner">
-          <button
-            type="button"
-            class="mgr-emp-slide-name mgr-emp-slide-name--manager"
-            :class="{ active: modelValue === 'manager' }"
-            @click="setMode('manager')"
-          >
-            Руководитель
-          </button>
-          <button
-            type="button"
-            class="mgr-emp-slide-name mgr-emp-slide-name--employee"
-            :class="{ active: modelValue === 'employee' }"
-            @click="setMode('employee')"
-          >
-            Сотрудник
-          </button>
-        </div>
-      </div>
-
-      <div
-        v-if="showHrTab && modelValue === 'manager'"
-        class="role-switch role-switch--aside"
-        role="group"
-        aria-label="Раздел платформы"
-      >
-        <button type="button" class="role-btn active">Руководитель</button>
-        <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
-        <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
-      </div>
+    <div
+      v-if="showHrTab && modelValue === 'manager'"
+      class="role-switch role-switch--aside"
+      role="group"
+      aria-label="Раздел платформы"
+    >
+      <button type="button" class="role-btn active">Руководитель</button>
+      <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
+      <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
     </div>
 
     <template v-if="modelValue === 'manager'">
@@ -55,6 +30,8 @@
         <div class="vac-aside-stat-label">Сейчас в отпуске</div>
         <div class="vac-aside-stat-value">{{ onVacationNow }} из {{ teamTotal }}</div>
       </div>
+
+      <ManagerVacationTrainingPrompt />
 
       <div class="vac-aside-stat-card">
         <div class="vac-aside-stat-label">Заявки</div>
@@ -90,7 +67,9 @@
 </template>
 
 <script setup lang="ts">
-export type ManagerVacationUiMode = 'manager' | 'employee';
+import type { VacationUiMode } from '~/components/VacationUiModeToggle.vue';
+
+export type ManagerVacationUiMode = VacationUiMode;
 
 export type VacationRequestStats = {
   total: number;
@@ -99,15 +78,20 @@ export type VacationRequestStats = {
   rejected: number;
 };
 
-defineProps<{
-  modelValue: ManagerVacationUiMode;
-  viewYear: number;
-  todayLabel: string;
-  onVacationNow: number;
-  teamTotal: number;
-  stats: VacationRequestStats;
-  showHrTab?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: ManagerVacationUiMode;
+    viewYear: number;
+    todayLabel: string;
+    onVacationNow: number;
+    teamTotal: number;
+    stats: VacationRequestStats;
+    showHrTab?: boolean;
+    /** Подпись режима «команда/отдел» (по умолчанию «Руководитель»). */
+    managerModeLabel?: string;
+  }>(),
+  { managerModeLabel: 'Руководитель' }
+);
 
 const emit = defineEmits<{
   'update:modelValue': [value: ManagerVacationUiMode];

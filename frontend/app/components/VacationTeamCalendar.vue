@@ -18,7 +18,12 @@
             <option :value="2026">2026</option>
             <option :value="2027">2027</option>
           </select>
-          <div class="vac-view-toggle" role="group" aria-label="Вид календаря">
+          <div
+            class="vac-view-toggle"
+            role="group"
+            aria-label="Вид календаря"
+            data-tour="vac-calendar-view-toggle"
+          >
             <button
               type="button"
               class="vac-view-toggle__btn"

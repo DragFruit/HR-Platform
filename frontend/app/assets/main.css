@@ -2528,7 +2528,7 @@ a {
   border: none;
   box-shadow: none;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.01em;
   line-height: 1.2;
   white-space: nowrap;
@@ -3581,8 +3581,9 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: 100dvh;
-  max-height: 100dvh;
+  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 72px);
+  height: auto;
+  max-height: var(--vac-team-viewport-max);
   overflow: hidden;
 }
 
@@ -3592,7 +3593,7 @@ a {
 
 .vac-team-calendar .vacation-calendar-wrap,
 .vac-team-calendar .vac-detailed-wrap {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   min-width: 0;
   max-width: 100%;
@@ -3616,8 +3617,10 @@ a {
 }
 
 .vac-team-calendar .vac-table-scroll {
-  flex: 1;
+  flex: 0 1 auto;
+  height: auto;
   min-height: 0;
+  max-height: calc(var(--vac-team-viewport-max, 100dvh) - 3.25rem);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3731,22 +3734,25 @@ a {
 .vac-team-calendar .vac-cell {
   min-height: 42px;
   height: auto;
-  padding: 4px 3px;
+  padding: 4px 2px;
   vertical-align: top;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .vac-team-calendar .vac-block {
-  display: inline-block;
-  width: fit-content;
-  max-width: none;
-  margin-bottom: 3px;
-  padding: 4px 7px;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 3px;
+  padding: 2px 3px;
+  font-size: 0.56rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
-  vertical-align: top;
+  overflow: hidden;
   box-sizing: border-box;
-  overflow: visible;
-  text-overflow: clip;
 }
 
 .vac-team-calendar .vacation-timeline th,
@@ -7252,6 +7258,10 @@ a {
   display: grid;
   gap: 4px;
   margin-top: 12px;
+}
+
+.vac-manager-aside-panel .vac-training-prompt {
+  margin-top: 0;
 }
 
 .vac-training-prompt__card {

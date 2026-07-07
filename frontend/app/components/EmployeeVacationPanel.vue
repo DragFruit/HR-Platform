@@ -53,7 +53,7 @@
         </p>
       </section>
 
-      <EmployeeVacationAside v-if="!embedded" :view-year="viewYear" />
+      <EmployeeVacationAside v-if="!embedded" :view-year="viewYear" :ui-mode="uiMode" :team-mode-label="teamModeLabel" @update:ui-mode="onUiModeChange" />
     </div>
   </div>
 </template>
@@ -66,11 +66,19 @@ const props = defineProps<{
   viewYear: number;
   /** Календарь в колонке руководителя; боковая панель — в ManagerVacationAside */
   embedded?: boolean;
+  /** Переключатель «отдел / сотрудник» для наблюдателя отдела (полный экран сотрудника). */
+  uiMode?: 'manager' | 'employee';
+  teamModeLabel?: string;
 }>();
 
 const emit = defineEmits<{
   'update:viewYear': [value: number];
+  'update:uiMode': [value: 'manager' | 'employee'];
 }>();
+
+const onUiModeChange = (mode: 'manager' | 'employee') => {
+  emit('update:uiMode', mode);
+};
 
 const { user } = useAuth();
 const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
