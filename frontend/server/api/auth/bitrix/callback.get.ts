@@ -1,8 +1,8 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
-import { getOAuthReturnOrigin, getBitrixRedirectUri, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
+import { getOAuthReturnOrigin, getBitrixRedirectUri, getRequestPublicOrigin, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
 import { setVbiSession } from '../../../utils/session';
-import { bitrixOAuthStateCookieName } from '../../../utils/appEnv';
+import { bitrixOAuthStateCookieName, getDeployAppEnv } from '../../../utils/appEnv';
 
 function redirectWithError(event: Parameters<typeof sendRedirect>[0], message: string) {
   const url = new URL('/', getOAuthReturnOrigin(event));
@@ -32,11 +32,17 @@ export default defineEventHandler(async (event) => {
     return redirectWithError(event, 'Нет кода авторизации от Битрикс');
   }
   if (!state || !savedState || state !== savedState) {
+    const origin = getRequestPublicOrigin(event);
+    const onProductionCallback = getDeployAppEnv() === 'production' || !origin.includes(':8080');
+    const stagingHint =
+      onProductionCallback
+        ? ' Похоже, вход начали на тесте (:8080), а Битрикс вернул на бой (:80): на :8080 нужно отдельное OAuth-приложение с другим CLIENT_ID (см. docs/BITRIX.md).'
+        : '';
     return redirectWithError(
       event,
-      'Неверный state OAuth: Битрикс вернул на другой адрес, чем начали вход. ' +
-        'Для localhost нужно отдельное локальное приложение в Битриксе (обработчик http://localhost:ПОРТ/api/auth/bitrix/callback) ' +
-        'и свои CLIENT_ID/SECRET в frontend/.env — не те же, что на сервере 45.12.74.25.'
+      'Неверный state OAuth: Битрикс вернул на другой адрес, чем начали вход.' +
+        stagingHint +
+        ' Для localhost — отдельное приложение с обработчиком http://localhost:ПОРТ/api/auth/bitrix/callback и своими CLIENT_ID/SECRET в frontend/.env.'
     );
   }
 

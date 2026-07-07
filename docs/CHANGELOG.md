@@ -6,11 +6,9 @@
 
 ### Auth: изоляция теста (:8080) и боя (:80)
 
-- Разные cookie сессии: `vbi-session-staging` на тесте, `vbi-session` на бою; OAuth state — отдельно по окружению.
-- После Bitrix OAuth редирект всегда на origin текущего запроса (не из `BITRIX_REDIRECT_URI`).
-- localStorage онбординга и аватаров с суффиксом `@staging` / `@development`.
-- Пути: `server/utils/appEnv.ts`, `session.ts`, `bitrix/callback.get.ts`, `useAuth.ts`, `clientStorageKey.ts`.
-- Проверка: выйти на обоих портах → вход на `:8080` остаётся на `:8080`; бой — на `:80`.
+- Разные cookie сессии: `vbi-session-staging` / `vbi-session`; OAuth state — отдельно по окружению.
+- На `:8080` нельзя использовать `CLIENT_ID` боевого приложения Битрикс — нужно третье приложение с callback `:8080` (`/api/auth/config` → `oauthMisconfigured`).
+- Проверка: отдельные ключи в `bitrix.env` (тест) и `bitrix-production.env` (бой); вход на `:8080` остаётся на `:8080`.
 
 ### Обучалка руководителя: доработки UX
 

@@ -1,5 +1,10 @@
 import type { H3Event } from 'h3';
 import { refreshLocalEnv } from './loadEnvFile';
+import { getDeployAppEnv } from './appEnv';
+import {
+  BITRIX_STAGING_CALLBACK,
+  isProductionBitrixClientId
+} from './bitrixOAuthConstants';
 
 export type BitrixRuntimeConfig = {
   bitrixPortalUrl: string;
@@ -76,6 +81,32 @@ export function getAppPublicOrigin(event?: H3Event): string {
   }
 
   throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
+}
+
+export function isStagingUsingProductionBitrixApp(): boolean {
+  if (getDeployAppEnv() !== 'staging') return false;
+  const { bitrixClientId } = getBitrixConfig();
+  return isProductionBitrixClientId(bitrixClientId);
+}
+
+export function stagingBitrixMisconfigMessage(): string {
+  return (
+    'На тестовом стенде (:8080) указан CLIENT_ID боевого приложения Битрикс. ' +
+    'У одного приложения в коробке только один обработчик — Битрикс всегда вернёт на :80, отсюда «Неверный state». ' +
+    `Создайте отдельное локальное приложение в crm.vbi.ru с обработчиком ${BITRIX_STAGING_CALLBACK} ` +
+    'и пропишите его CLIENT_ID и SECRET в /etc/vbi-hr/bitrix.env, затем: sudo systemctl restart vbi-hr-staging'
+  );
+}
+
+export function assertStagingBitrixAppConfigured(event: H3Event) {
+  if (!isStagingUsingProductionBitrixApp()) return;
+
+  const requestOrigin = getRequestPublicOrigin(event);
+  throw createError({
+    statusCode: 503,
+    statusMessage: stagingBitrixMisconfigMessage(),
+    data: { requestOrigin, expectedCallback: BITRIX_STAGING_CALLBACK }
+  });
 }
 
 export function isBitrixAuthConfigured(): boolean {
