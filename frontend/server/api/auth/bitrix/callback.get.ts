@@ -1,8 +1,15 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
-import { getOAuthReturnOrigin, getBitrixRedirectUri, getRequestPublicOrigin, isBitrixAuthConfigured } from '../../../utils/bitrixConfig';
+import {
+  getBitrixConfig,
+  getOAuthReturnOrigin,
+  getBitrixRedirectUri,
+  getRequestPublicOrigin,
+  isBitrixAuthConfigured
+} from '../../../utils/bitrixConfig';
 import { setVbiSession } from '../../../utils/session';
-import { bitrixOAuthStateCookieName, getDeployAppEnv } from '../../../utils/appEnv';
+import { bitrixOAuthStateCookieName } from '../../../utils/appEnv';
+import { verifyOAuthState } from '../../../utils/oauthState';
 
 function redirectWithError(event: Parameters<typeof sendRedirect>[0], message: string) {
   const url = new URL('/', getOAuthReturnOrigin(event));
@@ -31,18 +38,24 @@ export default defineEventHandler(async (event) => {
   if (!code) {
     return redirectWithError(event, 'Нет кода авторизации от Битрикс');
   }
-  if (!state || !savedState || state !== savedState) {
+
+  const { bitrixClientSecret } = getBitrixConfig();
+  const stateValid =
+    Boolean(state && savedState && state === savedState) ||
+    verifyOAuthState(state, bitrixClientSecret);
+
+  if (!stateValid) {
     const origin = getRequestPublicOrigin(event);
-    const onProductionCallback = getDeployAppEnv() === 'production' || !origin.includes(':8080');
+    const onProductionCallback = !origin.includes(':8080');
     const stagingHint =
       onProductionCallback
-        ? ' Похоже, вход начали на тесте (:8080), а Битрикс вернул на бой (:80): на :8080 нужно отдельное OAuth-приложение с другим CLIENT_ID (см. docs/BITRIX.md).'
+        ? ' Если открывали тест (:8080) — заходите на бой: http://45.12.74.25 (без :8080).'
         : '';
     return redirectWithError(
       event,
-      'Неверный state OAuth: Битрикс вернул на другой адрес, чем начали вход.' +
+      'Неверный state OAuth — сессия входа устарела или сайт открыт не на том адресе.' +
         stagingHint +
-        ' Для localhost — отдельное приложение с обработчиком http://localhost:ПОРТ/api/auth/bitrix/callback и своими CLIENT_ID/SECRET в frontend/.env.'
+        ' Очистите cookie для 45.12.74.25 и войдите снова. Для localhost — отдельное OAuth-приложение (docs/BITRIX.md).'
     );
   }
 

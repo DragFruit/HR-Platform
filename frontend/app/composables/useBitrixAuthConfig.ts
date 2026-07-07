@@ -1,4 +1,8 @@
-type AuthConfig = { bitrixAuthEnabled: boolean };
+type AuthConfig = {
+  bitrixAuthEnabled: boolean;
+  oauthMisconfigured?: boolean;
+  oauthMisconfiguredHint?: string;
+};
 
 /** Runtime: Bitrix OAuth включён на сервере (не зависит от NUXT_PUBLIC_APP_ENV в сборке). */
 export function useBitrixAuthConfig() {
@@ -10,6 +14,8 @@ export function useBitrixAuthConfig() {
 
   const bitrixAuthEnabled = computed(() => data.value?.bitrixAuthEnabled === true);
   const configReady = computed(() => status.value !== 'pending');
+  const oauthMisconfigured = computed(() => data.value?.oauthMisconfigured === true);
+  const oauthMisconfiguredHint = computed(() => data.value?.oauthMisconfiguredHint ?? '');
 
   const preferBitrixLogin = computed(
     () => bitrixAuthEnabled.value || isStaging.value || isProduction.value
@@ -18,6 +24,8 @@ export function useBitrixAuthConfig() {
   return {
     bitrixAuthEnabled,
     configReady,
-    preferBitrixLogin
+    preferBitrixLogin,
+    oauthMisconfigured,
+    oauthMisconfiguredHint
   };
 }

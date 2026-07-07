@@ -110,10 +110,6 @@ const readAuthError = () => {
 
 onMounted(() => {
   readAuthError();
-
-  if (route.query.auth === 'bitrix' && preferBitrixLogin.value) {
-    window.location.href = BITRIX_LOGIN_PATH;
-  }
 });
 
 watch(
