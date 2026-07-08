@@ -230,6 +230,7 @@ import {
   measureBalanceValueRect,
   measureCreateToolbarUnderlineRect,
   measureProjectionSummaryRect,
+  measureRequestsHeadingRect,
   pickMarkerAsset
 } from '~/utils/vacationTrainingMarkerAssets';
 
@@ -273,7 +274,7 @@ const isInteractiveStep = (step: { action?: string }) =>
 const shouldSpotlightTarget = (step: { id?: string; target?: string | null; action?: string }) => {
   if (!step.target) return false;
   if (isInteractiveStep(step)) return true;
-  return step.id === 'balance' || step.id === 'projection' || step.id === 'requests';
+  return step.id === 'balance' || step.id === 'projection' || step.id === 'manage-request' || step.id === 'requests';
 };
 
 const clearActiveTarget = () => {
@@ -440,13 +441,13 @@ const updateGeometry = () => {
     return;
   }
 
-  if (step.id === 'calendar') {
-    placeCalendarCard(rect);
+  if (step.id === 'manage-request' || step.id === 'requests') {
+    placeRequestsCard(rect);
     return;
   }
 
-  if (step.id === 'requests') {
-    placeRequestsCard(rect);
+  if (step.id === 'calendar') {
+    placeCalendarCard(rect);
     return;
   }
 
@@ -487,13 +488,16 @@ const spotlightLayout = computed(() => {
   const rect =
     step.id === 'projection'
       ? measureProjectionSummaryRect() ?? targetRect.value
-      : targetRect.value;
+      : step.id === 'manage-request'
+        ? measureRequestsHeadingRect() ?? targetRect.value
+        : targetRect.value;
   if (!rect) return null;
 
   const pad = SPOTLIGHT_PAD;
   const radiusByStep: Record<string, string> = {
     balance: '12px',
     projection: '6px',
+    'manage-request': '10px',
     calendar: '10px',
     requests: '10px'
   };
@@ -544,7 +548,9 @@ const underlineLayout = computed(() => {
       ? measureCreateToolbarUnderlineRect()
       : step.id === 'projection'
         ? measureProjectionSummaryRect()
-        : targetRect.value;
+        : step.id === 'manage-request'
+          ? measureRequestsHeadingRect()
+          : targetRect.value;
   if (!rect) return null;
 
   const pad = markerPaddingForStep(step.id);

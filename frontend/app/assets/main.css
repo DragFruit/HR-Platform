@@ -3805,6 +3805,97 @@ a {
   gap: 8px;
 }
 
+.vac-admin-add-btn {
+  appearance: none;
+  border: 1px solid #d8d8d2;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--bg-surface);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vac-admin-add-btn:hover {
+  border-color: #c8c8c2;
+  background: #fafaf6;
+}
+
+.vac-admin-add-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.vac-admin-add-card {
+  width: min(440px, 100%);
+  padding: 22px 24px;
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--org-card-border);
+  border-radius: var(--org-card-radius);
+  background: var(--org-card-bg);
+}
+
+.vac-admin-add-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.vac-admin-add-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.vac-admin-add-field {
+  display: grid;
+  gap: 6px;
+}
+
+.vac-admin-add-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.vac-admin-add-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--bg-surface);
+}
+
+.vac-admin-add-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.vac-admin-add-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vac-admin-add-error {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #b42318;
+}
+
+.vac-admin-add-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .vac-year-chip {
   appearance: none;
   min-width: 5.5rem;
@@ -5852,11 +5943,11 @@ a {
   max-width: 100%;
   margin: 0;
   padding: 2px 3px;
-  font-size: 0.78rem;
+  font-size: 0.52rem;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.1;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;

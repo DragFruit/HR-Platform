@@ -13,6 +13,14 @@
           </span>
         </div>
         <div class="vac-team-calendar__controls">
+          <button
+            v-if="isAdmin"
+            type="button"
+            class="vac-admin-add-btn"
+            @click="adminAddOpen = true"
+          >
+            + Добавить отпуск
+          </button>
           <select v-model.number="viewYear" class="vac-year-chip" aria-label="Год">
             <option :value="2025">2025</option>
             <option :value="2026">2026</option>
@@ -58,6 +66,8 @@
         :compact-cells="variant === 'employee-team'"
       />
     </div>
+
+    <AdminAddVacationDialog v-if="isAdmin" v-model:open="adminAddOpen" />
   </div>
 </template>
 
@@ -81,8 +91,10 @@ const props = withDefaults(
   { variant: 'manager', defaultViewMode: 'detailed' }
 );
 
+const { isAdmin } = usePermissions();
 const { viewYear } = useVacations();
 
+const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
 const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
 </script>

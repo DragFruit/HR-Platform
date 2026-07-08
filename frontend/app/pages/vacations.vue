@@ -150,7 +150,7 @@ const { notifyApprovalTabOpened, currentStep, isActive: isManagerTrainingActive 
 const { isAdmin: isAdminShell } = usePlatformContext();
 const { isViewer: isDepartmentVacationViewer, departmentTeam, viewDepartment } =
   useVacationDepartmentView();
-const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, reloadFromServer: reloadEmployees } =
+const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, findByUserForAuth, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
   viewYear,
@@ -212,10 +212,14 @@ const groupByDepartment = (list: ReturnType<typeof allReportsForAuthUser>) => {
   }));
 };
 
-/** Руководитель видит подчинённых из справочника (прямых и через тимлидов). */
+/** Руководитель видит подчинённых из справочника (прямых и через тимлидов) и себя. */
 const managerTeam = computed(() => {
   if (!isManager.value || canSeeAllVacationApprovals.value) return [];
-  return allReportsForAuthUser(user.value);
+  const me = findByUserForAuth(user.value);
+  const reports = allReportsForAuthUser(user.value);
+  if (!me) return reports;
+  if (reports.some((emp) => emp.id === me.id)) return reports;
+  return [me, ...reports].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 });
 
 const scopedTeamMembers = computed(() => {

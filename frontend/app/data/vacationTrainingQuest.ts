@@ -1,6 +1,7 @@
 export type VacationTrainingStepId =
   | 'balance'
   | 'projection'
+  | 'manage-request'
   | 'calendar'
   | 'create'
   | 'warnings'
@@ -49,9 +50,17 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
     action: 'acknowledge'
   },
   {
+    id: 'manage-request',
+    target: 'vac-my-requests',
+    title: 'Квест 3 · Редактирование заявки',
+    text: 'В блоке «Мои заявки» у каждой заявки есть кнопка «⋯»: можно изменить даты или удалить заявку, пока отпуск ещё не начался.',
+    kind: 'underline',
+    action: 'acknowledge'
+  },
+  {
     id: 'calendar',
     target: 'vac-calendar',
-    title: 'Квест 3 · Календарь',
+    title: 'Квест 4 · Календарь',
     text: 'Кликните день начала отпуска, затем день окончания — даты подставятся в форму автоматически.',
     kind: 'none',
     action: 'calendar-range'
@@ -59,7 +68,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'create',
     target: 'vac-create-form',
-    title: 'Квест 4 · Заявка',
+    title: 'Квест 5 · Заявка',
     text: 'Проверьте даты и нажмите «Создать заявку». Это учебная заявка — руководитель её не увидит.',
     kind: 'underline',
     action: 'create-request'
@@ -67,7 +76,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'warnings',
     target: null,
-    title: 'Квест 5 · Предупреждения',
+    title: 'Квест 6 · Предупреждения',
     text: '',
     kind: 'none',
     action: 'acknowledge'
@@ -75,8 +84,8 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'requests',
     target: 'vac-my-requests',
-    title: 'Квест 6 · Мои заявки',
-    text: 'Здесь отражаются все заявки и их статусы. Заявку можно отредактировать или удалить.',
+    title: 'Квест 7 · Мои заявки',
+    text: 'Здесь отражаются все заявки и их статусы. Учебная заявка из квеста помечена отдельной плашкой.',
     kind: 'none',
     action: 'acknowledge'
   }

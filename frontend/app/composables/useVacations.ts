@@ -116,13 +116,15 @@ export function useVacations() {
     start: string;
     end: string;
     comment?: string;
+    year?: number;
   }) => {
     if (!import.meta.client) return null;
+    const { year: requestYear, ...rest } = payload;
     const saved = await $fetch<VacationState>('/api/vacations/requests', {
       method: 'POST',
       body: {
-        year: viewYear.value,
-        ...payload
+        year: requestYear ?? viewYear.value,
+        ...rest
       }
     });
     applyServerState(saved);
@@ -271,6 +273,7 @@ export function useVacations() {
     start: string;
     end: string;
     comment?: string;
+    year?: number;
   }) => {
     const beforeIds = new Set(
       Object.values(state.value.requestsByYear)
