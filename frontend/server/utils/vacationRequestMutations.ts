@@ -47,7 +47,7 @@ export async function createVacationRequest(
     start: body.start,
     end: body.end,
     status: 'pending',
-    approval_step: employee ? initialApprovalStep(employee) : 'manager',
+    approval_step: employee ? initialApprovalStep(employee, body.employee) : 'manager',
     comment: body.comment?.trim() || 'Заявка из платформы',
     createdAt: new Date().toLocaleDateString('ru-RU')
   };

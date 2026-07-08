@@ -231,7 +231,7 @@ export function useVacations() {
         if (req.status !== 'pending' || req.approval_step !== undefined) continue;
         const employee = findByName(req.employee);
         if (!employee) continue;
-        patches.push({ id: req.id, approval_step: initialApprovalStep(employee) });
+        patches.push({ id: req.id, approval_step: initialApprovalStep(employee, req.employee) });
       }
     }
     for (const patch of patches) {

@@ -70,7 +70,21 @@ export function needsDigitalTwoStepApproval(employee: VacationEmployeeRef): bool
   return needsTwoStepApproval(employee);
 }
 
-export function initialApprovalStep(employee: VacationEmployeeRef): VacationApprovalStep {
+const isDirectorSelfRequest = (
+  requestEmployeeName: string | undefined,
+  employee: VacationEmployeeRef
+): boolean => {
+  if (!requestEmployeeName) return false;
+  const cfg = getTwoStepConfig(employee.department);
+  if (!cfg) return false;
+  return requestEmployeeName.trim() === cfg.directorName.trim();
+};
+
+export function initialApprovalStep(
+  employee: VacationEmployeeRef,
+  requestEmployeeName?: string
+): VacationApprovalStep {
+  if (isDirectorSelfRequest(requestEmployeeName, employee)) return 'manager';
   if (needsTwoStepApproval(employee)) return 'manager';
   const cfg = getTwoStepConfig(employee.department);
   if (cfg) return 'director';
@@ -82,9 +96,17 @@ export function resolveRequestApprovalStep(
   employee: VacationEmployeeRef | undefined
 ): VacationApprovalStep | null {
   if (request.status !== 'pending') return null;
-  if (request.approval_step) return request.approval_step;
+  const requestEmployeeName =
+    'employee' in request && typeof request.employee === 'string' ? request.employee : undefined;
+  if (request.approval_step) {
+    // Нормализуем старые заявки директора, чтобы они не «застревали» на self-approval.
+    if (request.approval_step === 'director' && employee && isDirectorSelfRequest(requestEmployeeName, employee)) {
+      return 'manager';
+    }
+    return request.approval_step;
+  }
   if (!employee) return 'manager';
-  return initialApprovalStep(employee);
+  return initialApprovalStep(employee, requestEmployeeName);
 }
 
 export function canApproverReviewRequest(
@@ -95,6 +117,7 @@ export function canApproverReviewRequest(
   if (request.status !== 'pending' || !employee) return false;
 
   const approver = approverName.trim();
+  if (approver === request.employee.trim()) return false;
   const step = resolveRequestApprovalStep(request, employee);
   if (!step) return false;
 
@@ -122,7 +145,12 @@ export function resolveApproverEmployeeName(
     return name || null;
   }
   const cfg = getTwoStepConfig(employee.department);
-  if (cfg) return cfg.directorName;
+  if (cfg) {
+    const director = cfg.directorName.trim();
+    const requestEmployeeName =
+      'employee' in request && typeof request.employee === 'string' ? request.employee.trim() : '';
+    if (director && director !== requestEmployeeName) return director;
+  }
   const fallback = employee.manager.trim();
   return fallback || null;
 }
