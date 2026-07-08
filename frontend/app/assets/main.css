@@ -5852,16 +5852,30 @@ a {
   max-width: 100%;
   margin: 0;
   padding: 2px 3px;
-  font-size: 0.52rem;
+  font-size: 0.78rem;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  line-height: 1.1;
+  line-height: 1.2;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
+}
+
+/* На больших экранах (desktop 1600x900+) делаем даты в "Общем" чуть крупнее. */
+@media (min-width: 1500px) and (min-height: 850px) {
+  .vac-team-calendar--employee-team .vac-cell--compact {
+    padding: 6px 4px;
+  }
+
+  .vac-team-calendar--employee-team .vac-cell--compact .vac-block {
+    padding: 3px 5px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    font-weight: 500;
+  }
 }
 
 /* 4 колонки × 3 ряда — как в макете */
