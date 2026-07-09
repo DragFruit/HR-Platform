@@ -1,5 +1,5 @@
 <template>
-  <section class="card section-card admin-notifications-page">
+  <section v-if="loading || error || notifications.length" class="card section-card admin-notifications-page">
     <header class="section-head">
       <h3 class="section-title">Уведомления по отпускам</h3>
       <button
@@ -14,7 +14,6 @@
 
     <p v-if="loading" class="soft">Загрузка…</p>
     <p v-else-if="error" class="gift-error">{{ error }}</p>
-    <p v-else-if="!notifications.length" class="soft">Уведомлений пока нет.</p>
 
     <ul v-else class="admin-notifications-page list-reset">
       <li
@@ -44,6 +43,8 @@
       </li>
     </ul>
   </section>
+
+  <EmptyNotificationsSketch v-else />
 </template>
 
 <script setup lang="ts">
