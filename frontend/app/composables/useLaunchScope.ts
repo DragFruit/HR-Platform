@@ -6,6 +6,17 @@ export const LAUNCH_VACATIONS_ADMIN_PATH = '/admin/vacations';
 export const LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH = '/admin/employees';
 export const LAUNCH_VACATIONS_ADMIN_NOTIFICATIONS_PATH = '/admin/notifications';
 
+export const vacationsEmployeeNav = [
+  { to: LAUNCH_VACATIONS_EMPLOYEE_PATH, label: 'График отпусков' },
+  { to: LAUNCH_VACATIONS_NOTIFICATIONS_PATH, label: 'Уведомления' }
+] as const;
+
+export const vacationsAdminNav = [
+  { to: LAUNCH_VACATIONS_ADMIN_PATH, label: 'График отпусков' },
+  { to: LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH, label: 'Сотрудники' },
+  { to: LAUNCH_VACATIONS_ADMIN_NOTIFICATIONS_PATH, label: 'Уведомления' }
+] as const;
+
 export function useLaunchScope() {
   const config = useRuntimeConfig();
 
@@ -54,11 +65,15 @@ export function useLaunchScope() {
 
   const isNavPathUnlocked = (path: string) => isPathAllowed(path);
 
+  const navForLaunchScope = (platformAdmin: boolean) =>
+    platformAdmin ? [...vacationsAdminNav] : [...vacationsEmployeeNav];
+
   return {
     launchScope,
     isVacationsOnly,
     isPathAllowed,
     isNavPathUnlocked,
+    navForLaunchScope,
     homePath
   };
 }
