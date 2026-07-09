@@ -6,8 +6,9 @@
 
 ### Production: меню только по отпускам
 
-- В режиме `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` снова показываются только вкладки графика (и уведомления), без серых «закрытых» пунктов.
-- Пути: `useLaunchScope.ts`, `usePlatformContext.ts`, `nuxt.config.ts` (fallback `vacations` на production).
+- На бое снова все вкладки в меню, но недоступные — с замочком (не кликаются); исправлен сбой, когда на production открывались все разделы.
+- `useLaunchScope`: на `appEnv=production` принудительно режим `vacations`, даже если `launchScope` по ошибке `full`.
+- Пути: `useLaunchScope.ts`, `usePlatformContext.ts`.
 
 ### Отпуска: полировка обучалки и броней
 
@@ -398,7 +399,7 @@
 
 ### Production: пилот «только график отпусков»
 
-- На бое `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` — в меню только разделы отпусков (и уведомления); остальные вкладки скрыты.
+- На бое `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` — все пункты меню видны, но недоступные разделы бледные, без клика, с замочком справа (как закрытые этапы адаптации).
 - Открыты: `/vacations` (сотрудник); `/admin/vacations` + `/admin/employees` (админ). Остальные URL редиректятся на график отпусков.
 - График отпусков на широких мониторах растягивается на всю рабочую область (убран фикс 1200×638), календарь 4×3 масштабируется по ширине/высоте.
 - Staging и локально по-прежнему `full`. Файлы: `app.vue`, `usePlatformContext.ts`, `main.css`.
