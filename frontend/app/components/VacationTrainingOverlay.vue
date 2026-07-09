@@ -88,7 +88,7 @@
 
       <div
         v-if="showRewardReveal"
-        class="vac-training-reward"
+        class="vac-training-reward vac-training-overlay__layer"
         :class="{ 'vac-training-reward--close-ready': showRewardClose }"
         role="dialog"
         aria-labelledby="vac-training-reward-title"
@@ -123,96 +123,96 @@
           </button>
         </div>
       </div>
-
-      <article
-        v-show="!showRewardReveal"
-        ref="cardRef"
-        class="vac-training-overlay__card"
-        role="dialog"
-        aria-labelledby="vac-training-step-title"
-        :style="cardStyle"
-      >
-        <button
-          type="button"
-          class="vac-training-overlay__skip"
-          @click="skipTraining"
-        >
-          Пропустить
-        </button>
-
-        <p class="vac-training-overlay__progress">{{ progressLabel }}</p>
-        <h3 id="vac-training-step-title" class="vac-training-overlay__title">{{ currentStep.title }}</h3>
-
-        <template v-if="currentStep.id === 'warnings'">
-          <ul class="vac-training-warnings list-reset">
-            <li v-for="item in warningItems" :key="item.title" class="vac-training-warnings__item">
-              <span :class="['vac-training-warnings__badge', item.badgeClass]">{{ item.title }}</span>
-              <span class="vac-training-warnings__desc">{{ item.text }}</span>
-            </li>
-          </ul>
-        </template>
-        <template v-else-if="currentStep.id === 'requests'">
-          <p class="vac-training-overlay__text">{{ currentStep.text }}</p>
-          <div class="vac-training-status emp-request-meta">
-            <span
-              v-for="item in requestStatusItems"
-              :key="item.status"
-              class="pill"
-              :class="item.status"
-            >
-              {{ item.title }}
-            </span>
-          </div>
-          <p class="vac-training-overlay__reward-hint muted">
-            Отлично! Теперь вы знаете, как пользоваться Графиком отпусков.
-          </p>
-        </template>
-        <p v-else class="vac-training-overlay__text">{{ currentStep.text }}</p>
-
-        <div v-if="showAcknowledge" class="vac-training-overlay__footer">
-          <div class="vac-training-overlay__nav">
-            <button
-              type="button"
-              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
-              :disabled="stepIndex === 0"
-              @click="goPrevStep"
-            >
-              Назад
-            </button>
-
-            <button
-              v-if="isLastStep"
-              type="button"
-              class="vac-training-overlay__reward-btn"
-              @click="onAcknowledge"
-            >
-              Получить награду
-            </button>
-            <button
-              v-else
-              type="button"
-              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--next"
-              @click="onAcknowledge"
-            >
-              Продолжить
-            </button>
-          </div>
-        </div>
-        <div v-else class="vac-training-overlay__footer">
-          <div class="vac-training-overlay__nav vac-training-overlay__nav--hint">
-            <button
-              type="button"
-              class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
-              :disabled="stepIndex === 0"
-              @click="goPrevStep"
-            >
-              Назад
-            </button>
-            <p class="vac-training-overlay__hint muted">Выполните действие на экране ↑</p>
-          </div>
-        </div>
-      </article>
     </div>
+
+    <article
+      v-if="isActive && currentStep && !showRewardReveal"
+      ref="cardRef"
+      class="vac-training-overlay__card vac-training-overlay__layer"
+      role="dialog"
+      aria-labelledby="vac-training-step-title"
+      :style="cardStyle"
+    >
+      <button
+        type="button"
+        class="vac-training-overlay__skip"
+        @click="skipTraining"
+      >
+        Пропустить
+      </button>
+
+      <p class="vac-training-overlay__progress">{{ progressLabel }}</p>
+      <h3 id="vac-training-step-title" class="vac-training-overlay__title">{{ currentStep.title }}</h3>
+
+      <template v-if="currentStep.id === 'warnings'">
+        <ul class="vac-training-warnings list-reset">
+          <li v-for="item in warningItems" :key="item.title" class="vac-training-warnings__item">
+            <span :class="['vac-training-warnings__badge', item.badgeClass]">{{ item.title }}</span>
+            <span class="vac-training-warnings__desc">{{ item.text }}</span>
+          </li>
+        </ul>
+      </template>
+      <template v-else-if="currentStep.id === 'requests'">
+        <p class="vac-training-overlay__text">{{ currentStep.text }}</p>
+        <div class="vac-training-status emp-request-meta">
+          <span
+            v-for="item in requestStatusItems"
+            :key="item.status"
+            class="pill"
+            :class="item.status"
+          >
+            {{ item.title }}
+          </span>
+        </div>
+        <p class="vac-training-overlay__reward-hint muted">
+          Отлично! Теперь вы знаете, как пользоваться Графиком отпусков.
+        </p>
+      </template>
+      <p v-else class="vac-training-overlay__text">{{ currentStep.text }}</p>
+
+      <div v-if="showAcknowledge" class="vac-training-overlay__footer">
+        <div class="vac-training-overlay__nav">
+          <button
+            type="button"
+            class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
+            :disabled="stepIndex === 0"
+            @click="goPrevStep"
+          >
+            Назад
+          </button>
+
+          <button
+            v-if="isLastStep"
+            type="button"
+            class="vac-training-overlay__reward-btn"
+            @click="onAcknowledge"
+          >
+            Получить награду
+          </button>
+          <button
+            v-else
+            type="button"
+            class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--next"
+            @click="onAcknowledge"
+          >
+            Продолжить
+          </button>
+        </div>
+      </div>
+      <div v-else class="vac-training-overlay__footer">
+        <div class="vac-training-overlay__nav vac-training-overlay__nav--hint">
+          <button
+            type="button"
+            class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--back"
+            :disabled="stepIndex === 0"
+            @click="goPrevStep"
+          >
+            Назад
+          </button>
+          <p class="vac-training-overlay__hint muted">Выполните действие на экране ↑</p>
+        </div>
+      </div>
+    </article>
   </Teleport>
 </template>
 
@@ -230,6 +230,8 @@ import {
   measureBalanceValueRect,
   measureCreateToolbarUnderlineRect,
   measureProjectionSummaryRect,
+  measureRequestsHeadingRect,
+  measureReservationsClarifyRect,
   pickMarkerAsset
 } from '~/utils/vacationTrainingMarkerAssets';
 
@@ -268,12 +270,20 @@ const showAcknowledge = computed(() => currentStep.value?.action === 'acknowledg
 const isLastStep = computed(() => stepIndex.value >= totalSteps.value - 1);
 
 const isInteractiveStep = (step: { action?: string }) =>
-  step.action === 'calendar-range' || step.action === 'create-request';
+  step.action === 'calendar-range' ||
+  step.action === 'create-request' ||
+  step.action === 'create-reservation';
 
 const shouldSpotlightTarget = (step: { id?: string; target?: string | null; action?: string }) => {
   if (!step.target) return false;
   if (isInteractiveStep(step)) return true;
-  return step.id === 'balance' || step.id === 'projection' || step.id === 'requests';
+  return (
+    step.id === 'balance' ||
+    step.id === 'projection' ||
+    step.id === 'manage-request' ||
+    step.id === 'reservation-clarify' ||
+    step.id === 'requests'
+  );
 };
 
 const clearActiveTarget = () => {
@@ -293,38 +303,125 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 
 const measureCardHeight = () => cardRef.value?.offsetHeight ?? CARD_EST_HEIGHT;
 
-const placeCalendarCard = (calendarRect: DOMRect) => {
-  const aside = document.querySelector('.employee-aside:not(.employee-aside--embedded)');
-  const asideRect = aside?.getBoundingClientRect();
+const cardOverlapsRect = (
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  rect: DOMRect,
+  pad = 10
+) => {
+  const cardRight = left + width;
+  const cardBottom = top + height;
+  const targetLeft = rect.left - pad;
+  const targetTop = rect.top - pad;
+  const targetRight = rect.right + pad;
+  const targetBottom = rect.bottom + pad;
+  return (
+    left < targetRight &&
+    cardRight > targetLeft &&
+    top < targetBottom &&
+    cardBottom > targetTop
+  );
+};
+
+const placeAvoidingTarget = (targetRect: DOMRect, cardWidth = CARD_WIDTH) => {
   const cardHeight = measureCardHeight();
+  const gap = 16;
 
-  if (asideRect) {
+  const candidates = [
+    {
+      left: targetRect.left - cardWidth - gap,
+      top: targetRect.top + targetRect.height / 2 - cardHeight / 2
+    },
+    {
+      left: targetRect.left - cardWidth - gap,
+      top: targetRect.top - cardHeight - gap
+    },
+    {
+      left: targetRect.left + targetRect.width / 2 - cardWidth / 2,
+      top: targetRect.top - cardHeight - gap
+    },
+    {
+      left: targetRect.left + targetRect.width / 2 - cardWidth / 2,
+      top: targetRect.bottom + gap
+    },
+    {
+      left: targetRect.right + gap,
+      top: targetRect.top + targetRect.height / 2 - cardHeight / 2
+    }
+  ];
+
+  for (const candidate of candidates) {
     const left = clamp(
-      asideRect.left + 10,
+      candidate.left,
       VIEWPORT_MARGIN,
-      window.innerWidth - CARD_WIDTH - VIEWPORT_MARGIN
+      window.innerWidth - cardWidth - VIEWPORT_MARGIN
     );
-    let top = asideRect.top + 20;
-    const maxTop = window.innerHeight - cardHeight - FOOTER_RESERVE;
-    top = clamp(top, VIEWPORT_MARGIN, maxTop);
-
-    cardStyle.value = {
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${CARD_WIDTH}px`,
-      maxWidth: `min(${CARD_WIDTH}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))`,
-      transform: 'none'
-    };
-    return;
+    const top = clamp(
+      candidate.top,
+      VIEWPORT_MARGIN,
+      window.innerHeight - cardHeight - FOOTER_RESERVE
+    );
+    if (!cardOverlapsRect(left, top, cardWidth, cardHeight, targetRect)) {
+      return { left, top };
+    }
   }
 
-  let top = calendarRect.top + 20;
-  const maxTop = window.innerHeight - cardHeight - FOOTER_RESERVE;
-  top = clamp(top, VIEWPORT_MARGIN, maxTop);
+  const calendarRect = document.querySelector('[data-tour="vac-calendar"]')?.getBoundingClientRect();
+  if (calendarRect) {
+    const left = calendarRect.left + gap;
+    const top = calendarRect.top + gap;
+    if (!cardOverlapsRect(left, top, cardWidth, cardHeight, targetRect)) {
+      return { left, top };
+    }
+  }
+
+  return {
+    left: clamp(
+      targetRect.left - cardWidth - gap,
+      VIEWPORT_MARGIN,
+      window.innerWidth - cardWidth - VIEWPORT_MARGIN
+    ),
+    top: clamp(
+      targetRect.top - cardHeight - gap,
+      VIEWPORT_MARGIN,
+      window.innerHeight - cardHeight - FOOTER_RESERVE
+    )
+  };
+};
+
+const placeReservationBookCard = (targetRect: DOMRect) => {
+  const { left, top } = placeAvoidingTarget(targetRect);
 
   cardStyle.value = {
     top: `${top}px`,
-    left: `${clamp(VIEWPORT_MARGIN, VIEWPORT_MARGIN, window.innerWidth - CARD_WIDTH - VIEWPORT_MARGIN)}px`,
+    left: `${left}px`,
+    width: `${CARD_WIDTH}px`,
+    maxWidth: `min(${CARD_WIDTH}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))`,
+    transform: 'none'
+  };
+};
+
+/** Карточка поверх календаря (шаг 6): ~⅓ ширины за левым краем календаря */
+const placeCalendarStepCard = (calendarRect: DOMRect) => {
+  const cardHeight = measureCardHeight();
+  const gap = 12;
+
+  let left = calendarRect.left - CARD_WIDTH / 3;
+  let top = calendarRect.top + gap;
+
+  const toolbarRect = document.querySelector('[data-tour="vac-create-form"]')?.getBoundingClientRect();
+  if (toolbarRect) {
+    top = toolbarRect.bottom + gap;
+  }
+
+  left = clamp(left, VIEWPORT_MARGIN, window.innerWidth - CARD_WIDTH - VIEWPORT_MARGIN);
+  top = clamp(top, VIEWPORT_MARGIN, window.innerHeight - cardHeight - FOOTER_RESERVE);
+
+  cardStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
     width: `${CARD_WIDTH}px`,
     maxWidth: `min(${CARD_WIDTH}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))`,
     transform: 'none'
@@ -395,6 +492,10 @@ const placeRequestsCard = (rect: DOMRect) => {
   placeDefaultCard(rect);
 };
 
+const placeReservationsCard = (rect: DOMRect) => {
+  placeRequestsCard(rect);
+};
+
 const placeDefaultCard = (rect: DOMRect) => {
   const cardHeight = measureCardHeight();
   const cardTop = clamp(rect.bottom + 16, VIEWPORT_MARGIN, window.innerHeight - cardHeight - FOOTER_RESERVE);
@@ -424,6 +525,13 @@ const updateGeometry = () => {
   const el = document.querySelector(`[data-tour="${step.target}"]`);
   if (!el) {
     targetRect.value = null;
+    cardStyle.value = {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: `${CARD_WIDTH}px`,
+      maxWidth: `min(${CARD_WIDTH}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))`
+    };
     return;
   }
 
@@ -440,13 +548,25 @@ const updateGeometry = () => {
     return;
   }
 
-  if (step.id === 'calendar') {
-    placeCalendarCard(rect);
+  if (step.id === 'manage-request' || step.id === 'requests') {
+    placeRequestsCard(rect);
     return;
   }
 
-  if (step.id === 'requests') {
-    placeRequestsCard(rect);
+  if (step.id === 'reservation-clarify') {
+    placeReservationsCard(measureReservationsClarifyRect() ?? rect);
+    return;
+  }
+
+  if (step.id === 'reservation-book') {
+    placeReservationBookCard(rect);
+    return;
+  }
+
+  if (step.id === 'calendar') {
+    placeCalendarStepCard(
+      document.querySelector('[data-tour="vac-calendar"]')?.getBoundingClientRect() ?? rect
+    );
     return;
   }
 
@@ -487,13 +607,20 @@ const spotlightLayout = computed(() => {
   const rect =
     step.id === 'projection'
       ? measureProjectionSummaryRect() ?? targetRect.value
-      : targetRect.value;
+      : step.id === 'manage-request'
+        ? measureRequestsHeadingRect() ?? targetRect.value
+        : step.id === 'reservation-clarify'
+          ? measureReservationsClarifyRect() ?? targetRect.value
+          : targetRect.value;
   if (!rect) return null;
 
   const pad = SPOTLIGHT_PAD;
   const radiusByStep: Record<string, string> = {
     balance: '12px',
     projection: '6px',
+    'manage-request': '10px',
+    'reservation-book': '8px',
+    'reservation-clarify': '10px',
     calendar: '10px',
     requests: '10px'
   };
@@ -544,7 +671,11 @@ const underlineLayout = computed(() => {
       ? measureCreateToolbarUnderlineRect()
       : step.id === 'projection'
         ? measureProjectionSummaryRect()
-        : targetRect.value;
+        : step.id === 'manage-request'
+          ? measureRequestsHeadingRect()
+          : step.id === 'reservation-clarify'
+            ? measureReservationsClarifyRect()
+            : targetRect.value;
   if (!rect) return null;
 
   const pad = markerPaddingForStep(step.id);
@@ -605,7 +736,7 @@ const revealReward = async () => {
   clearRewardCloseTimer();
   rewardCloseTimer = setTimeout(() => {
     showRewardClose.value = true;
-  }, 5000);
+  }, 3000);
 };
 
 const onAcknowledge = async () => {
@@ -620,17 +751,77 @@ const onAcknowledge = async () => {
   acknowledgeStep();
 };
 
-watch(currentStep, () => {
+const scrollAsideToShowElement = (el: HTMLElement) => {
+  const aside = document.querySelector(
+    '.employee-aside--fit:not(.employee-aside--embedded)'
+  ) as HTMLElement | null;
+  if (!aside || !aside.contains(el)) return;
+
+  const padding = 12;
+  const asideRect = aside.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const elTop = aside.scrollTop + (elRect.top - asideRect.top);
+  const elBottom = elTop + elRect.height;
+  const viewTop = aside.scrollTop;
+  const viewBottom = aside.scrollTop + aside.clientHeight;
+
+  if (elTop < viewTop + padding) {
+    aside.scrollTop = Math.max(0, elTop - padding);
+  } else if (elBottom > viewBottom - padding) {
+    aside.scrollTop = elBottom - aside.clientHeight + padding;
+  }
+};
+
+const scrollAsideForStep = (step: { id?: string; target?: string | null }) => {
+  if (!step.target) return;
+
+  if (step.id === 'reservation-clarify') {
+    const block = document.querySelector('[data-tour="vac-reservations-block"]') as HTMLElement | null;
+    if (block) scrollAsideToShowElement(block);
+    return;
+  }
+
+  if (step.id === 'requests') {
+    scrollAsideToRequests();
+    return;
+  }
+
+  const el = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null;
+  if (el) scrollAsideToShowElement(el);
+};
+
+const runStepLayout = (step: typeof currentStep.value) => {
   syncActiveTarget();
   nextTick(() => {
+    if (step) scrollAsideForStep(step);
     updateGeometry();
-    requestAnimationFrame(updateGeometry);
+    requestAnimationFrame(() => {
+      if (step) scrollAsideForStep(step);
+      updateGeometry();
+    });
   });
+};
+
+const scrollAsideToRequests = () => {
+  const aside = document.querySelector(
+    '.employee-aside--fit:not(.employee-aside--embedded)'
+  ) as HTMLElement | null;
+  const block = document.querySelector('[data-tour="vac-my-requests"]') as HTMLElement | null;
+  if (!aside || !block) return;
+
+  const asideRect = aside.getBoundingClientRect();
+  const blockRect = block.getBoundingClientRect();
+  const blockBottomInAside = aside.scrollTop + (blockRect.bottom - asideRect.top);
+  const targetScroll = blockBottomInAside - aside.clientHeight + 16;
+  aside.scrollTop = Math.max(0, targetScroll);
+};
+
+watch(currentStep, (step) => {
+  runStepLayout(step);
 }, { immediate: true });
 
 onMounted(() => {
-  syncActiveTarget();
-  updateGeometry();
+  runStepLayout(currentStep.value);
   window.addEventListener('resize', updateGeometry);
   window.addEventListener('scroll', updateGeometry, true);
 });

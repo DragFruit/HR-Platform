@@ -2,10 +2,11 @@ import {
   departmentVacationViewScope,
   isDepartmentVacationViewer
 } from '~/utils/vacationDepartmentView';
+import { enrichTeamMembers } from '~/utils/vacationTeamScope';
 
 export function useVacationDepartmentView() {
   const { user } = useAuth();
-  const { managerProfileName, employeesInDepartment } = useEmployees();
+  const { managerProfileName, employeesInDepartment, findByName, findByUserForAuth } = useEmployees();
 
   const profileName = computed(() => managerProfileName(user.value));
 
@@ -16,7 +17,11 @@ export function useVacationDepartmentView() {
   const departmentTeam = computed(() => {
     const dept = viewDepartment.value;
     if (!dept) return [];
-    return employeesInDepartment(dept);
+    return enrichTeamMembers(
+      employeesInDepartment(dept),
+      findByName,
+      findByUserForAuth(user.value)
+    );
   });
 
   return {

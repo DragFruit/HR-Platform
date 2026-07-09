@@ -6,7 +6,10 @@ export type UserNotification = {
     | 'vacation_deleted'
     | 'vacation_approved'
     | 'vacation_rejected'
-    | 'vacation_next_stage';
+    | 'vacation_next_stage'
+    | 'vacation_reservation_updated'
+    | 'vacation_reservation_expiring'
+    | 'vacation_reservation_expiring_manager';
   recipient_user_id: number;
   vacation_request_id: number;
   employee_name: string;
@@ -77,6 +80,12 @@ export function useUserNotifications() {
         return 'Отпуск отклонён';
       case 'vacation_next_stage':
         return 'Следующий этап согласования';
+      case 'vacation_reservation_updated':
+        return 'Предварительная бронь изменена';
+      case 'vacation_reservation_expiring':
+        return 'Срок предварительной брони';
+      case 'vacation_reservation_expiring_manager':
+        return 'Бронь сотрудника истекает';
       default:
         return 'Отпуска';
     }
@@ -99,6 +108,18 @@ export function useUserNotifications() {
         return item.stage_label
           ? `Заявка на ${period}: ${item.stage_label}.`
           : `Заявка на ${period} перешла на следующий этап согласования.`;
+      case 'vacation_reservation_updated':
+        return item.stage_label
+          ? `${item.employee_name} изменил(а) детали предварительной брони: ${item.stage_label}.`
+          : `${item.employee_name} изменил(а) детали предварительной брони.`;
+      case 'vacation_reservation_expiring':
+        return item.stage_label
+          ? `Сегодня последний день брони (${item.stage_label}). Создайте заявку на отпуск, иначе бронь будет снята.`
+          : 'Сегодня последний день предварительной брони. Создайте заявку на отпуск, иначе бронь будет снята.';
+      case 'vacation_reservation_expiring_manager':
+        return item.stage_label
+          ? `У ${item.employee_name} сегодня истекает предварительная бронь (${item.stage_label}). Напомните создать заявку, иначе бронь снимется.`
+          : `У ${item.employee_name} сегодня истекает предварительная бронь. Напомните создать заявку.`;
       default:
         return period;
     }
@@ -121,7 +142,9 @@ export function useUserNotifications() {
   const isManagerAction = (item: UserNotification) =>
     item.kind === 'vacation_submitted' ||
     item.kind === 'vacation_updated' ||
-    item.kind === 'vacation_deleted';
+    item.kind === 'vacation_deleted' ||
+    item.kind === 'vacation_reservation_updated' ||
+    item.kind === 'vacation_reservation_expiring_manager';
 
   return {
     notifications,

@@ -1,5 +1,11 @@
 <template>
-  <aside class="employee-aside employee-aside--fit" :class="{ 'employee-aside--embedded': embedded }">
+  <aside
+    class="employee-aside employee-aside--fit"
+    :class="{
+      'employee-aside--embedded': embedded,
+      'employee-aside--training-locked': isTrainingActive
+    }"
+  >
     <VacationUiModeToggle
       v-if="uiMode !== undefined"
       :model-value="uiMode"
@@ -42,6 +48,53 @@
         </tr>
       </tbody>
     </table>
+
+    <section
+      v-if="myReservations.length"
+      class="emp-reservations-block"
+      data-tour="vac-reservations-block"
+    >
+      <h4 class="emp-requests-heading">Предварительные брони</h4>
+      <div class="emp-reservations-list">
+        <div
+          v-for="res in myReservations"
+          :key="res.id"
+          class="emp-reservation-row"
+          :class="{ 'emp-reservation-row--training': isTrainingReservationItem(res) }"
+        >
+          <div class="emp-reservation-row__main">
+            <span class="emp-reservation-period">{{ formatReservationRow(res) }}</span>
+            <span v-if="isTrainingReservationItem(res)" class="vac-training-tag">Учебная</span>
+            <span v-if="res.comment" class="emp-reservation-comment">{{ res.comment }}</span>
+          </div>
+          <div class="emp-reservation-row__actions">
+            <button
+              v-if="canManageReservation(res)"
+              type="button"
+              class="vac-emp-btn vac-emp-btn--ghost vac-emp-btn--sm"
+              data-tour="vac-reservation-clarify"
+              :disabled="isCreateRequestFromReservationDisabled"
+              :title="
+                isCreateRequestFromReservationDisabled
+                  ? 'Будет доступно после завершения обучения'
+                  : undefined
+              "
+              @click="emitClarify(res)"
+            >
+              Создать заявку
+            </button>
+            <button
+              v-if="!isTrainingReservationItem(res) && canManageReservation(res)"
+              type="button"
+              class="vac-emp-btn vac-emp-btn--ghost vac-emp-btn--sm emp-reservation-delete"
+              @click="removeReservation(res.id)"
+            >
+              Удалить
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section class="emp-requests-block" data-tour="vac-my-requests">
       <h4 class="emp-requests-heading">Мои заявки</h4>
@@ -138,6 +191,7 @@
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-holiday" /> Праздничный день</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-approved" /> Отпуск (одобрен)</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-pending" /> На согласовании</div>
+    <div class="hr-legend-item"><span class="hr-legend-swatch sw-reservation" /> Предварительная бронь</div>
   </aside>
 </template>
 
@@ -145,7 +199,12 @@
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
 import { countVacationBillableDays, isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
-import type { TrainingVacationRequest } from '~/composables/useVacationTraining';
+import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
+import {
+  canManageReservationMonth,
+  formatReservationPeriod,
+  type VacationReservation
+} from '~/utils/vacationReservations';
 
 const props = defineProps<{
   viewYear: number;
@@ -156,6 +215,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:uiMode': [value: 'manager' | 'employee'];
+  'clarify-reservation': [reservation: VacationReservation];
 }>();
 
 const { user } = useAuth();
@@ -163,12 +223,25 @@ const { findByUserForAuth } = useEmployees();
 const {
   requestsForYear,
   employeeRequests,
+  employeeReservations,
   updateRequestDates,
   deleteRequest,
+  deleteReservation,
   requestStatusLabel,
-  state
+  state,
+  MONTHS_RU
 } = useVacations();
-const { mergeRequestsForDisplay } = useVacationTraining();
+const {
+  mergeRequestsForDisplay,
+  mergeReservationsForDisplay,
+  isTrainingReservation,
+  isActive: isTrainingActive
+} = useVacationTraining();
+
+const isCreateRequestFromReservationDisabled = computed(() => isTrainingActive.value);
+
+const isTrainingReservationItem = (res: VacationReservation): res is TrainingVacationReservation =>
+  'isTraining' in res && Boolean((res as TrainingVacationReservation).isTraining);
 
 const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest =>
   'isTraining' in req && Boolean((req as TrainingVacationRequest).isTraining);
@@ -199,13 +272,43 @@ const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
+const myReservations = computed(() => {
+  if (!employeeName.value) return [];
+  const real = employeeReservations(employeeName.value, props.viewYear);
+  const merged = mergeReservationsForDisplay(props.viewYear, real);
+  return merged
+    .filter((r) => r.employee === employeeName.value)
+    .sort((a, b) => a.month - b.month);
+});
+
+const formatReservationRow = (res: VacationReservation) =>
+  formatReservationPeriod(res.year, res.month, res.durationDays, MONTHS_RU);
+
+const canManageReservation = (res: VacationReservation) =>
+  isTrainingReservationItem(res) || canManageReservationMonth(res.year, res.month);
+
+const emitClarify = (res: VacationReservation) => {
+  if (isCreateRequestFromReservationDisabled.value) return;
+  emit('clarify-reservation', res);
+};
+
+const removeReservation = async (id: number) => {
+  if (isTrainingReservation(id)) return;
+  await deleteReservation(id);
+};
+
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
   const real = employeeRequests(employeeName.value, props.viewYear);
   const merged = mergeRequestsForDisplay(props.viewYear, real);
   return merged
     .filter((r) => r.employee === employeeName.value)
-    .sort((a, b) => a.start.localeCompare(b.start));
+    .sort((a, b) => {
+      const aTraining = isTrainingRequest(a);
+      const bTraining = isTrainingRequest(b);
+      if (aTraining !== bTraining) return aTraining ? -1 : 1;
+      return b.id - a.id;
+    });
 });
 
 const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);

@@ -1,11 +1,14 @@
 import type { VacationRequest } from '~/composables/useVacations';
+import type { VacationReservation } from '~/utils/vacationReservations';
 import { isManagerVacationTrainingCompleted } from '~/composables/useManagerVacationTraining';
 import {
   EMPLOYEE_VACATION_TRAINING_STEPS,
+  VACATION_TRAINING_RESERVATION_MONTH,
   type VacationTrainingStep
 } from '~/data/vacationTrainingQuest';
 
 export type TrainingVacationRequest = VacationRequest & { isTraining: true };
+export type TrainingVacationReservation = VacationReservation & { isTraining: true };
 
 const STORAGE_KEY = 'vbi-vacation-training-v1';
 
@@ -15,6 +18,7 @@ type TrainingStorage = {
 };
 
 let trainingRequestSeq = -1000;
+let trainingReservationSeq = -2000;
 
 const readStorage = (): TrainingStorage => {
   if (!import.meta.client) return { completed: [], skipped: [] };
@@ -48,6 +52,10 @@ export function useVacationTraining() {
   const isActive = useState<boolean>('vac-training-active', () => false);
   const stepIndex = useState<number>('vac-training-step-index', () => 0);
   const trainingRequests = useState<TrainingVacationRequest[]>('vac-training-requests', () => []);
+  const trainingReservations = useState<TrainingVacationReservation[]>(
+    'vac-training-reservations',
+    () => []
+  );
   const promptDismissed = useState<boolean>('vac-training-prompt-dismissed', () => false);
 
   const steps = EMPLOYEE_VACATION_TRAINING_STEPS;
@@ -87,8 +95,24 @@ export function useVacationTraining() {
     if (!isActive.value && trainingRequests.value.length === 0) return real;
     const training = trainingRequestsForViewYear(year);
     if (!training.length) return real;
-    return [...real, ...training];
+    return [...training, ...real];
   };
+
+  const trainingReservationsForViewYear = (year: number) =>
+    trainingReservations.value.filter((item) => item.year === year);
+
+  const mergeReservationsForDisplay = (year: number, real: VacationReservation[]) => {
+    if (!isActive.value && trainingReservations.value.length === 0) return real;
+    const training = trainingReservationsForViewYear(year);
+    if (!training.length) return real;
+    const withoutTrainingMonth = real.filter(
+      (item) => !training.some((t) => t.month === item.month && t.employee === item.employee)
+    );
+    return [...withoutTrainingMonth, ...training];
+  };
+
+  const isTrainingReservation = (id: number) =>
+    trainingReservations.value.some((item) => item.id === id);
 
   const startTraining = () => {
     const id = user.value?.id;
@@ -96,6 +120,7 @@ export function useVacationTraining() {
     isActive.value = true;
     stepIndex.value = 0;
     trainingRequests.value = [];
+    trainingReservations.value = [];
     promptDismissed.value = true;
   };
 
@@ -110,12 +135,14 @@ export function useVacationTraining() {
     promptDismissed.value = true;
     isActive.value = false;
     trainingRequests.value = [];
+    trainingReservations.value = [];
     stepIndex.value = 0;
   };
 
   const exitTraining = () => {
     isActive.value = false;
     trainingRequests.value = [];
+    trainingReservations.value = [];
     stepIndex.value = 0;
   };
 
@@ -129,6 +156,7 @@ export function useVacationTraining() {
     }
     isActive.value = false;
     trainingRequests.value = [];
+    trainingReservations.value = [];
     stepIndex.value = 0;
   };
 
@@ -176,6 +204,54 @@ export function useVacationTraining() {
     return request;
   };
 
+  const addTrainingReservation = (payload: {
+    employee: string;
+    year: number;
+    month: number;
+    durationDays: number;
+    comment?: string;
+  }) => {
+    if (!isActive.value) return null;
+
+    const onBookStep = currentStep.value?.id === 'reservation-book';
+    const existing = trainingReservations.value.find(
+      (item) =>
+        item.employee === payload.employee &&
+        item.year === payload.year &&
+        item.month === payload.month
+    );
+
+    if (existing) {
+      const updated: TrainingVacationReservation = {
+        ...existing,
+        durationDays: payload.durationDays,
+        comment: payload.comment
+      };
+      trainingReservations.value = trainingReservations.value.map((item) =>
+        item.id === existing.id ? updated : item
+      );
+      if (onBookStep) goNextStep();
+      return updated;
+    }
+
+    if (!onBookStep) return null;
+
+    const reservation: TrainingVacationReservation = {
+      id: trainingReservationSeq--,
+      employee: payload.employee,
+      year: payload.year,
+      month: payload.month,
+      durationDays: payload.durationDays,
+      comment: payload.comment,
+      createdAt: new Date().toLocaleDateString('ru-RU'),
+      isTraining: true
+    };
+
+    trainingReservations.value = [...trainingReservations.value, reservation];
+    goNextStep();
+    return reservation;
+  };
+
   const resetTrainingProgress = () => {
     const id = user.value?.id;
     if (!id || !import.meta.client) return;
@@ -186,6 +262,7 @@ export function useVacationTraining() {
     promptDismissed.value = false;
     isActive.value = false;
     trainingRequests.value = [];
+    trainingReservations.value = [];
     stepIndex.value = 0;
   };
 
@@ -205,6 +282,7 @@ export function useVacationTraining() {
     progressLabel,
     shouldShowPrompt,
     trainingRequests,
+    trainingReservations,
     startTraining,
     skipTraining,
     exitTraining,
@@ -213,9 +291,14 @@ export function useVacationTraining() {
     goPrevStep,
     notifyCalendarRangeSelected,
     addTrainingRequest,
+    addTrainingReservation,
     mergeRequestsForDisplay,
+    mergeReservationsForDisplay,
+    isTrainingReservation,
+    trainingReservationsForViewYear,
     trainingRequestsForViewYear,
     resetTrainingProgress,
-    canClaimVacationAchievement
+    canClaimVacationAchievement,
+    trainingReservationMonth: VACATION_TRAINING_RESERVATION_MONTH
   };
 }

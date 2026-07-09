@@ -8,6 +8,14 @@ import {
   type VacationApprovalStep
 } from '~/utils/vacationApproval';
 import { isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
+import {
+  canManageReservationMonth,
+  formatReservationLabel,
+  type VacationMonthEntry,
+  type VacationReservation
+} from '~/utils/vacationReservations';
+
+export type { VacationReservation, VacationMonthEntry };
 
 export type VacationStatus = 'pending' | 'approved' | 'rejected';
 
@@ -34,15 +42,32 @@ export type VacationState = {
   primaryYear: number;
   requestsByYear: Record<string, VacationRequest[]>;
   nextRequestId: number;
+  reservationsByYear: Record<string, VacationReservation[]>;
+  nextReservationId: number;
 };
 
-const STORAGE_KEY = 'vbi-vacations-state-v5';
+const STORAGE_KEY = 'vbi-vacations-state-v6';
+const LEGACY_STORAGE_KEY = 'vbi-vacations-state-v5';
 
 const defaultState = (): VacationState => ({
   primaryYear: new Date().getFullYear(),
   requestsByYear: {},
-  nextRequestId: 1
+  nextRequestId: 1,
+  reservationsByYear: {},
+  nextReservationId: 1
 });
+
+const normalizeState = (raw: Partial<VacationState>): VacationState => {
+  const base = defaultState();
+  return {
+    primaryYear: typeof raw.primaryYear === 'number' ? raw.primaryYear : base.primaryYear,
+    requestsByYear: raw.requestsByYear ?? base.requestsByYear,
+    nextRequestId: typeof raw.nextRequestId === 'number' ? raw.nextRequestId : base.nextRequestId,
+    reservationsByYear: raw.reservationsByYear ?? base.reservationsByYear,
+    nextReservationId:
+      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId
+  };
+};
 
 export const vacationStatusLabels: Record<VacationStatus, string> = {
   pending: 'На согласовании',
@@ -106,8 +131,8 @@ export function useVacations() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
   };
 
-  const applyServerState = (saved: VacationState) => {
-    state.value = saved;
+  const applyServerState = (saved: VacationState | Partial<VacationState>) => {
+    state.value = normalizeState(saved);
     persistLocal();
   };
 
@@ -116,13 +141,15 @@ export function useVacations() {
     start: string;
     end: string;
     comment?: string;
+    year?: number;
   }) => {
     if (!import.meta.client) return null;
+    const { year: requestYear, ...rest } = payload;
     const saved = await $fetch<VacationState>('/api/vacations/requests', {
       method: 'POST',
       body: {
-        year: viewYear.value,
-        ...payload
+        year: requestYear ?? viewYear.value,
+        ...rest
       }
     });
     applyServerState(saved);
@@ -151,6 +178,44 @@ export function useVacations() {
     if (!import.meta.client) return null;
     const saved = await $fetch<VacationState>(`/api/vacations/requests/${id}`, {
       method: 'DELETE'
+    });
+    applyServerState(saved);
+    return saved;
+  };
+
+  const syncCreateReservation = async (payload: {
+    year: number;
+    month: number;
+    durationDays: number;
+    employee?: string;
+    comment?: string;
+  }) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>('/api/vacations/reservations', {
+      method: 'POST',
+      body: payload
+    });
+    applyServerState(saved);
+    return saved;
+  };
+
+  const syncDeleteReservation = async (id: number) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>(`/api/vacations/reservations/${id}`, {
+      method: 'DELETE'
+    });
+    applyServerState(saved);
+    return saved;
+  };
+
+  const syncPatchReservation = async (
+    id: number,
+    patch: { durationDays?: number; comment?: string }
+  ) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>(`/api/vacations/reservations/${id}`, {
+      method: 'PATCH',
+      body: patch
     });
     applyServerState(saved);
     return saved;
@@ -192,10 +257,10 @@ export function useVacations() {
     }
 
     if (!loaded) {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       if (raw) {
         try {
-          applyServerState(JSON.parse(raw) as VacationState);
+          applyServerState(JSON.parse(raw) as Partial<VacationState>);
         } catch {
           state.value = defaultState();
         }
@@ -218,7 +283,14 @@ export function useVacations() {
   const requestsForYear = (year = viewYear.value) =>
     state.value.requestsByYear[String(year)] ?? [];
 
+  const reservationsForYear = (year = viewYear.value) =>
+    (state.value.reservationsByYear[String(year)] ?? []).filter((r) =>
+      canManageReservationMonth(r.year, r.month)
+    );
+
   const yearRequests = computed(() => requestsForYear(viewYear.value));
+
+  const yearReservations = computed(() => reservationsForYear(viewYear.value));
 
   const pendingRequests = computed(() =>
     yearRequests.value.filter((item) => item.status === 'pending')
@@ -271,6 +343,7 @@ export function useVacations() {
     start: string;
     end: string;
     comment?: string;
+    year?: number;
   }) => {
     const beforeIds = new Set(
       Object.values(state.value.requestsByYear)
@@ -365,23 +438,94 @@ export function useVacations() {
     }
   };
 
-  const getMonthEntries = (employeeName: string, month: number, year = viewYear.value) => {
-    return requestsForYear(year)
+  const findReservationById = (id: number) => {
+    for (const [yearKey, list] of Object.entries(state.value.reservationsByYear)) {
+      const item = list.find((r) => r.id === id);
+      if (item) return { item, yearKey };
+    }
+    return null;
+  };
+
+  const addReservation = async (payload: {
+    year: number;
+    month: number;
+    durationDays: number;
+    employee?: string;
+    comment?: string;
+  }) => {
+    const beforeIds = new Set(
+      Object.values(state.value.reservationsByYear)
+        .flat()
+        .map((item) => item.id)
+    );
+    await syncCreateReservation(payload);
+    const created = Object.values(state.value.reservationsByYear)
+      .flat()
+      .find((item) => !beforeIds.has(item.id));
+    return created ?? null;
+  };
+
+  const deleteReservation = async (id: number) => {
+    const found = findReservationById(id);
+    if (!found) return false;
+    try {
+      await syncDeleteReservation(id);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const updateReservation = async (
+    id: number,
+    patch: { durationDays?: number; comment?: string }
+  ) => {
+    const found = findReservationById(id);
+    if (!found) return null;
+    try {
+      await syncPatchReservation(id, patch);
+      return findReservationById(id)?.item ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getMonthEntries = (
+    employeeName: string,
+    month: number,
+    year = viewYear.value
+  ): VacationMonthEntry[] => {
+    const dated = requestsForYear(year)
       .filter((r) => r.employee === employeeName && (r.status === 'approved' || r.status === 'pending'))
       .map((r) => ({
+        kind: 'dated' as const,
         status: r.status,
         label: formatMonthVacationRange(r.start, r.end, month, year)
       }))
       .filter((x) => x.label !== '');
+
+    const reserved = reservationsForYear(year)
+      .filter((r) => r.employee === employeeName && r.month === month + 1)
+      .map((r) => ({
+        kind: 'reservation' as const,
+        status: 'reservation' as const,
+        label: formatReservationLabel(r.durationDays)
+      }));
+
+    return [...dated, ...reserved];
   };
 
   const employeeRequests = (employeeName: string, year = viewYear.value) =>
     requestsForYear(year).filter((r) => r.employee === employeeName);
 
+  const employeeReservations = (employeeName: string, year = viewYear.value) =>
+    reservationsForYear(year).filter((r) => r.employee === employeeName);
+
   return {
     state,
     viewYear,
     yearRequests,
+    yearReservations,
     pendingRequests,
     pendingRequestsForApprover,
     handedOffRequestsForApprover,
@@ -390,14 +534,20 @@ export function useVacations() {
     reloadFromServer,
     persistLocal,
     requestsForYear,
+    reservationsForYear,
     addRequest,
+    addReservation,
+    updateReservation,
     approveRequest,
     setRequestStatus,
     updateRequestDates,
     deleteRequest,
+    deleteReservation,
     findRequestById,
+    findReservationById,
     getMonthEntries,
     employeeRequests,
+    employeeReservations,
     vacationStatusLabels,
     requestStatusLabel,
     MONTHS_RU

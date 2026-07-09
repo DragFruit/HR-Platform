@@ -1,6 +1,9 @@
 export type VacationTrainingStepId =
   | 'balance'
   | 'projection'
+  | 'manage-request'
+  | 'reservation-book'
+  | 'reservation-clarify'
   | 'calendar'
   | 'create'
   | 'warnings'
@@ -18,8 +21,11 @@ export type VacationTrainingStep = {
   text: string;
   kind: VacationTrainingHighlightKind;
   /** Шаг засчитывается после действия пользователя */
-  action?: 'acknowledge' | 'calendar-range' | 'create-request';
+  action?: 'acknowledge' | 'calendar-range' | 'create-request' | 'create-reservation';
 };
+
+/** Декабрь в учебном квесте брони (month 1–12) */
+export const VACATION_TRAINING_RESERVATION_MONTH = 12;
 
 export type ManagerVacationTrainingStepAction = 'acknowledge' | 'open-approval-tab';
 
@@ -49,9 +55,33 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
     action: 'acknowledge'
   },
   {
+    id: 'manage-request',
+    target: 'vac-my-requests',
+    title: 'Квест 3 · Редактирование заявки',
+    text: 'В блоке «Мои заявки» у заявки есть кнопка «⋯»: можно изменить даты или удалить заявку, пока отпуск ещё не начался. У отгуленного отпуска эти функции недоступны.',
+    kind: 'underline',
+    action: 'acknowledge'
+  },
+  {
+    id: 'reservation-book',
+    target: 'vac-reservation-dec',
+    title: 'Квест 4 · Предварительная бронь',
+    text: 'Эту бронь можно поставить, когда точные даты отпуска ещё неизвестны, но с месяцем уже определились. Такие брони не вычитаются из доступных дней — это пометка для себя и команды.\n\nДля создания учебной брони нажмите «+бронь».',
+    kind: 'circle',
+    action: 'create-reservation'
+  },
+  {
+    id: 'reservation-clarify',
+    target: 'vac-reservations-block',
+    title: 'Квест 5 · Создать заявку',
+    text: 'Когда даты станут ясны, нажмите «Создать заявку» — бронь превратится в обычную заявку на отпуск. Учебная бронь исчезнет после завершения квеста.',
+    kind: 'underline',
+    action: 'acknowledge'
+  },
+  {
     id: 'calendar',
     target: 'vac-calendar',
-    title: 'Квест 3 · Календарь',
+    title: 'Квест 6 · Календарь',
     text: 'Кликните день начала отпуска, затем день окончания — даты подставятся в форму автоматически.',
     kind: 'none',
     action: 'calendar-range'
@@ -59,7 +89,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'create',
     target: 'vac-create-form',
-    title: 'Квест 4 · Заявка',
+    title: 'Квест 7 · Заявка',
     text: 'Проверьте даты и нажмите «Создать заявку». Это учебная заявка — руководитель её не увидит.',
     kind: 'underline',
     action: 'create-request'
@@ -67,7 +97,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'warnings',
     target: null,
-    title: 'Квест 5 · Предупреждения',
+    title: 'Квест 8 · Предупреждения',
     text: '',
     kind: 'none',
     action: 'acknowledge'
@@ -75,8 +105,8 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'requests',
     target: 'vac-my-requests',
-    title: 'Квест 6 · Мои заявки',
-    text: 'Здесь отражаются все заявки и их статусы. Заявку можно отредактировать или удалить.',
+    title: 'Квест 9 · Мои заявки',
+    text: 'Здесь отражаются все заявки и их статусы. Учебная заявка из квеста помечена отдельной плашкой.',
     kind: 'none',
     action: 'acknowledge'
   }

@@ -20,6 +20,9 @@
             {{ formAssessment.availableAtStart }} из {{ formAssessment.neededDays }}
           </span>
         </p>
+        <p v-if="clarifyHint" class="vac-emp-toolbar__clarify-hint" role="status">
+          {{ clarifyHint }}
+        </p>
       </form>
     </header>
 
@@ -45,6 +48,7 @@
             variant="employee-team"
             :departments="teamDepartments"
             :requests="yearRequests"
+            :reservations="employeeReservationsList"
             :get-month-entries="getMonthEntries"
             :year="props.viewYear"
           />
@@ -54,13 +58,17 @@
             :employee-name="employeeName"
             :year="props.viewYear"
             :requests="displayRequests"
+            :reservations="employeeReservationsList"
+            :highlight-month-index="highlightMonthIndex"
             :range-pick-start="rangePickStart"
             :range-pick-hover="rangePickHover"
             :selected-range-start="form.start || null"
             :selected-range-end="form.end || null"
             :min-selectable-iso="minIso"
+            :reservation-control-override="reservationControlOverride"
             @day-click="handleDayClick"
             @day-hover="handleDayHover"
+            @reservation-month-click="openReservationDialog"
           />
           <p v-else class="vac-emp-empty">
             Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
@@ -74,14 +82,35 @@
         />
       </div>
 
-      <EmployeeVacationAside v-if="!embedded" :view-year="viewYear" :ui-mode="uiMode" :team-mode-label="teamModeLabel" @update:ui-mode="onUiModeChange" />
+      <EmployeeVacationAside
+        v-if="!embedded"
+        :view-year="viewYear"
+        :ui-mode="uiMode"
+        :team-mode-label="teamModeLabel"
+        @update:ui-mode="onUiModeChange"
+        @clarify-reservation="clarifyReservation"
+      />
     </div>
+
+    <VacationReservationDialog
+      v-model:open="reservationDialogOpen"
+      :year="props.viewYear"
+      :month-index="reservationMonthIndex"
+      :month-label="MONTHS_RU[reservationMonthIndex] ?? ''"
+      :employee-name="employeeName"
+      :editing-reservation="editingReservation"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
+import type { VacationReservation } from '~/utils/vacationReservations';
+import {
+  canAddReservationForMonth,
+  canManageReservationMonth
+} from '~/utils/vacationReservations';
 
 const props = defineProps<{
   viewYear: number;
@@ -105,10 +134,13 @@ const { user } = useAuth();
 const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
 const {
   requestsForYear,
+  employeeReservations,
   addRequest,
+  deleteReservation,
   hydrate: hydrateVacations,
   state,
-  getMonthEntries
+  getMonthEntries,
+  MONTHS_RU
 } = useVacations();
 const {
   hasTeamCalendar,
@@ -120,12 +152,50 @@ const {
   isActive: isTrainingActive,
   currentStep: trainingStep,
   addTrainingRequest,
+  addTrainingReservation,
+  mergeReservationsForDisplay,
+  trainingReservationMonth,
   notifyCalendarRangeSelected,
   mergeRequestsForDisplay
 } = useVacationTraining();
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
 const displayRequests = computed(() => mergeRequestsForDisplay(props.viewYear, yearRequests.value));
+const employeeReservationsList = computed(() => {
+  if (!employeeName.value) return [];
+  const real = employeeReservations(employeeName.value, props.viewYear);
+  return mergeReservationsForDisplay(props.viewYear, real);
+});
+
+const reservationDialogOpen = ref(false);
+const reservationMonthIndex = ref(0);
+const editingReservation = ref<VacationReservation | null>(null);
+const highlightMonthIndex = ref<number | null>(null);
+const pendingClarifyReservationId = ref<number | null>(null);
+const clarifyHint = ref('');
+
+const clarifyReservation = (reservation: { id: number; month: number; year: number; durationDays: number; isTraining?: boolean }) => {
+  if ('isTraining' in reservation && reservation.isTraining && isTrainingActive.value) {
+    highlightMonthIndex.value = reservation.month - 1;
+    form.start = '';
+    form.end = '';
+    clearSelection();
+    formError.value = null;
+    clarifyHint.value =
+      'Выберите конкретные даты на календаре или в форме выше — после создания заявки учебная бронь исчезнет.';
+    document.querySelector('.vac-emp-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  pendingClarifyReservationId.value = reservation.id;
+  highlightMonthIndex.value = reservation.month - 1;
+  const monthName = MONTHS_RU[reservation.month - 1] ?? '';
+  clarifyHint.value = `Создайте заявку на ${monthName} ${reservation.year} (бронь ~${reservation.durationDays} дн.) — выберите период на календаре или в форме выше.`;
+  form.start = '';
+  form.end = '';
+  clearSelection();
+  formError.value = null;
+  document.querySelector('.vac-emp-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
@@ -179,6 +249,44 @@ const {
   }
 });
 
+const reservationControlOverride = computed(() =>
+  isTrainingActive.value && trainingStep.value?.id === 'reservation-book'
+    ? trainingReservationMonth - 1
+    : null
+);
+
+const openReservationDialog = (monthIndex: number) => {
+  if (rangePickStart.value) return;
+  if (
+    isTrainingActive.value &&
+    trainingStep.value?.id === 'reservation-book' &&
+    monthIndex !== trainingReservationMonth - 1
+  ) {
+    return;
+  }
+
+  const monthNum = monthIndex + 1;
+  const existing = employeeReservationsList.value.find((r) => r.month === monthNum);
+  const trainingBookStep =
+    isTrainingActive.value && trainingStep.value?.id === 'reservation-book';
+
+  if (!trainingBookStep) {
+    if (existing) {
+      if (!canManageReservationMonth(props.viewYear, monthNum)) return;
+    } else if (!canAddReservationForMonth(props.viewYear, monthNum)) {
+      return;
+    }
+  }
+  reservationMonthIndex.value = monthIndex;
+  editingReservation.value =
+    employeeReservationsList.value.find((r) => r.month === monthIndex + 1) ?? null;
+  reservationDialogOpen.value = true;
+};
+
+watch(reservationDialogOpen, (isOpen) => {
+  if (!isOpen) editingReservation.value = null;
+});
+
 const hasConflict = (start: string, end: string, excludeId?: number) =>
   displayRequests.value.some(
     (r) =>
@@ -223,7 +331,16 @@ const submitRequest = async () => {
 
   submitting.value = true;
   try {
-    await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
+    const created = await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
+    if (created && pendingClarifyReservationId.value) {
+      await deleteReservation(pendingClarifyReservationId.value);
+      pendingClarifyReservationId.value = null;
+      highlightMonthIndex.value = null;
+      clarifyHint.value = '';
+    } else if (created && isTrainingActive.value && trainingStep.value?.id === 'reservation-clarify') {
+      highlightMonthIndex.value = null;
+      clarifyHint.value = '';
+    }
     form.start = '';
     form.end = '';
     clearSelection();

@@ -30,6 +30,43 @@ const sortMembers = (list: Employee[]) => {
   return unique.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 };
 
+/** Добавляет руководителей отдела (из поля manager) и самого зрителя в список команды. */
+export function enrichTeamMembers(
+  members: Employee[],
+  findByName: (name: string) => Employee | undefined,
+  viewer?: Employee | null
+): Employee[] {
+  const managerNames = new Set<string>();
+  for (const emp of members) {
+    const mgr = emp.manager.trim();
+    if (mgr) managerNames.add(mgr);
+  }
+
+  const combined = [...members];
+  if (viewer) combined.unshift(viewer);
+
+  for (const name of managerNames) {
+    const mgr = findByName(name);
+    if (!mgr) continue;
+    if (members.some((emp) => emp.id === mgr.id)) continue;
+
+    const leadsSubsetInTeam = members.some((emp) => emp.manager.trim() === name);
+    if (!leadsSubsetInTeam) continue;
+
+    // Не поднимаемся выше тимлида: если в списке уже есть руководитель с подчинёнными, его начальника не добавляем.
+    const skipUpperManager = members.some(
+      (emp) =>
+        emp.manager.trim() === name &&
+        members.some((peer) => peer.manager.trim() === emp.name.trim())
+    );
+    if (skipUpperManager) continue;
+
+    combined.push(mgr);
+  }
+
+  return sortMembers(combined);
+}
+
 const groupLeadLabel = (leadName: string) => {
   const short = leadName.trim().split(/\s+/)[0] ?? leadName.trim();
   return `Digital · ${short}`;
@@ -60,7 +97,11 @@ export function resolveVacationTeamScope(
 
     if (isDigitalGroupLeadName(viewerName)) {
       const lead = helpers.findByName(viewerName) ?? viewer;
-      const members = sortMembers([lead, ...helpers.directReports(viewerName)]);
+      const members = enrichTeamMembers(
+        [lead, ...helpers.directReports(viewerName)],
+        helpers.findByName,
+        viewer
+      );
       if (members.length < 2) return null;
       return { kind: 'digital-group', label: groupLeadLabel(viewerName), members };
     }
@@ -68,18 +109,24 @@ export function resolveVacationTeamScope(
     const managerName = viewer.manager.trim();
     if (!managerName) return null;
 
-    const members = sortMembers(
+    const members = enrichTeamMembers(
       allEmployees.filter(
         (emp) =>
           emp.department.trim() === 'Digital' &&
           (emp.name.trim() === managerName || emp.manager.trim() === managerName)
-      )
+      ),
+      helpers.findByName,
+      viewer
     );
     if (members.length < 2) return null;
     return { kind: 'digital-group', label: groupLeadLabel(managerName), members };
   }
 
-  const members = helpers.employeesInDepartment(department);
+  const members = enrichTeamMembers(
+    helpers.employeesInDepartment(department),
+    helpers.findByName,
+    viewer
+  );
   if (members.length < 2) return null;
   return { kind: 'department', label: department, members };
 }

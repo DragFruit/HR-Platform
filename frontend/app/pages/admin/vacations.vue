@@ -3,6 +3,7 @@
     <VacationTeamCalendar
       :departments="departmentsGrouped"
       :requests="yearRequests"
+      :reservations="yearReservations"
       :get-month-entries="getMonthEntries"
     />
   </section>
@@ -66,6 +67,7 @@ const { canSeeAllVacationApprovals } = usePermissions();
 const {
   viewYear,
   yearRequests,
+  yearReservations,
   pendingRequestsForApprover,
   getMonthEntries,
   approveRequest,

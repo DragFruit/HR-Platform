@@ -11,8 +11,20 @@
             <span class="vac-legend-dot vac-legend-dot--pending" />
             На согласовании (предварительно)
           </span>
+          <span class="vac-legend-item">
+            <span class="vac-legend-dot vac-legend-dot--reservation" />
+            Предварительная бронь
+          </span>
         </div>
         <div class="vac-team-calendar__controls">
+          <button
+            v-if="isAdmin"
+            type="button"
+            class="vac-admin-add-btn"
+            @click="adminAddOpen = true"
+          >
+            + Добавить отпуск
+          </button>
           <select v-model.number="viewYear" class="vac-year-chip" aria-label="Год">
             <option :value="2025">2025</option>
             <option :value="2026">2026</option>
@@ -49,6 +61,7 @@
         :departments="departments"
         :year="viewYear"
         :requests="requests"
+        :reservations="reservations"
       />
       <VacationMonthlyCalendar
         v-else
@@ -58,20 +71,25 @@
         :compact-cells="variant === 'employee-team'"
       />
     </div>
+
+    <AdminAddVacationDialog v-if="isAdmin" v-model:open="adminAddOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
+import type { VacationReservation } from '~/utils/vacationReservations';
 
 const props = withDefaults(
   defineProps<{
     departments: EmployeeDepartment[];
     requests: VacationRequest[];
+    reservations?: VacationReservation[];
     getMonthEntries: (employeeName: string, month: number, year: number) => {
       status: string;
       label: string;
+      kind?: string;
     }[];
     /** manager — полный тулбар; employee-team — только таблица по месяцам */
     variant?: 'manager' | 'employee-team';
@@ -81,8 +99,10 @@ const props = withDefaults(
   { variant: 'manager', defaultViewMode: 'detailed' }
 );
 
+const { isAdmin } = usePermissions();
 const { viewYear } = useVacations();
 
+const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
 const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
 </script>

@@ -73,6 +73,15 @@
                       :style="barStyle(bar)"
                       :title="bar.title"
                     />
+                    <span
+                      v-for="(band, idx) in reservationBandsFor(emp.name)"
+                      :key="`${emp.id}-res-${idx}`"
+                      class="vac-detailed-reservation"
+                      :style="barStyle(band)"
+                      :title="band.title"
+                    >
+                      <span class="vac-reservation-label">{{ band.label }}</span>
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -89,6 +98,10 @@ import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import {
+  formatReservationLabel,
+  type VacationReservation
+} from '~/utils/vacationReservations';
 
 const { state: vacationState } = useVacations();
 
@@ -110,10 +123,18 @@ type GanttBar = {
   title: string;
 };
 
+type ReservationBand = {
+  startIdx: number;
+  endIdx: number;
+  title: string;
+  label: string;
+};
+
 const props = defineProps<{
   departments: EmployeeDepartment[];
   year: number;
   requests: VacationRequest[];
+  reservations?: VacationReservation[];
 }>();
 
 const DAY_COL_PX = 22;
@@ -271,7 +292,25 @@ const barsFor = (employeeName: string): GanttBar[] => {
     .filter((x): x is GanttBar => x !== null);
 };
 
-const barStyle = (bar: GanttBar) => {
+const reservationBandsFor = (employeeName: string): ReservationBand[] => {
+  return (props.reservations ?? [])
+    .filter((r) => r.employee === employeeName && r.year === props.year)
+    .map((r) => {
+      const startIdx = dayIndex(new Date(props.year, r.month - 1, 1));
+      const daysInMonth = new Date(props.year, r.month, 0).getDate();
+      const endIdx = startIdx + daysInMonth - 1;
+      const monthLabel = MONTHS_RU[r.month - 1] ?? '';
+      const durationLabel = formatReservationLabel(r.durationDays);
+      return {
+        startIdx,
+        endIdx,
+        title: `Предварительная бронь: ${monthLabel}, ${durationLabel}`,
+        label: durationLabel
+      };
+    });
+};
+
+const barStyle = (bar: { startIdx: number; endIdx: number }) => {
   const total = totalDays.value;
   const span = bar.endIdx - bar.startIdx + 1;
   return {
