@@ -21,6 +21,10 @@ export const markerPaddingForStep = (stepId: string | undefined) => {
       return { x: 12, y: 10 };
     case 'manage-request':
       return { x: 14, y: 12 };
+    case 'reservation-book':
+      return { x: 10, y: 8 };
+    case 'reservation-clarify':
+      return { x: 12, y: 10 };
     case 'calendar':
       return { x: 22, y: 18 };
     case 'create':
@@ -72,6 +76,14 @@ export const measureRequestsHeadingRect = (): DOMRect | null => {
   if (textRect.width > 0 && textRect.height > 0) return textRect;
 
   return heading.getBoundingClientRect();
+};
+
+/** Кнопка «Создать заявку» в блоке предварительных броней */
+export const measureReservationsClarifyRect = (): DOMRect | null => {
+  const block = document.querySelector('[data-tour="vac-reservations-block"]');
+  const btn = block?.querySelector('[data-tour="vac-reservation-clarify"]');
+  if (!btn) return block?.getBoundingClientRect() ?? null;
+  return btn.getBoundingClientRect();
 };
 
 /** Прямоугольник строки тулбара формы создания заявки (заголовок → кнопка «Создать») */

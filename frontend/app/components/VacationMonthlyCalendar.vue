@@ -32,7 +32,7 @@
                     v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
                     :key="idx"
                     class="vac-block"
-                    :class="block.status"
+                    :class="blockClass(block)"
                   >
                     {{ block.label }}
                   </span>
@@ -42,7 +42,7 @@
                     v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
                     :key="idx"
                     class="vac-block"
-                    :class="block.status"
+                    :class="blockClass(block)"
                   >
                     {{ block.label }}
                   </span>
@@ -58,14 +58,12 @@
 
 <script setup lang="ts">
 import type { EmployeeDepartment } from '~/composables/useEmployees';
+import type { VacationMonthEntry } from '~/utils/vacationReservations';
 
 const props = defineProps<{
   departments: EmployeeDepartment[];
   year: number;
-  getMonthEntries: (employeeName: string, month: number, year: number) => {
-    status: string;
-    label: string;
-  }[];
+  getMonthEntries: (employeeName: string, month: number, year: number) => VacationMonthEntry[];
   /** Узкие ячейки сотрудника: плашки в flex-обёртке, без съезда текста */
   compactCells?: boolean;
 }>();
@@ -73,10 +71,11 @@ const props = defineProps<{
 const { MONTHS_RU } = useVacations();
 const monthHeaders = computed(() => MONTHS_RU.map((label) => label.slice(0, 3)));
 
-const cellBlocks = (employeeName: string, month: number) => {
-  return props.getMonthEntries(employeeName, month, props.year).map((entry) => ({
-    status: entry.status,
-    label: entry.label
-  }));
-};
+const cellBlocks = (employeeName: string, month: number) =>
+  props.getMonthEntries(employeeName, month, props.year);
+
+const blockClass = (block: VacationMonthEntry) => ({
+  [block.status]: true,
+  reservation: block.kind === 'reservation'
+});
 </script>

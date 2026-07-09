@@ -11,6 +11,10 @@
             <span class="vac-legend-dot vac-legend-dot--pending" />
             На согласовании (предварительно)
           </span>
+          <span class="vac-legend-item">
+            <span class="vac-legend-dot vac-legend-dot--reservation" />
+            Предварительная бронь
+          </span>
         </div>
         <div class="vac-team-calendar__controls">
           <button
@@ -57,6 +61,7 @@
         :departments="departments"
         :year="viewYear"
         :requests="requests"
+        :reservations="reservations"
       />
       <VacationMonthlyCalendar
         v-else
@@ -74,14 +79,17 @@
 <script setup lang="ts">
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
+import type { VacationReservation } from '~/utils/vacationReservations';
 
 const props = withDefaults(
   defineProps<{
     departments: EmployeeDepartment[];
     requests: VacationRequest[];
+    reservations?: VacationReservation[];
     getMonthEntries: (employeeName: string, month: number, year: number) => {
       status: string;
       label: string;
+      kind?: string;
     }[];
     /** manager — полный тулбар; employee-team — только таблица по месяцам */
     variant?: 'manager' | 'employee-team';

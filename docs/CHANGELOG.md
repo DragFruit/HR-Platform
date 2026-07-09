@@ -2,7 +2,32 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-07-09
+
+### Отпуска: полировка обучалки и броней
+
+- Квест 4–6: позиция карточки (у декабря / поверх календаря), z-index, автопрокрутка aside к цели.
+- Правая панель: блокировка ручной прокрутки на время квеста; подсветка без фиолетовой рамки.
+- Учебные заявки сверху в «Мои заявки»; кнопка «Закрыть» награды через 3 с.
+- Пути: `VacationTrainingOverlay.vue`, `EmployeeVacationAside.vue`, `vacationTrainingQuest.ts`, `useVacationTraining.ts`.
+
 ## 2026-07-08
+
+### Отпуска: срок жизни предварительной брони
+
+- Прошедшие месяцы: нельзя ставить/редактировать бронь; «+бронь» скрыта в последний день месяца.
+- В последний день месяца — уведомление сотруднику и руководителю (`vacation_reservation_expiring` / `_manager`); после окончания месяца бронь снимается автоматически при `GET /api/vacations`.
+- Кнопка «Уточнить даты» переименована в «Создать заявку»; правки квеста 4–6 и 9 (позиция карточки у декабря / поверх календаря, z-index, прокрутка aside); «Создать заявку» у брони неактивна во время обучения; новые заявки сверху в «Мои заявки».
+- Пути: `vacationReservations.ts`, `vacationReservationLifecycle.ts`, `VacationTrainingOverlay.vue`, `EmployeeYearCalendar.vue`.
+
+### Отпуска: предварительная бронь (месяц без точных дат)
+
+- Отдельная сущность `VacationReservation`: месяц + длительность (1–28 дн.), без согласования, баланса и Битрикс.
+- API: `POST /api/vacations/reservations`, `PATCH /api/vacations/reservations/:id`, `DELETE /api/vacations/reservations/:id`.
+- «Мой календарь»: кнопка «+бронь», клик по плашке — редактирование; квест 4–5 в обучалке (декабрь, «Создать заявку»).
+- Пути: `vacationReservations.ts`, `useVacations.ts`, `vacationReservationMutations.ts`, `VacationReservationDialog.vue`, `EmployeeYearCalendar.vue`, `VacationMonthlyCalendar.vue`, `VacationDetailedCalendar.vue`.
+- localStorage: `vbi-vacations-state-v6` (миграция с v5).
+- Проверка: создать бронь на июль → видна в team-календарях → «Создать заявку» → pending-заявка, бронь исчезла; вторая бронь в тот же месяц — ошибка 409.
 
 ### Отпуска: уточнён текст шага 3 квеста редактирования
 

@@ -177,14 +177,18 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 | Endpoint | Назначение |
 |----------|------------|
-| `GET /api/vacations` | Полное состояние (`primaryYear`, `requestsByYear`, `nextRequestId`) |
+| `GET /api/vacations` | Полное состояние (`primaryYear`, `requestsByYear`, `nextRequestId`, `reservationsByYear`, `nextReservationId`) |
 | `POST /api/vacations/requests` | Создать одну заявку (тело: `year`, `employee`, `start`, `end`, `comment?`) |
 | `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
 | `DELETE /api/vacations/requests/:id` | Удалить заявку |
+| `POST /api/vacations/reservations` | Предварительная бронь: `year`, `month` (1–12), `durationDays`, `comment?` |
+| `DELETE /api/vacations/reservations/:id` | Удалить бронь (своя или admin) |
 
-Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`; при финальном согласовании — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
+Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`, `vacationReservationMutations.ts`; при финальном согласовании заявки — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
 
-Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v5` — кэш.
+Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v6` — кэш (миграция с v5).
+
+**Предварительная бронь** (`VacationReservation` в `vacationReservations.ts`): месяц + длительность без `start`/`end`; не влияет на баланс и approval; отображается полосатыми плашками; конвертация в заявку через «Уточнить даты» в `EmployeeVacationAside`.
 
 ### Уведомления пользователей (отпуска)
 
@@ -287,7 +291,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-user-avatars-v1` | `useAvatars` — локальный кэш; источник правды `server/data/user-avatars.json`, API `/api/avatars` |
 | `vbi-platform-demo-version` | `vbi-demo-data.client.ts` (сейчас `4`) |
 | `vbi-employees-v3` | `useEmployees` |
-| `vbi-vacations-state-v5` | `useVacations` (шаг согласования `approval_step` для Digital) |
+| `vbi-vacations-state-v6` | `useVacations` (заявки + предварительные брони; миграция с v5) |
 | `vbi-employee-vac-calendar-scope-v1` | `useEmployeeVacationTeamView` — «Мой календарь» / «Общий» |
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |

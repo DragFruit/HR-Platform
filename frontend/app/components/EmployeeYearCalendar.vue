@@ -5,8 +5,28 @@
     role="img"
     :aria-label="`Календарь отпусков за ${year} год`"
   >
-    <div v-for="month in months" :key="month.index" class="emp-cal-month hr-month">
-      <div class="hr-month-title">{{ month.title }}</div>
+    <div v-for="month in months" :key="month.index" class="emp-cal-month hr-month" :class="monthClass(month.index)">
+      <div class="hr-month-title">
+        <span>{{ month.title }}</span>
+        <button
+          v-if="!isSelecting && showReservationControl(month)"
+          type="button"
+          class="emp-reservation-add-btn"
+          :class="{ 'emp-reservation-add-btn--has': month.reservation }"
+          :data-tour="month.index === 11 ? 'vac-reservation-dec' : undefined"
+          :title="month.reservation ? 'Изменить бронь' : 'Предварительная бронь'"
+          :aria-label="month.reservation ? `Бронь: ${month.reservationLabel}` : 'Добавить предварительную бронь'"
+          @click.stop="onReservationClick(month.index)"
+        >
+          <span
+            v-if="month.reservation"
+            class="emp-reservation-badge emp-reservation-badge--wide"
+          >
+            {{ month.reservationLabel }}
+          </span>
+          <span v-else class="emp-reservation-add-label">+бронь</span>
+        </button>
+      </div>
       <table class="hr-month-grid">
         <thead v-if="!compact">
           <tr>
@@ -44,11 +64,18 @@ import {
   type CalendarDayCell
 } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
+import type { VacationReservation } from '~/utils/vacationReservations';
+import {
+  canAddReservationForMonth,
+  canManageReservationMonth,
+  formatReservationLabel
+} from '~/utils/vacationReservations';
 
 const props = defineProps<{
   employeeName: string;
   year: number;
   requests: VacationRequest[];
+  reservations?: VacationReservation[];
   compact?: boolean;
   rangePickStart?: string | null;
   rangePickHover?: string | null;
@@ -56,11 +83,16 @@ const props = defineProps<{
   selectedRangeStart?: string | null;
   selectedRangeEnd?: string | null;
   minSelectableIso?: string;
+  /** Подсветка месяца при «Создать заявку» из брони */
+  highlightMonthIndex?: number | null;
+  /** В учебном квесте — всегда показывать +бронь у этого месяца (0–11) */
+  reservationControlOverride?: number | null;
 }>();
 
 const emit = defineEmits<{
   'day-click': [cell: CalendarDayCell];
   'day-hover': [cell: CalendarDayCell];
+  'reservation-month-click': [monthIndex: number];
 }>();
 
 const weekdays = WEEKDAYS_SHORT;
@@ -69,14 +101,53 @@ const minIso = computed(() => props.minSelectableIso ?? '');
 
 const isSelecting = computed(() => Boolean(props.rangePickStart));
 
+const reservationByMonth = computed(() => {
+  const map = new Map<number, VacationReservation>();
+  for (const item of props.reservations ?? []) {
+    if (item.year === props.year) {
+      map.set(item.month - 1, item);
+    }
+  }
+  return map;
+});
+
 const months = computed(() => {
   const { approved, pending } = buildDaySetsForEmployee(props.employeeName, props.year, props.requests);
-  return MONTHS_RU.map((name, index) => ({
-    index,
-    title: props.compact ? name : `${name}, ${String(props.year).slice(-2)}`,
-    rows: buildMonthGrid(props.year, index, approved, pending)
-  }));
+  return MONTHS_RU.map((name, index) => {
+    const reservation = reservationByMonth.value.get(index);
+    return {
+      index,
+      title: props.compact ? name : `${name}, ${String(props.year).slice(-2)}`,
+      rows: buildMonthGrid(props.year, index, approved, pending),
+      reservation,
+      reservationLabel: reservation ? formatReservationLabel(reservation.durationDays) : ''
+    };
+  });
 });
+
+const showReservationControl = (month: { index: number; reservation?: VacationReservation }) => {
+  if (props.reservationControlOverride === month.index) return true;
+  const monthNum = month.index + 1;
+  if (month.reservation) {
+    return canManageReservationMonth(props.year, monthNum);
+  }
+  return canAddReservationForMonth(props.year, monthNum);
+};
+
+const monthClass = (monthIndex: number) => {
+  const classes: string[] = [];
+  if (reservationByMonth.value.has(monthIndex)) {
+    classes.push('emp-cal-month--has-reservation');
+  }
+  if (props.highlightMonthIndex === monthIndex) {
+    classes.push('emp-cal-month--highlight');
+  }
+  return classes.length ? classes : undefined;
+};
+
+const onReservationClick = (monthIndex: number) => {
+  emit('reservation-month-click', monthIndex);
+};
 
 const previewEnd = computed(() => {
   if (props.rangePickStart) return props.rangePickHover ?? props.rangePickStart;

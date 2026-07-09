@@ -1,13 +1,16 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
+import type { VacationReservation } from '../../app/utils/vacationReservations';
 
-export type { VacationRequest };
+export type { VacationRequest, VacationReservation };
 
 export type VacationStoreState = {
   primaryYear: number;
   requestsByYear: Record<string, VacationRequest[]>;
   nextRequestId: number;
+  reservationsByYear: Record<string, VacationReservation[]>;
+  nextReservationId: number;
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
@@ -15,8 +18,22 @@ const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
 export const defaultVacationState = (): VacationStoreState => ({
   primaryYear: new Date().getFullYear(),
   requestsByYear: {},
-  nextRequestId: 1
+  nextRequestId: 1,
+  reservationsByYear: {},
+  nextReservationId: 1
 });
+
+export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): VacationStoreState {
+  const base = defaultVacationState();
+  return {
+    primaryYear: typeof raw.primaryYear === 'number' ? raw.primaryYear : base.primaryYear,
+    requestsByYear: raw.requestsByYear ?? base.requestsByYear,
+    nextRequestId: typeof raw.nextRequestId === 'number' ? raw.nextRequestId : base.nextRequestId,
+    reservationsByYear: raw.reservationsByYear ?? base.reservationsByYear,
+    nextReservationId:
+      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId
+  };
+}
 
 async function ensureFile() {
   await mkdir(dirname(DATA_FILE), { recursive: true });
@@ -30,7 +47,7 @@ async function ensureFile() {
 export async function readVacations(): Promise<VacationStoreState> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return JSON.parse(raw) as VacationStoreState;
+  return normalizeVacationStoreState(JSON.parse(raw) as Partial<VacationStoreState>);
 }
 
 export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {

@@ -8,7 +8,10 @@ export type UserNotificationKind =
   | 'vacation_deleted'
   | 'vacation_approved'
   | 'vacation_rejected'
-  | 'vacation_next_stage';
+  | 'vacation_next_stage'
+  | 'vacation_reservation_updated'
+  | 'vacation_reservation_expiring'
+  | 'vacation_reservation_expiring_manager';
 
 export type UserNotification = {
   id: string;

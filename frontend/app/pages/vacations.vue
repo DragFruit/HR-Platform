@@ -55,6 +55,7 @@
               v-if="activeTab === 'calendar'"
               :departments="calendarDepartments"
               :requests="yearRequests"
+              :reservations="yearReservations"
               :get-month-entries="getMonthEntries"
             />
 
@@ -155,6 +156,7 @@ const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByNam
 const {
   viewYear,
   yearRequests,
+  yearReservations,
   pendingRequestsForApprover,
   handedOffRequestsForApprover,
   getMonthEntries,
