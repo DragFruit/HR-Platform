@@ -37,14 +37,18 @@ export function usePlatformContext() {
   const router = useRouter();
   const route = useRoute();
   const { user, authReady } = useAuth();
-  const { isVacationsOnly, isPathAllowed, homePath, navForLaunchScope } = useLaunchScope();
+  const { isVacationsOnly, isPathAllowed, homePath, isNavPathUnlocked } = useLaunchScope();
 
   const isAdmin = computed(() => role.value === 'admin');
   const navItems = computed<NavItem[]>(() => {
-    if (isVacationsOnly.value) {
-      return navForLaunchScope(isAdmin.value).map((item) => ({ ...item, locked: false }));
+    const base = isAdmin.value ? adminNav : employeeNav;
+    if (!isVacationsOnly.value) {
+      return base.map((item) => ({ ...item, locked: false }));
     }
-    return (isAdmin.value ? adminNav : employeeNav).map((item) => ({ ...item, locked: false }));
+    return base.map((item) => ({
+      ...item,
+      locked: !isNavPathUnlocked(item.to)
+    }));
   });
   const canSwitchRole = computed(() => user.value?.role === 'admin');
 
