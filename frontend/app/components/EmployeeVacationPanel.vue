@@ -369,6 +369,9 @@ watch(
   () => trainingStep.value?.id,
   (stepId, prevStepId) => {
     if (!isTrainingActive.value) return;
+    if (stepId === 'reservation-book' && calendarScope.value === 'team') {
+      setCalendarScope('mine');
+    }
     if (stepId === 'calendar' && prevStepId === 'create') {
       form.start = '';
       form.end = '';

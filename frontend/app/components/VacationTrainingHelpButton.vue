@@ -3,8 +3,8 @@
     v-if="shouldShowHelpButton"
     type="button"
     class="vac-training-help-btn"
-    aria-label="Повторить обучение по графику отпусков"
-    title="Повторить обучение"
+    :aria-label="helpLabel"
+    :title="helpLabel"
     @click="restartTraining"
   >
     ?
@@ -12,5 +12,9 @@
 </template>
 
 <script setup lang="ts">
-const { shouldShowHelpButton, restartTraining } = useVacationTraining();
+const { shouldShowHelpButton, isCompletedForCurrentUser, restartTraining } = useVacationTraining();
+
+const helpLabel = computed(() =>
+  isCompletedForCurrentUser.value ? 'Повторить обучение' : 'Пройти обучение'
+);
 </script>

@@ -4,6 +4,18 @@
 
 ## 2026-07-10
 
+### Обучалка: доработки (production)
+
+- Пропустившие обучение могут пройти его через «?» и получить ачивку.
+- На шаге 4 календарь переключается на «Мой календарь», если был «Общий».
+- Пути: `useVacationTraining.ts`, `VacationTrainingHelpButton.vue`, `EmployeeVacationPanel.vue`.
+
+### Демо «Тестировщики» — только localhost
+
+- QA-команда (4 сотрудника + руководитель), демо-заявки и брони — при `NODE_ENV=development` или `NUXT_PUBLIC_QA_TEST_DEPARTMENT=1` в `.env`.
+- На production/staging не включается.
+- Пути: `qaTestDepartment.ts`, `qaTestVacationSeed.ts`, `vacationsStore.ts`.
+
 ### Обучалка отпусков: без пропуска, повтор и кнопка «?»
 
 - Убрана кнопка «Пропустить» в квесте и в стартовом приглашении — обучение нужно пройти до конца.

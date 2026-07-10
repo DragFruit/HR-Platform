@@ -95,8 +95,9 @@ export function useVacationTraining() {
 
   const shouldShowHelpButton = computed(() => {
     if (!isEnabled.value || !import.meta.client) return false;
-    if (!user.value?.id || isActive.value) return false;
-    return isCompletedForCurrentUser.value;
+    const id = user.value?.id;
+    if (!id || isActive.value) return false;
+    return isCompletedForUser(id) || isSkippedForUser(id);
   });
 
   const shouldShowPrompt = computed(() => {
@@ -151,8 +152,21 @@ export function useVacationTraining() {
 
   const restartTraining = () => {
     const id = user.value?.id;
-    if (!id || !isCompletedForUser(id)) return;
-    isRetakeMode.value = true;
+    if (!id) return;
+    const completed = isCompletedForUser(id);
+    const skipped = isSkippedForUser(id);
+    if (!completed && !skipped) return;
+
+    // Повтор без награды — только если квест уже был пройден до конца.
+    isRetakeMode.value = completed;
+
+    if (skipped && !completed) {
+      const store = readStorage();
+      store.skipped = store.skipped.filter((x) => x !== id);
+      writeStorage(store);
+      bumpStorageRevision();
+    }
+
     isActive.value = true;
     stepIndex.value = 0;
     trainingRequests.value = [];

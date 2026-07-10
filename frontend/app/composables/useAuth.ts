@@ -1,4 +1,4 @@
-import { QA_DEMO_ACCOUNT_HINTS } from '~/data/qaTestDepartment';
+import { QA_DEMO_ACCOUNT_HINTS, QA_DEMO_ACCOUNT_ORDER } from '~/data/qaTestDepartment';
 import type { PlatformRole } from '~/composables/usePlatformContext';
 
 export type AuthSessionUser = {
@@ -261,10 +261,11 @@ export function useAuth() {
 
   const runtimeConfig = useRuntimeConfig();
 
-  const demoAccounts = computed(() =>
-    credentials.map(({ email, role, password, description, name }) => {
+  const demoAccounts = computed(() => {
+    const rows = credentials.map(({ email, role, password, description, name }) => {
+      const normalizedEmail = email.toLowerCase();
       const qaHint = runtimeConfig.public.qaTestDepartment
-        ? QA_DEMO_ACCOUNT_HINTS[email.toLowerCase()]
+        ? QA_DEMO_ACCOUNT_HINTS[normalizedEmail]
         : undefined;
       return {
         email,
@@ -273,8 +274,17 @@ export function useAuth() {
         description: qaHint ?? description,
         name
       };
-    })
-  );
+    });
+
+    if (!runtimeConfig.public.qaTestDepartment) return rows;
+
+    const order = new Map(QA_DEMO_ACCOUNT_ORDER.map((email, index) => [email, index]));
+    return [...rows].sort((a, b) => {
+      const ai = order.get(a.email.toLowerCase()) ?? 99;
+      const bi = order.get(b.email.toLowerCase()) ?? 99;
+      return ai - bi;
+    });
+  });
 
   return {
     user,
