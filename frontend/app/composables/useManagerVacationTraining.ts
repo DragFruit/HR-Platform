@@ -49,9 +49,11 @@ export function useManagerVacationTraining() {
 
   const totalSteps = computed(() => steps.length);
 
-  const progressLabel = computed(() =>
-    isActive.value ? `Квест ${Math.min(stepIndex.value + 1, totalSteps.value)} из ${totalSteps.value}` : ''
-  );
+  const progressLabel = computed(() => {
+    if (!isActive.value) return '';
+    const step = Math.min(stepIndex.value + 1, totalSteps.value);
+    return `квест. Шаг ${step} из ${totalSteps.value}`;
+  });
 
   const canShowForRole = computed(() => isManager.value || isHr.value);
 

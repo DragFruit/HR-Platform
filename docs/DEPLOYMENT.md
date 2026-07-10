@@ -43,7 +43,7 @@ sudo bash deploy/scripts/install-server.sh
 | Переменная | Пример | Назначение |
 |------------|--------|------------|
 | `SSH_PRIVATE_KEY` | `-----BEGIN OPENSSH...` | Ключ для `deploy@сервер` |
-| `DEPLOY_HOST` | `hr.vbi.agency` или IP | Хост VPS |
+| `DEPLOY_HOST` | `vibe.vbi.ru` или IP | Хост VPS |
 | `DEPLOY_USER` | `deploy` | SSH-пользователь |
 | `DEPLOY_PATH_STAGING` | `/var/www/vbi-hr-staging` | Каталог теста (опционально) |
 | `DEPLOY_PATH_PRODUCTION` | `/var/www/vbi-hr` | Каталог боя (опционально) |
@@ -92,7 +92,7 @@ NITRO_HOST=127.0.0.1 NITRO_PORT=3300 node /var/www/vbi-hr/.output/server/index.m
 | Стенд | Ветка | Каталог | Порт | Домен (пример) |
 |-------|-------|---------|------|----------------|
 | Тест | `staging` | `/var/www/vbi-hr-staging` | 3301 | `hr-test.vbi.agency` |
-| Бой | `main` | `/var/www/vbi-hr` | 3300 | `hr.vbi.agency` |
+| Бой | `main` | `/var/www/vbi-hr` | 3300 | `vibe.vbi.ru` |
 
 ---
 

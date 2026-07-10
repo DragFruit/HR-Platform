@@ -1,4 +1,4 @@
-# Архитектура VBI HR Gamification
+# Архитектура VIBE VBI
 
 ## Обзор
 

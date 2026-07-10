@@ -4,7 +4,7 @@
     <div class="auth-screen__glow auth-screen__glow--b" aria-hidden="true" />
     <article class="auth-card">
       <div class="auth-brand">
-        <span class="brand-title">VBI HR Gamification</span>
+        <span class="brand-title">{{ platformName }}</span>
         <p class="muted">
           {{
             showBitrixLogin
@@ -73,7 +73,10 @@
 </template>
 
 <script setup lang="ts">
+import { PLATFORM_NAME } from '~/data/platformBrand';
 import { roleLabels } from '~/composables/usePermissions';
+
+const platformName = PLATFORM_NAME;
 
 const emit = defineEmits<{
   success: [];

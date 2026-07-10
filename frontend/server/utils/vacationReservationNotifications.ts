@@ -1,6 +1,6 @@
 import type { VacationReservation } from '../../app/utils/vacationReservations';
 import { formatReservationLabel } from '../../app/utils/vacationReservations';
-import { findEmployeeByName } from './employeesStore';
+import { findEmployeeByName, employeeNotificationUserId } from './employeesStore';
 import { createUserNotification } from './userNotificationsStore';
 
 const MONTHS_RU = [
@@ -11,8 +11,7 @@ const MONTHS_RU = [
 const userIdForEmployeeName = async (name: string): Promise<number | null> => {
   const emp = await findEmployeeByName(name);
   if (!emp) return null;
-  const uid = emp.platform_user_id ?? emp.bitrix_user_id ?? null;
-  return uid && uid > 0 ? uid : null;
+  return employeeNotificationUserId(emp);
 };
 
 const monthBoundsIso = (year: number, month: number) => {

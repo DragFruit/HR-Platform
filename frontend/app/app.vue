@@ -11,7 +11,7 @@
     <div v-else class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-title">VBI HR Gamification</span>
+        <span class="brand-title">{{ platformName }}</span>
         <span class="brand-subtitle">
           {{
             isVacationsOnly
@@ -90,7 +90,7 @@
       <header class="topbar">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
-          <AdminNotificationsBell v-if="isAdmin" />
+          <AdminNotificationsBell v-if="showAdminNotificationsBell" />
           <VacationNotificationsBell v-else />
           <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
           <span class="soft">{{ user?.name }}</span>
@@ -125,6 +125,8 @@
 </template>
 
 <script setup lang="ts">
+import { PLATFORM_NAME } from '~/data/platformBrand';
+
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
   useAuth();
@@ -132,8 +134,13 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath } = useLaunchScope();
+const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';
+
+const showAdminNotificationsBell = computed(
+  () => isAdmin.value || user.value?.role === 'hr'
+);
 
 const route = useRoute();
 const router = useRouter();

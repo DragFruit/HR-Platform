@@ -16,8 +16,6 @@
         aria-labelledby="vac-manager-training-title"
         :style="cardStyle"
       >
-        <button type="button" class="vac-training-overlay__skip" @click="skipTraining">Пропустить</button>
-
         <p class="vac-training-overlay__progress">{{ progressLabel }}</p>
         <h3 id="vac-manager-training-title" class="vac-training-overlay__title">{{ currentStep.title }}</h3>
 
@@ -102,7 +100,7 @@ import { isDigitalGroupLeadName } from '~/utils/vacationApproval';
 
 const { user } = useAuth();
 const { managerProfileName } = useEmployees();
-const { isActive, currentStep, stepIndex, totalSteps, progressLabel, goPrevStep, completeCurrentStep, skipTraining, finishTraining } =
+const { isActive, currentStep, stepIndex, totalSteps, progressLabel, goPrevStep, completeCurrentStep, finishTraining } =
   useManagerVacationTraining();
 
 const warningItems = computed(() => {

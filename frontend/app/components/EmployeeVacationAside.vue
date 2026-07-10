@@ -1,11 +1,19 @@
 <template>
-  <aside
-    class="employee-aside employee-aside--fit"
+  <div
+    class="employee-aside-shell"
     :class="{
-      'employee-aside--embedded': embedded,
-      'employee-aside--training-locked': isTrainingActive
+      'employee-aside-shell--embedded': embedded,
+      'employee-aside-shell--training-locked': !embedded && isTrainingActive
     }"
   >
+    <aside
+      class="employee-aside"
+      :class="{
+        'employee-aside--fit': !embedded,
+        'employee-aside--embedded': embedded,
+        'employee-aside--training-locked': !embedded && isTrainingActive
+      }"
+    >
     <VacationUiModeToggle
       v-if="uiMode !== undefined"
       :model-value="uiMode"
@@ -192,7 +200,10 @@
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-approved" /> Отпуск (одобрен)</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-pending" /> На согласовании</div>
     <div class="hr-legend-item"><span class="hr-legend-swatch sw-reservation" /> Предварительная бронь</div>
-  </aside>
+    </aside>
+
+    <VacationTrainingHelpButton v-if="!embedded" />
+  </div>
 </template>
 
 <script setup lang="ts">

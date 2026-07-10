@@ -2722,7 +2722,13 @@ a {
   margin-bottom: 0;
 }
 
-.vac-manager-aside-panel--employee-view .employee-aside--fit:not(.employee-aside--embedded) {
+.vac-manager-aside-panel--employee-view .employee-aside-shell:not(.employee-aside-shell--embedded) {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.vac-manager-aside-panel--employee-view .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit {
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -5833,7 +5839,7 @@ a {
   grid-row: 3;
 }
 
-.vacations-employee-shell .employee-aside.employee-aside--fit:not(.employee-aside--embedded) {
+.vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) {
   grid-column: 2;
   grid-row: 1 / -1;
   align-self: start;
@@ -5844,6 +5850,14 @@ a {
   min-height: 0;
   height: calc(100% - 8px);
   max-height: calc(100% - 8px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   padding: 16px;
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-frame-radius);
@@ -6148,9 +6162,8 @@ a {
   touch-action: pan-x;
 }
 
-.vacations-employee-shell .vac-emp-page--fit .employee-aside--fit:not(.employee-aside--embedded) {
+.vacations-employee-shell .vac-emp-page--fit .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit {
   padding: 16px;
-  top: 8px;
 }
 
 .vac-emp-page--fit .employee-aside--fit .emp-balance-card {
@@ -6619,12 +6632,17 @@ a {
     grid-template-rows: auto auto minmax(280px, 1fr) auto;
   }
 
-  .vacations-employee-shell .employee-aside.employee-aside--fit:not(.employee-aside--embedded) {
+  .vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) {
     grid-column: 1;
     grid-row: auto;
     width: 100%;
     min-width: 0;
     max-width: none;
+    max-height: 240px;
+    height: auto;
+  }
+
+  .vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit {
     max-height: 240px;
   }
 }
@@ -7917,6 +7935,64 @@ a {
 }
 
 /* --- Vacation training quest --- */
+.employee-aside-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.employee-aside-shell--embedded {
+  display: contents;
+}
+
+.employee-aside-shell:not(.employee-aside-shell--embedded) {
+  height: 100%;
+}
+
+.vac-emp-page--fit .employee-aside-shell:not(.employee-aside-shell--embedded) {
+  min-height: 0;
+}
+
+.vac-manager-aside-panel--employee-view .employee-aside-shell:not(.employee-aside-shell--embedded) {
+  width: 100%;
+}
+
+.vac-training-help-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 35;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #0a0a0a;
+  background: #0a0a0a;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.vac-training-help-btn:hover {
+  transform: translateY(-1px);
+  background: #171717;
+  border-color: #171717;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.vac-training-help-btn:focus-visible {
+  outline: 2px solid #0a0a0a;
+  outline-offset: 2px;
+}
+
 .vac-training-prompt {
   display: grid;
   gap: 4px;
@@ -8141,12 +8217,10 @@ a {
 
 .vac-training-overlay__progress {
   margin: 0;
-  padding-right: 68px;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--hero-purple-deep);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
 
 .vac-training-overlay__title {

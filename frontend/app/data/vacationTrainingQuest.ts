@@ -41,7 +41,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'balance',
     target: 'vac-balance',
-    title: 'Квест 1 · Баланс',
+    title: 'Баланс',
     text: 'Здесь видно, сколько дней отпуска доступно прямо сейчас. Руководитель ориентируется на эти цифры при согласовании.',
     kind: 'none',
     action: 'acknowledge'
@@ -49,7 +49,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'projection',
     target: 'vac-projection',
-    title: 'Квест 2 · Расчёт к дате',
+    title: 'Расчёт к дате',
     text: 'Раскройте блок и выберите дату — система покажет, сколько дней отпуска будет доступно к этому дню. Удобно, если отпуск планируете заранее.',
     kind: 'underline',
     action: 'acknowledge'
@@ -57,7 +57,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'manage-request',
     target: 'vac-my-requests',
-    title: 'Квест 3 · Редактирование заявки',
+    title: 'Редактирование заявки',
     text: 'В блоке «Мои заявки» у заявки есть кнопка «⋯»: можно изменить даты или удалить заявку, пока отпуск ещё не начался. У отгуленного отпуска эти функции недоступны.',
     kind: 'underline',
     action: 'acknowledge'
@@ -65,15 +65,15 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'reservation-book',
     target: 'vac-reservation-dec',
-    title: 'Квест 4 · Предварительная бронь',
-    text: 'Эту бронь можно поставить, когда точные даты отпуска ещё неизвестны, но с месяцем уже определились. Такие брони не вычитаются из доступных дней — это пометка для себя и команды.\n\nДля создания учебной брони нажмите «+бронь».',
+    title: 'Предварительная бронь',
+    text: 'Эту бронь можно поставить, когда точные даты отпуска ещё неизвестны, но с месяцем уже определились. Такие брони не вычитаются из доступных дней — это пометка для себя и команды.\n\nДля создания брони нажмите «+бронь». Она учебная и удалится после завершения квеста.',
     kind: 'circle',
     action: 'create-reservation'
   },
   {
     id: 'reservation-clarify',
     target: 'vac-reservations-block',
-    title: 'Квест 5 · Создать заявку',
+    title: 'Создать заявку',
     text: 'Когда даты станут ясны, нажмите «Создать заявку» — бронь превратится в обычную заявку на отпуск. Учебная бронь исчезнет после завершения квеста.',
     kind: 'underline',
     action: 'acknowledge'
@@ -81,7 +81,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'calendar',
     target: 'vac-calendar',
-    title: 'Квест 6 · Календарь',
+    title: 'Календарь',
     text: 'Кликните день начала отпуска, затем день окончания — даты подставятся в форму автоматически.',
     kind: 'none',
     action: 'calendar-range'
@@ -89,7 +89,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'create',
     target: 'vac-create-form',
-    title: 'Квест 7 · Заявка',
+    title: 'Заявка',
     text: 'Проверьте даты и нажмите «Создать заявку». Это учебная заявка — руководитель её не увидит.',
     kind: 'underline',
     action: 'create-request'
@@ -97,7 +97,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'warnings',
     target: null,
-    title: 'Квест 8 · Предупреждения',
+    title: 'Предупреждения',
     text: '',
     kind: 'none',
     action: 'acknowledge'
@@ -105,7 +105,7 @@ export const EMPLOYEE_VACATION_TRAINING_STEPS: VacationTrainingStep[] = [
   {
     id: 'requests',
     target: 'vac-my-requests',
-    title: 'Квест 9 · Мои заявки',
+    title: 'Мои заявки',
     text: 'Здесь отражаются все заявки и их статусы. Учебная заявка из квеста помечена отдельной плашкой.',
     kind: 'none',
     action: 'acknowledge'
@@ -154,21 +154,21 @@ export const MANAGER_VACATION_TRAINING_STEPS: ManagerVacationTrainingStep[] = [
   {
     id: 'approval',
     target: 'vac-approval-tab',
-    title: 'Квест руководителя 1 · Согласование',
+    title: 'Согласование',
     text: 'Откройте вкладку «Согласование»: здесь вы подтверждаете или отклоняете заявки сотрудников.',
     action: 'open-approval-tab'
   },
   {
     id: 'warnings',
     target: null,
-    title: 'Квест руководителя 2 · Плашки-предупреждения',
+    title: 'Плашки-предупреждения',
     text: 'Плашки в очереди помогают принять решение быстрее: видно риски по остаткам, пересечениям и этапам.',
     action: 'acknowledge'
   },
   {
     id: 'calendar-view',
     target: 'vac-calendar-view-toggle',
-    title: 'Квест руководителя 3 · Виды календаря',
+    title: 'Виды календаря',
     text: 'Переключатель «Детально / По месяцам» — попробуйте оба вида. Когда посмотрите, нажмите «Завершить».',
     action: 'acknowledge'
   }

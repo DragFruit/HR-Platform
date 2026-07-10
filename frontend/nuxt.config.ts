@@ -17,6 +17,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      title: 'VIBE VBI',
       script: metrikaHead.script,
       noscript: metrikaHead.noscript,
       link: [

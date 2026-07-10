@@ -4,7 +4,7 @@
       <p class="eyebrow">Добро пожаловать</p>
       <h2>Привет, {{ userName }}!</h2>
       <p class="muted">
-        Рады видеть тебя в VBI HR Gamification. Удачного старта, крутых задач и приятных наград.
+        Рады видеть тебя в {{ platformName }}. Удачного старта, крутых задач и приятных наград.
       </p>
       <button class="button primary" type="button" @click="goToAvatarStep">Далее</button>
     </article>
@@ -43,7 +43,10 @@
 </template>
 
 <script setup lang="ts">
+import { PLATFORM_NAME } from '~/data/platformBrand';
 import type { AvatarCharacterId } from '~/composables/useAvatars';
+
+const platformName = PLATFORM_NAME;
 
 type ConfettiFn = (options: {
   position: { x: number; y: number };

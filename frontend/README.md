@@ -1,6 +1,6 @@
 # Frontend (Nuxt 4)
 
-Клиентская часть **VBI HR Gamification**. Общее описание проекта — в [корневом README](../README.md).
+Клиентская часть **VIBE VBI**. Общее описание проекта — в [корневом README](../README.md).
 
 ## Команды
 

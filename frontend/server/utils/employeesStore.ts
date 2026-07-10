@@ -149,3 +149,9 @@ export async function findEmployeeByName(name: string): Promise<ServerEmployee |
   const list = await readEmployees();
   return list.find((e) => e.name.trim().toLowerCase() === normalized) ?? null;
 }
+
+/** id для user-notifications: Bitrix/platform id, иначе id из справочника. */
+export function employeeNotificationUserId(employee: ServerEmployee): number | null {
+  const uid = employee.platform_user_id ?? employee.bitrix_user_id ?? employee.id;
+  return uid > 0 ? uid : null;
+}

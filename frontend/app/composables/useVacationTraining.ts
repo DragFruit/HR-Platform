@@ -57,6 +57,12 @@ export function useVacationTraining() {
     () => []
   );
   const promptDismissed = useState<boolean>('vac-training-prompt-dismissed', () => false);
+  const isRetakeMode = useState<boolean>('vac-training-retake', () => false);
+  const storageRevision = useState<number>('vac-training-storage-revision', () => 0);
+
+  const bumpStorageRevision = () => {
+    storageRevision.value += 1;
+  };
 
   const steps = EMPLOYEE_VACATION_TRAINING_STEPS;
 
@@ -69,11 +75,29 @@ export function useVacationTraining() {
 
   const progressLabel = computed(() => {
     if (!isActive.value) return '';
-    return `Квест ${Math.min(stepIndex.value + 1, totalSteps.value)} из ${totalSteps.value}`;
+    const step = Math.min(stepIndex.value + 1, totalSteps.value);
+    return `квест. Шаг ${step} из ${totalSteps.value}`;
   });
 
-  const isCompletedForUser = (userId: number) => isEmployeeVacationTrainingCompleted(userId);
-  const isSkippedForUser = (userId: number) => readStorage().skipped.includes(userId);
+  const isCompletedForUser = (userId: number) => {
+    storageRevision.value;
+    return readStorage().completed.includes(userId);
+  };
+  const isSkippedForUser = (userId: number) => {
+    storageRevision.value;
+    return readStorage().skipped.includes(userId);
+  };
+
+  const isCompletedForCurrentUser = computed(() => {
+    const id = user.value?.id;
+    return id ? isCompletedForUser(id) : false;
+  });
+
+  const shouldShowHelpButton = computed(() => {
+    if (!isEnabled.value || !import.meta.client) return false;
+    if (!user.value?.id || isActive.value) return false;
+    return isCompletedForCurrentUser.value;
+  });
 
   const shouldShowPrompt = computed(() => {
     if (!isEnabled.value) return false;
@@ -117,6 +141,18 @@ export function useVacationTraining() {
   const startTraining = () => {
     const id = user.value?.id;
     if (!id) return;
+    isRetakeMode.value = false;
+    isActive.value = true;
+    stepIndex.value = 0;
+    trainingRequests.value = [];
+    trainingReservations.value = [];
+    promptDismissed.value = true;
+  };
+
+  const restartTraining = () => {
+    const id = user.value?.id;
+    if (!id || !isCompletedForUser(id)) return;
+    isRetakeMode.value = true;
     isActive.value = true;
     stepIndex.value = 0;
     trainingRequests.value = [];
@@ -132,6 +168,7 @@ export function useVacationTraining() {
       store.skipped.push(id);
       writeStorage(store);
     }
+    bumpStorageRevision();
     promptDismissed.value = true;
     isActive.value = false;
     trainingRequests.value = [];
@@ -141,6 +178,7 @@ export function useVacationTraining() {
 
   const exitTraining = () => {
     isActive.value = false;
+    isRetakeMode.value = false;
     trainingRequests.value = [];
     trainingReservations.value = [];
     stepIndex.value = 0;
@@ -149,15 +187,15 @@ export function useVacationTraining() {
   const finishTraining = () => {
     const id = user.value?.id;
     if (!id) return;
-    const store = readStorage();
-    if (!store.completed.includes(id)) {
-      store.completed.push(id);
-      writeStorage(store);
+    if (!isRetakeMode.value) {
+      const store = readStorage();
+      if (!store.completed.includes(id)) {
+        store.completed.push(id);
+        writeStorage(store);
+      }
+      bumpStorageRevision();
     }
-    isActive.value = false;
-    trainingRequests.value = [];
-    trainingReservations.value = [];
-    stepIndex.value = 0;
+    exitTraining();
   };
 
   const goNextStep = () => {
@@ -259,7 +297,9 @@ export function useVacationTraining() {
     store.completed = store.completed.filter((x) => x !== id);
     store.skipped = store.skipped.filter((x) => x !== id);
     writeStorage(store);
+    bumpStorageRevision();
     promptDismissed.value = false;
+    isRetakeMode.value = false;
     isActive.value = false;
     trainingRequests.value = [];
     trainingReservations.value = [];
@@ -276,14 +316,18 @@ export function useVacationTraining() {
   return {
     isEnabled,
     isActive,
+    isRetakeMode,
     currentStep,
     stepIndex,
     totalSteps,
     progressLabel,
     shouldShowPrompt,
+    shouldShowHelpButton,
+    isCompletedForCurrentUser,
     trainingRequests,
     trainingReservations,
     startTraining,
+    restartTraining,
     skipTraining,
     exitTraining,
     finishTraining,
