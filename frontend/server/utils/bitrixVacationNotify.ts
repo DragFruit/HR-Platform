@@ -1,5 +1,10 @@
 import type { VacationRequest } from '../../app/composables/useVacations';
-import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
+import { bitrixOAuthRequest } from './bitrixClient';
+import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
+import {
+  getBitrixServiceAccessToken,
+  hasBitrixOAuthServiceToken
+} from './bitrixOAuthServiceToken';
 import { findEmployeeByName } from './employeesStore';
 
 export type BitrixVacationNotifyStage = 'new' | 'director';
@@ -33,6 +38,9 @@ const vacationApprovalUrl = (): string | null => {
 
   return null;
 };
+
+const chatFallbackEnabled = (): boolean =>
+  String(process.env.BITRIX_VACATION_NOTIFY_CHAT_FALLBACK || 'false').trim() === 'true';
 
 const bitrixUserIdForApprover = async (approverName: string): Promise<number | null> => {
   const employee = await findEmployeeByName(approverName);
@@ -73,27 +81,43 @@ const notifySubTag = (requestId: number, stage: BitrixVacationNotifyStage): stri
 
 /**
  * ID сущности Битрикса (уведомление/сообщение ~10⁷).
- * На коробке im.notify.* иногда возвращает time.start (~10⁹) — это не доставка.
+ * Через вебхук im.notify.* на коробке часто возвращает time.start (~10⁹).
  */
 const isBitrixEntityId = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1_000_000_000;
 
-const bitrixNotifyClientId = (): string => {
-  const fromEnv = String(process.env.BITRIX_CLIENT_ID || '').trim();
-  if (fromEnv) return fromEnv;
-  return String(getBitrixConfig().bitrixClientId || '').trim();
-};
+const bellAttempts = (
+  bitrixUserId: number,
+  message: string,
+  tag: string,
+  subTag: string
+): Array<{ method: string; params: Record<string, unknown> }> => [
+  {
+    method: 'im.notify.personal.add',
+    params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
+  },
+  {
+    method: 'im.notify.system.add',
+    params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
+  },
+  {
+    method: 'im.notify',
+    params: {
+      USER_ID: bitrixUserId,
+      MESSAGE: message,
+      TYPE: 'USER',
+      TAG: tag,
+      SUB_TAG: subTag
+    }
+  }
+];
 
 const bitrixWebhookCall = async (
   method: string,
   params: Record<string, unknown>
 ): Promise<BitrixRestPayload> => {
   const base = getBitrixWebhookUrl();
-  const clientId = bitrixNotifyClientId();
-  const url = clientId
-    ? `${base}/${method}.json?CLIENT_ID=${encodeURIComponent(clientId)}`
-    : `${base}/${method}.json`;
-  const response = await fetch(url, {
+  const response = await fetch(`${base}/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)
@@ -124,70 +148,47 @@ const sendBitrixChatMessage = async (
   }
 };
 
-const sendBitrixBellNotify = async (
+const sendBitrixBellViaOAuth = async (
   bitrixUserId: number,
   message: string,
   tag: string,
   subTag: string
 ): Promise<{ ok: boolean; method?: string; error?: string }> => {
-  const attempts: Array<{ method: string; params: Record<string, unknown> }> = [
-    {
-      method: 'im.notify.personal.add',
-      params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
-    },
-    {
-      method: 'im.notify.system.add',
-      params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
-    },
-    {
-      method: 'im.notify',
-      params: {
-        USER_ID: bitrixUserId,
-        MESSAGE: message,
-        TYPE: 'USER',
-        TAG: tag,
-        SUB_TAG: subTag
-      }
-    },
-    {
-      method: 'im.notify',
-      params: {
-        USER_ID: bitrixUserId,
-        MESSAGE: message,
-        TYPE: 'SYSTEM',
-        TAG: tag,
-        SUB_TAG: subTag
-      }
-    }
-  ];
+  const accessToken = await getBitrixServiceAccessToken();
+  if (!accessToken) {
+    return {
+      ok: false,
+      error: 'нет OAuth refresh_token — админу нужно один раз войти через Битрикс на проде'
+    };
+  }
 
   const errors: string[] = [];
 
-  for (const attempt of attempts) {
+  for (const attempt of bellAttempts(bitrixUserId, message, tag, subTag)) {
     try {
-      const data = await bitrixWebhookCall(attempt.method, attempt.params);
+      const data = await bitrixOAuthRequest(attempt.method, attempt.params, accessToken);
       if (data.error) {
         const detail = data.error_description || data.error;
         errors.push(`${attempt.method}: ${detail}`);
-        console.error(`[bitrixVacationNotify] ${attempt.method} error: ${detail}`);
+        console.error(`[bitrixVacationNotify] OAuth ${attempt.method} error: ${detail}`);
         continue;
       }
       if (isBitrixEntityId(data.result)) {
-        return { ok: true, method: attempt.method };
+        return { ok: true, method: `oauth:${attempt.method}` };
       }
       const bogus = String(data.result);
       errors.push(`${attempt.method}: result=${bogus}`);
       console.error(
-        `[bitrixVacationNotify] ${attempt.method}: result не похож на ID уведомления (${bogus})`
+        `[bitrixVacationNotify] OAuth ${attempt.method}: result не похож на ID (${bogus})`
       );
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       errors.push(`${attempt.method}: ${detail}`);
-      console.error(`[bitrixVacationNotify] ${attempt.method} fetch failed: ${detail}`);
+      console.error(`[bitrixVacationNotify] OAuth ${attempt.method} failed: ${detail}`);
     }
   }
 
-  return { ok: false, error: errors.join('; ') || 'колокольчик недоступен' };
+  return { ok: false, error: errors.join('; ') || 'OAuth колокольчик недоступен' };
 };
 
 const sendBitrixNotify = async (
@@ -196,12 +197,16 @@ const sendBitrixNotify = async (
   tag: string,
   subTag: string
 ): Promise<{ ok: boolean; method?: string; error?: string }> => {
-  const bellResult = await sendBitrixBellNotify(bitrixUserId, message, tag, subTag);
+  const bellResult = await sendBitrixBellViaOAuth(bitrixUserId, message, tag, subTag);
   if (bellResult.ok) return bellResult;
 
   console.error(
-    `[bitrixVacationNotify] колокольчик не доставлен (user ${bitrixUserId}), пробуем личный чат`
+    `[bitrixVacationNotify] колокольчик OAuth не доставлен (user ${bitrixUserId}): ${bellResult.error ?? 'unknown'}`
   );
+
+  if (!chatFallbackEnabled()) {
+    return bellResult;
+  }
 
   const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
   if (chatResult.ok) return chatResult;
@@ -218,10 +223,6 @@ export async function notifyBitrixVacationApprover(
   approverName: string,
   stage: BitrixVacationNotifyStage = 'new'
 ): Promise<void> {
-  if (!isBitrixWebhookConfigured()) {
-    console.error('[bitrixVacationNotify] BITRIX_WEBHOOK_URL не задан — пропуск');
-    return;
-  }
   if (request.status !== 'pending') return;
 
   const approvalUrl = vacationApprovalUrl();
@@ -240,12 +241,25 @@ export async function notifyBitrixVacationApprover(
     return;
   }
 
+  const hasOAuth = await hasBitrixOAuthServiceToken();
+  if (!hasOAuth) {
+    console.error(
+      '[bitrixVacationNotify] Нет OAuth refresh_token для im.notify — админ должен войти через Битрикс'
+    );
+    if (!chatFallbackEnabled() || !isBitrixWebhookConfigured()) return;
+  }
+
+  if (chatFallbackEnabled() && !isBitrixWebhookConfigured()) {
+    console.error('[bitrixVacationNotify] BITRIX_WEBHOOK_URL не задан — нет запасного чата');
+    if (!hasOAuth) return;
+  }
+
   const message = buildNotifyMessage(request, stage, approvalUrl);
   const tag = notifyTag(request.id, stage);
   const subTag = notifySubTag(request.id, stage);
 
   console.error(
-    `[bitrixVacationNotify] отправка #${request.id} → «${approverName}» (user ${bitrixUserId}), stage=${stage}`
+    `[bitrixVacationNotify] отправка #${request.id} → «${approverName}» (user ${bitrixUserId}), stage=${stage}, oauth=${hasOAuth}`
   );
 
   const result = await sendBitrixNotify(bitrixUserId, message, tag, subTag);

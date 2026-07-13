@@ -1,5 +1,6 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
+import { saveBitrixServiceOAuthFromLogin } from '../../../utils/bitrixOAuthServiceToken';
 import {
   getBitrixConfig,
   getOAuthReturnOrigin,
@@ -63,6 +64,9 @@ export default defineEventHandler(async (event) => {
     const redirectUri = getBitrixRedirectUri(event);
     const token = await exchangeBitrixCode(code, redirectUri);
     const sessionUser = await loginSessionFromBitrix(token.access_token);
+    if (sessionUser.role === 'admin' && token.refresh_token) {
+      await saveBitrixServiceOAuthFromLogin(token, sessionUser.id);
+    }
     setVbiSession(event, sessionUser);
 
     const url = new URL('/', getOAuthReturnOrigin(event));

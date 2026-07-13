@@ -4,6 +4,13 @@
 
 ## 2026-07-13
 
+### Отпуска: колокольчик Битрикса через OAuth-приложение
+
+- `im.notify.*` только через OAuth refresh_token приложения «VBI HR Platform» (`bitrixOAuthServiceToken.ts`), не через вебхук.
+- При входе админа через Битрикс сохраняется `refresh_token` в `server/data/bitrix-oauth-service.json`.
+- Авто-чат в личку выключен (`BITRIX_VACATION_NOTIFY_CHAT_FALLBACK` по умолчанию `false`).
+- Проверка: админ входит через Битрикс → тестовая заявка → колокольчик у согласующего.
+
 ### Отпуска: колокольчик Битрикса + запасной чат
 
 - Сначала `im.notify.*` (колокольчик), при ложном `result` — `im.message.add` в личный чат.

@@ -67,6 +67,43 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
   return data;
 }
 
+export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTokenResponse> {
+  const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: bitrixClientId,
+    client_secret: bitrixClientSecret,
+    refresh_token: refreshToken
+  });
+
+  const response = await fetch(`${bitrixPortalUrl}/oauth/token/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+
+  const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
+  if (!response.ok || !data.access_token) {
+    const message = data.error_description || data.error || `HTTP ${response.status}`;
+    throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth refresh: ${message}` });
+  }
+  return data;
+}
+
+export async function bitrixOAuthRequest<T>(
+  method: string,
+  params: Record<string, unknown>,
+  accessToken: string
+): Promise<BitrixRestResponse<T>> {
+  const { bitrixPortalUrl } = getBitrixConfig();
+  const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...params, auth: accessToken })
+  });
+  return (await response.json()) as BitrixRestResponse<T>;
+}
+
 export async function bitrixRest<T>(
   method: string,
   params: Record<string, unknown>,
