@@ -1,5 +1,9 @@
 import { initialApprovalStep, type VacationApprovalStep } from '../../app/utils/vacationApproval';
 import type { VacationRequest, VacationStatus } from '../../app/composables/useVacations';
+import {
+  GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE,
+  hasGroupLeadVacationOverlap
+} from '../../app/utils/vacationGroupLeadOverlap';
 import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix } from './bitrixVacationAbsence';
 import { findEmployeeByName } from './employeesStore';
@@ -36,6 +40,30 @@ export type PatchVacationRequestBody = {
   approval_step?: VacationApprovalStep | null;
 };
 
+const assertGroupLeadVacationOverlap = (
+  state: VacationStoreState,
+  employee: { name: string; department: string },
+  start: string,
+  end: string,
+  excludeRequestId?: number
+) => {
+  const allRequests = Object.values(state.requestsByYear).flat();
+  const blocked = hasGroupLeadVacationOverlap({
+    employeeName: employee.name,
+    department: employee.department,
+    start,
+    end,
+    allRequests,
+    excludeRequestId
+  });
+  if (blocked) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE
+    });
+  }
+};
+
 export async function createVacationRequest(
   body: CreateVacationRequestBody
 ): Promise<VacationStoreState> {
@@ -56,6 +84,9 @@ export async function createVacationRequest(
   let createdRequest: VacationRequest | null = null;
 
   const result = await mutateVacations((state) => {
+    if (employee) {
+      assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
+    }
     request.id = state.nextRequestId++;
     const list = state.requestsByYear[yearKey] ?? [];
     state.requestsByYear[yearKey] = [...list, request];
@@ -88,6 +119,18 @@ export async function patchVacationRequest(
 
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
+
+    const employee = await findEmployeeByName(found.item.employee);
+    if (employee && (patch.start !== undefined || patch.end !== undefined)) {
+      assertGroupLeadVacationOverlap(
+        state,
+        employee,
+        found.item.start,
+        found.item.end,
+        found.item.id
+      );
+    }
+
     if (patch.status !== undefined) {
       found.item.status = patch.status;
       if (patch.status !== 'pending') {

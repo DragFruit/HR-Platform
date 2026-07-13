@@ -20,6 +20,18 @@
             {{ formAssessment.availableAtStart }} из {{ formAssessment.neededDays }}
           </span>
         </p>
+        <p
+          v-if="formGroupLeadOverlapDetails.length"
+          class="vac-emp-toolbar__glh-overlap"
+          role="status"
+        >
+          <VacOverlapPopover
+            :items="formGroupLeadOverlapDetails"
+            :format-range="formatVacationRange"
+            :badge-label="GROUP_LEAD_OVERLAP_BADGE_LABEL"
+            :title="GROUP_LEAD_OVERLAP_POPOVER_TITLE"
+          />
+        </p>
         <p v-if="clarifyHint" class="vac-emp-toolbar__clarify-hint" role="status">
           {{ clarifyHint }}
         </p>
@@ -137,6 +149,12 @@ import {
   reservationCapBlockMessage,
   RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
 } from '~/utils/vacationReservationCaps';
+import {
+  findGroupLeadVacationOverlaps,
+  GROUP_LEAD_OVERLAP_BADGE_LABEL,
+  GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE,
+  GROUP_LEAD_OVERLAP_POPOVER_TITLE
+} from '~/utils/vacationGroupLeadOverlap';
 
 const props = defineProps<{
   viewYear: number;
@@ -331,6 +349,24 @@ const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
 const submitting = ref(false);
 
+const formatVacationRange = (start: string, end: string) => {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${fmt(start)} — ${fmt(end)}`;
+};
+
+const formGroupLeadOverlapDetails = computed(() => {
+  const emp = currentEmployee.value;
+  if (!emp || !form.start || !form.end || form.end < form.start) return [];
+  return findGroupLeadVacationOverlaps({
+    employeeName: emp.name,
+    department: emp.department,
+    start: form.start,
+    end: form.end,
+    allRequests: yearRequests.value
+  });
+});
+
 const blockedDays = computed(() => {
   if (!employeeName.value) return new Set<string>();
   const { approved, pending } = buildDaySetsForEmployee(
@@ -422,6 +458,13 @@ const submitRequest = async () => {
     };
     return;
   }
+  if (formGroupLeadOverlapDetails.value.length) {
+    formError.value = {
+      title: 'Пересечение с отпуском другого групхеда',
+      text: GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE
+    };
+    return;
+  }
 
   if (isTrainingActive.value) {
     if (trainingStep.value?.id !== 'create') {
@@ -453,10 +496,20 @@ const submitRequest = async () => {
     form.start = '';
     form.end = '';
     clearSelection();
-  } catch {
+  } catch (error: unknown) {
+    const statusMessage =
+      error &&
+      typeof error === 'object' &&
+      'data' in error &&
+      error.data &&
+      typeof error.data === 'object' &&
+      'statusMessage' in error.data &&
+      typeof error.data.statusMessage === 'string'
+        ? error.data.statusMessage
+        : null;
     formError.value = {
       title: 'Не сохранилось',
-      text: 'Заявка не дошла до сервера. Проверьте сеть и попробуйте ещё раз.'
+      text: statusMessage ?? 'Заявка не дошла до сервера. Проверьте сеть и попробуйте ещё раз.'
     };
   } finally {
     submitting.value = false;

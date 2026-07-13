@@ -9,7 +9,7 @@
   >
     <span class="vac-overlap-badge" tabindex="0">
       <span class="vac-overlap-badge__dot" aria-hidden="true" />
-      Есть пересечение
+      {{ badgeLabel }}
     </span>
 
     <Teleport to="body">
@@ -23,7 +23,7 @@
         @mouseenter="cancelHide"
         @mouseleave="scheduleHide"
       >
-        <p class="vac-overlap-popover__title">Пересечения отпусков</p>
+        <p class="vac-overlap-popover__title">{{ title }}</p>
         <div
           v-for="(item, index) in items"
           :key="`${item.employee}-${item.vacationStart}-${index}`"
@@ -49,10 +49,18 @@
 <script setup lang="ts">
 import type { VacationOverlapDetail } from '~/utils/vacationCalendar';
 
-defineProps<{
-  items: VacationOverlapDetail[];
-  formatRange: (start: string, end: string) => string;
-}>();
+withDefaults(
+  defineProps<{
+    items: VacationOverlapDetail[];
+    formatRange: (start: string, end: string) => string;
+    badgeLabel?: string;
+    title?: string;
+  }>(),
+  {
+    badgeLabel: 'Есть пересечение',
+    title: 'Пересечения отпусков'
+  }
+);
 
 const anchorRef = ref<HTMLElement | null>(null);
 const popoverRef = ref<HTMLElement | null>(null);
