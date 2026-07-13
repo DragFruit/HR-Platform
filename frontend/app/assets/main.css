@@ -5562,6 +5562,11 @@ a {
   border: 1px solid #e0cff5;
 }
 
+.vac-emp-toolbar__glh-overlap {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+}
+
 .emp-requests-block {
   --emp-requests-block-height: 145px;
   display: flex;
