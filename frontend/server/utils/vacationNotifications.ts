@@ -6,6 +6,7 @@ import {
   vacationPendingStatusLabel,
   type VacationApprovalStep
 } from '../../app/utils/vacationApproval';
+import { notifyBitrixVacationApprover } from './bitrixVacationNotify';
 import { findEmployeeByName, employeeNotificationUserId } from './employeesStore';
 import { createUserNotification, type UserNotificationKind } from './userNotificationsStore';
 
@@ -32,7 +33,10 @@ const notifyUser = async (
   });
 };
 
-const notifyApprover = async (request: VacationRequest) => {
+const notifyApprover = async (
+  request: VacationRequest,
+  bitrixStage: 'new' | 'director' = 'new'
+) => {
   const employee = await findEmployeeByName(request.employee);
   if (!employee || request.status !== 'pending') return;
 
@@ -40,9 +44,11 @@ const notifyApprover = async (request: VacationRequest) => {
   if (!approverName) return;
 
   const recipientId = await userIdForEmployeeName(approverName);
-  if (!recipientId) return;
+  if (recipientId) {
+    await notifyUser(recipientId, 'vacation_submitted', request);
+  }
 
-  await notifyUser(recipientId, 'vacation_submitted', request);
+  await notifyBitrixVacationApprover(request, approverName, bitrixStage);
 };
 
 /** Руководитель из справочника + директор отдела (если есть и это не тот же человек). */
@@ -120,7 +126,7 @@ export async function notifyVacationRequestPatched(
     const stageLabel = vacationPendingStatusLabel(nextStep, employee);
     await notifyEmployee(next, 'vacation_next_stage', stageLabel);
     if (nextStep === 'director') {
-      await notifyApprover(next);
+      await notifyApprover(next, 'director');
     }
   }
 }
