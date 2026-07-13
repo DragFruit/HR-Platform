@@ -241,22 +241,32 @@ export async function notifyBitrixVacationApprover(
     return;
   }
 
+  const message = buildNotifyMessage(request, stage, approvalUrl);
+  const tag = notifyTag(request.id, stage);
+  const subTag = notifySubTag(request.id, stage);
+
   const hasOAuth = await hasBitrixOAuthServiceToken();
   if (!hasOAuth) {
     console.error(
-      '[bitrixVacationNotify] Нет OAuth refresh_token для im.notify — админ должен войти через Битрикс'
+      '[bitrixVacationNotify] Нет OAuth refresh_token — колокольчик недоступен; нужен вход админа через Битрикс'
     );
-    if (!chatFallbackEnabled() || !isBitrixWebhookConfigured()) return;
+    if (!isBitrixWebhookConfigured()) return;
+    const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
+    if (chatResult.ok) {
+      console.error(
+        `[bitrixVacationNotify] OK #${request.id} → user ${bitrixUserId} via ${chatResult.method} (oauth отсутствует)`
+      );
+    } else {
+      console.error(
+        `[bitrixVacationNotify] FAIL #${request.id} → user ${bitrixUserId}: ${chatResult.error ?? 'unknown'}`
+      );
+    }
+    return;
   }
 
   if (chatFallbackEnabled() && !isBitrixWebhookConfigured()) {
     console.error('[bitrixVacationNotify] BITRIX_WEBHOOK_URL не задан — нет запасного чата');
-    if (!hasOAuth) return;
   }
-
-  const message = buildNotifyMessage(request, stage, approvalUrl);
-  const tag = notifyTag(request.id, stage);
-  const subTag = notifySubTag(request.id, stage);
 
   console.error(
     `[bitrixVacationNotify] отправка #${request.id} → «${approverName}» (user ${bitrixUserId}), stage=${stage}, oauth=${hasOAuth}`

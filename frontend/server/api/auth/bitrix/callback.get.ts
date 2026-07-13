@@ -64,9 +64,13 @@ export default defineEventHandler(async (event) => {
     const redirectUri = getBitrixRedirectUri(event);
     const token = await exchangeBitrixCode(code, redirectUri);
     const sessionUser = await loginSessionFromBitrix(token.access_token);
-    if (sessionUser.role === 'admin' && token.refresh_token) {
-      await saveBitrixServiceOAuthFromLogin(token, sessionUser.id);
-    }
+  if (sessionUser.role === 'admin' && token.refresh_token) {
+    await saveBitrixServiceOAuthFromLogin(token, sessionUser.id);
+  } else if (sessionUser.role === 'admin' && !token.refresh_token) {
+    console.error(
+      `[bitrixOAuthService] admin user ${sessionUser.id} вошёл через Bitrix, но refresh_token пуст — проверьте OAuth-приложение`
+    );
+  }
     setVbiSession(event, sessionUser);
 
     const url = new URL('/', getOAuthReturnOrigin(event));

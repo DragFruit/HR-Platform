@@ -8,7 +8,9 @@
 
 - `im.notify.*` только через OAuth refresh_token приложения «VBI HR Platform» (`bitrixOAuthServiceToken.ts`), не через вебхук.
 - При входе админа через Битрикс сохраняется `refresh_token` в `server/data/bitrix-oauth-service.json`.
-- Авто-чат в личку выключен (`BITRIX_VACATION_NOTIFY_CHAT_FALLBACK` по умолчанию `false`).
+- Авто-чат в личку выключен при рабочем OAuth (`BITRIX_VACATION_NOTIFY_CHAT_FALLBACK` по умолчанию `false`).
+- **Без OAuth-токена** — запасной `im.message.add`, иначе согласующий ничего не получит.
+- Токен: `/etc/vbi-hr/bitrix-oauth-service.json` или `server/data/bitrix-oauth-service.json`.
 - Проверка: админ входит через Битрикс → тестовая заявка → колокольчик у согласующего.
 
 ### Отпуска: колокольчик Битрикса + запасной чат

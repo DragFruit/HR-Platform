@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { BitrixTokenResponse } from './bitrixClient';
@@ -12,50 +13,66 @@ export type BitrixOAuthServiceState = {
   saved_by_user_id?: number;
 };
 
-const DATA_FILE = join(process.cwd(), 'server/data/bitrix-oauth-service.json');
+const DATA_CANDIDATES = (): string[] => {
+  const fromEnv = String(process.env.BITRIX_OAUTH_SERVICE_FILE || '').trim();
+  const paths = [
+    fromEnv,
+    '/etc/vbi-hr/bitrix-oauth-service.json',
+    join(process.cwd(), 'server/data/bitrix-oauth-service.json')
+  ].filter(Boolean);
+  return [...new Set(paths)];
+};
 
 let cachedAccessToken: string | null = null;
 let cachedExpiresAt = 0;
+let resolvedDataFile: string | null = null;
 
-const emptyState = (): BitrixOAuthServiceState | null => {
-  const fromEnv = String(process.env.BITRIX_SERVICE_REFRESH_TOKEN || '').trim();
-  if (fromEnv) return { refresh_token: fromEnv };
-  return null;
+const envRefreshToken = (): string | null => {
+  const raw = String(process.env.BITRIX_SERVICE_REFRESH_TOKEN || '').trim();
+  return raw || null;
 };
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    const seed = emptyState();
-    if (seed) {
-      await writeFile(DATA_FILE, JSON.stringify(seed, null, 2) + '\n', 'utf8');
+const resolveDataFile = (): string => {
+  if (resolvedDataFile) return resolvedDataFile;
+  for (const path of DATA_CANDIDATES()) {
+    if (existsSync(path)) {
+      resolvedDataFile = path;
+      return path;
     }
   }
-}
+  const fallback = DATA_CANDIDATES().at(-1)!;
+  resolvedDataFile = fallback;
+  return fallback;
+};
 
 async function readState(): Promise<BitrixOAuthServiceState | null> {
-  const envSeed = emptyState();
-  if (envSeed && !envSeed.access_token) {
-    return envSeed;
+  const envToken = envRefreshToken();
+  if (envToken) {
+    return { refresh_token: envToken };
   }
 
-  await ensureFile();
-  try {
-    const raw = await readFile(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as BitrixOAuthServiceState;
-    if (parsed?.refresh_token?.trim()) return parsed;
-  } catch {
-    /* fall through */
+  for (const path of DATA_CANDIDATES()) {
+    if (!existsSync(path)) continue;
+    try {
+      const raw = await readFile(path, 'utf8');
+      const parsed = JSON.parse(raw) as BitrixOAuthServiceState;
+      if (parsed?.refresh_token?.trim()) {
+        resolvedDataFile = path;
+        return parsed;
+      }
+    } catch {
+      /* try next path */
+    }
   }
 
-  return envSeed;
+  return null;
 }
 
 async function writeState(state: BitrixOAuthServiceState) {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  const path = resolveDataFile();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  resolvedDataFile = path;
 }
 
 export async function hasBitrixOAuthServiceToken(): Promise<boolean> {
@@ -69,7 +86,12 @@ export async function saveBitrixServiceOAuthFromLogin(
   savedByUserId: number
 ): Promise<void> {
   const refresh = String(token.refresh_token || '').trim();
-  if (!refresh) return;
+  if (!refresh) {
+    console.error(
+      `[bitrixOAuthService] вход user ${savedByUserId}: Bitrix не вернул refresh_token — im.notify недоступен`
+    );
+    return;
+  }
 
   const expiresIn = Number(token.expires_in || 3600);
   const state: BitrixOAuthServiceState = {
@@ -85,7 +107,7 @@ export async function saveBitrixServiceOAuthFromLogin(
   cachedExpiresAt = state.expires_at || 0;
 
   console.error(
-    `[bitrixOAuthService] refresh_token сохранён (user ${savedByUserId}) для im.notify`
+    `[bitrixOAuthService] refresh_token сохранён (user ${savedByUserId}) → ${resolveDataFile()}`
   );
 }
 
@@ -115,7 +137,9 @@ export async function getBitrixServiceAccessToken(): Promise<string | null> {
       updated_at: new Date().toISOString(),
       saved_by_user_id: state?.saved_by_user_id
     };
-    await writeState(next);
+    if (!envRefreshToken()) {
+      await writeState(next);
+    }
     cachedAccessToken = next.access_token || null;
     cachedExpiresAt = next.expires_at || 0;
     return cachedAccessToken;
