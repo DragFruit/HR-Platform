@@ -2939,6 +2939,62 @@ a {
   line-height: 1.2;
 }
 
+.vac-cap-setting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vac-cap-setting__input {
+  width: 4.5rem;
+  min-width: 0;
+}
+
+.vac-cap-setting__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.vac-cap-setting__error {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--danger, #c44b5a);
+}
+
+.vac-cap-notice-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 24, 0.35);
+  z-index: 1200;
+}
+
+.vac-cap-notice {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1201;
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px 22px;
+  border-radius: 14px;
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 18px 48px rgba(15, 18, 24, 0.18);
+}
+
+.vac-cap-notice__title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+
+.vac-cap-notice__text {
+  margin: 0 0 16px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .vac-aside-requests {
   display: grid;
   gap: 8px;
@@ -4149,6 +4205,21 @@ a {
   box-shadow: inset -1px 0 0 var(--vac-grid-line), inset 0 -1px 0 var(--vac-grid-line);
 }
 
+.vac-detailed-timeline tr.vac-detailed-head-counts th {
+  background: rgba(116, 81, 244, 0.14);
+  color: #5b3fd4;
+  font-weight: 700;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  padding: 3px 0;
+  min-height: 1.25rem;
+  box-shadow: inset -1px 0 0 rgba(116, 81, 244, 0.22), inset 0 -2px 0 rgba(116, 81, 244, 0.35);
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-counts th.is-weekend {
+  background: rgba(116, 81, 244, 0.2);
+}
+
 .vac-detailed-month-label {
   font-family: var(--font-display);
   font-size: 0.68rem !important;
@@ -5055,6 +5126,17 @@ a {
   color: #6b4f99;
   background: #f3ebfc;
   box-shadow: inset 0 0 0 1px rgba(107, 79, 153, 0.2);
+}
+
+.emp-reservation-add-btn--cap-blocked .emp-reservation-add-label {
+  color: #8a8f98;
+  background: #eceef1;
+  box-shadow: inset 0 0 0 1px rgba(138, 143, 152, 0.35);
+  cursor: not-allowed;
+}
+
+.emp-reservation-add-btn--cap-blocked {
+  cursor: not-allowed;
 }
 
 .emp-reservation-badge {

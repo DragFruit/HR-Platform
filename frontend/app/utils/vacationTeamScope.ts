@@ -1,11 +1,10 @@
 import type { Employee } from '~/composables/useEmployees';
 import {
-  DIGITAL_DIRECTOR_NAME,
-  isDigitalDepartment,
-  isDigitalGroupLeadName
-} from '~/utils/vacationApproval';
+  isGroupedVacationDepartment,
+  resolveVacationDepartmentsForDepartment
+} from '~/utils/vacationDepartmentGroups';
 
-export type VacationTeamScopeKind = 'digital-department' | 'digital-group' | 'department';
+export type VacationTeamScopeKind = 'grouped-department' | 'department';
 
 export type VacationTeamScope = {
   kind: VacationTeamScopeKind;
@@ -17,6 +16,7 @@ type ScopeHelpers = {
   employeesInDepartment: (department: string) => Employee[];
   directReports: (managerName: string) => Employee[];
   findByName: (name: string) => Employee | undefined;
+  allEmployees?: Employee[];
 };
 
 const sortMembers = (list: Employee[]) => {
@@ -53,7 +53,6 @@ export function enrichTeamMembers(
     const leadsSubsetInTeam = members.some((emp) => emp.manager.trim() === name);
     if (!leadsSubsetInTeam) continue;
 
-    // Не поднимаемся выше тимлида: если в списке уже есть руководитель с подчинёнными, его начальника не добавляем.
     const skipUpperManager = members.some(
       (emp) =>
         emp.manager.trim() === name &&
@@ -67,14 +66,9 @@ export function enrichTeamMembers(
   return sortMembers(combined);
 }
 
-const groupLeadLabel = (leadName: string) => {
-  const short = leadName.trim().split(/\s+/)[0] ?? leadName.trim();
-  return `Digital · ${short}`;
-};
-
 /**
  * Общий календарь отпусков для сотрудника:
- * - Digital: группа групхеда (или весь Digital для директора);
+ * - Digital и QA «Тестировщики»: весь отдел (сгруппированный в UI);
  * - остальные отделы: все сотрудники отдела, включая руководителей.
  */
 export function resolveVacationTeamScope(
@@ -85,41 +79,16 @@ export function resolveVacationTeamScope(
   if (!viewer?.name.trim()) return null;
 
   const department = viewer.department.trim();
-  const viewerName = viewer.name.trim();
   if (!department) return null;
 
-  if (isDigitalDepartment(department)) {
-    if (viewerName === DIGITAL_DIRECTOR_NAME) {
-      const members = helpers.employeesInDepartment('Digital');
-      if (members.length < 2) return null;
-      return { kind: 'digital-department', label: 'Digital', members };
-    }
-
-    if (isDigitalGroupLeadName(viewerName)) {
-      const lead = helpers.findByName(viewerName) ?? viewer;
-      const members = enrichTeamMembers(
-        [lead, ...helpers.directReports(viewerName)],
-        helpers.findByName,
-        viewer
-      );
-      if (members.length < 2) return null;
-      return { kind: 'digital-group', label: groupLeadLabel(viewerName), members };
-    }
-
-    const managerName = viewer.manager.trim();
-    if (!managerName) return null;
-
+  if (isGroupedVacationDepartment(department)) {
     const members = enrichTeamMembers(
-      allEmployees.filter(
-        (emp) =>
-          emp.department.trim() === 'Digital' &&
-          (emp.name.trim() === managerName || emp.manager.trim() === managerName)
-      ),
+      helpers.employeesInDepartment(department),
       helpers.findByName,
       viewer
     );
     if (members.length < 2) return null;
-    return { kind: 'digital-group', label: groupLeadLabel(managerName), members };
+    return { kind: 'grouped-department', label: department, members };
   }
 
   const members = enrichTeamMembers(
@@ -131,6 +100,15 @@ export function resolveVacationTeamScope(
   return { kind: 'department', label: department, members };
 }
 
-export function vacationTeamScopeToDepartments(scope: VacationTeamScope) {
+export function vacationTeamScopeToDepartments(
+  scope: VacationTeamScope,
+  helpers?: Pick<ScopeHelpers, 'directReports' | 'findByName'> & { allEmployees?: Employee[] }
+) {
+  if (scope.kind === 'grouped-department' && helpers?.allEmployees) {
+    return resolveVacationDepartmentsForDepartment(scope.label, helpers.allEmployees, {
+      directReports: helpers.directReports,
+      findByName: helpers.findByName
+    });
+  }
   return [{ name: scope.label, employees: scope.members }];
 }

@@ -44,6 +44,7 @@ export type VacationState = {
   nextRequestId: number;
   reservationsByYear: Record<string, VacationReservation[]>;
   nextReservationId: number;
+  reservationMonthlyCapsByGroup?: Record<string, number>;
 };
 
 const STORAGE_KEY = 'vbi-vacations-state-v6';
@@ -65,7 +66,8 @@ const normalizeState = (raw: Partial<VacationState>): VacationState => {
     nextRequestId: typeof raw.nextRequestId === 'number' ? raw.nextRequestId : base.nextRequestId,
     reservationsByYear: raw.reservationsByYear ?? base.reservationsByYear,
     nextReservationId:
-      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId
+      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId,
+    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup
   };
 };
 
@@ -216,6 +218,16 @@ export function useVacations() {
     const saved = await $fetch<VacationState>(`/api/vacations/reservations/${id}`, {
       method: 'PATCH',
       body: patch
+    });
+    applyServerState(saved);
+    return saved;
+  };
+
+  const syncPatchReservationCap = async (groupId: string, cap: number) => {
+    if (!import.meta.client) return null;
+    const saved = await $fetch<VacationState>('/api/vacations/reservation-caps', {
+      method: 'PATCH',
+      body: { groupId, cap }
     });
     applyServerState(saved);
     return saved;
@@ -521,6 +533,19 @@ export function useVacations() {
   const employeeReservations = (employeeName: string, year = viewYear.value) =>
     reservationsForYear(year).filter((r) => r.employee === employeeName);
 
+  const allReservations = computed(() =>
+    Object.values(state.value.reservationsByYear).flat()
+  );
+
+  const updateReservationMonthlyCap = async (groupId: string, cap: number) => {
+    try {
+      await syncPatchReservationCap(groupId, cap);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     state,
     viewYear,
@@ -548,6 +573,8 @@ export function useVacations() {
     getMonthEntries,
     employeeRequests,
     employeeReservations,
+    allReservations,
+    updateReservationMonthlyCap,
     vacationStatusLabels,
     requestStatusLabel,
     MONTHS_RU

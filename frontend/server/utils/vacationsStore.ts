@@ -5,7 +5,8 @@ import type { VacationReservation } from '../../app/utils/vacationReservations';
 import {
   mergeQaTestVacationState,
   stripQaTestVacationRequests,
-  stripQaTestVacationReservations
+  stripQaTestVacationReservations,
+  type QaDemoVacationSuppressed
 } from '../../app/data/qaTestVacationSeed';
 
 export type { VacationRequest, VacationReservation };
@@ -16,6 +17,10 @@ export type VacationStoreState = {
   nextRequestId: number;
   reservationsByYear: Record<string, VacationReservation[]>;
   nextReservationId: number;
+  /** Удалённые демо-заявки/брони (localhost) — чтобы seed не возвращался после DELETE. */
+  qaDemoSuppressed?: QaDemoVacationSuppressed;
+  /** Лимит броней на месяц по группам Digital (groupId → max). */
+  reservationMonthlyCapsByGroup?: Record<string, number>;
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
@@ -36,7 +41,9 @@ export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): V
     nextRequestId: typeof raw.nextRequestId === 'number' ? raw.nextRequestId : base.nextRequestId,
     reservationsByYear: raw.reservationsByYear ?? base.reservationsByYear,
     nextReservationId:
-      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId
+      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId,
+    qaDemoSuppressed: raw.qaDemoSuppressed,
+    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup
   };
 }
 

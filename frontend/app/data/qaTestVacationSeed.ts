@@ -6,15 +6,63 @@ import {
   QA_EMPLOYEE_MARINA_NAME,
   QA_EMPLOYEE_VASILY_NAME,
   QA_TEAM_LEAD_NAME,
-  QA_TEAM_MEMBER_NAMES,
   isQaTestDepartmentEnabledFromEnv
 } from '~/data/qaTestDepartment';
 
-const QA_TEAM_NAME_SET = new Set<string>(QA_TEAM_MEMBER_NAMES);
-
 /** Фиксированные id — не пересекаются с боевыми заявками и не пишутся в vacations.json. */
 export const QA_VACATION_REQUEST_IDS = new Set([9101, 9102, 9103, 9104, 9105, 9106, 9107]);
-export const QA_VACATION_RESERVATION_IDS = new Set([9101, 9102, 9103]);
+/** Отдельный диапазон id для броней — не пересекается с id заявок (иначе удаление «мигает»). */
+export const QA_VACATION_RESERVATION_IDS = new Set([9201, 9202, 9203]);
+
+/** Убрать только демо-seed из файла перед записью; пользовательские заявки QA-сотрудников сохраняем. */
+export function stripQaTestVacationRequests<T extends { id: number }>(rows: T[]): T[] {
+  return rows.filter((row) => !QA_VACATION_REQUEST_IDS.has(row.id));
+}
+
+/** Убрать только демо-seed из файла перед записью; пользовательские брони QA-сотрудников сохраняем. */
+export function stripQaTestVacationReservations<T extends { id: number }>(rows: T[]): T[] {
+  return rows.filter((row) => !QA_VACATION_RESERVATION_IDS.has(row.id));
+}
+
+export type QaDemoVacationSuppressed = {
+  requestIds: number[];
+  reservationIds: number[];
+};
+
+export const emptyQaDemoVacationSuppressed = (): QaDemoVacationSuppressed => ({
+  requestIds: [],
+  reservationIds: []
+});
+
+/** Запомнить удаление демо-записи, чтобы merge при следующем чтении не вернул её из seed. */
+export function recordQaDemoVacationDeletion(
+  suppressed: QaDemoVacationSuppressed | undefined,
+  kind: 'request' | 'reservation',
+  id: number
+): QaDemoVacationSuppressed {
+  const isQa =
+    kind === 'request' ? QA_VACATION_REQUEST_IDS.has(id) : QA_VACATION_RESERVATION_IDS.has(id);
+  if (!isQa) return suppressed ?? emptyQaDemoVacationSuppressed();
+
+  const base = suppressed ?? emptyQaDemoVacationSuppressed();
+  const key = kind === 'request' ? 'requestIds' : 'reservationIds';
+  if (base[key].includes(id)) return base;
+  return { ...base, [key]: [...base[key], id] };
+}
+
+function applyQaDemoSuppressedToSeed(
+  requests: VacationRequest[],
+  reservations: VacationReservation[],
+  suppressed?: QaDemoVacationSuppressed
+) {
+  if (!suppressed) return { requests, reservations };
+  const reqHidden = new Set(suppressed.requestIds);
+  const resHidden = new Set(suppressed.reservationIds);
+  return {
+    requests: requests.filter((row) => !reqHidden.has(row.id)),
+    reservations: reservations.filter((row) => !resHidden.has(row.id))
+  };
+}
 
 const QA_YEAR = 2026;
 
@@ -91,7 +139,7 @@ export function buildQaTestVacationRequests(): VacationRequest[] {
 export function buildQaTestVacationReservations(): VacationReservation[] {
   return [
     {
-      id: 9101,
+      id: 9201,
       employee: QA_EMPLOYEE_DASHA_NAME,
       year: QA_YEAR,
       month: 10,
@@ -100,7 +148,7 @@ export function buildQaTestVacationReservations(): VacationReservation[] {
       createdAt: '08.07.2026'
     },
     {
-      id: 9102,
+      id: 9202,
       employee: QA_EMPLOYEE_ALINA_NAME,
       year: QA_YEAR,
       month: 9,
@@ -108,7 +156,7 @@ export function buildQaTestVacationReservations(): VacationReservation[] {
       createdAt: '08.07.2026'
     },
     {
-      id: 9103,
+      id: 9203,
       employee: QA_EMPLOYEE_MARINA_NAME,
       year: QA_YEAR,
       month: 12,
@@ -119,32 +167,24 @@ export function buildQaTestVacationReservations(): VacationReservation[] {
   ];
 }
 
-export function stripQaTestVacationRequests<T extends { id: number; employee: string }>(rows: T[]): T[] {
-  return rows.filter(
-    (row) => !QA_VACATION_REQUEST_IDS.has(row.id) && !QA_TEAM_NAME_SET.has(row.employee)
-  );
-}
-
-export function stripQaTestVacationReservations<T extends { id: number; employee: string }>(rows: T[]): T[] {
-  return rows.filter(
-    (row) => !QA_VACATION_RESERVATION_IDS.has(row.id) && !QA_TEAM_NAME_SET.has(row.employee)
-  );
-}
-
 export function mergeQaTestVacationState<
   T extends {
     requestsByYear: Record<string, VacationRequest[]>;
     reservationsByYear: Record<string, VacationReservation[]>;
+    qaDemoSuppressed?: QaDemoVacationSuppressed;
   }
 >(state: T): T {
   if (!isQaTestDepartmentEnabledFromEnv()) return state;
 
   const yearKey = String(QA_YEAR);
-  const requests = stripQaTestVacationRequests(state.requestsByYear[yearKey] ?? []).concat(
-    buildQaTestVacationRequests()
+  const seed = applyQaDemoSuppressedToSeed(
+    buildQaTestVacationRequests(),
+    buildQaTestVacationReservations(),
+    state.qaDemoSuppressed
   );
+  const requests = stripQaTestVacationRequests(state.requestsByYear[yearKey] ?? []).concat(seed.requests);
   const reservations = stripQaTestVacationReservations(state.reservationsByYear[yearKey] ?? []).concat(
-    buildQaTestVacationReservations()
+    seed.reservations
   );
 
   return {

@@ -2,7 +2,26 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-07-13
+
+### Отпуска: лимиты броней по отделу и группе (Digital)
+
+- Двухуровневый лимит предварительных броней: **5 на весь отдел** в месяц (по умолчанию, настраивается руководителем) и **1 бронь внутри подгруппы** (фиксировано).
+- Группировка отдела как в Excel: `vacationDepartmentGroups.ts` (Digital + демо QA на localhost).
+- Директор Digital видит календарь по всем подгруппам; тимлид — только свою; сотрудники Digital — весь отдел в «Общий».
+- Строка дневных счётчиков отпускников в детальном календаре — только у директора отдела, по всему отделу.
+- Серый `+бронь` и попап при исчерпании лимита; руководитель меняет лимит отдела в `ManagerVacationAside`.
+- API: `PATCH /api/vacations/reservation-caps` (`groupId`, `cap`); поле `reservationMonthlyCapsByGroup` в `vacations.json`.
+- Пути: `vacationReservationCaps.ts`, `vacationDepartmentGroups.ts`, `vacationReservationCapMutations.ts`, `EmployeeVacationPanel.vue`, `ManagerVacationAside.vue`, `VacationDetailedCalendar.vue`.
+- Проверка: сотрудник Digital → месяц с бронью в своей группе → `+бронь` серая; директор → боковая панель «Лимит броней на месяц»; `node frontend/scripts/test-vacation-reservation-caps.mjs`.
+
 ## 2026-07-10
+
+### Удалён режим «Отдел Тестировщики» на /vacations
+
+- Убран переключатель наблюдателя отдела; сотрудники (в т.ч. демо QA) видят обычный экран с «Мой календарь / Общий».
+- Удалены `vacationDepartmentView.ts`, `useVacationDepartmentView.ts`; упрощён `vacations.vue`.
+- Проверка: войти как сотрудник отдела → `/vacations` — нет переключателя «Отдел …», только стандартный UI.
 
 ### Обучалка: доработки (production)
 

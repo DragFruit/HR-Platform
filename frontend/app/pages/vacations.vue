@@ -6,13 +6,7 @@
     <ManagerVacationTrainingOverlay v-if="vacationTrainingEnabled" />
 
     <div v-if="showFullEmployeeVacations" class="vacations-employee-shell">
-      <EmployeeVacationPanel
-        :view-year="viewYear"
-        :ui-mode="isDepartmentVacationViewer ? managerUiMode : undefined"
-        :team-mode-label="isDepartmentVacationViewer ? managerAsideModeLabel : undefined"
-        @update:ui-mode="managerUiMode = $event"
-        @update:view-year="onViewYearChange"
-      />
+      <EmployeeVacationPanel :view-year="viewYear" @update:view-year="onViewYearChange" />
     </div>
 
     <template v-else>
@@ -25,7 +19,7 @@
       >
         <div class="vac-manager-main">
           <EmployeeVacationPanel
-            v-if="showManagerShell && managerUiMode === 'employee' && !isDepartmentVacationViewer"
+            v-if="showManagerShell && managerUiMode === 'employee'"
             embedded
             :view-year="viewYear"
             @update:view-year="onViewYearChange"
@@ -57,6 +51,7 @@
               :requests="yearRequests"
               :reservations="yearReservations"
               :get-month-entries="getMonthEntries"
+              :show-department-daily-counts="showDepartmentDailyCounts"
             />
 
             <section v-else class="card section-card vac-approval-panel">
@@ -131,7 +126,7 @@
           :team-total="teamTotal"
           :stats="teamRequestStats"
           :show-hr-tab="isHr"
-          :manager-mode-label="managerAsideModeLabel"
+          :manager-mode-label="'Руководитель'"
         />
       </div>
     </template>
@@ -141,6 +136,12 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import { vacationPendingStatusLabel } from '~/utils/vacationApproval';
+import {
+  isGroupedVacationDepartment,
+  isVacationDepartmentDirector,
+  isVacationGroupLead,
+  resolveManagerCalendarDepartments
+} from '~/utils/vacationDepartmentGroups';
 import { findVacationOverlapDetails } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 const { user, authReady } = useAuth();
@@ -149,9 +150,7 @@ const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrai
 const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { notifyApprovalTabOpened, currentStep, isActive: isManagerTrainingActive } = useManagerVacationTraining();
 const { isAdmin: isAdminShell } = usePlatformContext();
-const { isViewer: isDepartmentVacationViewer, departmentTeam, viewDepartment } =
-  useVacationDepartmentView();
-const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, findByUserForAuth, reloadFromServer: reloadEmployees } =
+const { departmentsGrouped, allReportsForAuthUser, managerProfileName, findByName, findByUserForAuth, employees, directReports, reloadFromServer: reloadEmployees } =
   useEmployees();
 const {
   viewYear,
@@ -172,8 +171,6 @@ const managerUiMode = ref<'manager' | 'employee'>('manager');
 
 const showFullEmployeeVacations = computed(() => {
   if (!user.value) return false;
-  if (isDepartmentVacationViewer.value && managerUiMode.value === 'employee') return true;
-  if (isDepartmentVacationViewer.value) return false;
   if (user.value.role === 'employee') return true;
   if (user.value.role === 'admin' && !isAdminShell.value) return true;
   return false;
@@ -181,18 +178,12 @@ const showFullEmployeeVacations = computed(() => {
 
 const showManagerShell = computed(() => {
   if (!user.value) return false;
-  if (isDepartmentVacationViewer.value) return managerUiMode.value === 'manager';
   return user.value.role === 'manager' || user.value.role === 'hr';
 });
 
-const managerAsideModeLabel = computed(() =>
-  isDepartmentVacationViewer.value && viewDepartment.value ? `Отдел ${viewDepartment.value}` : 'Руководитель'
-);
-
-/** Календарь и статистика по ограниченной команде (подчинённые или весь отдел для наблюдателя). */
+/** Календарь и статистика по ограниченной команде (подчинённые руководителя). */
 const usesScopedTeamView = computed(
-  () =>
-    (isManager.value && !canSeeAllVacationApprovals.value) || isDepartmentVacationViewer.value
+  () => isManager.value && !canSeeAllVacationApprovals.value
 );
 
 const visibleTabs = computed(() => {
@@ -225,16 +216,38 @@ const managerTeam = computed(() => {
 });
 
 const scopedTeamMembers = computed(() => {
-  if (isDepartmentVacationViewer.value) return departmentTeam.value;
   if (isManager.value && !canSeeAllVacationApprovals.value) return managerTeam.value;
   return [];
 });
 
 const calendarDepartments = computed(() => {
   if (usesScopedTeamView.value) {
+    const managerName = managerProfileName(user.value) || '';
+    const managerEmployee = findByUserForAuth(user.value);
+    const department = managerEmployee?.department?.trim() ?? '';
+
+    if (
+      department &&
+      isGroupedVacationDepartment(department) &&
+      (isVacationDepartmentDirector(managerName, department) ||
+        isVacationGroupLead(managerName, department))
+    ) {
+      const groupedDeps = resolveManagerCalendarDepartments(managerName, employees.value, {
+        directReports,
+        findByName
+      });
+      if (groupedDeps.length) return groupedDeps;
+    }
     return groupByDepartment(scopedTeamMembers.value);
   }
   return departmentsGrouped.value;
+});
+
+const showDepartmentDailyCounts = computed(() => {
+  if (!usesScopedTeamView.value) return false;
+  const managerName = managerProfileName(user.value)?.trim() ?? '';
+  const department = findByUserForAuth(user.value)?.department?.trim() ?? '';
+  return Boolean(department && isVacationDepartmentDirector(managerName, department));
 });
 
 const approvalQueue = computed(() =>

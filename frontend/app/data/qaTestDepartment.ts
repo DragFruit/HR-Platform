@@ -2,8 +2,8 @@ import type { Employee } from '~/composables/useEmployees';
 
 export const QA_TEST_DEPARTMENT_NAME = 'Тестировщики';
 
-export const QA_DIRECTOR_NAME = 'Ксюша Тестова';
-export const QA_TEAM_LEAD_NAME = 'Виталий Тестов';
+export const QA_DIRECTOR_NAME = 'Мария Тестова';
+export const QA_TEAM_LEAD_NAME = 'Константин Тестов';
 export const QA_EMPLOYEE_DASHA_NAME = 'Даша Тестова';
 export const QA_EMPLOYEE_VASILY_NAME = 'Василий Тестов';
 export const QA_EMPLOYEE_ALINA_NAME = 'Алина Тестова';
@@ -165,20 +165,20 @@ export function applyQaDemoSessionOverrides<
 }
 
 export const QA_DEMO_ACCOUNT_HINTS: Record<string, string> = {
-  'kostya@vbi.local': 'Руководитель: Виталий Тестов — команда 4 чел., согласование шаг 1',
+  'kostya@vbi.local': `Руководитель: ${QA_TEAM_LEAD_NAME} — команда 4 чел., согласование шаг 1`,
   'katya@vbi.local': 'Сотрудник: Даша Тестова — заявки, бронь, обучалка',
   'vasya@vbi.local': 'Сотрудник: Василий Тестов — свой календарь и заявки',
   'alina@vbi.local': 'Сотрудник: Алина Тестова — заявка на согласовании',
-  'masha@vbi.local': 'Директор: Ксюша Тестова — согласование шаг 2',
+  'masha@vbi.local': `Директор: ${QA_DIRECTOR_NAME} — согласование шаг 2`,
   'stas@vbi.local': 'Администратор платформы (HR)'
 };
 
 /** Порядок карточек на экране входа для демо-показа. */
 export const QA_DEMO_ACCOUNT_ORDER = [
-  'kostya@vbi.local',
   'katya@vbi.local',
   'vasya@vbi.local',
   'alina@vbi.local',
+  'kostya@vbi.local',
   'masha@vbi.local',
   'stas@vbi.local'
 ] as const;

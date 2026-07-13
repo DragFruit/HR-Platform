@@ -64,6 +64,9 @@ export const RESERVATION_DURATION_PRESETS = [
 export const RESERVATION_MIN_DAYS = 1;
 export const RESERVATION_MAX_DAYS = 28;
 
+/** Лимит броней на месяц на весь отдел (если руководитель не переопределил). */
+export const DEFAULT_RESERVATION_MONTHLY_CAP = 5;
+
 export function formatReservationLabel(durationDays: number): string {
   if (durationDays === 7) return '1 нед.';
   if (durationDays === 14) return '2 нед.';

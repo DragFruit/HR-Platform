@@ -182,6 +182,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
 | `DELETE /api/vacations/requests/:id` | Удалить заявку |
 | `POST /api/vacations/reservations` | Предварительная бронь: `year`, `month` (1–12), `durationDays`, `comment?` |
+| `PATCH /api/vacations/reservation-caps` | Лимит броней на месяц для пула отдела (`groupId`: `digital-department`, `cap`: 1–99); директор или тимлид grouped-отдела |
 | `DELETE /api/vacations/reservations/:id` | Удалить бронь (своя или admin) |
 
 Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`, `vacationReservationMutations.ts`; при финальном согласовании заявки — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
@@ -189,6 +190,8 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v6` — кэш (миграция с v5).
 
 **Предварительная бронь** (`VacationReservation` в `vacationReservations.ts`): месяц + длительность без `start`/`end`; не влияет на баланс и approval; отображается полосатыми плашками; конвертация в заявку через «Уточнить даты» в `EmployeeVacationAside`.
+
+**Лимиты броней** (`vacationReservationCaps.ts`, `vacationDepartmentGroups.ts`): для grouped-отделов (Digital) — пул на весь отдел (`digital-department`, по умолчанию 5 броней/мес., переопределяется в `reservationMonthlyCapsByGroup`) и не более 1 брони в месяц внутри подгруппы (`digital-tskhai`, `digital-popov`, …). Проверка на `POST /api/vacations/reservations` и в UI (`EmployeeYearCalendar` — серая `+бронь`). Демо QA использует тот же механизм только на localhost (`qa-department`).
 
 ### Уведомления пользователей (отпуска)
 
@@ -260,7 +263,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 
 Классы: `.vac-block` (месячный календарь), `.vac-overlap-badge`, `.vac-advance-badge`, `.emp-request-meta .pill`. Popover пересечений и аванса — Teleport + ромбик `::before`.
 
-**Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. У сотрудников с командным календарём — вкладки «Мой календарь / Общий» (`VacationCalendarScopeToggle`, `useEmployeeVacationTeamView`, `vacationTeamScope.ts`); «Общий» — `VacationTeamCalendar` variant `employee-team` (в т.ч. весь отдел DEV для сотрудников без права согласования). Руководитель/HR — `ManagerVacationAside`: переключатель «Режим» (slide toggle) всегда сверху; в режиме «Сотрудник» под ним тот же `EmployeeVacationAside`, что у сотрудника; в режиме «Руководитель» — статистика команды и блок обучалки `ManagerVacationTrainingPrompt` под «Заявки». **Наблюдатель отдела (демо):** `katya@vbi.local` → переключатель «Отдел Тестировщики» / «Сотрудник» — `vacationDepartmentView.ts`, `useVacationDepartmentView.ts`.
+**Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. У сотрудников с командным календарём — вкладки «Мой календарь / Общий» (`VacationCalendarScopeToggle`, `useEmployeeVacationTeamView`, `vacationTeamScope.ts`); «Общий» — `VacationTeamCalendar` variant `employee-team` (в т.ч. весь отдел DEV для сотрудников без права согласования). Руководитель/HR — `ManagerVacationAside`: переключатель «Режим» (slide toggle) всегда сверху; в режиме «Сотрудник» под ним тот же `EmployeeVacationAside`, что у сотрудника; в режиме «Руководитель» — статистика команды и блок обучалки `ManagerVacationTrainingPrompt` под «Заявки».
 
 **Обучалки отпусков:** сотрудник — `useVacationTraining` + `VacationTrainingPrompt/Overlay`; руководитель — `useManagerVacationTraining` + `ManagerVacationTrainingPrompt/Overlay`. Для роли руководителя ачивка «Календарь отпусков» выдаётся только после завершения обоих квестов.
 

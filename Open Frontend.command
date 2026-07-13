@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -e
 
-# Запуск полной платформы VBI HR Gamification (вход, главная, задачи, отпуска, структура…)
+# Запуск полной платформы VIBE VBI (вход, главная, задачи, отпуска, структура…)
 PROJECT_DIR="$(cd "$(dirname "$0")/frontend" && pwd)"
 PORT=3300
 URL="http://127.0.0.1:$PORT/"
@@ -20,7 +20,7 @@ fi
 echo "Building frontend..."
 npm run build
 
-echo "Starting VBI HR platform..."
+echo "Starting VIBE VBI..."
 NITRO_PORT="$PORT" NITRO_HOST="127.0.0.1" node .output/server/index.mjs &
 DEV_PID=$!
 
