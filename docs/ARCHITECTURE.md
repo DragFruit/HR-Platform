@@ -182,7 +182,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
 | `DELETE /api/vacations/requests/:id` | Удалить заявку |
 | `POST /api/vacations/reservations` | Предварительная бронь: `year`, `month` (1–12), `durationDays`, `comment?` |
-| `PATCH /api/vacations/reservation-caps` | Лимит броней на месяц для пула отдела (`groupId`: `digital-department`, `cap`: 1–99); директор или тимлид grouped-отдела |
+| `PATCH /api/vacations/reservation-caps` | Зарезервировано (лимиты фиксированы в коде: 5 на отдел, 1 в подгруппе); UI у руководителей убран |
 | `DELETE /api/vacations/reservations/:id` | Удалить бронь (своя или admin) |
 
 Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`, `vacationReservationMutations.ts`; при финальном согласовании заявки — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
