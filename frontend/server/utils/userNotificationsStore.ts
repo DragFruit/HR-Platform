@@ -107,6 +107,20 @@ export async function markAllUserNotificationsSeen(recipientUserId: number): Pro
   return changed;
 }
 
+export async function dismissUserNotification(
+  recipientUserId: number,
+  id: string
+): Promise<boolean> {
+  const state = await readState();
+  const index = state.items.findIndex(
+    (row) => row.id === id && row.recipient_user_id === recipientUserId
+  );
+  if (index === -1) return false;
+  state.items.splice(index, 1);
+  await writeState(state);
+  return true;
+}
+
 export async function createUserNotification(
   input: Omit<UserNotification, 'id' | 'created_at' | 'seen'>
 ): Promise<UserNotification> {

@@ -168,6 +168,23 @@ const {
 
 const activeTab = ref<'calendar' | 'approval'>('calendar');
 const managerUiMode = ref<'manager' | 'employee'>('manager');
+const route = useRoute();
+
+const parseVacationTab = (raw: unknown): 'calendar' | 'approval' | null => {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'approval' || value === 'calendar') return value;
+  return null;
+};
+
+const applyTabFromRoute = () => {
+  const tab = parseVacationTab(route.query.tab);
+  if (!tab) return;
+  if (tab === 'approval') {
+    if (!canApproveVacations.value) return;
+    managerUiMode.value = 'manager';
+  }
+  activeTab.value = tab;
+};
 
 const showFullEmployeeVacations = computed(() => {
   if (!user.value) return false;
@@ -376,7 +393,10 @@ watch(
 );
 
 onMounted(() => {
+  applyTabFromRoute();
   reloadEmployees();
   reloadVacations();
 });
+
+watch(() => route.query.tab, () => applyTabFromRoute());
 </script>
