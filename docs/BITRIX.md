@@ -160,13 +160,14 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Переменная на сервере: `BITRIX_WEBHOOK_URL=...`
 
-### Отпуска → уведомления согласующим (im.notify)
+### Отпуска → уведомления согласующим (колокольчик + запасной чат)
 
-При создании заявки и при передаче на директора (Digital, двухэтапное согласование) сервер шлёт системное уведомление в Битрикс текущему согласующему (`bitrix_user_id` из `employees.json`):
+При создании заявки и при передаче на директора сервер шлёт уведомление в Битрикс текущему согласующему (`bitrix_user_id` из `employees.json`):
 
-- метод `im.notify.system.add` (или `im.notify` с `USER_ID` / `MESSAGE` / `TYPE`);
-- текст с ФИО сотрудника, датами и ссылкой `[URL=…/vacations]Открыть согласование в Vibe[/URL]`;
-- публичный URL — из `APP_PUBLIC_URL` или origin `BITRIX_REDIRECT_URI`.
+1. **Колокольчик** — `im.notify.personal.add` → `im.notify.system.add` → `im.notify` (с `CLIENT_ID` OAuth-приложения в query).
+2. **Запасной канал** — `im.message.add` в личный чат, если колокольчик не вернул настоящий ID уведомления (на коробке иногда приходит `time.start` вместо ID).
+
+Текст с ФИО, датами и ссылкой `[URL=…/vacations?tab=approval]Открыть согласование в Vibe[/URL]`.
 
 Код: `server/utils/bitrixVacationNotify.ts`, вызов из `vacationNotifications.ts`. Ошибки Bitrix логируются (`console.warn`), создание/согласование заявки не блокируется.
 

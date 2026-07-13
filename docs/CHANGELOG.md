@@ -4,6 +4,19 @@
 
 ## 2026-07-13
 
+### Отпуска: колокольчик Битрикса + запасной чат
+
+- Сначала `im.notify.*` (колокольчик), при ложном `result` — `im.message.add` в личный чат.
+- Проверка `result`: ID < 1e9 (иначе на коробке приходит timestamp и доставки нет).
+- `CLIENT_ID` OAuth-приложения в query REST-вызова для TAG/SUB_TAG.
+- Пути: `bitrixVacationNotify.ts`.
+
+### Отпуска: доставка в Битрикс через im.message.add
+
+- На коробке `crm.vbi.ru` `im.notify.*` через входящий вебхук возвращает HTTP 200, но уведомление не появляется у получателя; основной канал — `im.message.add` в личный чат согласующему.
+- `bitrixVacationNotify.ts`: проверка, что `result` — ID сущности (< 1e9), а не timestamp.
+- Проверка: заявка на отпуск → личное сообщение в мессенджере Битрикса у согласующего.
+
 ### Отпуска: надёжнее im.notify в Битрикс
 
 - `bitrixVacationNotify.ts`: прямой fetch без `createError`, fallback `im.notify` → `im.notify.system.add`, уникальный `TAG`, ссылка с `?tab=approval`, логи в stderr.
