@@ -160,22 +160,26 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Переменная на сервере: `BITRIX_WEBHOOK_URL=...`
 
-### Отпуска → уведомления согласующим (колокольчик OAuth)
+### Отпуска → системные уведомления согласующим (im.notify.system.add)
 
-Колокольчик Битрикса (`im.notify.*`) вызывается **через OAuth-приложение** «VBI HR Platform», не через входящий вебхук.
+Колокольчик Битрикса — метод [`im.notify.system.add`](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html) через OAuth-приложение «VBI HR Platform» (уведомление **от системы**, не личный чат и не SMS):
 
-**Первичная настройка (один раз):**
+| Параметр | Значение |
+|----------|----------|
+| `USER_ID` | `bitrix_user_id` согласующего из `employees.json` |
+| `MESSAGE` | Текст с BB-кодом `[URL=…]…[/URL]` |
+| `TAG` | `VBI_HR_VAC_{requestId}_{stage}` |
+| `SUB_TAG` | `VBI_HR\|vacation\|{requestId}\|{stage}` |
 
-1. В приложении Битрикс «VBI HR Platform» добавить право **im** (мессенджер), если ещё нет.
-2. Админ платформы (Драго) заходит на `http://45.12.74.25` → «Войти через Битрикс24».
-3. Сервер сохраняет `refresh_token` в `server/data/bitrix-oauth-service.json` (не в git).
-4. Дальше при заявке на отпуск — `im.notify.personal.add` / `im.notify.system.add` в колокольчик согласующего.
+`MESSAGE_OUT` **не передаём** — иначе Bitrix может пушить во внешние каналы (email/SMS).
 
-Альтернатива: `BITRIX_SERVICE_REFRESH_TOKEN=...` в `/etc/vbi-hr/bitrix-production.env`.
+Вызов: `POST https://crm.vbi.ru/rest/im.notify.system.add.json` с `auth` (access_token приложения). **Не через входящий вебхук.**
 
-**Запасной чат** (`im.message.add` через вебхук) по умолчанию **выключен** — `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true` только если нужен автоматический дубль в личку.
+**Первичная настройка:** админ один раз входит через «Войти через Битрикс24» → `refresh_token` в `/etc/vbi-hr/bitrix-oauth-service.json`.
 
-Текст с ФИО, датами и ссылкой `[URL=…/vacations?tab=approval]Открыть согласование в Vibe[/URL]`.
+**Без OAuth:** колокольчик не отправляется (тишина лучше, чем личный чат). Запасной чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
+
+Код: `server/utils/bitrixVacationNotify.ts`.
 
 Код: `server/utils/bitrixVacationNotify.ts`, вызов из `vacationNotifications.ts`. Ошибки Bitrix логируются (`console.warn`), создание/согласование заявки не блокируется.
 

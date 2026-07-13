@@ -4,6 +4,17 @@
 
 ## 2026-07-13
 
+### Отпуска: системные уведомления im.notify.system.add
+
+- `bitrixVacationNotify.ts`: колокольчик через [`im.notify.system.add`](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html) (от системы).
+- Без `MESSAGE_OUT` (не уходит в SMS/email). Без OAuth — не шлём личный чат.
+- Проверка: админ вход через Битрикс → заявка → уведомление в колокольчике у согласующего.
+
+### Отпуска: im.notify.personal.add по документации Bitrix
+
+- `bitrixVacationNotify.ts`: только `im.notify.personal.add` (OAuth), параметры USER_ID/MESSAGE/MESSAGE_OUT/TAG/SUB_TAG по [apidocs](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-personal-add.html).
+- Проверка: админ вход через Битрикс → заявка → колокольчик у согласующего.
+
 ### Отпуска: колокольчик Битрикса через OAuth-приложение
 
 - `im.notify.*` только через OAuth refresh_token приложения «VBI HR Platform» (`bitrixOAuthServiceToken.ts`), не через вебхук.

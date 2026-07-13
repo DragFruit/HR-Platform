@@ -15,6 +15,17 @@ type BitrixRestPayload = {
   result?: unknown;
 };
 
+/**
+ * Параметры im.notify.system.add
+ * @see https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html
+ */
+type BitrixSystemNotifyParams = {
+  USER_ID: number;
+  MESSAGE: string;
+  TAG?: string;
+  SUB_TAG?: string;
+};
+
 const formatDateRu = (iso: string): string => {
   const [y, m, d] = iso.split('-');
   return y && m && d ? `${d}.${m}.${y}` : iso;
@@ -39,6 +50,7 @@ const vacationApprovalUrl = (): string | null => {
   return null;
 };
 
+/** Запасной личный чат только при явном BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true. */
 const chatFallbackEnabled = (): boolean =>
   String(process.env.BITRIX_VACATION_NOTIFY_CHAT_FALLBACK || 'false').trim() === 'true';
 
@@ -73,44 +85,23 @@ const buildNotifyMessage = (
   return lines.join('\n');
 };
 
+/** TAG — уникальный в рамках приложения; повтор с тем же TAG удаляет предыдущее. */
 const notifyTag = (requestId: number, stage: BitrixVacationNotifyStage): string =>
   `VBI_HR_VAC_${requestId}_${stage}`;
 
+/** SUB_TAG — дополнительный тег без проверки уникальности. */
 const notifySubTag = (requestId: number, stage: BitrixVacationNotifyStage): string =>
   `VBI_HR|vacation|${requestId}|${stage}`;
 
 /**
- * ID сущности Битрикса (уведомление/сообщение ~10⁷).
- * Через вебхук im.notify.* на коробке часто возвращает time.start (~10⁹).
+ * result im.notify.*.add: ID уведомления (integer) или false.
+ * Отсекаем unix-timestamp (~1e9), который вебхук иногда отдаёт как ложный «успех».
  */
-const isBitrixEntityId = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1_000_000_000;
-
-const bellAttempts = (
-  bitrixUserId: number,
-  message: string,
-  tag: string,
-  subTag: string
-): Array<{ method: string; params: Record<string, unknown> }> => [
-  {
-    method: 'im.notify.personal.add',
-    params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
-  },
-  {
-    method: 'im.notify.system.add',
-    params: { USER_ID: bitrixUserId, MESSAGE: message, TAG: tag, SUB_TAG: subTag }
-  },
-  {
-    method: 'im.notify',
-    params: {
-      USER_ID: bitrixUserId,
-      MESSAGE: message,
-      TYPE: 'USER',
-      TAG: tag,
-      SUB_TAG: subTag
-    }
-  }
-];
+const isNotifyCreated = (value: unknown): value is number =>
+  typeof value === 'number' &&
+  Number.isFinite(value) &&
+  value > 0 &&
+  value < 1_000_000_000;
 
 const bitrixWebhookCall = async (
   method: string,
@@ -119,10 +110,52 @@ const bitrixWebhookCall = async (
   const base = getBitrixWebhookUrl();
   const response = await fetch(`${base}/${method}.json`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(params)
   });
   return (await response.json()) as BitrixRestPayload;
+};
+
+/**
+ * im.notify.system.add через OAuth-приложение (колокольчик от системы).
+ * MESSAGE_OUT не передаём — иначе Bitrix может слать во внешние каналы (email/SMS).
+ */
+const imNotifySystemAdd = async (
+  params: BitrixSystemNotifyParams,
+  accessToken: string
+): Promise<{ ok: boolean; notifyId?: number; error?: string }> => {
+  if (!params.USER_ID || params.USER_ID <= 0) {
+    return { ok: false, error: 'USER_ID_EMPTY' };
+  }
+  if (!params.MESSAGE?.trim()) {
+    return { ok: false, error: 'MESSAGE_EMPTY' };
+  }
+
+  try {
+    const data = await bitrixOAuthRequest<number | false>(
+      'im.notify.system.add',
+      params,
+      accessToken
+    );
+
+    if (data.error) {
+      const detail = data.error_description || data.error;
+      return { ok: false, error: detail };
+    }
+
+    if (isNotifyCreated(data.result)) {
+      return { ok: true, notifyId: data.result };
+    }
+
+    if (data.result === false) {
+      return { ok: false, error: 'im.notify.system.add вернул false' };
+    }
+
+    return { ok: false, error: `неожиданный result: ${String(data.result)}` };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: detail };
+  }
 };
 
 const sendBitrixChatMessage = async (
@@ -138,7 +171,7 @@ const sendBitrixChatMessage = async (
       const detail = data.error_description || data.error;
       return { ok: false, error: `${detail} (im.message.add)` };
     }
-    if (isBitrixEntityId(data.result)) {
+    if (typeof data.result === 'number' && data.result > 0) {
       return { ok: true, method: 'im.message.add' };
     }
     return { ok: false, error: 'im.message.add: некорректный result' };
@@ -148,7 +181,7 @@ const sendBitrixChatMessage = async (
   }
 };
 
-const sendBitrixBellViaOAuth = async (
+const sendBitrixSystemNotify = async (
   bitrixUserId: number,
   message: string,
   tag: string,
@@ -158,63 +191,26 @@ const sendBitrixBellViaOAuth = async (
   if (!accessToken) {
     return {
       ok: false,
-      error: 'нет OAuth refresh_token — админу нужно один раз войти через Битрикс на проде'
+      error: 'нет OAuth refresh_token — админу нужен вход через Битрикс24 на платформе'
     };
   }
 
-  const errors: string[] = [];
+  const params: BitrixSystemNotifyParams = {
+    USER_ID: bitrixUserId,
+    MESSAGE: message,
+    TAG: tag,
+    SUB_TAG: subTag
+  };
 
-  for (const attempt of bellAttempts(bitrixUserId, message, tag, subTag)) {
-    try {
-      const data = await bitrixOAuthRequest(attempt.method, attempt.params, accessToken);
-      if (data.error) {
-        const detail = data.error_description || data.error;
-        errors.push(`${attempt.method}: ${detail}`);
-        console.error(`[bitrixVacationNotify] OAuth ${attempt.method} error: ${detail}`);
-        continue;
-      }
-      if (isBitrixEntityId(data.result)) {
-        return { ok: true, method: `oauth:${attempt.method}` };
-      }
-      const bogus = String(data.result);
-      errors.push(`${attempt.method}: result=${bogus}`);
-      console.error(
-        `[bitrixVacationNotify] OAuth ${attempt.method}: result не похож на ID (${bogus})`
-      );
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      errors.push(`${attempt.method}: ${detail}`);
-      console.error(`[bitrixVacationNotify] OAuth ${attempt.method} failed: ${detail}`);
-    }
+  const result = await imNotifySystemAdd(params, accessToken);
+  if (result.ok) {
+    return { ok: true, method: 'im.notify.system.add' };
   }
-
-  return { ok: false, error: errors.join('; ') || 'OAuth колокольчик недоступен' };
-};
-
-const sendBitrixNotify = async (
-  bitrixUserId: number,
-  message: string,
-  tag: string,
-  subTag: string
-): Promise<{ ok: boolean; method?: string; error?: string }> => {
-  const bellResult = await sendBitrixBellViaOAuth(bitrixUserId, message, tag, subTag);
-  if (bellResult.ok) return bellResult;
 
   console.error(
-    `[bitrixVacationNotify] колокольчик OAuth не доставлен (user ${bitrixUserId}): ${bellResult.error ?? 'unknown'}`
+    `[bitrixVacationNotify] im.notify.system.add error (user ${bitrixUserId}): ${result.error ?? 'unknown'}`
   );
-
-  if (!chatFallbackEnabled()) {
-    return bellResult;
-  }
-
-  const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
-  if (chatResult.ok) return chatResult;
-
-  return {
-    ok: false,
-    error: [bellResult.error, chatResult.error].filter(Boolean).join(' | ')
-  };
+  return { ok: false, error: result.error };
 };
 
 /** Пуш в Битрикс текущему согласующему; ошибки не пробрасываются. */
@@ -246,41 +242,49 @@ export async function notifyBitrixVacationApprover(
   const subTag = notifySubTag(request.id, stage);
 
   const hasOAuth = await hasBitrixOAuthServiceToken();
+
+  console.error(
+    `[bitrixVacationNotify] #${request.id} → «${approverName}» (user ${bitrixUserId}), oauth=${hasOAuth}`
+  );
+
   if (!hasOAuth) {
     console.error(
-      '[bitrixVacationNotify] Нет OAuth refresh_token — колокольчик недоступен; нужен вход админа через Битрикс'
+      '[bitrixVacationNotify] OAuth-токен не задан — im.notify.system.add недоступен, чат не шлём'
     );
-    if (!isBitrixWebhookConfigured()) return;
-    const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
-    if (chatResult.ok) {
-      console.error(
-        `[bitrixVacationNotify] OK #${request.id} → user ${bitrixUserId} via ${chatResult.method} (oauth отсутствует)`
-      );
-    } else {
-      console.error(
-        `[bitrixVacationNotify] FAIL #${request.id} → user ${bitrixUserId}: ${chatResult.error ?? 'unknown'}`
-      );
-    }
     return;
   }
 
-  if (chatFallbackEnabled() && !isBitrixWebhookConfigured()) {
-    console.error('[bitrixVacationNotify] BITRIX_WEBHOOK_URL не задан — нет запасного чата');
+  const notifyResult = await sendBitrixSystemNotify(bitrixUserId, message, tag, subTag);
+
+  if (notifyResult.ok) {
+    logResult(request.id, bitrixUserId, notifyResult);
+    return;
   }
 
-  console.error(
-    `[bitrixVacationNotify] отправка #${request.id} → «${approverName}» (user ${bitrixUserId}), stage=${stage}, oauth=${hasOAuth}`
-  );
+  // Личный чат — только явный opt-in; по умолчанию только колокольчик.
+  if (chatFallbackEnabled() && isBitrixWebhookConfigured()) {
+    const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
+    logResult(request.id, bitrixUserId, chatResult, 'fallback после system.add');
+    return;
+  }
 
-  const result = await sendBitrixNotify(bitrixUserId, message, tag, subTag);
+  logResult(request.id, bitrixUserId, notifyResult);
+}
+
+const logResult = (
+  requestId: number,
+  bitrixUserId: number,
+  result: { ok: boolean; method?: string; error?: string },
+  note?: string
+) => {
+  const suffix = note ? ` (${note})` : '';
   if (result.ok) {
     console.error(
-      `[bitrixVacationNotify] OK #${request.id} → user ${bitrixUserId} via ${result.method}`
+      `[bitrixVacationNotify] OK #${requestId} → user ${bitrixUserId} via ${result.method}${suffix}`
     );
     return;
   }
-
   console.error(
-    `[bitrixVacationNotify] FAIL #${request.id} → user ${bitrixUserId}: ${result.error ?? 'unknown'}`
+    `[bitrixVacationNotify] FAIL #${requestId} → user ${bitrixUserId}: ${result.error ?? 'unknown'}${suffix}`
   );
-}
+};
