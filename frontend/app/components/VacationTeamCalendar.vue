@@ -62,6 +62,7 @@
         :year="viewYear"
         :requests="requests"
         :reservations="reservations"
+        :show-department-daily-counts="showDepartmentDailyCounts"
       />
       <VacationMonthlyCalendar
         v-else
@@ -95,8 +96,10 @@ const props = withDefaults(
     variant?: 'manager' | 'employee-team';
     defaultViewMode?: 'detailed' | 'months';
     year?: number;
+    /** Суммарная строка «в отпуске» по дням (Digital Director). */
+    showDepartmentDailyCounts?: boolean;
   }>(),
-  { variant: 'manager', defaultViewMode: 'detailed' }
+  { variant: 'manager', defaultViewMode: 'detailed', showDepartmentDailyCounts: false }
 );
 
 const { isAdmin } = usePermissions();

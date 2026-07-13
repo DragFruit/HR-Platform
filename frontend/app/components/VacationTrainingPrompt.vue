@@ -9,9 +9,6 @@
       <button class="button primary vac-training-prompt__start" type="button" @click="startTraining">
         Начать квест
       </button>
-      <button class="button ghost vac-training-prompt__skip" type="button" @click="skipTraining">
-        Пропустить
-      </button>
     </article>
 
     <svg
@@ -37,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-const { shouldShowPrompt, startTraining, skipTraining } = useVacationTraining();
+const { shouldShowPrompt, startTraining } = useVacationTraining();
 
 const arrowRef = ref<SVGElement | null>(null);
 const arrowWidth = ref(120);

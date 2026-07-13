@@ -43,7 +43,12 @@ export function useEmployeeVacationTeamView() {
 
   const teamDepartments = computed(() => {
     const scope = teamScope.value;
-    return scope ? vacationTeamScopeToDepartments(scope) : [];
+    if (!scope) return [];
+    return vacationTeamScopeToDepartments(scope, {
+      allEmployees: employees.value,
+      directReports,
+      findByName
+    });
   });
 
   const calendarScope = useState<EmployeeCalendarScope>('emp-vac-calendar-scope', readStoredScope);

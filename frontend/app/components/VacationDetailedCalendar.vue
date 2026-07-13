@@ -4,10 +4,10 @@
       <table ref="tableRef" class="vac-detailed-timeline">
         <thead>
           <tr class="vac-detailed-head-month">
-            <th rowspan="3" class="sticky-col-name sticky-col-name--head">
+            <th :rowspan="headRowSpan" class="sticky-col-name sticky-col-name--head">
               <span class="vac-employee-head-label">Сотрудник</span>
             </th>
-            <th rowspan="3" class="sticky-col-balance sticky-col-balance--head">
+            <th :rowspan="headRowSpan" class="sticky-col-balance sticky-col-balance--head">
               <span class="vac-balance-head-label">Остаток</span>
             </th>
             <th
@@ -35,6 +35,16 @@
               :class="dayHeaderClass(cell)"
             >
               {{ cell.weekday }}
+            </th>
+          </tr>
+          <tr v-if="showDepartmentDailyCounts" class="vac-detailed-head-counts">
+            <th
+              v-for="cell in yearDays"
+              :key="`c-${cell.iso}`"
+              :class="dayHeaderClass(cell)"
+              :title="departmentCountTitle(cell.iso)"
+            >
+              {{ departmentCountForDay(cell.iso) || '' }}
             </th>
           </tr>
         </thead>
@@ -135,6 +145,8 @@ const props = defineProps<{
   year: number;
   requests: VacationRequest[];
   reservations?: VacationReservation[];
+  /** Суммарное число сотрудников в отпуске по дням (вся видимая команда). */
+  showDepartmentDailyCounts?: boolean;
 }>();
 
 const DAY_COL_PX = 22;
@@ -148,11 +160,20 @@ const collapsedDepts = ref<Set<string>>(new Set());
 const measureStickyHeaderHeights = () => {
   const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
   const rowDays = tableRef.value?.querySelector('.vac-detailed-head-days') as HTMLElement | null;
+  const rowWeekdays = tableRef.value?.querySelector('.vac-detailed-head-weekdays') as HTMLElement | null;
   if (rowMonth && tableRef.value) {
     tableRef.value.style.setProperty('--vac-detailed-head-r1', `${rowMonth.offsetHeight}px`);
   }
   if (rowDays && tableRef.value) {
     tableRef.value.style.setProperty('--vac-detailed-head-r2', `${rowDays.offsetHeight}px`);
+  }
+  if (rowWeekdays && tableRef.value) {
+    const countsRow = tableRef.value.querySelector('.vac-detailed-head-counts') as HTMLElement | null;
+    const extra = countsRow?.offsetHeight ?? 0;
+    tableRef.value.style.setProperty(
+      '--vac-detailed-head-r3',
+      `${rowWeekdays.offsetHeight + extra}px`
+    );
   }
 };
 
@@ -216,8 +237,14 @@ const monthSpans = computed(() => {
   return spans;
 });
 
+const headRowSpan = computed(() => (props.showDepartmentDailyCounts ? 4 : 3));
+
 const visibleDepartments = computed(() =>
   props.departments.filter((dep) => dep.employees.length > 0)
+);
+
+const visibleEmployeeNames = computed(() =>
+  visibleDepartments.value.flatMap((dep) => dep.employees.map((emp) => emp.name))
 );
 
 const dayIndex = (date: Date) => {
@@ -228,6 +255,49 @@ const dayIndex = (date: Date) => {
     idx += new Date(props.year, m + 1, 0).getDate();
   }
   return idx + day - 1;
+};
+
+const clipToYear = (startIso: string, endIso: string): { startIdx: number; endIdx: number } | null => {
+  const start = parseIso(startIso);
+  const end = parseIso(endIso);
+  const yearStart = new Date(props.year, 0, 1);
+  const yearEnd = new Date(props.year, 11, 31);
+  if (end < yearStart || start > yearEnd) return null;
+  const from = start < yearStart ? yearStart : start;
+  const to = end > yearEnd ? yearEnd : end;
+  return { startIdx: dayIndex(from), endIdx: dayIndex(to) };
+};
+
+const departmentDayCounts = computed(() => {
+  const counts = new Map<string, number>();
+  if (!props.showDepartmentDailyCounts) return counts;
+
+  const names = new Set(visibleEmployeeNames.value);
+  for (const cell of yearDays.value) {
+    counts.set(cell.iso, 0);
+  }
+
+  for (const request of props.requests) {
+    if (!names.has(request.employee)) continue;
+    if (request.status !== 'approved' && request.status !== 'pending') continue;
+    const clip = clipToYear(request.start, request.end);
+    if (!clip) continue;
+    for (let idx = clip.startIdx; idx <= clip.endIdx; idx += 1) {
+      const iso = yearDays.value[idx]?.iso;
+      if (!iso) continue;
+      counts.set(iso, (counts.get(iso) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+});
+
+const departmentCountForDay = (iso: string) => departmentDayCounts.value.get(iso) ?? 0;
+
+const departmentCountTitle = (iso: string) => {
+  const count = departmentCountForDay(iso);
+  if (!count) return 'Никто не в отпуске';
+  return `${count} в отпуске`;
 };
 
 const dayHeaderClass = (cell: YearDayCell) => {
@@ -257,17 +327,6 @@ const balanceFor = (emp: Employee) => {
     emp.vacation_opening_balance
   );
   return b.remain;
-};
-
-const clipToYear = (startIso: string, endIso: string): { startIdx: number; endIdx: number } | null => {
-  const start = parseIso(startIso);
-  const end = parseIso(endIso);
-  const yearStart = new Date(props.year, 0, 1);
-  const yearEnd = new Date(props.year, 11, 31);
-  if (end < yearStart || start > yearEnd) return null;
-  const from = start < yearStart ? yearStart : start;
-  const to = end > yearEnd ? yearEnd : end;
-  return { startIdx: dayIndex(from), endIdx: dayIndex(to) };
 };
 
 const barsFor = (employeeName: string): GanttBar[] => {

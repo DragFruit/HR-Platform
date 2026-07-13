@@ -9,10 +9,7 @@ export async function bootstrapAppData() {
   useWallet().hydrateWallets();
 
   const { user } = useAuth();
-  const { isAdmin } = usePlatformContext();
-  if (!isAdmin.value) {
-    useUserNotifications().loadNotifications().catch(() => {});
-  }
+  useUserNotifications().loadNotifications().catch(() => {});
   if (user.value?.role === 'admin' || user.value?.role === 'hr') {
     useAdminNotifications().loadNotifications().catch(() => {});
   }

@@ -2,6 +2,12 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
+import {
+  mergeQaTestVacationState,
+  stripQaTestVacationRequests,
+  stripQaTestVacationReservations,
+  type QaDemoVacationSuppressed
+} from '../../app/data/qaTestVacationSeed';
 
 export type { VacationRequest, VacationReservation };
 
@@ -11,6 +17,10 @@ export type VacationStoreState = {
   nextRequestId: number;
   reservationsByYear: Record<string, VacationReservation[]>;
   nextReservationId: number;
+  /** Удалённые демо-заявки/брони (localhost) — чтобы seed не возвращался после DELETE. */
+  qaDemoSuppressed?: QaDemoVacationSuppressed;
+  /** Лимит броней на месяц по группам Digital (groupId → max). */
+  reservationMonthlyCapsByGroup?: Record<string, number>;
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
@@ -31,7 +41,9 @@ export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): V
     nextRequestId: typeof raw.nextRequestId === 'number' ? raw.nextRequestId : base.nextRequestId,
     reservationsByYear: raw.reservationsByYear ?? base.reservationsByYear,
     nextReservationId:
-      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId
+      typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId,
+    qaDemoSuppressed: raw.qaDemoSuppressed,
+    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup
   };
 }
 
@@ -47,12 +59,29 @@ async function ensureFile() {
 export async function readVacations(): Promise<VacationStoreState> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeVacationStoreState(JSON.parse(raw) as Partial<VacationStoreState>);
+  return mergeQaTestVacationState(normalizeVacationStoreState(JSON.parse(raw) as Partial<VacationStoreState>));
+}
+
+function stripQaFromVacationState(state: VacationStoreState): VacationStoreState {
+  const requestsByYear = Object.fromEntries(
+    Object.entries(state.requestsByYear).map(([year, rows]) => [
+      year,
+      stripQaTestVacationRequests(rows)
+    ])
+  );
+  const reservationsByYear = Object.fromEntries(
+    Object.entries(state.reservationsByYear).map(([year, rows]) => [
+      year,
+      stripQaTestVacationReservations(rows)
+    ])
+  );
+  return { ...state, requestsByYear, reservationsByYear };
 }
 
 export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
+  const persisted = stripQaFromVacationState(state);
+  await writeFile(DATA_FILE, JSON.stringify(persisted, null, 2), 'utf8');
   return state;
 }
 

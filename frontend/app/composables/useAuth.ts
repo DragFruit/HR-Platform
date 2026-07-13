@@ -1,4 +1,4 @@
-import { QA_DEMO_ACCOUNT_HINTS } from '~/data/qaTestDepartment';
+import { QA_DEMO_ACCOUNT_HINTS, QA_DEMO_ACCOUNT_ORDER } from '~/data/qaTestDepartment';
 import type { PlatformRole } from '~/composables/usePlatformContext';
 
 export type AuthSessionUser = {
@@ -34,7 +34,7 @@ const credentials: Credential[] = [
     password: 'manager123',
     role: 'manager',
     department: 'Команда',
-    description: 'Руководитель — согласует отпуска команды'
+    description: 'Руководитель: Константин Тестов — команда 4 чел., согласование шаг 1'
   },
   {
     id: 3,
@@ -43,7 +43,7 @@ const credentials: Credential[] = [
     password: 'employee123',
     role: 'employee',
     department: 'Команда',
-    description: 'Сотрудник — график отпусков и заявки'
+    description: 'Сотрудник: Даша Тестова — заявки, бронь, обучалка'
   },
   {
     id: 4,
@@ -52,16 +52,7 @@ const credentials: Credential[] = [
     password: 'employee123',
     role: 'employee',
     department: 'Команда',
-    description: 'Сотрудник — график отпусков и заявки'
-  },
-  {
-    id: 5,
-    name: 'Маша',
-    email: 'masha@vbi.local',
-    password: 'employee123',
-    role: 'employee',
-    department: 'Команда',
-    description: 'Сотрудник — график отпусков и заявки'
+    description: 'Сотрудник: Василий Тестов — свой календарь и заявки'
   },
   {
     id: 6,
@@ -70,8 +61,17 @@ const credentials: Credential[] = [
     password: 'employee123',
     role: 'employee',
     department: 'Команда',
-    description: 'Новичок — трек адаптации и тесты'
-  }
+    description: 'Сотрудник: Алина Тестова — заявка на согласовании'
+  },
+  {
+    id: 5,
+    name: 'Маша',
+    email: 'masha@vbi.local',
+    password: 'employee123',
+    role: 'employee',
+    department: 'Команда',
+    description: 'Директор: Мария Тестова — согласование шаг 2'
+  },
 ];
 
 const SESSION_KEY = 'vbi-auth-session';
@@ -261,11 +261,12 @@ export function useAuth() {
 
   const runtimeConfig = useRuntimeConfig();
 
-  const demoAccounts = computed(() =>
-    credentials.map(({ email, role, password, description, name }) => {
-      const qaHint = runtimeConfig.public.qaTestDepartment
-        ? QA_DEMO_ACCOUNT_HINTS[email.toLowerCase()]
-        : undefined;
+  const demoAccounts = computed(() => {
+    const qaUi = Boolean(runtimeConfig.public.qaTestDepartment) || import.meta.dev;
+
+    const rows = credentials.map(({ email, role, password, description, name }) => {
+      const normalizedEmail = email.toLowerCase();
+      const qaHint = qaUi ? QA_DEMO_ACCOUNT_HINTS[normalizedEmail] : undefined;
       return {
         email,
         role,
@@ -273,8 +274,17 @@ export function useAuth() {
         description: qaHint ?? description,
         name
       };
-    })
-  );
+    });
+
+    if (!qaUi) return rows;
+
+    const order = new Map(QA_DEMO_ACCOUNT_ORDER.map((email, index) => [email, index]));
+    return [...rows].sort((a, b) => {
+      const ai = order.get(a.email.toLowerCase()) ?? 99;
+      const bi = order.get(b.email.toLowerCase()) ?? 99;
+      return ai - bi;
+    });
+  });
 
   return {
     user,

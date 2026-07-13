@@ -133,14 +133,6 @@
       aria-labelledby="vac-training-step-title"
       :style="cardStyle"
     >
-      <button
-        type="button"
-        class="vac-training-overlay__skip"
-        @click="skipTraining"
-      >
-        Пропустить
-      </button>
-
       <p class="vac-training-overlay__progress">{{ progressLabel }}</p>
       <h3 id="vac-training-step-title" class="vac-training-overlay__title">{{ currentStep.title }}</h3>
 
@@ -164,7 +156,7 @@
             {{ item.title }}
           </span>
         </div>
-        <p class="vac-training-overlay__reward-hint muted">
+        <p v-if="!isRetakeMode" class="vac-training-overlay__reward-hint muted">
           Отлично! Теперь вы знаете, как пользоваться Графиком отпусков.
         </p>
       </template>
@@ -182,7 +174,15 @@
           </button>
 
           <button
-            v-if="isLastStep"
+            v-if="isLastStep && isRetakeMode"
+            type="button"
+            class="vac-training-overlay__nav-btn vac-training-overlay__nav-btn--next"
+            @click="onAcknowledge"
+          >
+            Завершить
+          </button>
+          <button
+            v-else-if="isLastStep"
             type="button"
             class="vac-training-overlay__reward-btn"
             @click="onAcknowledge"
@@ -237,13 +237,13 @@ import {
 
 const {
   isActive,
+  isRetakeMode,
   currentStep,
   stepIndex,
   totalSteps,
   progressLabel,
   acknowledgeStep,
   finishTraining,
-  skipTraining,
   goPrevStep,
   canClaimVacationAchievement
 } = useVacationTraining();
@@ -741,7 +741,7 @@ const revealReward = async () => {
 
 const onAcknowledge = async () => {
   if (isLastStep.value) {
-    if (canClaimVacationAchievement()) {
+    if (!isRetakeMode.value && canClaimVacationAchievement()) {
       await revealReward();
       return;
     }

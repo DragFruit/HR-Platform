@@ -66,9 +66,11 @@
             :selected-range-end="form.end || null"
             :min-selectable-iso="minIso"
             :reservation-control-override="reservationControlOverride"
+            :reservation-cap-blocked-months="reservationCapBlockedMonths"
             @day-click="handleDayClick"
             @day-hover="handleDayHover"
             @reservation-month-click="openReservationDialog"
+            @reservation-cap-blocked="openReservationCapNotice"
           />
           <p v-else class="vac-emp-empty">
             Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
@@ -100,6 +102,24 @@
       :employee-name="employeeName"
       :editing-reservation="editingReservation"
     />
+
+    <div
+      v-if="reservationCapNoticeOpen"
+      class="vac-cap-notice-backdrop"
+      role="presentation"
+      @click="reservationCapNoticeOpen = false"
+    />
+    <div
+      v-if="reservationCapNoticeOpen"
+      class="vac-cap-notice"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="vac-cap-notice-title"
+    >
+      <h4 id="vac-cap-notice-title" class="vac-cap-notice__title">Бронь недоступна</h4>
+      <p class="vac-cap-notice__text">{{ reservationCapNoticeText }}</p>
+      <button type="button" class="vac-emp-btn" @click="reservationCapNoticeOpen = false">Понятно</button>
+    </div>
   </div>
 </template>
 
@@ -111,6 +131,12 @@ import {
   canAddReservationForMonth,
   canManageReservationMonth
 } from '~/utils/vacationReservations';
+import { resolveEmployeeReservationCapContext } from '~/utils/vacationDepartmentGroups';
+import {
+  getReservationMonthBlockReason,
+  reservationCapBlockMessage,
+  RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
+} from '~/utils/vacationReservationCaps';
 
 const props = defineProps<{
   viewYear: number;
@@ -131,7 +157,13 @@ const onUiModeChange = (mode: 'manager' | 'employee') => {
 };
 
 const { user } = useAuth();
-const { findByUserForAuth, hydrate: hydrateEmployees } = useEmployees();
+const {
+  findByUserForAuth,
+  directReports,
+  findByName,
+  employeesInDepartment,
+  hydrate: hydrateEmployees
+} = useEmployees();
 const {
   requestsForYear,
   employeeReservations,
@@ -140,6 +172,7 @@ const {
   hydrate: hydrateVacations,
   state,
   getMonthEntries,
+  allReservations,
   MONTHS_RU
 } = useVacations();
 const {
@@ -173,6 +206,37 @@ const editingReservation = ref<VacationReservation | null>(null);
 const highlightMonthIndex = ref<number | null>(null);
 const pendingClarifyReservationId = ref<number | null>(null);
 const clarifyHint = ref('');
+const reservationCapNoticeOpen = ref(false);
+const reservationCapNoticeText = ref(RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE);
+
+const openReservationCapNotice = (monthIndex: number) => {
+  const ctx = reservationCapContext.value;
+  if (ctx) {
+    const reason = getReservationMonthBlockReason({
+      context: {
+        department: {
+          id: ctx.department.id,
+          label: ctx.department.label,
+          memberNames: ctx.department.members.map((member) => member.name)
+        },
+        subgroup: {
+          id: ctx.subgroup.id,
+          label: ctx.subgroup.label,
+          memberNames: ctx.subgroup.members.map((member) => member.name)
+        }
+      },
+      year: props.viewYear,
+      month: monthIndex + 1,
+      reservations: allReservations.value,
+      caps: state.value.reservationMonthlyCapsByGroup,
+      excludeEmployee: employeeName.value
+    });
+    reservationCapNoticeText.value = reason
+      ? reservationCapBlockMessage(reason)
+      : RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE;
+  }
+  reservationCapNoticeOpen.value = true;
+};
 
 const clarifyReservation = (reservation: { id: number; month: number; year: number; durationDays: number; isTraining?: boolean }) => {
   if ('isTraining' in reservation && reservation.isTraining && isTrainingActive.value) {
@@ -199,6 +263,51 @@ const clarifyReservation = (reservation: { id: number; month: number; year: numb
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
+
+const reservationCapContext = computed(() => {
+  const emp = currentEmployee.value;
+  if (!emp) return null;
+  return resolveEmployeeReservationCapContext(emp, {
+    directReports,
+    findByName,
+    employeesInDepartment
+  });
+});
+
+const reservationCapBlockedMonths = computed(() => {
+  const ctx = reservationCapContext.value;
+  if (!ctx) return [] as number[];
+  const blocked: number[] = [];
+  const caps = state.value.reservationMonthlyCapsByGroup;
+  const reservations = allReservations.value;
+  const capContext = {
+    department: {
+      id: ctx.department.id,
+      label: ctx.department.label,
+      memberNames: ctx.department.members.map((member) => member.name)
+    },
+    subgroup: {
+      id: ctx.subgroup.id,
+      label: ctx.subgroup.label,
+      memberNames: ctx.subgroup.members.map((member) => member.name)
+    }
+  };
+  for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
+    if (
+      getReservationMonthBlockReason({
+        context: capContext,
+        year: props.viewYear,
+        month: monthIndex + 1,
+        reservations,
+        caps,
+        excludeEmployee: employeeName.value
+      })
+    ) {
+      blocked.push(monthIndex);
+    }
+  }
+  return blocked;
+});
 
 const showTeamCalendar = computed(
   () => hasTeamCalendar.value && calendarScope.value === 'team' && Boolean(employeeName.value)
@@ -369,6 +478,9 @@ watch(
   () => trainingStep.value?.id,
   (stepId, prevStepId) => {
     if (!isTrainingActive.value) return;
+    if (stepId === 'reservation-book' && calendarScope.value === 'team') {
+      setCalendarScope('mine');
+    }
     if (stepId === 'calendar' && prevStepId === 'create') {
       form.start = '';
       form.end = '';

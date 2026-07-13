@@ -4,7 +4,7 @@
     <div class="auth-screen__glow auth-screen__glow--b" aria-hidden="true" />
     <article class="auth-card">
       <div class="auth-brand">
-        <span class="brand-title">VBI HR Gamification</span>
+        <span class="brand-title">{{ platformName }}</span>
         <p class="muted">
           {{
             showBitrixLogin
@@ -56,7 +56,7 @@
         </form>
 
         <details class="auth-demo" :open="showDemoLogin">
-          <summary>Учётные записи для входа (пароли в описании)</summary>
+          <summary>Демо-аккаунты для показа (пароли в описании)</summary>
           <ul class="list-reset demo-accounts-list">
             <li v-for="account in demoAccounts" :key="account.email">
               <button type="button" class="demo-account-btn" @click="fillDemo(account)">
@@ -73,7 +73,10 @@
 </template>
 
 <script setup lang="ts">
+import { PLATFORM_NAME } from '~/data/platformBrand';
 import { roleLabels } from '~/composables/usePermissions';
+
+const platformName = PLATFORM_NAME;
 
 const emit = defineEmits<{
   success: [];
@@ -91,7 +94,6 @@ const showBitrixLogin = computed(() => preferBitrixLogin.value);
 const showDemoLogin = computed(() => {
   if (!isDevelopment.value) return false;
   if (!configReady.value && preferBitrixLogin.value) return false;
-  // На localhost демо-вход рядом с Bitrix (QA-отдел «Тестировщики» и т.д.)
   return true;
 });
 

@@ -1,4 +1,5 @@
 import type { VacationReservation } from '../../app/utils/vacationReservations';
+import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import {
   canAddReservationForMonth,
   canManageReservationMonth,
@@ -7,6 +8,7 @@ import {
 import type { SessionUser } from './credentials';
 import { findEmployeeForSession } from './employeesStore';
 import { notifyVacationReservationUpdated } from './vacationReservationNotifications';
+import { assertReservationGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
 
 const findReservation = (state: VacationStoreState, id: number) => {
@@ -81,7 +83,9 @@ export async function createVacationReservation(
 
   const yearKey = String(body.year);
 
-  return mutateVacations((state) => {
+  return mutateVacations(async (state) => {
+    await assertReservationGroupCap(state, employeeName, body.year, body.month);
+
     if (hasReservationConflict(state, yearKey, employeeName, body.month)) {
       throw createError({
         statusCode: 409,
@@ -200,6 +204,7 @@ export async function deleteVacationReservation(
     }
 
     state.reservationsByYear[found.yearKey] = found.list.filter((item) => item.id !== id);
+    state.qaDemoSuppressed = recordQaDemoVacationDeletion(state.qaDemoSuppressed, 'reservation', id);
     return state;
   });
 }

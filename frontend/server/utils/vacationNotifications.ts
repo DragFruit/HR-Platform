@@ -6,14 +6,13 @@ import {
   vacationPendingStatusLabel,
   type VacationApprovalStep
 } from '../../app/utils/vacationApproval';
-import { findEmployeeByName } from './employeesStore';
+import { findEmployeeByName, employeeNotificationUserId } from './employeesStore';
 import { createUserNotification, type UserNotificationKind } from './userNotificationsStore';
 
 const userIdForEmployeeName = async (name: string): Promise<number | null> => {
   const emp = await findEmployeeByName(name);
   if (!emp) return null;
-  const uid = emp.platform_user_id ?? emp.bitrix_user_id ?? null;
-  return uid && uid > 0 ? uid : null;
+  return employeeNotificationUserId(emp);
 };
 
 const notifyUser = async (

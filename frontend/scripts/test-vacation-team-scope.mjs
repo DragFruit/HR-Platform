@@ -66,25 +66,11 @@ const resolveScope = (viewer) => {
   const department = viewer.department.trim();
   const viewerName = viewer.name.trim();
 
-  if (department === 'Digital') {
-    if (viewerName === DIGITAL_DIRECTOR_NAME) {
-      return { label: 'Digital', members: employeesInDepartment('Digital') };
-    }
-    if (isDigitalGroupLeadName(viewerName)) {
-      const lead = findByName(viewerName) ?? viewer;
-      const members = enrichTeamMembers([lead, ...directReports(viewerName)], viewer);
-      return { label: `Digital · ${viewerName.split(' ')[0]}`, members };
-    }
-    const managerName = viewer.manager.trim();
-    const members = enrichTeamMembers(
-      employees.filter(
-        (emp) =>
-          emp.department.trim() === 'Digital' &&
-          (emp.name.trim() === managerName || emp.manager.trim() === managerName)
-      ),
-      viewer
-    );
-    return { label: `Digital · ${managerName.split(' ')[0]}`, members };
+  if (department === 'Digital' || department === 'Тестировщики') {
+    return {
+      label: department,
+      members: enrichTeamMembers(employeesInDepartment(department), viewer)
+    };
   }
 
   return { label: department, members: enrichTeamMembers(employeesInDepartment(department), viewer) };
@@ -103,14 +89,15 @@ const muzika = findByName('Музыка Сергей');
 
 const tskhaiScope = resolveScope(tskhaiReport);
 assert(
-  tskhaiScope.members.every((e) => e.manager === 'Цхай Виталий' || e.name === 'Цхай Виталий'),
-  'digital employee sees only their group'
+  tskhaiScope.members.length === employeesInDepartment('Digital').length,
+  'digital employee sees full department'
 );
-assert(tskhaiScope.members.some((e) => e.name === 'Цхай Виталий'), 'group includes lead');
 
 const leadScope = resolveScope(tskhai);
-assert(leadScope.members.length >= 2, 'group lead has team');
-assert(leadScope.members.some((e) => e.name === 'Цхай Виталий'), 'lead included');
+assert(
+  leadScope.members.length === employeesInDepartment('Digital').length,
+  'digital group lead in employee view sees full department'
+);
 
 const directorScope = resolveScope(revzina);
 assert(

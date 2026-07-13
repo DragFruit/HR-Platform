@@ -2,6 +2,59 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-07-13
+
+### Отпуска: лимиты броней по отделу и группе (Digital)
+
+- Двухуровневый лимит предварительных броней: **5 на весь отдел** в месяц (по умолчанию, настраивается руководителем) и **1 бронь внутри подгруппы** (фиксировано).
+- Группировка отдела как в Excel: `vacationDepartmentGroups.ts` (Digital + демо QA на localhost).
+- Директор Digital видит календарь по всем подгруппам; тимлид — только свою; сотрудники Digital — весь отдел в «Общий».
+- Строка дневных счётчиков отпускников в детальном календаре — только у директора отдела, по всему отделу.
+- Серый `+бронь` и попап при исчерпании лимита; руководитель меняет лимит отдела в `ManagerVacationAside`.
+- API: `PATCH /api/vacations/reservation-caps` (`groupId`, `cap`); поле `reservationMonthlyCapsByGroup` в `vacations.json`.
+- Пути: `vacationReservationCaps.ts`, `vacationDepartmentGroups.ts`, `vacationReservationCapMutations.ts`, `EmployeeVacationPanel.vue`, `ManagerVacationAside.vue`, `VacationDetailedCalendar.vue`.
+- Проверка: сотрудник Digital → месяц с бронью в своей группе → `+бронь` серая; директор → боковая панель «Лимит броней на месяц»; `node frontend/scripts/test-vacation-reservation-caps.mjs`.
+
+## 2026-07-10
+
+### Удалён режим «Отдел Тестировщики» на /vacations
+
+- Убран переключатель наблюдателя отдела; сотрудники (в т.ч. демо QA) видят обычный экран с «Мой календарь / Общий».
+- Удалены `vacationDepartmentView.ts`, `useVacationDepartmentView.ts`; упрощён `vacations.vue`.
+- Проверка: войти как сотрудник отдела → `/vacations` — нет переключателя «Отдел …», только стандартный UI.
+
+### Обучалка: доработки (production)
+
+- Пропустившие обучение могут пройти его через «?» и получить ачивку.
+- На шаге 4 календарь переключается на «Мой календарь», если был «Общий».
+- Пути: `useVacationTraining.ts`, `VacationTrainingHelpButton.vue`, `EmployeeVacationPanel.vue`.
+
+### Демо «Тестировщики» — только localhost
+
+- QA-команда (4 сотрудника + руководитель), демо-заявки и брони — при `NODE_ENV=development` или `NUXT_PUBLIC_QA_TEST_DEPARTMENT=1` в `.env`.
+- На production/staging не включается.
+- Пути: `qaTestDepartment.ts`, `qaTestVacationSeed.ts`, `vacationsStore.ts`.
+
+### Обучалка отпусков: без пропуска, повтор и кнопка «?»
+
+- Убрана кнопка «Пропустить» в квесте и в стартовом приглашении — обучение нужно пройти до конца.
+- После первого прохождения в правой панели появляется чёрная кнопка «?» (фиксирована внизу справа, не скроллится).
+- Повторный квест без награды: на последнем шаге кнопка «Завершить».
+- Тексты шагов и строка прогресса (`квест. Шаг N из 9`), уточнён шаг 4 про учебную бронь.
+- Пути: `useVacationTraining.ts`, `VacationTrainingHelpButton.vue`, `VacationTrainingOverlay.vue`, `EmployeeVacationAside.vue`, `vacationTrainingQuest.ts`, `main.css`.
+- localStorage: `vbi-vacation-training-v1` (без изменений ключа).
+- Проверка: пройти квест → закрыть награду → «?» внизу панели → повтор без ачивки.
+
+### Ребрендинг: VIBE VBI
+
+- Публичное название **VIBE VBI** в сайдбаре, входе, онбординге, title вкладки (`platformBrand.ts`).
+
+### Уведомления: надёжность и контраст
+
+- Загрузка user/admin-уведомлений при старте; fallback `platform_user_id` для адресата.
+- Контраст текста в выпадающем списке колокольчика.
+- Пути: `useAppBootstrap.ts`, `employeesStore.ts`, `vacationNotifications.ts`, `main.css`.
+
 ## 2026-07-09
 
 ### Уведомления: пустое состояние с иллюстрацией

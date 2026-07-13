@@ -1,5 +1,6 @@
 import { initialApprovalStep, type VacationApprovalStep } from '../../app/utils/vacationApproval';
 import type { VacationRequest, VacationStatus } from '../../app/composables/useVacations';
+import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix } from './bitrixVacationAbsence';
 import { findEmployeeByName } from './employeesStore';
 import {
@@ -123,6 +124,7 @@ export async function deleteVacationRequest(id: number): Promise<VacationStoreSt
     removedRequest = { ...found.item };
     const nextList = found.list.filter((item) => item.id !== id);
     state.requestsByYear[found.yearKey] = nextList;
+    state.qaDemoSuppressed = recordQaDemoVacationDeletion(state.qaDemoSuppressed, 'request', id);
     return state;
   });
 

@@ -12,9 +12,12 @@
           v-if="!isSelecting && showReservationControl(month)"
           type="button"
           class="emp-reservation-add-btn"
-          :class="{ 'emp-reservation-add-btn--has': month.reservation }"
+          :class="{
+            'emp-reservation-add-btn--has': month.reservation,
+            'emp-reservation-add-btn--cap-blocked': isReservationCapBlocked(month)
+          }"
           :data-tour="month.index === 11 ? 'vac-reservation-dec' : undefined"
-          :title="month.reservation ? 'Изменить бронь' : 'Предварительная бронь'"
+          :title="reservationButtonTitle(month)"
           :aria-label="month.reservation ? `Бронь: ${month.reservationLabel}` : 'Добавить предварительную бронь'"
           @click.stop="onReservationClick(month.index)"
         >
@@ -87,12 +90,15 @@ const props = defineProps<{
   highlightMonthIndex?: number | null;
   /** В учебном квесте — всегда показывать +бронь у этого месяца (0–11) */
   reservationControlOverride?: number | null;
+  /** Месяцы (0–11), где лимит броней группы исчерпан. */
+  reservationCapBlockedMonths?: number[];
 }>();
 
 const emit = defineEmits<{
   'day-click': [cell: CalendarDayCell];
   'day-hover': [cell: CalendarDayCell];
   'reservation-month-click': [monthIndex: number];
+  'reservation-cap-blocked': [monthIndex: number];
 }>();
 
 const weekdays = WEEKDAYS_SHORT;
@@ -125,13 +131,27 @@ const months = computed(() => {
   });
 });
 
+const capBlockedMonthSet = computed(
+  () => new Set(props.reservationCapBlockedMonths ?? [])
+);
+
+const isReservationCapBlocked = (month: { index: number; reservation?: VacationReservation }) =>
+  !month.reservation && capBlockedMonthSet.value.has(month.index);
+
 const showReservationControl = (month: { index: number; reservation?: VacationReservation }) => {
   if (props.reservationControlOverride === month.index) return true;
   const monthNum = month.index + 1;
   if (month.reservation) {
     return canManageReservationMonth(props.year, monthNum);
   }
+  if (isReservationCapBlocked(month)) return true;
   return canAddReservationForMonth(props.year, monthNum);
+};
+
+const reservationButtonTitle = (month: { index: number; reservation?: VacationReservation; reservationLabel?: string }) => {
+  if (month.reservation) return 'Изменить бронь';
+  if (isReservationCapBlocked(month)) return 'Лимит броней на этот месяц исчерпан';
+  return 'Предварительная бронь';
 };
 
 const monthClass = (monthIndex: number) => {
@@ -146,6 +166,10 @@ const monthClass = (monthIndex: number) => {
 };
 
 const onReservationClick = (monthIndex: number) => {
+  if (capBlockedMonthSet.value.has(monthIndex) && !reservationByMonth.value.has(monthIndex)) {
+    emit('reservation-cap-blocked', monthIndex);
+    return;
+  }
   emit('reservation-month-click', monthIndex);
 };
 
