@@ -4,6 +4,12 @@
 
 ## 2026-07-13
 
+### Bitrix notify: refresh токена при insufficient_scope + лог
+
+- Причина «только ручной пуш работает»: Nitro держал в памяти старый `access_token` без `im`.
+- `forceRefresh` + retry; лог `server/data/bitrix-notify.log`.
+- Проверка: создать заявку → у согласующего колокольчик; на сервере строка `OK #…` в логе.
+
 ### Bitrix: колокольчик требует scope `im` у OAuth-приложения
 
 - Заявка #1026: токен был, но `im.notify.system.add` → `insufficient_scope` (у токена только `scope: app`).

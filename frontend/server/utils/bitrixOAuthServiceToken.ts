@@ -28,6 +28,12 @@ let cachedAccessToken: string | null = null;
 let cachedExpiresAt = 0;
 let resolvedDataFile: string | null = null;
 
+/** Сброс in-memory кэша — после смены прав приложения в Битриксе или внешнего обновления файла. */
+export function clearBitrixServiceAccessTokenCache(): void {
+  cachedAccessToken = null;
+  cachedExpiresAt = 0;
+}
+
 const envRefreshToken = (): string | null => {
   const raw = String(process.env.BITRIX_SERVICE_REFRESH_TOKEN || '').trim();
   return raw || null;
@@ -146,9 +152,22 @@ export async function saveBitrixServiceOAuthFromLogin(
   }
 }
 
+type GetAccessTokenOptions = {
+  /** Всегда обновить через refresh_token (после insufficient_scope / смены прав im). */
+  forceRefresh?: boolean;
+};
+
 /** Access token приложения для server-side im.notify (не вебхук). */
-export async function getBitrixServiceAccessToken(): Promise<string | null> {
-  if (cachedAccessToken && cachedExpiresAt > Date.now() + 60_000) {
+export async function getBitrixServiceAccessToken(
+  options: GetAccessTokenOptions = {}
+): Promise<string | null> {
+  const forceRefresh = Boolean(options.forceRefresh);
+
+  if (
+    !forceRefresh &&
+    cachedAccessToken &&
+    cachedExpiresAt > Date.now() + 60_000
+  ) {
     return cachedAccessToken;
   }
 
@@ -156,7 +175,12 @@ export async function getBitrixServiceAccessToken(): Promise<string | null> {
   const refresh = state?.refresh_token?.trim();
   if (!refresh) return null;
 
-  if (state?.access_token && state.expires_at && state.expires_at > Date.now() + 60_000) {
+  if (
+    !forceRefresh &&
+    state?.access_token &&
+    state.expires_at &&
+    state.expires_at > Date.now() + 60_000
+  ) {
     cachedAccessToken = state.access_token;
     cachedExpiresAt = state.expires_at;
     return state.access_token;
@@ -181,6 +205,7 @@ export async function getBitrixServiceAccessToken(): Promise<string | null> {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error(`[bitrixOAuthService] не удалось обновить access_token: ${detail}`);
+    clearBitrixServiceAccessTokenCache();
     return null;
   }
 }

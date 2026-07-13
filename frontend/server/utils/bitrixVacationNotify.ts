@@ -1,7 +1,10 @@
+import { appendFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import { bitrixOAuthRequest } from './bitrixClient';
 import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import {
+  clearBitrixServiceAccessTokenCache,
   getBitrixServiceAccessToken,
   hasBitrixOAuthServiceToken
 } from './bitrixOAuthServiceToken';
@@ -95,13 +98,24 @@ const notifySubTag = (requestId: number, stage: BitrixVacationNotifyStage): stri
 
 /**
  * result im.notify.*.add: ID уведомления (integer) или false.
- * Отсекаем unix-timestamp (~1e9), который вебхук иногда отдаёт как ложный «успех».
+ * Отсекаем unix-timestamp (~1.5e9–2e9), который вебхук иногда отдаёт как ложный «успех».
  */
-const isNotifyCreated = (value: unknown): value is number =>
-  typeof value === 'number' &&
-  Number.isFinite(value) &&
-  value > 0 &&
-  value < 1_000_000_000;
+const isNotifyCreated = (value: unknown): value is number => {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(n) && n > 0 && n < 1_000_000_000;
+};
+
+const notifyLogPath = () => join(process.cwd(), 'server/data/bitrix-notify.log');
+
+const appendNotifyLog = async (line: string) => {
+  try {
+    await mkdir(join(process.cwd(), 'server/data'), { recursive: true });
+    await appendFile(notifyLogPath(), `${new Date().toISOString()} ${line}\n`, 'utf8');
+  } catch {
+    /* не мешаем основному сценарию */
+  }
+  console.error(`[bitrixVacationNotify] ${line}`);
+};
 
 const bitrixWebhookCall = async (
   method: string,
@@ -144,7 +158,7 @@ const imNotifySystemAdd = async (
     }
 
     if (isNotifyCreated(data.result)) {
-      return { ok: true, notifyId: data.result };
+      return { ok: true, notifyId: Number(data.result) };
     }
 
     if (data.result === false) {
@@ -186,15 +200,7 @@ const sendBitrixSystemNotify = async (
   message: string,
   tag: string,
   subTag: string
-): Promise<{ ok: boolean; method?: string; error?: string }> => {
-  const accessToken = await getBitrixServiceAccessToken();
-  if (!accessToken) {
-    return {
-      ok: false,
-      error: 'нет OAuth refresh_token — админу нужен вход через Битрикс24 на платформе'
-    };
-  }
-
+): Promise<{ ok: boolean; method?: string; error?: string; notifyId?: number }> => {
   const params: BitrixSystemNotifyParams = {
     USER_ID: bitrixUserId,
     MESSAGE: message,
@@ -202,24 +208,45 @@ const sendBitrixSystemNotify = async (
     SUB_TAG: subTag
   };
 
-  const result = await imNotifySystemAdd(params, accessToken);
+  const tryOnce = async (forceRefresh: boolean) => {
+    const accessToken = await getBitrixServiceAccessToken({ forceRefresh });
+    if (!accessToken) {
+      return {
+        ok: false as const,
+        error: 'нет OAuth refresh_token — админу нужен вход через Битрикс24 на платформе'
+      };
+    }
+    return imNotifySystemAdd(params, accessToken);
+  };
+
+  let result = await tryOnce(false);
   if (result.ok) {
-    return { ok: true, method: 'im.notify.system.add' };
+    return { ok: true, method: 'im.notify.system.add', notifyId: result.notifyId };
   }
 
   const err = result.error ?? 'unknown';
-  if (/insufficient_scope/i.test(err)) {
-    console.error(
-      `[bitrixVacationNotify] недостаточно прав OAuth (нужен scope im). ` +
-        `В crm.vbi.ru → Локальные приложения → «VBI HR Platform» включите «Чат и уведомления» (im), ` +
-        `затем админ заново войдёт через Битрикс24 на боевом сайте.`
+  const shouldRefresh =
+    /insufficient_scope|expired_token|NO_AUTH_FOUND|invalid_token|ACCESS_DENIED/i.test(err);
+
+  if (shouldRefresh) {
+    await appendNotifyLog(
+      `retry after ${err} (forceRefresh access_token) → user ${bitrixUserId}`
+    );
+    clearBitrixServiceAccessTokenCache();
+    result = await tryOnce(true);
+    if (result.ok) {
+      return { ok: true, method: 'im.notify.system.add', notifyId: result.notifyId };
+    }
+  }
+
+  const finalErr = result.error ?? err;
+  if (/insufficient_scope/i.test(finalErr)) {
+    await appendNotifyLog(
+      `insufficient_scope — в crm.vbi.ru у «VBI HR Platform» нужно право «Чат и уведомления» (im), затем повторный вход админа`
     );
   }
 
-  console.error(
-    `[bitrixVacationNotify] im.notify.system.add error (user ${bitrixUserId}): ${err}`
-  );
-  return { ok: false, error: err };
+  return { ok: false, error: finalErr };
 };
 
 /** Пуш в Битрикс текущему согласующему; ошибки не пробрасываются. */
@@ -232,16 +259,16 @@ export async function notifyBitrixVacationApprover(
 
   const approvalUrl = vacationApprovalUrl();
   if (!approvalUrl) {
-    console.error(
-      '[bitrixVacationNotify] Не задан APP_PUBLIC_URL или BITRIX_REDIRECT_URI — пропуск'
+    await appendNotifyLog(
+      `SKIP #${request.id}: нет APP_PUBLIC_URL / BITRIX_REDIRECT_URI`
     );
     return;
   }
 
   const bitrixUserId = await bitrixUserIdForApprover(approverName);
   if (!bitrixUserId) {
-    console.error(
-      `[bitrixVacationNotify] У согласующего «${approverName}» нет bitrix_user_id — пропуск`
+    await appendNotifyLog(
+      `SKIP #${request.id}: у «${approverName}» нет bitrix_user_id`
     );
     return;
   }
@@ -251,14 +278,13 @@ export async function notifyBitrixVacationApprover(
   const subTag = notifySubTag(request.id, stage);
 
   const hasOAuth = await hasBitrixOAuthServiceToken();
-
-  console.error(
-    `[bitrixVacationNotify] #${request.id} → «${approverName}» (user ${bitrixUserId}), oauth=${hasOAuth}`
+  await appendNotifyLog(
+    `#${request.id} → «${approverName}» (user ${bitrixUserId}), oauth=${hasOAuth}, stage=${stage}`
   );
 
   if (!hasOAuth) {
-    console.error(
-      '[bitrixVacationNotify] OAuth-токен не задан — im.notify.system.add недоступен, чат не шлём'
+    await appendNotifyLog(
+      `SKIP #${request.id}: нет OAuth refresh_token — im.notify.system.add недоступен`
     );
     return;
   }
@@ -266,34 +292,21 @@ export async function notifyBitrixVacationApprover(
   const notifyResult = await sendBitrixSystemNotify(bitrixUserId, message, tag, subTag);
 
   if (notifyResult.ok) {
-    logResult(request.id, bitrixUserId, notifyResult);
-    return;
-  }
-
-  // Личный чат — только явный opt-in; по умолчанию только колокольчик.
-  if (chatFallbackEnabled() && isBitrixWebhookConfigured()) {
-    const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
-    logResult(request.id, bitrixUserId, chatResult, 'fallback после system.add');
-    return;
-  }
-
-  logResult(request.id, bitrixUserId, notifyResult);
-}
-
-const logResult = (
-  requestId: number,
-  bitrixUserId: number,
-  result: { ok: boolean; method?: string; error?: string },
-  note?: string
-) => {
-  const suffix = note ? ` (${note})` : '';
-  if (result.ok) {
-    console.error(
-      `[bitrixVacationNotify] OK #${requestId} → user ${bitrixUserId} via ${result.method}${suffix}`
+    await appendNotifyLog(
+      `OK #${request.id} → user ${bitrixUserId} via ${notifyResult.method} id=${notifyResult.notifyId ?? '?'}`
     );
     return;
   }
-  console.error(
-    `[bitrixVacationNotify] FAIL #${requestId} → user ${bitrixUserId}: ${result.error ?? 'unknown'}${suffix}`
+
+  if (chatFallbackEnabled() && isBitrixWebhookConfigured()) {
+    const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
+    await appendNotifyLog(
+      `${chatResult.ok ? 'OK' : 'FAIL'} #${request.id} → user ${bitrixUserId} via chat fallback: ${chatResult.error ?? chatResult.method}`
+    );
+    return;
+  }
+
+  await appendNotifyLog(
+    `FAIL #${request.id} → user ${bitrixUserId}: ${notifyResult.error ?? 'unknown'}`
   );
-};
+}
