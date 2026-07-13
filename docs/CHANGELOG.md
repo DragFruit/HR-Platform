@@ -4,6 +4,11 @@
 
 ## 2026-07-13
 
+### Bitrix: колокольчик требует scope `im` у OAuth-приложения
+
+- Заявка #1026: токен был, но `im.notify.system.add` → `insufficient_scope` (у токена только `scope: app`).
+- В «VBI HR Platform» включить право **Чат и уведомления**, затем повторный вход админа через Битрикс.
+
 ### Bitrix OAuth: надёжнее сохранение токена для колокольчика
 
 - `bitrixOAuthServiceToken.ts`: писать в `server/data/` (writable), не только в `/etc/vbi-hr`.

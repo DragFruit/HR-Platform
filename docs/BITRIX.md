@@ -175,9 +175,14 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Вызов: `POST https://crm.vbi.ru/rest/im.notify.system.add.json` с `auth` (access_token приложения). **Не через входящий вебхук.**
 
-**Первичная настройка:** админ или HR один раз входит через «Войти через Битрикс24» → `refresh_token` в `server/data/bitrix-oauth-service.json` (или `BITRIX_SERVICE_REFRESH_TOKEN` / `BITRIX_OAUTH_SERVICE_FILE`). После успешного сохранения в URL будет `bitrix_notify=1`.
+**Первичная настройка:**
 
-**Без OAuth:** колокольчик не отправляется (тишина лучше, чем личный чат). Запасной чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
+1. В приложении «VBI HR Platform» на `crm.vbi.ru` среди прав обязательно **«Чат и уведомления» (`im`)** — без этого Bitrix отвечает `insufficient_scope`, колокольчик молчит.
+2. Админ или HR один раз входит через «Войти через Битрикс24» на бою (`:80`) → `refresh_token` в `server/data/bitrix-oauth-service.json`.
+3. После успешного сохранения в URL на секунду будет `bitrix_notify=1`.
+4. Если право `im` добавили позже — снова войти через Битрикс (старый токен остаётся без `im`).
+
+**Без OAuth / без scope `im`:** колокольчик не отправляется. Запасной чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
 
 Код: `server/utils/bitrixVacationNotify.ts`, `server/utils/bitrixOAuthServiceToken.ts`.
 

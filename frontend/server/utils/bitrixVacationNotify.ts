@@ -207,10 +207,19 @@ const sendBitrixSystemNotify = async (
     return { ok: true, method: 'im.notify.system.add' };
   }
 
+  const err = result.error ?? 'unknown';
+  if (/insufficient_scope/i.test(err)) {
+    console.error(
+      `[bitrixVacationNotify] недостаточно прав OAuth (нужен scope im). ` +
+        `В crm.vbi.ru → Локальные приложения → «VBI HR Platform» включите «Чат и уведомления» (im), ` +
+        `затем админ заново войдёт через Битрикс24 на боевом сайте.`
+    );
+  }
+
   console.error(
-    `[bitrixVacationNotify] im.notify.system.add error (user ${bitrixUserId}): ${result.error ?? 'unknown'}`
+    `[bitrixVacationNotify] im.notify.system.add error (user ${bitrixUserId}): ${err}`
   );
-  return { ok: false, error: result.error };
+  return { ok: false, error: err };
 };
 
 /** Пуш в Битрикс текущему согласующему; ошибки не пробрасываются. */
