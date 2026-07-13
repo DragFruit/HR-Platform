@@ -175,11 +175,11 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Вызов: `POST https://crm.vbi.ru/rest/im.notify.system.add.json` с `auth` (access_token приложения). **Не через входящий вебхук.**
 
-**Первичная настройка:** админ один раз входит через «Войти через Битрикс24» → `refresh_token` в `/etc/vbi-hr/bitrix-oauth-service.json`.
+**Первичная настройка:** админ или HR один раз входит через «Войти через Битрикс24» → `refresh_token` в `server/data/bitrix-oauth-service.json` (или `BITRIX_SERVICE_REFRESH_TOKEN` / `BITRIX_OAUTH_SERVICE_FILE`). После успешного сохранения в URL будет `bitrix_notify=1`.
 
 **Без OAuth:** колокольчик не отправляется (тишина лучше, чем личный чат). Запасной чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
 
-Код: `server/utils/bitrixVacationNotify.ts`.
+Код: `server/utils/bitrixVacationNotify.ts`, `server/utils/bitrixOAuthServiceToken.ts`.
 
 Код: `server/utils/bitrixVacationNotify.ts`, вызов из `vacationNotifications.ts`. Ошибки Bitrix логируются (`console.warn`), создание/согласование заявки не блокируется.
 

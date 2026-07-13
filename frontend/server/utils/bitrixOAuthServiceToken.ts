@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, accessSync, constants } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { BitrixTokenResponse } from './bitrixClient';
@@ -15,10 +15,11 @@ export type BitrixOAuthServiceState = {
 
 const DATA_CANDIDATES = (): string[] => {
   const fromEnv = String(process.env.BITRIX_OAUTH_SERVICE_FILE || '').trim();
+  // Сначала writable server/data — /etc/vbi-hr часто только для root.
   const paths = [
     fromEnv,
-    '/etc/vbi-hr/bitrix-oauth-service.json',
-    join(process.cwd(), 'server/data/bitrix-oauth-service.json')
+    join(process.cwd(), 'server/data/bitrix-oauth-service.json'),
+    '/etc/vbi-hr/bitrix-oauth-service.json'
   ].filter(Boolean);
   return [...new Set(paths)];
 };
@@ -32,10 +33,26 @@ const envRefreshToken = (): string | null => {
   return raw || null;
 };
 
-const resolveDataFile = (): string => {
-  if (resolvedDataFile) return resolvedDataFile;
+const canWritePath = (filePath: string): boolean => {
+  try {
+    const dir = dirname(filePath);
+    if (!existsSync(dir)) {
+      // mkdir при записи; родитель должен быть доступен
+      const parent = dirname(dir);
+      accessSync(parent, constants.W_OK);
+      return true;
+    }
+    accessSync(dir, constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveWritableDataFile = (): string => {
+  if (resolvedDataFile && canWritePath(resolvedDataFile)) return resolvedDataFile;
   for (const path of DATA_CANDIDATES()) {
-    if (existsSync(path)) {
+    if (canWritePath(path)) {
       resolvedDataFile = path;
       return path;
     }
@@ -43,6 +60,16 @@ const resolveDataFile = (): string => {
   const fallback = DATA_CANDIDATES().at(-1)!;
   resolvedDataFile = fallback;
   return fallback;
+};
+
+const resolveExistingDataFile = (): string | null => {
+  for (const path of DATA_CANDIDATES()) {
+    if (existsSync(path)) {
+      resolvedDataFile = path;
+      return path;
+    }
+  }
+  return null;
 };
 
 async function readState(): Promise<BitrixOAuthServiceState | null> {
@@ -69,7 +96,7 @@ async function readState(): Promise<BitrixOAuthServiceState | null> {
 }
 
 async function writeState(state: BitrixOAuthServiceState) {
-  const path = resolveDataFile();
+  const path = resolveWritableDataFile();
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, JSON.stringify(state, null, 2) + '\n', 'utf8');
   resolvedDataFile = path;
@@ -80,17 +107,17 @@ export async function hasBitrixOAuthServiceToken(): Promise<boolean> {
   return Boolean(state?.refresh_token?.trim());
 }
 
-/** Сохранить refresh_token после входа админа через OAuth. */
+/** Сохранить refresh_token после входа через OAuth (нужен для im.notify.system.add). */
 export async function saveBitrixServiceOAuthFromLogin(
   token: BitrixTokenResponse,
   savedByUserId: number
-): Promise<void> {
+): Promise<boolean> {
   const refresh = String(token.refresh_token || '').trim();
   if (!refresh) {
     console.error(
       `[bitrixOAuthService] вход user ${savedByUserId}: Bitrix не вернул refresh_token — im.notify недоступен`
     );
-    return;
+    return false;
   }
 
   const expiresIn = Number(token.expires_in || 3600);
@@ -102,13 +129,21 @@ export async function saveBitrixServiceOAuthFromLogin(
     saved_by_user_id: savedByUserId
   };
 
-  await writeState(state);
-  cachedAccessToken = state.access_token || null;
-  cachedExpiresAt = state.expires_at || 0;
-
-  console.error(
-    `[bitrixOAuthService] refresh_token сохранён (user ${savedByUserId}) → ${resolveDataFile()}`
-  );
+  try {
+    await writeState(state);
+    cachedAccessToken = state.access_token || null;
+    cachedExpiresAt = state.expires_at || 0;
+    console.error(
+      `[bitrixOAuthService] refresh_token сохранён (user ${savedByUserId}) → ${resolveWritableDataFile()}`
+    );
+    return true;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[bitrixOAuthService] не удалось сохранить refresh_token (user ${savedByUserId}): ${detail}`
+    );
+    return false;
+  }
 }
 
 /** Access token приложения для server-side im.notify (не вебхук). */
@@ -148,4 +183,8 @@ export async function getBitrixServiceAccessToken(): Promise<string | null> {
     console.error(`[bitrixOAuthService] не удалось обновить access_token: ${detail}`);
     return null;
   }
+}
+
+export function bitrixOAuthServiceFileHint(): string {
+  return resolveExistingDataFile() || resolveWritableDataFile();
 }

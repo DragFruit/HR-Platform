@@ -4,6 +4,12 @@
 
 ## 2026-07-13
 
+### Bitrix OAuth: надёжнее сохранение токена для колокольчика
+
+- `bitrixOAuthServiceToken.ts`: писать в `server/data/` (writable), не только в `/etc/vbi-hr`.
+- Токен сохраняется при входе admin/hr через Битрикс; после успеха — `?bitrix_notify=1`.
+- Причина тишины #1024: на проде не было файла refresh_token → `im.notify.system.add` пропускался.
+
 ### Отпуска: системные уведомления im.notify.system.add
 
 - `bitrixVacationNotify.ts`: колокольчик через [`im.notify.system.add`](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html) (от системы).
