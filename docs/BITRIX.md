@@ -164,7 +164,7 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 При создании заявки и при передаче на директора (Digital, двухэтапное согласование) сервер шлёт системное уведомление в Битрикс текущему согласующему (`bitrix_user_id` из `employees.json`):
 
-- метод `im.notify`, тип `SYSTEM`;
+- метод `im.notify.system.add` (или `im.notify` с `USER_ID` / `MESSAGE` / `TYPE`);
 - текст с ФИО сотрудника, датами и ссылкой `[URL=…/vacations]Открыть согласование в Vibe[/URL]`;
 - публичный URL — из `APP_PUBLIC_URL` или origin `BITRIX_REDIRECT_URI`.
 

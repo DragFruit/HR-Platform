@@ -87,11 +87,13 @@ export async function notifyBitrixVacationApprover(
   const message = buildNotifyMessage(request, stage, approvalUrl);
 
   try {
-    await bitrixWebhookRest<boolean>('im.notify', {
-      to: bitrixUserId,
-      message,
-      type: 'SYSTEM'
+    await bitrixWebhookRest<number>('im.notify.system.add', {
+      USER_ID: bitrixUserId,
+      MESSAGE: message
     });
+    console.info(
+      `[bitrixVacationNotify] im.notify.system.add → «${approverName}» (user ${bitrixUserId})`
+    );
   } catch (err) {
     const detail =
       err && typeof err === 'object' && 'statusMessage' in err

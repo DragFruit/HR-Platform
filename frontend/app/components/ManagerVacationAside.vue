@@ -33,30 +33,6 @@
 
       <ManagerVacationTrainingPrompt />
 
-      <div v-if="managerReservationGroup" class="vac-aside-stat-card" data-tour="vac-reservation-cap">
-        <div class="vac-aside-stat-label">Лимит броней на месяц</div>
-        <p class="vac-cap-setting__hint soft">{{ managerReservationGroup.label }}</p>
-        <div class="vac-cap-setting">
-          <input
-            v-model.number="capDraft"
-            type="number"
-            min="1"
-            max="99"
-            class="org-input vac-cap-setting__input"
-            aria-label="Максимум броней на месяц"
-          />
-          <button
-            type="button"
-            class="vac-emp-btn vac-emp-btn--sm"
-            :disabled="capSaving || capDraft === currentGroupCap"
-            @click="saveGroupCap"
-          >
-            {{ capSaving ? 'Сохранение…' : 'Сохранить' }}
-          </button>
-        </div>
-        <p v-if="capSaveError" class="vac-cap-setting__error">{{ capSaveError }}</p>
-      </div>
-
       <div class="vac-aside-stat-card">
         <div class="vac-aside-stat-label">Заявки</div>
         <ul class="vac-aside-requests list-reset">
@@ -92,11 +68,6 @@
 
 <script setup lang="ts">
 import type { VacationUiMode } from '~/components/VacationUiModeToggle.vue';
-import {
-  resolveReservationCapGroupIdForManager,
-  resolveReservationCapGroupMeta
-} from '~/utils/vacationDepartmentGroups';
-import { getDepartmentReservationMonthlyCap } from '~/utils/vacationReservationCaps';
 
 export type ManagerVacationUiMode = VacationUiMode;
 
@@ -128,58 +99,5 @@ const emit = defineEmits<{
 
 const setMode = (mode: ManagerVacationUiMode) => {
   emit('update:modelValue', mode);
-};
-
-const { user } = useAuth();
-const { findByUserForAuth, directReports, findByName, employeesInDepartment } = useEmployees();
-const { state, updateReservationMonthlyCap } = useVacations();
-
-const managerEmployee = computed(() => findByUserForAuth(user.value));
-
-const managerReservationGroupId = computed(() => {
-  const name = managerEmployee.value?.name?.trim();
-  const department = managerEmployee.value?.department?.trim();
-  if (!name || !department) return null;
-  return resolveReservationCapGroupIdForManager(
-    name,
-    { directReports, findByName, employeesInDepartment },
-    department
-  );
-});
-
-const managerReservationGroup = computed(() => {
-  const id = managerReservationGroupId.value;
-  if (!id) return null;
-  return resolveReservationCapGroupMeta(id) ?? { id, label: id };
-});
-
-const currentGroupCap = computed(() => {
-  const id = managerReservationGroupId.value;
-  if (!id) return 5;
-  return getDepartmentReservationMonthlyCap(id, state.value.reservationMonthlyCapsByGroup);
-});
-
-const capDraft = ref(5);
-const capSaving = ref(false);
-const capSaveError = ref('');
-
-watch(
-  currentGroupCap,
-  (value) => {
-    capDraft.value = value;
-  },
-  { immediate: true }
-);
-
-const saveGroupCap = async () => {
-  const id = managerReservationGroupId.value;
-  if (!id) return;
-  capSaveError.value = '';
-  capSaving.value = true;
-  const ok = await updateReservationMonthlyCap(id, capDraft.value);
-  capSaving.value = false;
-  if (!ok) {
-    capSaveError.value = 'Не удалось сохранить лимит';
-  }
 };
 </script>

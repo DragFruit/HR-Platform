@@ -2939,30 +2939,6 @@ a {
   line-height: 1.2;
 }
 
-.vac-cap-setting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.vac-cap-setting__input {
-  width: 4.5rem;
-  min-width: 0;
-}
-
-.vac-cap-setting__hint {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
-.vac-cap-setting__error {
-  margin: 8px 0 0;
-  font-size: 0.78rem;
-  color: var(--danger, #c44b5a);
-}
-
 .vac-cap-notice-backdrop {
   position: fixed;
   inset: 0;
