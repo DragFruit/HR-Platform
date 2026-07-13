@@ -6,7 +6,8 @@ export default defineNitroPlugin(() => {
   const candidates = [
     join(process.cwd(), '.env'),
     join(process.cwd(), 'bitrix.env'),
-    '/etc/vbi-hr/bitrix.env'
+    '/etc/vbi-hr/bitrix.env',
+    '/etc/vbi-hr/bitrix-production.env'
   ];
   for (const path of candidates) {
     if (existsSync(path)) applyEnvFile(path);

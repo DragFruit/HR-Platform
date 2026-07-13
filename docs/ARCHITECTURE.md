@@ -200,6 +200,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | Endpoint | Назначение |
 |----------|------------|
 | `GET /api/notifications` | Уведомления текущего пользователя по отпускам |
+| `DELETE /api/notifications/:id` | Закрыть (удалить) уведомление |
 | `PATCH /api/notifications/:id/seen` | Прочитано |
 | `PATCH /api/notifications/seen-all` | Прочитать все |
 

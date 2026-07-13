@@ -27,7 +27,7 @@
           v-if="unseenCount > 0"
           type="button"
           class="button ghost admin-notifications-bell__mark-all"
-          @click="handleMarkAll"
+          @click.stop="handleMarkAll"
         >
           Прочитать все
         </button>
@@ -44,29 +44,39 @@
           class="admin-notifications-bell__item"
           :class="{ 'admin-notifications-bell__item--unseen': !item.seen }"
         >
+          <button
+            type="button"
+            class="admin-notifications-bell__dismiss"
+            aria-label="Закрыть уведомление"
+            @click.stop="handleDismiss(item)"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+              <path d="M4 4l8 8M12 4 4 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </button>
           <p class="admin-notifications-bell__title">{{ formatNotificationTitle(item) }}</p>
           <p class="admin-notifications-bell__body">{{ formatNotificationBody(item) }}</p>
           <div class="admin-notifications-bell__meta">
             <span class="soft">{{ formatDate(item.created_at) }}</span>
-            <NuxtLink
-              :to="linkFor(item)"
+            <button
+              type="button"
               class="admin-notifications-bell__link"
-              @click="handleOpen(item)"
+              @click.stop="goToNotification(item)"
             >
               {{ linkLabel(item) }}
-            </NuxtLink>
+            </button>
           </div>
         </li>
       </ul>
 
-      <NuxtLink
+      <button
         v-if="notifications.length"
-        to="/notifications"
+        type="button"
         class="admin-notifications-bell__footer"
-        @click="open = false"
+        @click.stop="goToAll"
       >
         Все уведомления
-      </NuxtLink>
+      </button>
     </div>
   </div>
 </template>
@@ -81,6 +91,8 @@ const {
   loadNotifications,
   markSeen,
   markAllSeen,
+  dismiss,
+  notificationLink,
   formatNotificationTitle,
   formatNotificationBody,
   formatDate,
@@ -92,9 +104,6 @@ const rootRef = ref<HTMLElement | null>(null);
 
 const previewItems = computed(() => notifications.value.slice(0, 5));
 const badgeLabel = computed(() => (unseenCount.value > 99 ? '99+' : String(unseenCount.value)));
-
-const linkFor = (item: UserNotification) =>
-  isManagerAction(item) ? '/vacations' : '/vacations';
 
 const linkLabel = (item: UserNotification) =>
   isManagerAction(item) ? 'Согласование' : 'Мои отпуска';
@@ -110,11 +119,21 @@ const handleMarkAll = async () => {
   await markAllSeen().catch(() => {});
 };
 
-const handleOpen = async (item: UserNotification) => {
+const handleDismiss = async (item: UserNotification) => {
+  await dismiss(item.id).catch(() => {});
+};
+
+const goToNotification = async (item: UserNotification) => {
   if (!item.seen) {
     await markSeen(item.id).catch(() => {});
   }
   open.value = false;
+  await navigateTo(notificationLink(item));
+};
+
+const goToAll = async () => {
+  open.value = false;
+  await navigateTo('/notifications');
 };
 
 const onDocumentClick = (event: MouseEvent) => {

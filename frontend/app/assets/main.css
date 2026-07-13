@@ -7863,10 +7863,39 @@ a {
 }
 
 .admin-notifications-bell__item {
-  padding: 10px 12px;
+  position: relative;
+  padding: 10px 36px 10px 12px;
   border: 1px solid rgba(32, 32, 32, 0.12);
   border-radius: 12px;
   background: var(--bg-elevated);
+}
+
+.admin-notifications-bell__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted-on-light, #8a8a8a);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.admin-notifications-bell__dismiss:hover {
+  color: var(--text-on-light);
+  background: rgba(32, 32, 32, 0.06);
+}
+
+.admin-notifications-bell__dismiss:focus-visible {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 1px;
 }
 
 .admin-notifications-bell__item--unseen {
@@ -7900,23 +7929,38 @@ a {
   font-weight: 700;
   color: var(--primary-strong);
   text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
 }
 
-.admin-notifications-bell__footer-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-top: 1px solid var(--border);
-  margin-top: 12px;
+.admin-notifications-bell__link:hover {
+  text-decoration: underline;
 }
 
 .admin-notifications-bell__footer {
   display: block;
+  width: 100%;
   padding: 10px 12px;
   font-weight: 700;
   color: var(--primary-strong);
   text-decoration: none;
   text-align: center;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(32, 32, 32, 0.08);
+  font: inherit;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
+.admin-notifications-bell__footer:hover {
+  text-decoration: underline;
 }
 
 .admin-notifications-bell__footer--secondary {
@@ -7931,12 +7975,13 @@ a {
 }
 
 .admin-notifications-page__item {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 14px 44px 14px 16px;
   border: 1px solid rgba(32, 32, 32, 0.12);
   border-radius: 14px;
   background: var(--bg-elevated);
@@ -7966,6 +8011,16 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+a.button,
+button.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .notifications-empty-state {

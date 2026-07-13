@@ -4,6 +4,17 @@
 
 ## 2026-07-13
 
+### Отпуска: надёжнее im.notify в Битрикс
+
+- `bitrixVacationNotify.ts`: прямой fetch без `createError`, fallback `im.notify` → `im.notify.system.add`, уникальный `TAG`, ссылка с `?tab=approval`, логи в stderr.
+- Исправлен путь `DELETE /api/notifications/:id` (`[id]/delete.delete.ts`) — сборка localhost.
+
+### Уведомления по отпускам: закрытие и рабочие ссылки
+
+- Серый крестик справа сверху у каждого уведомления (колокольчик и `/notifications`) — `DELETE /api/notifications/:id`.
+- Кнопки «Согласование» / «Мои отпуска» ведут через `navigateTo`; у руководителя — `/vacations?tab=approval`.
+- Пути: `VacationNotificationsBell.vue`, `notifications.vue`, `useUserNotifications.ts`, `vacations.vue`.
+
 ### Отпуска: исправлены параметры im.notify в Битрикс
 
 - `bitrixVacationNotify.ts`: `im.notify.system.add` с `USER_ID` и `MESSAGE` (раньше `to`/`message` — уведомления уходили владельцу вебхука, не согласующему).

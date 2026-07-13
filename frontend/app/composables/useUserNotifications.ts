@@ -66,6 +66,15 @@ export function useUserNotifications() {
     await loadNotifications();
   };
 
+  const dismiss = async (id: string) => {
+    await $fetch(`/api/notifications/${id}`, { method: 'DELETE' });
+    notifications.value = notifications.value.filter((item) => item.id !== id);
+    unseenCount.value = notifications.value.filter((item) => !item.seen).length;
+  };
+
+  const notificationLink = (item: UserNotification) =>
+    isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
+
   const formatNotificationTitle = (item: UserNotification) => {
     switch (item.kind) {
       case 'vacation_submitted':
@@ -154,6 +163,8 @@ export function useUserNotifications() {
     loadNotifications,
     markSeen,
     markAllSeen,
+    dismiss,
+    notificationLink,
     formatNotificationTitle,
     formatNotificationBody,
     formatDate,
