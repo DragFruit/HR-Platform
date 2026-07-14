@@ -182,7 +182,9 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 3. После успешного сохранения в URL на секунду будет `bitrix_notify=1`.
 4. Если право `im` добавили позже — снова войти через Битрикс (старый токен остаётся без `im`).
 
-**Без OAuth / без scope `im`:** колокольчик не отправляется. Запасной чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
+**Если колокольчик не создаётся** (Bitrix отвечает unix-timestamp вместо ID — так на `crm.vbi.ru` у части пользователей, напр. Желялетдинова): автоматически уходит **личное сообщение** `im.message.add`. У других (Музыка Сергей) колокольчик работает как раньше.
+
+**Без OAuth / без scope `im`:** колокольчик не отправляется. Явный всегда-чат: `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
 
 Код: `server/utils/bitrixVacationNotify.ts`, `server/utils/bitrixOAuthServiceToken.ts`.
 

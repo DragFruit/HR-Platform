@@ -35,6 +35,7 @@ type BitrixRestResponse<T> = {
   total?: number;
   error?: string;
   error_description?: string;
+  time?: { start?: number; finish?: number };
 };
 
 export async function exchangeBitrixCode(code: string, redirectUri: string): Promise<BitrixTokenResponse> {

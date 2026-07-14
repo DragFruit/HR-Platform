@@ -97,10 +97,21 @@ const notifySubTag = (requestId: number, stage: BitrixVacationNotifyStage): stri
   `VBI_HR|vacation|${requestId}|${stage}`;
 
 /**
- * result im.notify.*.add: ID уведомления (integer) или false.
- * Отсекаем unix-timestamp (~1.5e9–2e9), который вебхук иногда отдаёт как ложный «успех».
+ * result im.notify.*.add: ID уведомления или false.
+ * На коробке crm.vbi.ru для части пользователей (напр. 2579) метод отвечает
+ * HTTP 200, но result = unix timestamp ≈ time.start — уведомление НЕ создано.
+ * У других (напр. 2353) — нормальный ID ~1e7.
  */
-const isNotifyCreated = (value: unknown): value is number => {
+const isFakeTimestampNotifyResult = (result: unknown, timeStart?: number): boolean => {
+  const n = typeof result === 'number' ? result : Number(result);
+  if (!Number.isFinite(n) || n < 1_500_000_000 || n > 2_500_000_000) return false;
+  if (typeof timeStart === 'number' && Math.abs(n - Math.floor(timeStart)) <= 2) return true;
+  // запас: любой unix-секунд в «сейчас ±2 мин»
+  return Math.abs(n - Math.floor(Date.now() / 1000)) < 120;
+};
+
+const isNotifyCreated = (value: unknown, timeStart?: number): value is number => {
+  if (isFakeTimestampNotifyResult(value, timeStart)) return false;
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
   return Number.isFinite(n) && n > 0 && n < 1_000_000_000;
 };
@@ -157,7 +168,19 @@ const imNotifySystemAdd = async (
       return { ok: false, error: detail };
     }
 
-    if (isNotifyCreated(data.result)) {
+    const timeStart =
+      data.time && typeof (data.time as { start?: number }).start === 'number'
+        ? (data.time as { start: number }).start
+        : undefined;
+
+    if (isFakeTimestampNotifyResult(data.result, timeStart)) {
+      return {
+        ok: false,
+        error: `ложный result (timestamp ${String(data.result)}) — Bitrix не создал уведомление этому пользователю`
+      };
+    }
+
+    if (isNotifyCreated(data.result, timeStart)) {
       return { ok: true, notifyId: Number(data.result) };
     }
 
@@ -176,22 +199,47 @@ const sendBitrixChatMessage = async (
   bitrixUserId: number,
   message: string
 ): Promise<{ ok: boolean; method?: string; error?: string }> => {
+  // 1) вебхук
+  if (isBitrixWebhookConfigured()) {
+    try {
+      const data = await bitrixWebhookCall('im.message.add', {
+        DIALOG_ID: bitrixUserId,
+        MESSAGE: message
+      });
+      if (!data.error && typeof data.result === 'number' && data.result > 0 && data.result < 1_000_000_000) {
+        return { ok: true, method: 'im.message.add(webhook)' };
+      }
+      if (data.error) {
+        await appendNotifyLog(
+          `chat webhook fail user ${bitrixUserId}: ${data.error_description || data.error}`
+        );
+      }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      await appendNotifyLog(`chat webhook fetch fail user ${bitrixUserId}: ${detail}`);
+    }
+  }
+
+  // 2) OAuth (на коробке для части юзеров колокольчик молчит, а чат через OAuth работает)
   try {
-    const data = await bitrixWebhookCall('im.message.add', {
+    const accessToken = await getBitrixServiceAccessToken();
+    if (!accessToken) {
+      return { ok: false, error: 'im.message.add: нет OAuth и вебхук не сработал' };
+    }
+    const data = await bitrixOAuthRequest<number>('im.message.add', {
       DIALOG_ID: bitrixUserId,
       MESSAGE: message
-    });
+    }, accessToken);
     if (data.error) {
-      const detail = data.error_description || data.error;
-      return { ok: false, error: `${detail} (im.message.add)` };
+      return { ok: false, error: `${data.error_description || data.error} (im.message.add oauth)` };
     }
-    if (typeof data.result === 'number' && data.result > 0) {
-      return { ok: true, method: 'im.message.add' };
+    if (typeof data.result === 'number' && data.result > 0 && data.result < 1_000_000_000) {
+      return { ok: true, method: 'im.message.add(oauth)' };
     }
-    return { ok: false, error: 'im.message.add: некорректный result' };
+    return { ok: false, error: `im.message.add oauth: некорректный result ${String(data.result)}` };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `im.message.add fetch failed: ${detail}` };
+    return { ok: false, error: `im.message.add oauth fetch failed: ${detail}` };
   }
 };
 
@@ -298,10 +346,17 @@ export async function notifyBitrixVacationApprover(
     return;
   }
 
-  if (chatFallbackEnabled() && isBitrixWebhookConfigured()) {
+  // Колокольчик на коробке для части пользователей (напр. Желялетдинова 2579) не создаётся
+  // (result = timestamp). Тогда шлём в личный чат — иначе полная тишина.
+  const shouldChatFallback =
+    chatFallbackEnabled() ||
+    /ложный result \(timestamp/i.test(notifyResult.error ?? '') ||
+    /вернул false/i.test(notifyResult.error ?? '');
+
+  if (shouldChatFallback) {
     const chatResult = await sendBitrixChatMessage(bitrixUserId, message);
     await appendNotifyLog(
-      `${chatResult.ok ? 'OK' : 'FAIL'} #${request.id} → user ${bitrixUserId} via chat fallback: ${chatResult.error ?? chatResult.method}`
+      `${chatResult.ok ? 'OK' : 'FAIL'} #${request.id} → user ${bitrixUserId} via chat after system fail (${notifyResult.error}): ${chatResult.error ?? chatResult.method}`
     );
     return;
   }
