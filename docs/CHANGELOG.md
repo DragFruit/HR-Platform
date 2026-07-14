@@ -4,14 +4,12 @@
 
 ## 2026-07-14
 
+### Bitrix: только колокольчик, без чата
+
+- Убран любой fallback в `im.message.add` — по отпускам только `im.notify.system.add` (OAuth).
+- У Желялетдиновой (`2579`) Bitrix не создаёт системные уведомления (result = timestamp); у Музыки — ок. Нужна проверка настроек учётки в crm.vbi.ru.
+
 ### Bitrix: fallback в чат, если колокольчик не создаётся пользователю
-
-- У части пользователей (Желялетдинова `2579`) `im.notify.system.add` отвечает timestamp вместо ID — уведомление не создаётся.
-- У Сергея Музыки (`2353`) колокольчик работает нормально.
-- При «ложном» result — автоматически `im.message.add` (чат).
-- Проверка: заявка Драго → Настя получает сообщение в Bitrix; лог `OK … via chat after system fail`.
-
-### Bitrix notify: refresh токена при insufficient_scope + лог
 
 - Причина «только ручной пуш работает»: Nitro держал в памяти старый `access_token` без `im`.
 - `forceRefresh` + retry; лог `server/data/bitrix-notify.log`.
