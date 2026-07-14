@@ -4,6 +4,11 @@
 
 ## 2026-07-14
 
+### Bitrix: диагностика колокольчика по 70 сотрудникам
+
+- Probe: 59 OK / 11 FAIL (timestamp вместо ID). Список и SQL/`NotifyChat` — в `docs/BITRIX.md`, скрипт `scripts/bitrix/diagnose-notify-chats.php`.
+- Цель: починить учётки на `crm.vbi.ru`, без `im.message.add`.
+
 ### Bitrix: только колокольчик, без чата
 
 - Убран любой fallback в `im.message.add` — по отпускам только `im.notify.system.add` (OAuth).

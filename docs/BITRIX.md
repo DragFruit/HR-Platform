@@ -184,15 +184,34 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 **Только колокольчик** (`im.notify.system.add` через OAuth). Личный чат (`im.message.add`) **не используем**.
 
-Если у конкретного пользователя Bitrix отвечает timestamp вместо ID уведомления (на `crm.vbi.ru` так у Желялетдиновой `2579`, у Музыки Сергея — нормально): это настройки/ограничение учётки на портале — чинить в `crm.vbi.ru`, не fallback в чат.
-
 **Без OAuth / без scope `im`:** колокольчик не отправляется.
 
 Код: `server/utils/bitrixVacationNotify.ts`, `server/utils/bitrixOAuthServiceToken.ts`.
 
-Код: `server/utils/bitrixVacationNotify.ts`, вызов из `vacationNotifications.ts`. Ошибки Bitrix логируются (`console.warn`), создание/согласование заявки не блокируется.
+#### Диагностика: кому не создаётся колокольчик
 
-Проверка: задать `BITRIX_WEBHOOK_URL` с правом **im** → подать заявку от сотрудника Digital → у руководителя в колокольчике Битрикса уведомление со ссылкой на `/vacations`; после согласования тимлидом — то же у директора отдела.
+Прогон по всем с `bitrix_user_id` (2026-07-14): **59 OK / 11 FAIL**. У FAIL — HTTP 200, но `result` ≈ unix-timestamp (уведомление не создано). У OK — ID ~10⁷.
+
+**FAIL user_id:** `848, 2574, 2579, 2673, 2680, 2697, 2708, 2778, 2801, 2806, 2812`  
+(Ревзина, Носков, Желялетдинова и др.). В одном отделе бывают и OK, и FAIL → не «общие настройки», а **учётка в модуле IM** (служебный чат уведомлений `NotifyChat` TYPE=`S`, либо `NOTIFY_BLOCK` / `OnBeforeMessageNotifyAdd`).
+
+Отчёт: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.
+
+На `crm.vbi.ru` (админ коробки):
+
+1. `php -f scripts/bitrix/diagnose-notify-chats.php` (document root сайта).
+2. С `--repair` — попытка пересоздать канал через `NotifyChat`.
+3. SQL:
+
+```sql
+SELECT c.ID, c.TYPE, c.AUTHOR_ID, r.USER_ID, r.NOTIFY_BLOCK
+FROM b_im_chat c
+LEFT JOIN b_im_relation r ON r.CHAT_ID = c.ID AND r.MESSAGE_TYPE = 'S'
+WHERE c.TYPE = 'S'
+  AND (c.AUTHOR_ID IN (848,2579,2673) OR r.USER_ID IN (848,2579,2673));
+```
+
+4. После починки — снова probe / PHP-скрипт (`ADD_OK` для всех 11). Цель: **все 70**.
 
 ### Отпуска → график отсутствий (пальма)
 
