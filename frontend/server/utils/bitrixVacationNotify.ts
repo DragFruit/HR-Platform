@@ -171,12 +171,71 @@ const imNotifySystemAdd = async (
   }
 };
 
+/**
+ * Типизированный колокольчик через PHP-мост на коробке (NOTIFY_MODULE=vbihr).
+ * Появляется в настройках как «VBI HR → Заявки на отпуск», без «Неопознанные».
+ * @see scripts/bitrix/vbi-hr/README.md
+ */
+const sendViaNotifyBridge = async (
+  bitrixUserId: number,
+  message: string,
+  tag: string,
+  subTag: string
+): Promise<{ ok: boolean; method?: string; error?: string; notifyId?: number } | null> => {
+  const url = String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_URL || '').trim();
+  const secret = String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_SECRET || '').trim();
+  if (!url || !secret) return null;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        secret,
+        USER_ID: bitrixUserId,
+        MESSAGE: message,
+        TAG: tag,
+        SUB_TAG: subTag
+      })
+    });
+    const data = (await res.json().catch(() => null)) as {
+      ok?: boolean;
+      notifyId?: number;
+      error?: string;
+      result?: number;
+    } | null;
+
+    if (!data) {
+      return { ok: false, error: `bridge HTTP ${res.status}: empty body` };
+    }
+    if (data.ok && typeof data.notifyId === 'number') {
+      return {
+        ok: true,
+        method: 'vbihr.vacation-notify (CIMNotify)',
+        notifyId: data.notifyId
+      };
+    }
+    return {
+      ok: false,
+      error: data.error || `bridge HTTP ${res.status}`
+    };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `bridge: ${detail}` };
+  }
+};
+
 const sendBitrixSystemNotify = async (
   bitrixUserId: number,
   message: string,
   tag: string,
   subTag: string
 ): Promise<{ ok: boolean; method?: string; error?: string; notifyId?: number }> => {
+  const bridge = await sendViaNotifyBridge(bitrixUserId, message, tag, subTag);
+  if (bridge) {
+    return bridge;
+  }
+
   const params: BitrixSystemNotifyParams = {
     USER_ID: bitrixUserId,
     MESSAGE: message,
@@ -253,14 +312,18 @@ export async function notifyBitrixVacationApprover(
   const tag = notifyTag(request.id, stage);
   const subTag = notifySubTag(request.id, stage);
 
+  const bridgeConfigured = Boolean(
+    String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_URL || '').trim() &&
+      String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_SECRET || '').trim()
+  );
   const hasOAuth = await hasBitrixOAuthServiceToken();
   await appendNotifyLog(
-    `#${request.id} → «${approverName}» (user ${bitrixUserId}), oauth=${hasOAuth}, stage=${stage}`
+    `#${request.id} → «${approverName}» (user ${bitrixUserId}), bridge=${bridgeConfigured}, oauth=${hasOAuth}, stage=${stage}`
   );
 
-  if (!hasOAuth) {
+  if (!bridgeConfigured && !hasOAuth) {
     await appendNotifyLog(
-      `SKIP #${request.id}: нет OAuth refresh_token — im.notify.system.add недоступен`
+      `SKIP #${request.id}: нет bridge и нет OAuth refresh_token — колокольчик недоступен`
     );
     return;
   }
