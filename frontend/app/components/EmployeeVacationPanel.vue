@@ -391,6 +391,12 @@ const {
     form.end = end;
     formError.value = null;
     notifyCalendarRangeSelected();
+  },
+  hasCommittedRange: () => Boolean(form.start && form.end),
+  onCleared: () => {
+    form.start = '';
+    form.end = '';
+    formError.value = null;
   }
 });
 
