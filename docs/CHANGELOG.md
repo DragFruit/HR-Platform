@@ -2,7 +2,100 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
-## 2026-07-13
+## 2026-07-20
+
+### Отпуска: сброс жёлтого диапазона кликом по пустому полю
+
+- Клик по пустой ячейке календаря или вне дат сбрасывает выбор (как на ноуте): и незавершённый pick, и зафиксированный период в форме.
+- `useVacationRangePick.ts`, `EmployeeVacationPanel.vue`.
+
+### Bitrix-модуль vbihr: безопасная установка без init.php
+
+- Починены риски выкладки: `notify-schema.php` больше не ломает сайт при случайном `require`; обработчик схемы в `try/catch`.
+- Чеклист FTP + установка модуля: `scripts/bitrix/vbi-hr/README.md`.
+
+## 2026-07-17
+
+### Bitrix: тип уведомления «VBI HR → Заявки на отпуск»
+
+- Локальный модуль `vbihr` (`OnGetNotifySchema`) + PHP-мост `CIMNotify` — **без правки `init.php`**. Каталог: `scripts/bitrix/vbi-hr/`.
+- HR: при `BITRIX_VACATION_NOTIFY_BRIDGE_URL` + `SECRET` шлёт в мост вместо «неопознанного» `im.notify.system.add`.
+- Зачем: одна галка в настройках, без шума от «Неопознанные» (кейс Ревзиной).
+- Проверка: установить модуль на `crm.vbi.ru` по README → curl теста → заявка → колокольчик при выключенных «Неопознанных».
+
+## 2026-07-15
+
+### Отпуска: расчёт к дате только на будущее
+
+- В «Рассчитать доступные дни к дате» нельзя выбрать сегодня и прошлые даты (`min` = завтра).
+- `EmployeeVacationAside.vue`. Раньше на прошлую дату баланс мог быть выше текущего: в проекции вычитаются только отпуска до выбранной даты, а в текущем балансе — все pending/approved.
+
+### Bitrix: причина 11 FAIL по колокольчику
+
+- У части сотрудников в настройках уведомлений Битрикса — **расширенный режим без галки «Неопознанные уведомления»** → `im.notify.system.add` от VBI HR не показывается.
+- Исправление: у сотрудника на `crm.vbi.ru` включить эту галку (или простой режим). Документация: `docs/BITRIX.md`.
+
+## 2026-07-14
+
+### Bitrix: диагностика колокольчика по 70 сотрудникам
+
+- Probe: 59 OK / 11 FAIL (timestamp вместо ID). Список — в `docs/BITRIX.md`, скрипт `scripts/bitrix/diagnose-notify-chats.php`.
+- Итог (см. 2026-07-15): не NotifyChat, а персональные настройки «Неопознанные уведомления».
+
+### Bitrix: только колокольчик, без чата
+
+- Убран любой fallback в `im.message.add` — по отпускам только `im.notify.system.add` (OAuth).
+- У Желялетдиновой (`2579`) Bitrix не создаёт системные уведомления (result = timestamp); у Музыки — ок. Нужна проверка настроек учётки в crm.vbi.ru.
+
+### Bitrix: fallback в чат, если колокольчик не создаётся пользователю
+
+- Причина «только ручной пуш работает»: Nitro держал в памяти старый `access_token` без `im`.
+- `forceRefresh` + retry; лог `server/data/bitrix-notify.log`.
+- Проверка: создать заявку → у согласующего колокольчик; на сервере строка `OK #…` в логе.
+
+### Bitrix: колокольчик требует scope `im` у OAuth-приложения
+
+- Заявка #1026: токен был, но `im.notify.system.add` → `insufficient_scope` (у токена только `scope: app`).
+- В «VBI HR Platform» включить право **Чат и уведомления**, затем повторный вход админа через Битрикс.
+
+### Bitrix OAuth: надёжнее сохранение токена для колокольчика
+
+- `bitrixOAuthServiceToken.ts`: писать в `server/data/` (writable), не только в `/etc/vbi-hr`.
+- Токен сохраняется при входе admin/hr через Битрикс; после успеха — `?bitrix_notify=1`.
+- Причина тишины #1024: на проде не было файла refresh_token → `im.notify.system.add` пропускался.
+
+### Отпуска: системные уведомления im.notify.system.add
+
+- `bitrixVacationNotify.ts`: колокольчик через [`im.notify.system.add`](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html) (от системы).
+- Без `MESSAGE_OUT` (не уходит в SMS/email). Без OAuth — не шлём личный чат.
+- Проверка: админ вход через Битрикс → заявка → уведомление в колокольчике у согласующего.
+
+### Отпуска: im.notify.personal.add по документации Bitrix
+
+- `bitrixVacationNotify.ts`: только `im.notify.personal.add` (OAuth), параметры USER_ID/MESSAGE/MESSAGE_OUT/TAG/SUB_TAG по [apidocs](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-personal-add.html).
+- Проверка: админ вход через Битрикс → заявка → колокольчик у согласующего.
+
+### Отпуска: колокольчик Битрикса через OAuth-приложение
+
+- `im.notify.*` только через OAuth refresh_token приложения «VBI HR Platform» (`bitrixOAuthServiceToken.ts`), не через вебхук.
+- При входе админа через Битрикс сохраняется `refresh_token` в `server/data/bitrix-oauth-service.json`.
+- Авто-чат в личку выключен при рабочем OAuth (`BITRIX_VACATION_NOTIFY_CHAT_FALLBACK` по умолчанию `false`).
+- **Без OAuth-токена** — запасной `im.message.add`, иначе согласующий ничего не получит.
+- Токен: `/etc/vbi-hr/bitrix-oauth-service.json` или `server/data/bitrix-oauth-service.json`.
+- Проверка: админ входит через Битрикс → тестовая заявка → колокольчик у согласующего.
+
+### Отпуска: колокольчик Битрикса + запасной чат
+
+- Сначала `im.notify.*` (колокольчик), при ложном `result` — `im.message.add` в личный чат.
+- Проверка `result`: ID < 1e9 (иначе на коробке приходит timestamp и доставки нет).
+- `CLIENT_ID` OAuth-приложения в query REST-вызова для TAG/SUB_TAG.
+- Пути: `bitrixVacationNotify.ts`.
+
+### Отпуска: доставка в Битрикс через im.message.add
+
+- На коробке `crm.vbi.ru` `im.notify.*` через входящий вебхук возвращает HTTP 200, но уведомление не появляется у получателя; основной канал — `im.message.add` в личный чат согласующему.
+- `bitrixVacationNotify.ts`: проверка, что `result` — ID сущности (< 1e9), а не timestamp.
+- Проверка: заявка на отпуск → личное сообщение в мессенджере Битрикса у согласующего.
 
 ### Отпуска: надёжнее im.notify в Битрикс
 

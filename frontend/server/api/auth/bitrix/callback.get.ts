@@ -1,5 +1,6 @@
 import { exchangeBitrixCode } from '../../../utils/bitrixClient';
 import { loginSessionFromBitrix } from '../../../utils/bitrixAuth';
+import { saveBitrixServiceOAuthFromLogin } from '../../../utils/bitrixOAuthServiceToken';
 import {
   getBitrixConfig,
   getOAuthReturnOrigin,
@@ -63,10 +64,25 @@ export default defineEventHandler(async (event) => {
     const redirectUri = getBitrixRedirectUri(event);
     const token = await exchangeBitrixCode(code, redirectUri);
     const sessionUser = await loginSessionFromBitrix(token.access_token);
+
+    // Токен сервиса нужен для im.notify.system.add (колокольчик отпусков).
+    // Сохраняем для admin/hr — иначе на проде уведомления в Битрикс молчат.
+    let notifyTokenSaved = false;
+    const canSaveServiceToken =
+      sessionUser.role === 'admin' || sessionUser.role === 'hr';
+    if (canSaveServiceToken && token.refresh_token) {
+      notifyTokenSaved = await saveBitrixServiceOAuthFromLogin(token, sessionUser.id);
+    } else if (canSaveServiceToken && !token.refresh_token) {
+      console.error(
+        `[bitrixOAuthService] ${sessionUser.role} user ${sessionUser.id} вошёл через Bitrix, но refresh_token пуст — проверьте OAuth-приложение`
+      );
+    }
+
     setVbiSession(event, sessionUser);
 
     const url = new URL('/', getOAuthReturnOrigin(event));
     url.searchParams.set('auth', 'bitrix');
+    if (notifyTokenSaved) url.searchParams.set('bitrix_notify', '1');
     return sendRedirect(event, url.toString());
   } catch (err) {
     const message =

@@ -206,7 +206,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`.
 
-Параллельно в Битрикс (`im.notify` через `BITRIX_WEBHOOK_URL`): при новой заявке и при передаче на директора — пуш текущему согласующему (`bitrixVacationNotify.ts`).
+Параллельно в Битрикс (`bitrixVacationNotify.ts`): `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём; чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
 

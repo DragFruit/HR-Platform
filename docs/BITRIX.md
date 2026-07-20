@@ -160,17 +160,52 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Переменная на сервере: `BITRIX_WEBHOOK_URL=...`
 
-### Отпуска → уведомления согласующим (im.notify)
+### Отпуска → системные уведомления согласующим (im.notify.system.add)
 
-При создании заявки и при передаче на директора (Digital, двухэтапное согласование) сервер шлёт системное уведомление в Битрикс текущему согласующему (`bitrix_user_id` из `employees.json`):
+Колокольчик Битрикса — метод [`im.notify.system.add`](https://apidocs.bitrix24.ru/api-reference/chats/notifications/im-notify-system-add.html) через OAuth-приложение «VBI HR Platform» (уведомление **от системы**, не личный чат и не SMS):
 
-- метод `im.notify.system.add` (или `im.notify` с `USER_ID` / `MESSAGE` / `TYPE`);
-- текст с ФИО сотрудника, датами и ссылкой `[URL=…/vacations]Открыть согласование в Vibe[/URL]`;
-- публичный URL — из `APP_PUBLIC_URL` или origin `BITRIX_REDIRECT_URI`.
+| Параметр | Значение |
+|----------|----------|
+| `USER_ID` | `bitrix_user_id` согласующего из `employees.json` |
+| `MESSAGE` | Текст с BB-кодом `[URL=…]…[/URL]` |
+| `TAG` | `VBI_HR_VAC_{requestId}_{stage}` |
+| `SUB_TAG` | `VBI_HR\|vacation\|{requestId}\|{stage}` |
 
-Код: `server/utils/bitrixVacationNotify.ts`, вызов из `vacationNotifications.ts`. Ошибки Bitrix логируются (`console.warn`), создание/согласование заявки не блокируется.
+`MESSAGE_OUT` **не передаём** — иначе Bitrix может пушить во внешние каналы (email/SMS).
 
-Проверка: задать `BITRIX_WEBHOOK_URL` с правом **im** → подать заявку от сотрудника Digital → у руководителя в колокольчике Битрикса уведомление со ссылкой на `/vacations`; после согласования тимлидом — то же у директора отдела.
+Вызов: `POST https://crm.vbi.ru/rest/im.notify.system.add.json` с `auth` (access_token приложения). **Не через входящий вебхук.**
+
+**Первичная настройка:**
+
+1. В приложении «VBI HR Platform» на `crm.vbi.ru` среди прав обязательно **«Чат и уведомления» (`im`)** — без этого Bitrix отвечает `insufficient_scope`, колокольчик молчит.
+2. Админ или HR один раз входит через «Войти через Битрикс24» на бою (`:80`) → `refresh_token` в `server/data/bitrix-oauth-service.json`.
+3. После успешного сохранения в URL на секунду будет `bitrix_notify=1`.
+4. Если право `im` добавили позже — снова войти через Битрикс (старый токен остаётся без `im`).
+
+**Только колокольчик.** Личный чат (`im.message.add`) **не используем**.
+
+**Предпочтительно — типизированный тип `vbihr|vacation`** (одна строка в настройках, без «Неопознанные»):
+
+1. На `crm.vbi.ru` развернуть `scripts/bitrix/vbi-hr/` (схема + PHP-мост) — инструкция в `scripts/bitrix/vbi-hr/README.md`.
+2. В env HR: `BITRIX_VACATION_NOTIFY_BRIDGE_URL` + `BITRIX_VACATION_NOTIFY_BRIDGE_SECRET`.
+3. Сотруднику: включить **VBI HR → Заявки на отпуск**, галку **«Неопознанные»** можно выключить.
+
+**Запасной путь:** OAuth `im.notify.system.add` (без bridge) — попадает в «Неопознанные»; без OAuth / без scope `im` и без bridge колокольчик не уходит.
+
+Код: `server/utils/bitrixVacationNotify.ts`, `server/utils/bitrixOAuthServiceToken.ts`.
+
+#### Диагностика: кому не создаётся колокольчик
+
+Прогон по всем с `bitrix_user_id` (2026-07-14): **59 OK / 11 FAIL**. У FAIL — HTTP 200, но `result` ≈ unix-timestamp (уведомление не создано). У OK — ID ~10⁷.
+
+**FAIL user_id (на момент прогона):** `848, 2574, 2579, 2673, 2680, 2697, 2708, 2778, 2801, 2806, 2812`.
+
+**Причина без bridge (подтверждено 2026-07-15):** REST `im.notify.system.add` идёт как **неопознанный** тип. В расширенных настройках без галки «Неопознанные» колокольчик молчит; с галкой часто включается лишний шум (чаты/задачи).
+
+**Правильное решение:** мост `vbihr|vacation` (см. выше). Временный обход: галка «Неопознанные» + точечно выключить SMS чатов/задач.
+
+Отчёт прогона: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.  
+CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/`.
 
 ### Отпуска → график отсутствий (пальма)
 

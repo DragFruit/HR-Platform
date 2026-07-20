@@ -33,7 +33,12 @@
       <div class="emp-projection-panel">
         <label class="emp-projection-label">
           Дата
-          <input v-model="projectionDate" type="date" class="emp-projection-date" />
+          <input
+            v-model="projectionDate"
+            type="date"
+            class="emp-projection-date"
+            :min="projectionMinDate"
+          />
         </label>
         <button type="button" class="vac-btn emp-projection-btn" @click="showProjection">Показать</button>
         <div v-if="projectionText" class="emp-projection-result" v-html="projectionText" />
@@ -208,7 +213,7 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
-import { countVacationBillableDays, isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
+import { countVacationBillableDays, isPastApprovedVacationRequest, toIso } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
 import {
@@ -264,6 +269,13 @@ const yearRequests = computed(() => mergeRequestsForDisplay(props.viewYear, requ
 
 const projectionDate = ref('');
 const projectionText = ref('');
+/** Расчёт к дате — только будущие дни (не сегодня и не прошлое). */
+const projectionMinDate = computed(() => {
+  const tomorrow = new Date();
+  tomorrow.setHours(12, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return toIso(tomorrow);
+});
 const openMenuRequest = ref<VacationRequest | null>(null);
 const menuAnchorRef = ref<HTMLElement | null>(null);
 const menuRef = ref<HTMLElement | null>(null);
@@ -437,6 +449,10 @@ const showProjection = () => {
   }
   if (!projectionDate.value) {
     projectionText.value = 'Укажите дату.';
+    return;
+  }
+  if (projectionDate.value < projectionMinDate.value) {
+    projectionText.value = 'Укажите дату начиная с завтрашнего дня.';
     return;
   }
   const available = calcAvailableOnDate(

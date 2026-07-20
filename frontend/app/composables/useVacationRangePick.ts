@@ -9,6 +9,10 @@ import {
 export function useVacationRangePick(options: {
   blockedDays: Ref<Set<string>>;
   onRangeSelected: (start: string, end: string) => void;
+  /** Есть зафиксированный период в форме (жёлтая подсветка после выбора). */
+  hasCommittedRange?: () => boolean;
+  /** Сброс pick + формы (клик по пустой ячейке / вне дат). */
+  onCleared?: () => void;
 }) {
   const minIso = todayIso();
   const rangePickStart = ref<string | null>(null);
@@ -21,7 +25,20 @@ export function useVacationRangePick(options: {
     rangePickHover.value = null;
   };
 
+  const clearAll = () => {
+    clearSelection();
+    options.onCleared?.();
+  };
+
   const handleDayClick = (cell: CalendarDayCell) => {
+    // Пустые ячейки с @click.stop не всплывают до document — сбрасываем здесь.
+    if (cell.empty) {
+      if (rangePickStart.value || options.hasCommittedRange?.()) {
+        clearAll();
+      }
+      return;
+    }
+
     if (!isDaySelectable(cell, minIso)) return;
 
     if (!rangePickStart.value) {
@@ -50,10 +67,14 @@ export function useVacationRangePick(options: {
   };
 
   const handleDocumentClick = (event: MouseEvent) => {
-    if (!rangePickStart.value) return;
+    if (!rangePickStart.value && !options.hasCommittedRange?.()) return;
     const target = event.target as Element | null;
     if (target?.closest('.hr-month-grid td:not(.empty)')) return;
-    clearSelection();
+    // Не сбрасывать при работе с полями даты / кнопками формы заявки.
+    if (target?.closest('.vac-emp-toolbar__form, input, button, a, label, select, textarea')) {
+      return;
+    }
+    clearAll();
   };
 
   onMounted(() => {

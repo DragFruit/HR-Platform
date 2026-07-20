@@ -1,0 +1,25 @@
+---
+description: Отпуска — только системные уведомления Bitrix (колокольчик), никогда чат
+alwaysApply: true
+---
+
+# Bitrix-уведомления по отпускам
+
+## Запрещено
+
+- **Не использовать** `im.message.add` (личный чат / «смс» в мессенджере) для заявок на отпуск.
+- Не включать fallback в чат через `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK` и не предлагать его пользователю как решение.
+
+## Как надо
+
+- Только **`im.notify.system.add`** через **OAuth-приложение** «VBI HR Platform» (колокольчик / системное уведомление).
+- Код: `frontend/server/utils/bitrixVacationNotify.ts`.
+- Нужны OAuth `refresh_token` и scope **`im`**.
+
+## Если у конкретного пользователя колокольчик не создаётся
+
+Bitrix отвечает HTTP 200 с `result` = unix timestamp вместо ID — уведомление **не создано**. На `crm.vbi.ru` таких **11 из 70** (не только Настя; в т.ч. Ревзина `848`, Носков `2673`).
+
+Это поломка **на портале** (служебный чат уведомлений / relation), не повод слать чат.
+
+Диагностика на коробке: `scripts/bitrix/diagnose-notify-chats.php` (см. `docs/BITRIX.md`). Повторный probe: файл `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.

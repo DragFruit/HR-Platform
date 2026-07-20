@@ -23,8 +23,10 @@ vendor/
 !.env.example
 !**/.env.example
 deploy/env/*.env
+**/bridge.secret
 !deploy/env/*.example
 
 # Руководители сотрудников — runtime на сервере, не из репозитория
 frontend/server/data/employee-managers.json
 frontend/server/data/admin-notifications.json
+frontend/server/data/bitrix-oauth-service.json
