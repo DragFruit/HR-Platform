@@ -1,6 +1,5 @@
 {
   "primaryYear": 2026,
-  "nextRequestId": 1005,
   "requestsByYear": {
     "2026": [
       {
@@ -356,15 +355,6 @@
         "createdAt": "29.06.2026"
       },
       {
-        "id": 39,
-        "employee": "Кладова Кристина",
-        "start": "2026-03-12",
-        "end": "2026-03-18",
-        "status": "approved",
-        "comment": "Импорт из Excel",
-        "createdAt": "29.06.2026"
-      },
-      {
         "id": 40,
         "employee": "Седова Елизавета",
         "start": "2026-07-01",
@@ -387,15 +377,6 @@
         "employee": "Грошева Дарья",
         "start": "2026-04-20",
         "end": "2026-04-26",
-        "status": "approved",
-        "comment": "Импорт из Excel",
-        "createdAt": "29.06.2026"
-      },
-      {
-        "id": 43,
-        "employee": "Новоторцева Екатерина",
-        "start": "2026-03-30",
-        "end": "2026-04-01",
         "status": "approved",
         "comment": "Импорт из Excel",
         "createdAt": "29.06.2026"
@@ -618,15 +599,38 @@
         "createdAt": "01.07.2026"
       },
       {
-        "id": 1004,
+        "id": 1005,
         "employee": "Даша Тестова",
-        "start": "2026-12-07",
-        "end": "2026-12-13",
+        "start": "2026-10-05",
+        "end": "2026-10-11",
         "status": "pending",
-        "approval_step": "director",
+        "approval_step": "manager",
         "comment": "Заявка из платформы",
-        "createdAt": "01.07.2026"
+        "createdAt": "13.07.2026"
       }
+    ]
+  },
+  "nextRequestId": 1006,
+  "reservationsByYear": {
+    "2026": [
+      {
+        "id": 1,
+        "employee": "Даша Тестова",
+        "year": 2026,
+        "month": 11,
+        "durationDays": 7,
+        "createdAt": "13.07.2026"
+      }
+    ]
+  },
+  "nextReservationId": 2,
+  "qaDemoSuppressed": {
+    "requestIds": [
+      9106
+    ],
+    "reservationIds": [
+      9201,
+      9202
     ]
   }
 }
