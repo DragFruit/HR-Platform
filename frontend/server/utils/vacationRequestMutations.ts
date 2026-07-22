@@ -84,6 +84,12 @@ export async function createVacationRequest(
   let createdRequest: VacationRequest | null = null;
 
   const result = await mutateVacations((state) => {
+    if (body.year < state.primaryYear) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: `За ${body.year} год заявки создать нельзя — год только для просмотра`
+      });
+    }
     if (employee) {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }

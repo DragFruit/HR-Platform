@@ -265,8 +265,6 @@ const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest
 const canManageRequest = (req: VacationRequest) =>
   !isTrainingRequest(req) && !isPastApprovedVacationRequest(req);
 
-const yearRequests = computed(() => mergeRequestsForDisplay(props.viewYear, requestsForYear(props.viewYear)));
-
 const projectionDate = ref('');
 const projectionText = ref('');
 /** Расчёт к дате — только будущие дни (не сегодня и не прошлое). */
@@ -294,11 +292,21 @@ const editError = ref('');
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
+const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
+
+/** Цифры и списки aside всегда по текущему учётном году, даже если календарь смотрит прошлый. */
+const balanceYear = computed(() => state.value.primaryYear);
+
+const balanceYearRequests = computed(() =>
+  mergeRequestsForDisplay(balanceYear.value, requestsForYear(balanceYear.value))
+);
+
+const yearRequests = computed(() => balanceYearRequests.value);
 
 const myReservations = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeReservations(employeeName.value, props.viewYear);
-  const merged = mergeReservationsForDisplay(props.viewYear, real);
+  const real = employeeReservations(employeeName.value, balanceYear.value);
+  const merged = mergeReservationsForDisplay(balanceYear.value, real);
   return merged
     .filter((r) => r.employee === employeeName.value)
     .sort((a, b) => a.month - b.month);
@@ -322,8 +330,8 @@ const removeReservation = async (id: number) => {
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeRequests(employeeName.value, props.viewYear);
-  const merged = mergeRequestsForDisplay(props.viewYear, real);
+  const real = employeeRequests(employeeName.value, balanceYear.value);
+  const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
     .filter((r) => r.employee === employeeName.value)
     .sort((a, b) => {
@@ -334,15 +342,13 @@ const myRequests = computed(() => {
     });
 });
 
-const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
-
 const balance = computed(() =>
   calcEmployeeBalance(
     employeeName.value,
     hireIso.value,
-    yearRequests.value,
+    balanceYearRequests.value,
     new Date(),
-    state.value.primaryYear,
+    balanceYear.value,
     openingBalance.value
   )
 );
@@ -365,8 +371,8 @@ const requestAdvance = (req: VacationRequest) =>
     hireIso.value,
     req.start,
     req.end,
-    yearRequests.value,
-    state.value.primaryYear,
+    balanceYearRequests.value,
+    balanceYear.value,
     req.id,
     openingBalance.value
   );
@@ -459,8 +465,8 @@ const showProjection = () => {
     employeeName.value,
     hireIso.value,
     projectionDate.value,
-    yearRequests.value,
-    state.value.primaryYear,
+    balanceYearRequests.value,
+    balanceYear.value,
     openingBalance.value
   );
   if (available == null) {

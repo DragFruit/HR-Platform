@@ -92,6 +92,8 @@ const props = defineProps<{
   reservationControlOverride?: number | null;
   /** Месяцы (0–11), где лимит броней группы исчерпан. */
   reservationCapBlockedMonths?: number[];
+  /** Прошлый год: без выбора дат и броней. */
+  readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -139,6 +141,7 @@ const isReservationCapBlocked = (month: { index: number; reservation?: VacationR
   !month.reservation && capBlockedMonthSet.value.has(month.index);
 
 const showReservationControl = (month: { index: number; reservation?: VacationReservation }) => {
+  if (props.readOnly) return false;
   if (props.reservationControlOverride === month.index) return true;
   const monthNum = month.index + 1;
   if (month.reservation) {
@@ -166,6 +169,7 @@ const monthClass = (monthIndex: number) => {
 };
 
 const onReservationClick = (monthIndex: number) => {
+  if (props.readOnly) return;
   if (capBlockedMonthSet.value.has(monthIndex) && !reservationByMonth.value.has(monthIndex)) {
     emit('reservation-cap-blocked', monthIndex);
     return;
@@ -204,7 +208,7 @@ const cellClass = (cell: CalendarDayCell) => {
     if (cell.segmentClass) classes.push(cell.segmentClass);
   }
 
-  const selectable = minIso.value && isDaySelectable(cell, minIso.value);
+  const selectable = !props.readOnly && minIso.value && isDaySelectable(cell, minIso.value);
   if (selectable) {
     classes.push('emp-day-selectable');
   } else if (!cell.approved && !cell.pending) {
@@ -223,6 +227,7 @@ const cellClass = (cell: CalendarDayCell) => {
 const cellTitle = (cell: CalendarDayCell) => {
   if (cell.approved) return 'Отпуск одобрен';
   if (cell.pending) return 'Отпуск на согласовании';
+  if (props.readOnly) return '';
   if (minIso.value && !isDaySelectable(cell, minIso.value)) {
     if (cell.iso < minIso.value) return 'Прошедшая дата';
     return 'Дата занята';
@@ -232,10 +237,12 @@ const cellTitle = (cell: CalendarDayCell) => {
 };
 
 const onCellClick = (cell: CalendarDayCell) => {
+  if (props.readOnly) return;
   emit('day-click', cell);
 };
 
 const onCellHover = (cell: CalendarDayCell) => {
+  if (props.readOnly) return;
   emit('day-hover', cell);
 };
 </script>

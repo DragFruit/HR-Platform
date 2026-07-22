@@ -4,14 +4,47 @@
       <form class="vac-emp-toolbar__form" data-tour="vac-create-form" @submit.prevent="submitRequest">
         <h3 class="vac-emp-toolbar__title">Создать заявку на отпуск</h3>
         <span class="vac-emp-toolbar__word">с</span>
-        <input v-model="form.start" type="date" class="vac-emp-input" aria-label="Дата начала" />
+        <input
+          v-model="form.start"
+          type="date"
+          class="vac-emp-input"
+          aria-label="Дата начала"
+          :disabled="isHistoricalYear || submitting"
+        />
         <span class="vac-emp-toolbar__word">по</span>
-        <input v-model="form.end" type="date" class="vac-emp-input" aria-label="Дата окончания" />
-        <button class="vac-emp-btn" type="submit" :disabled="submitting">
-          {{ submitting ? 'Сохранение…' : 'Создать заявку' }}
-        </button>
+        <input
+          v-model="form.end"
+          type="date"
+          class="vac-emp-input"
+          aria-label="Дата окончания"
+          :disabled="isHistoricalYear || submitting"
+        />
+        <span
+          ref="createBtnWrapRef"
+          class="vac-emp-btn-wrap"
+          @mouseenter="onCreateBtnEnter"
+          @mouseleave="onCreateBtnLeave"
+        >
+          <button
+            class="vac-emp-btn"
+            type="submit"
+            :disabled="isHistoricalYear || submitting"
+          >
+            {{ submitting ? 'Сохранение…' : 'Создать заявку' }}
+          </button>
+        </span>
+        <Teleport to="body">
+          <div
+            v-if="createBtnTipVisible"
+            class="vac-emp-create-tip"
+            role="tooltip"
+            :style="createBtnTipStyle"
+          >
+            {{ props.viewYear }} год — только просмотр, заявку создать нельзя
+          </div>
+        </Teleport>
         <p
-          v-if="formAssessment.status === 'advance'"
+          v-if="!isHistoricalYear && formAssessment.status === 'advance'"
           class="vac-advance-notice vac-advance-notice--toolbar"
           role="status"
         >
@@ -21,7 +54,7 @@
           </span>
         </p>
         <p
-          v-if="formGroupLeadOverlapDetails.length"
+          v-if="!isHistoricalYear && formGroupLeadOverlapDetails.length"
           class="vac-emp-toolbar__glh-overlap"
           role="status"
         >
@@ -32,7 +65,7 @@
             :title="GROUP_LEAD_OVERLAP_POPOVER_TITLE"
           />
         </p>
-        <p v-if="clarifyHint" class="vac-emp-toolbar__clarify-hint" role="status">
+        <p v-if="!isHistoricalYear && clarifyHint" class="vac-emp-toolbar__clarify-hint" role="status">
           {{ clarifyHint }}
         </p>
       </form>
@@ -47,48 +80,57 @@
         class="vac-emp-calendar-slot"
         :class="{ 'vac-emp-calendar-slot--with-tabs': hasTeamCalendar }"
       >
-        <section
-          class="vac-emp-calendar-pane"
-          :class="{
-            'vac-emp-calendar-pane--embedded': embedded,
-            'vac-emp-calendar-pane--team': showTeamCalendar
-          }"
-          data-tour="vac-calendar"
-        >
-          <VacationTeamCalendar
-            v-if="showTeamCalendar"
-            variant="employee-team"
-            :departments="teamDepartments"
-            :requests="yearRequests"
-            :reservations="employeeReservationsList"
-            :get-month-entries="getMonthEntries"
-            :year="props.viewYear"
+        <div class="vac-emp-calendar-main">
+          <VacationYearTab
+            class="vac-emp-calendar-yeartab"
+            :model-value="props.viewYear"
+            :years="yearOptions"
+            @update:model-value="emit('update:viewYear', $event)"
           />
-          <EmployeeYearCalendar
-            v-else-if="employeeName"
-            compact
-            :employee-name="employeeName"
-            :year="props.viewYear"
-            :requests="displayRequests"
-            :reservations="employeeReservationsList"
-            :highlight-month-index="highlightMonthIndex"
-            :range-pick-start="rangePickStart"
-            :range-pick-hover="rangePickHover"
-            :selected-range-start="form.start || null"
-            :selected-range-end="form.end || null"
-            :min-selectable-iso="minIso"
-            :reservation-control-override="reservationControlOverride"
-            :reservation-cap-blocked-months="reservationCapBlockedMonths"
-            @day-click="handleDayClick"
-            @day-hover="handleDayHover"
-            @reservation-month-click="openReservationDialog"
-            @reservation-cap-blocked="openReservationCapNotice"
-          />
-          <p v-else class="vac-emp-empty">
-            Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
-            вашим email.
-          </p>
-        </section>
+          <section
+            class="vac-emp-calendar-pane"
+            :class="{
+              'vac-emp-calendar-pane--embedded': embedded,
+              'vac-emp-calendar-pane--team': showTeamCalendar
+            }"
+            data-tour="vac-calendar"
+          >
+            <VacationTeamCalendar
+              v-if="showTeamCalendar"
+              variant="employee-team"
+              :departments="teamDepartments"
+              :requests="yearRequests"
+              :reservations="employeeReservationsList"
+              :get-month-entries="getMonthEntries"
+              :year="props.viewYear"
+            />
+            <EmployeeYearCalendar
+              v-else-if="employeeName"
+              compact
+              :employee-name="employeeName"
+              :year="props.viewYear"
+              :requests="displayRequests"
+              :reservations="employeeReservationsList"
+              :highlight-month-index="highlightMonthIndex"
+              :range-pick-start="isHistoricalYear ? null : rangePickStart"
+              :range-pick-hover="isHistoricalYear ? null : rangePickHover"
+              :selected-range-start="isHistoricalYear ? null : form.start || null"
+              :selected-range-end="isHistoricalYear ? null : form.end || null"
+              :min-selectable-iso="minIso"
+              :read-only="isHistoricalYear"
+              :reservation-control-override="isHistoricalYear ? null : reservationControlOverride"
+              :reservation-cap-blocked-months="isHistoricalYear ? [] : reservationCapBlockedMonths"
+              @day-click="onCalendarDayClick"
+              @day-hover="onCalendarDayHover"
+              @reservation-month-click="openReservationDialog"
+              @reservation-cap-blocked="openReservationCapNotice"
+            />
+            <p v-else class="vac-emp-empty">
+              Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
+              вашим email.
+            </p>
+          </section>
+        </div>
         <VacationCalendarScopeToggle
           v-if="hasTeamCalendar"
           :model-value="calendarScope"
@@ -218,6 +260,48 @@ const employeeReservationsList = computed(() => {
   return mergeReservationsForDisplay(props.viewYear, real);
 });
 
+/** Прошлые учётные годы — только просмотр календаря, без заявок и броней. */
+const isHistoricalYear = computed(() => props.viewYear < state.value.primaryYear);
+
+const createBtnWrapRef = ref<HTMLElement | null>(null);
+const createBtnTipVisible = ref(false);
+const createBtnTipStyle = ref<Record<string, string>>({});
+
+const onCreateBtnEnter = () => {
+  if (!isHistoricalYear.value) return;
+  const el = createBtnWrapRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  createBtnTipStyle.value = {
+    top: `${Math.round(rect.bottom + 8)}px`,
+    left: `${Math.round(rect.left + rect.width / 2)}px`
+  };
+  createBtnTipVisible.value = true;
+};
+
+const onCreateBtnLeave = () => {
+  createBtnTipVisible.value = false;
+};
+
+watch(isHistoricalYear, (historical) => {
+  if (!historical) createBtnTipVisible.value = false;
+});
+
+/** Только текущий учётный год и прошлый (без «будущего» 2027+). */
+const yearOptions = computed(() => {
+  const primary = state.value.primaryYear;
+  return [primary, primary - 1].filter((year) => year > 0);
+});
+
+watch(
+  yearOptions,
+  (years) => {
+    if (!years.length || years.includes(props.viewYear)) return;
+    emit('update:viewYear', years[0]!);
+  },
+  { immediate: true }
+);
+
 const reservationDialogOpen = ref(false);
 const reservationMonthIndex = ref(0);
 const editingReservation = ref<VacationReservation | null>(null);
@@ -338,7 +422,7 @@ const formAssessment = computed(() =>
     hireIso.value,
     form.start,
     form.end,
-    yearRequests.value,
+    requestsForYear(state.value.primaryYear),
     state.value.primaryYear,
     undefined,
     currentEmployee.value?.vacation_opening_balance
@@ -363,7 +447,7 @@ const formGroupLeadOverlapDetails = computed(() => {
     department: emp.department,
     start: form.start,
     end: form.end,
-    allRequests: yearRequests.value
+    allRequests: requestsForYear(state.value.primaryYear)
   });
 });
 
@@ -400,6 +484,35 @@ const {
   }
 });
 
+const onCalendarDayClick = (...args: Parameters<typeof handleDayClick>) => {
+  if (isHistoricalYear.value) return;
+  handleDayClick(...args);
+};
+
+const onCalendarDayHover = (...args: Parameters<typeof handleDayHover>) => {
+  if (isHistoricalYear.value) return;
+  handleDayHover(...args);
+};
+
+watch(isHistoricalYear, (historical) => {
+  if (!historical) return;
+  clearSelection();
+  form.start = '';
+  form.end = '';
+  formError.value = null;
+});
+
+watch(
+  () => props.viewYear,
+  () => {
+    clearSelection();
+    form.start = '';
+    form.end = '';
+    formError.value = null;
+    clarifyHint.value = '';
+  }
+);
+
 const reservationControlOverride = computed(() =>
   isTrainingActive.value && trainingStep.value?.id === 'reservation-book'
     ? trainingReservationMonth - 1
@@ -407,6 +520,7 @@ const reservationControlOverride = computed(() =>
 );
 
 const openReservationDialog = (monthIndex: number) => {
+  if (isHistoricalYear.value) return;
   if (rangePickStart.value) return;
   if (
     isTrainingActive.value &&
@@ -449,6 +563,13 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
 
 const submitRequest = async () => {
   formError.value = null;
+  if (isHistoricalYear.value) {
+    formError.value = {
+      title: 'Только просмотр',
+      text: `За ${props.viewYear} год заявки создать нельзя — переключитесь на ${state.value.primaryYear}.`
+    };
+    return;
+  }
   if (!employeeName.value || !form.start || !form.end) {
     formError.value = { title: 'Заполните даты', text: 'Укажите дату начала и окончания отпуска.' };
     return;

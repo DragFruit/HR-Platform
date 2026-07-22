@@ -126,7 +126,7 @@ flowchart TB
 | `OrgUnitFields.vue` | Поля отдела (название, руководитель) |
 | `OrgConfirmDialog.vue` | Подтверждение удаления |
 | `InlineField.vue` | Редактирование текста inline |
-| `EmployeeVacationPanel.vue` | Кабинет сотрудника: заявки + календарь |
+| `EmployeeVacationPanel.vue` | Кабинет сотрудника: заявки + календарь; `vac-year-chip` справа над календарём; годы `< primaryYear` — только просмотр |
 | `ManagerVacationAside.vue` | Боковая панель руководителя |
 | `VacationTeamCalendar.vue` | Команда на год |
 | `VacationDetailedCalendar.vue` | Детальный календарь |
@@ -279,7 +279,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | Поле | Назначение |
 |------|------------|
 | `vacations.primaryYear` | Учётный год ЗУП: база `vacation_opening_balance` — остаток на 1 января этого года |
-| `viewYear` (UI) | Год календаря и бакета `requestsByYear` — **не** влияет на формулу баланса |
+| `viewYear` (UI) | Год календаря и бакета `requestsByYear`. У сотрудника годы раньше `primaryYear` — read-only. **Не** влияет на формулу баланса и таблицу «Отгулял / план» (aside всегда `primaryYear`) |
 | `employee.vacation_opening_balance` | Остаток на 01.01 `primaryYear` (из Excel или после rollover) |
 
 **Переход на новый год:** остаток на 31.12.N (`calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
