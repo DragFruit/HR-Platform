@@ -7,6 +7,7 @@ export async function bootstrapAppData() {
   await useVacations().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
+  applyTenureMilestoneRewards();
 
   const { user } = useAuth();
   useUserNotifications().loadNotifications().catch(() => {});

@@ -166,6 +166,7 @@ def main() -> int:
     openings: dict[str, float] = {}
     hires_updated = 0
     unmatched: list[str] = []
+    skipped_before_hire: list[tuple[str, str, str, str]] = []
     matched = 0
 
     for row in range(5, ws.max_row + 1):
@@ -199,7 +200,11 @@ def main() -> int:
 
         emp.pop("vacation_consumed_adjustment", None)
 
+        hire_iso = hire.isoformat() if hire else str(emp.get("hired_at") or "").strip()
         for start, end, status in parse_ranges(ws_colors, row):
+            if hire_iso and start < hire_iso:
+                skipped_before_hire.append((emp["name"], hire_iso, start, end))
+                continue
             requests.append(
                 {
                     "employee": emp["name"],
@@ -279,6 +284,12 @@ def main() -> int:
         print(f"  {name}: Excel={excel_v} ЗУП={calc_v} hire={hire}")
     if unmatched:
         print(f"Не найдены в справочнике ({len(unmatched)}): {', '.join(unmatched)}")
+    if skipped_before_hire:
+        print(f"Пропущены отпуска раньше даты приёма ({len(skipped_before_hire)}):")
+        for employee, hire_iso, start, end in skipped_before_hire[:20]:
+            print(f"  {employee}: {start} — {end} (hired_at {hire_iso})")
+        if len(skipped_before_hire) > 20:
+            print(f"  … и ещё {len(skipped_before_hire) - 20}")
     print(f"Записано: {EMPLOYEES_FILE}, {VACATIONS_FILE}")
     return 0
 

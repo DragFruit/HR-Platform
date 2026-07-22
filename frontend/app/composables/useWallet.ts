@@ -150,6 +150,28 @@ export function useWallet() {
     persistWallets();
   };
 
+  /** Начисление один раз по стабильному ключу (повторный вызов — no-op). */
+  const creditUserOnce = (
+    userId: number,
+    amount: number,
+    reason: string,
+    idempotencyKey: string
+  ): boolean => {
+    if (!userId || amount <= 0 || !idempotencyKey) return false;
+    if (!walletByUser.value[userId]) walletByUser.value[userId] = [];
+    const exists = walletByUser.value[userId].some((tx) => tx.idempotency_key === idempotencyKey);
+    if (exists) return false;
+    walletByUser.value[userId].unshift({
+      idempotency_key: idempotencyKey,
+      type: 'credit',
+      amount,
+      reason,
+      created_at: today()
+    });
+    persistWallets();
+    return true;
+  };
+
   return {
     currentUserId,
     balance,
@@ -158,6 +180,7 @@ export function useWallet() {
     monthTurnover,
     giftToColleague,
     creditUser,
+    creditUserOnce,
     hydrateWallets,
     persistWallets
   };
