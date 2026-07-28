@@ -1,5 +1,5 @@
-import { requireVbiSession } from '../utils/session';
-import { createIdeaForUser } from '../utils/ideaMutations';
+import { requireVbiSession } from '../../utils/session';
+import { createIdeaForUser } from '../../utils/ideaMutations';
 import type { CreateIdeaInput } from '../../../app/composables/useIdeasBank';
 
 export default defineEventHandler(async (event) => {

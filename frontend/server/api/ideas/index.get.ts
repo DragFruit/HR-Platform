@@ -1,5 +1,5 @@
-import { requireVbiSession } from '../utils/session';
-import { readIdeas, votesForUser } from '../utils/ideasStore';
+import { requireVbiSession } from '../../utils/session';
+import { readIdeas, votesForUser } from '../../utils/ideasStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
