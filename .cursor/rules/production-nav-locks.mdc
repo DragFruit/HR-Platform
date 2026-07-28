@@ -17,4 +17,6 @@ alwaysApply: true
 
 Сейчас на бое открыты: `/vacations`, `/notifications`, `/admin/vacations`, `/admin/employees`, `/admin/notifications`, **`/profile`**.
 
+Внутри профиля: блок **Ачивки** пока с замком («Скоро откроются») — не открывать каталог, пока пользователь явно не попросит.
+
 Полная платформа без замков — **staging** `:8080`.
