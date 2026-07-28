@@ -6041,20 +6041,23 @@ a {
 
 .vac-manager-chrome {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 14px;
-  margin: 0 0 22px;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 0;
   min-height: 0;
 }
 
 .vac-manager-chrome__legend {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 14px;
-  font-size: 0.78rem;
+  gap: 10px 12px;
+  font-size: 0.74rem;
+  line-height: 1.2;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .vac-manager-chrome__spacer {
@@ -6064,6 +6067,12 @@ a {
 
 .vac-manager-chrome__tabs.filters {
   margin: 0;
+  flex-shrink: 0;
+}
+
+.vac-manager-chrome .filter-btn {
+  padding: 6px 12px;
+  font-size: 0.72rem;
 }
 
 .vac-manager-chrome .filter-btn .mini-pill {
@@ -6073,7 +6082,7 @@ a {
 }
 
 .vac-manager-chrome + .vac-team-calendar {
-  margin-top: 0;
+  margin-top: 22px; /* место под ярлык года на верхнем краю рамки */
 }
 
 .vac-manager-chrome + .vac-approval-panel {
@@ -6944,23 +6953,35 @@ a {
   align-items: stretch;
   gap: 0;
   overflow: visible;
+  min-height: 0;
 }
 
 .vac-team-calendar__main {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+  overflow: visible;
+}
+
+.vac-team-calendar__pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: visible;
 }
 
-.vac-team-calendar__main > .vac-team-calendar__yeartab,
+.vac-team-calendar__pane > .vac-team-calendar__yeartab,
 .vac-year-tab.vac-team-calendar__yeartab {
   position: absolute;
   top: 0;
-  right: 12px;
+  right: 10px;
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
@@ -6974,7 +6995,7 @@ a {
 
 .vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
   align-self: stretch;
-  padding-top: 14px;
+  padding-top: 0;
 }
 
 .vac-cal-side-tab--detailed.vac-cal-side-tab--active::before,

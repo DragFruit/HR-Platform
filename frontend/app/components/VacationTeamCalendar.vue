@@ -9,38 +9,40 @@
     :style="fitScreenStyle"
   >
     <div class="vac-team-calendar__main">
-      <VacationYearTab
-        v-if="variant === 'manager'"
-        class="vac-team-calendar__yeartab"
-        :model-value="viewYear"
-        :years="yearOptions"
-        @update:model-value="viewYear = $event"
-      />
-      <div class="vac-team-calendar__frame">
-        <button
-          v-if="variant === 'manager' && isAdmin"
-          type="button"
-          class="vac-admin-add-btn vac-admin-add-btn--frame"
-          @click="adminAddOpen = true"
-        >
-          + Добавить отпуск
-        </button>
+      <div class="vac-team-calendar__pane">
+        <VacationYearTab
+          v-if="variant === 'manager'"
+          class="vac-team-calendar__yeartab"
+          :model-value="viewYear"
+          :years="yearOptions"
+          @update:model-value="viewYear = $event"
+        />
+        <div class="vac-team-calendar__frame">
+          <button
+            v-if="variant === 'manager' && isAdmin"
+            type="button"
+            class="vac-admin-add-btn vac-admin-add-btn--frame"
+            @click="adminAddOpen = true"
+          >
+            + Добавить отпуск
+          </button>
 
-        <VacationDetailedCalendar
-          v-if="variant === 'manager' && viewMode === 'detailed'"
-          :departments="departments"
-          :year="viewYear"
-          :requests="requests"
-          :reservations="reservations"
-          :show-department-daily-counts="showDepartmentDailyCounts"
-        />
-        <VacationMonthlyCalendar
-          v-else
-          :departments="departments"
-          :year="calendarYear"
-          :get-month-entries="getMonthEntries"
-          :compact-cells="variant === 'employee-team'"
-        />
+          <VacationDetailedCalendar
+            v-if="variant === 'manager' && viewMode === 'detailed'"
+            :departments="departments"
+            :year="viewYear"
+            :requests="requests"
+            :reservations="reservations"
+            :show-department-daily-counts="showDepartmentDailyCounts"
+          />
+          <VacationMonthlyCalendar
+            v-else
+            :departments="departments"
+            :year="calendarYear"
+            :get-month-entries="getMonthEntries"
+            :compact-cells="variant === 'employee-team'"
+          />
+        </div>
       </div>
     </div>
 
