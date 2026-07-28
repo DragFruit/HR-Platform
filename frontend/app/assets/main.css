@@ -6704,6 +6704,10 @@ a {
   overflow: hidden;
 }
 
+.vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
+  position: relative;
+}
+
 .vac-team-calendar__toolbar {
   flex-shrink: 0;
 }
@@ -6956,19 +6960,21 @@ a {
 .vac-year-tab.vac-team-calendar__yeartab {
   position: absolute;
   top: 0;
-  right: 44px;
+  right: 12px;
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
 }
 
 .vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
 }
 
 .vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
-  padding-top: 10px;
+  align-self: stretch;
+  padding-top: 14px;
 }
 
 .vac-cal-side-tab--detailed.vac-cal-side-tab--active::before,
@@ -9148,7 +9154,7 @@ a {
   transform: translateY(calc(-100% + 1px));
 }
 
-.vac-year-tab:not(.vac-emp-calendar-yeartab) {
+.vac-year-tab:not(.vac-emp-calendar-yeartab):not(.vac-team-calendar__yeartab) {
   position: relative;
 }
 
