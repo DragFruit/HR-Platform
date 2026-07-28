@@ -3746,9 +3746,18 @@ a {
   grid-column: 1 / -1;
 }
 
+.profile-activity.card.profile-itmo-panel {
+  align-content: start;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .profile-activity__scroll {
   position: relative;
   z-index: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   margin: 2px -4px 0 0;
