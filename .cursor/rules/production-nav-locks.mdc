@@ -1,0 +1,20 @@
+---
+description: Production launchScope — замки меню только по явной команде
+alwaysApply: true
+---
+
+# Production: замочки меню
+
+На **production** (`http://45.12.74.25`, `appEnv=production`) пилот **`LAUNCH_SCOPE=vacations`**.
+
+## Запрещено
+
+- **Не** ставить `NUXT_PUBLIC_LAUNCH_SCOPE=full` на бой и **не** снимать hard-lock в `useLaunchScope`, пока пользователь **явно** не скажет открыть всю платформу / снять все замки.
+
+## Как открывать разделы
+
+Только точечно, по запросу: добавить путь в whitelist `isPathAllowed` в `frontend/app/composables/useLaunchScope.ts` (как отпуска, уведомления, сотрудники).
+
+Сейчас на бое открыты: `/vacations`, `/notifications`, `/admin/vacations`, `/admin/employees`, `/admin/notifications`, **`/profile`**.
+
+Полная платформа без замков — **staging** `:8080`.
