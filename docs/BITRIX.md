@@ -186,7 +186,7 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 **Предпочтительно — типизированный тип `vbihr|vacation`** (одна строка в настройках, без «Неопознанные»):
 
-1. На `crm.vbi.ru` развернуть `scripts/bitrix/vbi-hr/` (схема + PHP-мост) — инструкция в `scripts/bitrix/vbi-hr/README.md`.
+1. На `crm.vbi.ru` установить **локальный модуль** `vbihr` (+ PHP-мост) — **без правки `init.php`**. Инструкция: `scripts/bitrix/vbi-hr/README.md`.
 2. В env HR: `BITRIX_VACATION_NOTIFY_BRIDGE_URL` + `BITRIX_VACATION_NOTIFY_BRIDGE_SECRET`.
 3. Сотруднику: включить **VBI HR → Заявки на отпуск**, галку **«Неопознанные»** можно выключить.
 

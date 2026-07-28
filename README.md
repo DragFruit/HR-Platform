@@ -2,7 +2,7 @@
 
 Внутренняя HR-платформа VBI (**vibe.vbi.ru**): геймификация (задачи, валюта, магазин), адаптация, оргструктура и график отпусков. **Пустой старт:** сотрудников и задач нет — наполняете сами. Справочник сотрудников синхронизируется с сервером; адаптация — Nitro API (`frontend/server/data/`).
 
-> **Документация:** этот файл — точка входа. Подробности: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), история изменений: [docs/CHANGELOG.md](docs/CHANGELOG.md).
+> **Документация:** этот файл — точка входа. **Правила продукта**: [docs/PRODUCT.md](docs/PRODUCT.md). Идеи из K-Team HRM: [docs/K-TEAM-MAP.md](docs/K-TEAM-MAP.md). Код и API: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). История: [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ---
 
@@ -10,18 +10,20 @@
 
 1. **macOS:** дважды кликните **`Open Frontend.command`** в корне проекта.
 2. **Windows:** дважды кликните **`Open Frontend.bat`** (нужен [Node.js LTS](https://nodejs.org/)).
-3. Откроется `http://127.0.0.1:3300/` — экран входа, затем главная со всеми разделами.
+3. Откроется локальный фронт — войдите через Bitrix или демо (если включён QA).
 4. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
 
-**Только график отпусков** (пилот): задайте `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` в `.env` в `frontend/` или в окружении.
+**Полная платформа** (как на production и staging): `cd frontend && npm run dev`.
+
+**Только график отпусков** (старый пилот): `cd frontend && npm run dev:vacations` или `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` в `.env`.
 
 Альтернатива из терминала:
 
 ```bash
 cd frontend
 npm install
-npm run dev      # разработка, http://localhost:3000
-npm run build && NITRO_PORT=3300 node .output/server/index.mjs   # как в .command
+npm run dev             # полная платформа, http://localhost:3000
+npm run dev:vacations   # только отпуска + демо QA
 ```
 
 ---
@@ -128,13 +130,9 @@ VBI HR платформа/
 
 ## График отпусков
 
-Логика перенесена с референса в `_vacation_source/График отпусков/`:
+Бизнес-правила (дни, остаток, согласование, бронь): **[docs/PRODUCT.md](docs/PRODUCT.md)** §1.
 
-- Справочник сотрудников (`useEmployees`) — привязка к аккаунтам по email.
-- Состояние заявок и календаря (`useVacations`) — согласование руководителем.
-- Компоненты: `EmployeeVacationPanel`, `VacationTeamCalendar`, `VacationDetailedCalendar` и др.
-
-Сид: `frontend/app/data/vacation-seed.json`.
+Логика UI перенесена с референса в `_vacation_source/График отпусков/`. Сид: `frontend/app/data/vacation-seed.json`.
 
 ---
 

@@ -13,8 +13,9 @@ export const QA_EMPLOYEE_MARINA_NAME = 'Марина Тестова';
 export const QA_EMPLOYEE_NAME = QA_EMPLOYEE_DASHA_NAME;
 
 /** Стабильные id — не попадают в employees.json при сохранении. */
-export const QA_EMPLOYEE_IDS = [9001, 9002, 9003, 9004, 9005, 9006] as const;
+export const QA_EMPLOYEE_IDS = [9001, 9002, 9003, 9004, 9005, 9006, 9100] as const;
 export const QA_EMPLOYEE_ID_SET = new Set<number>(QA_EMPLOYEE_IDS);
+export const QA_EMPLOYEE_JUBILEE_NAME = 'Юбилеев Тест';
 
 export const QA_TEAM_MEMBER_NAMES = [
   QA_DIRECTOR_NAME,
@@ -30,7 +31,8 @@ const QA_DEMO_EMAILS = new Set([
   'kostya@vbi.local',
   'katya@vbi.local',
   'vasya@vbi.local',
-  'alina@vbi.local'
+  'alina@vbi.local',
+  'jubilee@vbi.local'
 ]);
 
 const QA_DEMO_SESSION_NAMES: Record<string, string> = {
@@ -38,7 +40,8 @@ const QA_DEMO_SESSION_NAMES: Record<string, string> = {
   'kostya@vbi.local': QA_TEAM_LEAD_NAME,
   'katya@vbi.local': QA_EMPLOYEE_DASHA_NAME,
   'vasya@vbi.local': QA_EMPLOYEE_VASILY_NAME,
-  'alina@vbi.local': QA_EMPLOYEE_ALINA_NAME
+  'alina@vbi.local': QA_EMPLOYEE_ALINA_NAME,
+  'jubilee@vbi.local': QA_EMPLOYEE_JUBILEE_NAME
 };
 
 export function isQaTestDepartmentEnabledFromEnv(
@@ -131,6 +134,19 @@ export function buildQaTestEmployees(): Employee[] {
       email: '',
       account_role: 'employee',
       vacation_opening_balance: 28
+    },
+    {
+      id: 9100,
+      name: QA_EMPLOYEE_JUBILEE_NAME,
+      title: 'Тестовый юбиляр (5 лет)',
+      department: 'Digital',
+      manager: 'Цхай Виталий',
+      /** 5 лет на 2026-07-24 — день юбилея для теста оверлея */
+      hired_at: '2021-07-24',
+      platform_user_id: 9100,
+      email: 'jubilee@vbi.local',
+      account_role: 'employee',
+      vacation_opening_balance: 28
     }
   ];
 }
@@ -158,8 +174,16 @@ export function applyQaDemoSessionOverrides<
   if (displayName) next.name = displayName;
   if (email === 'masha@vbi.local' || email === 'kostya@vbi.local') {
     next.role = 'manager';
-  } else if (email === 'katya@vbi.local' || email === 'vasya@vbi.local' || email === 'alina@vbi.local') {
+  } else if (
+    email === 'katya@vbi.local' ||
+    email === 'vasya@vbi.local' ||
+    email === 'alina@vbi.local' ||
+    email === 'jubilee@vbi.local'
+  ) {
     next.role = 'employee';
+  }
+  if (email === 'jubilee@vbi.local') {
+    next.department = 'Digital';
   }
   return next;
 }
@@ -169,6 +193,7 @@ export const QA_DEMO_ACCOUNT_HINTS: Record<string, string> = {
   'katya@vbi.local': 'Сотрудник: Даша Тестова — заявки, бронь, обучалка',
   'vasya@vbi.local': 'Сотрудник: Василий Тестов — свой календарь и заявки',
   'alina@vbi.local': 'Сотрудник: Алина Тестова — заявка на согласовании',
+  'jubilee@vbi.local': 'Юбиляр: 5 лет в компании — тест поздравления / ачивки / купона',
   'masha@vbi.local': `Директор: ${QA_DIRECTOR_NAME} — согласование шаг 2`,
   'stas@vbi.local': 'Администратор платформы (HR)'
 };
@@ -180,5 +205,6 @@ export const QA_DEMO_ACCOUNT_ORDER = [
   'alina@vbi.local',
   'kostya@vbi.local',
   'masha@vbi.local',
+  'jubilee@vbi.local',
   'stas@vbi.local'
 ] as const;

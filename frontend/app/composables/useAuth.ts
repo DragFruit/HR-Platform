@@ -72,6 +72,15 @@ const credentials: Credential[] = [
     department: 'Команда',
     description: 'Директор: Мария Тестова — согласование шаг 2'
   },
+  {
+    id: 9100,
+    name: 'Юбилеев',
+    email: 'jubilee@vbi.local',
+    password: 'jubilee123',
+    role: 'employee',
+    department: 'Digital',
+    description: 'Юбиляр: 5 лет в компании — тест поздравления / ачивки / купона'
+  }
 ];
 
 const SESSION_KEY = 'vbi-auth-session';
@@ -247,6 +256,8 @@ export function useAuth() {
     showOnboarding.value = false;
     if (import.meta.client) {
       useAdaptation().resetUserSession();
+      useTenureCoupons().resetSessionUi();
+      useTenureCelebration().resetSessionUi();
       useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
       localStorage.removeItem(SESSION_KEY);
       await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});

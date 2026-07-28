@@ -29,7 +29,8 @@ export const PLATFORM_ACCOUNTS: Record<
   3: { email: 'katya@vbi.local', account_role: 'employee', name: 'Катя' },
   4: { email: 'vasya@vbi.local', account_role: 'employee', name: 'Вася' },
   5: { email: 'masha@vbi.local', account_role: 'employee', name: 'Маша' },
-  6: { email: 'alina@vbi.local', account_role: 'employee', name: 'Алина' }
+  6: { email: 'alina@vbi.local', account_role: 'employee', name: 'Алина' },
+  9100: { email: 'jubilee@vbi.local', account_role: 'employee', name: 'Юбилеев Тест' }
 };
 
 export type EmployeeDepartment = {
@@ -332,6 +333,14 @@ export function useEmployees() {
 
   const findByName = (name: string) => employees.value.find((emp) => emp.name === name) ?? null;
 
+  /** Руководитель сотрудника — из поля manager справочника (актуальная версия на платформе). */
+  const managerForEmployee = (emp: Employee | null | undefined): Employee | null => {
+    const mgrName = emp?.manager?.trim();
+    if (!mgrName) return null;
+    const key = normalizeEmployeeNameKey(mgrName);
+    return employees.value.find((e) => normalizeEmployeeNameKey(e.name) === key) ?? null;
+  };
+
   const findByUserForAuth = (user: { id: number; email: string; name?: string } | null | undefined) => {
     if (!user) return null;
     const linked = findByUserId(user.id);
@@ -499,6 +508,7 @@ export function useEmployees() {
     findByUserId,
     findByUserForAuth,
     findByName,
+    managerForEmployee,
     directReports,
     allReports,
     directReportsForAuthUser,

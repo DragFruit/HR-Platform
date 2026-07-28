@@ -30,7 +30,6 @@
         >
           Пройти тест
         </NuxtLink>
-        <NuxtLink to="/profile/development" class="button ghost">Перейти к ИПР</NuxtLink>
       </div>
     </div>
 

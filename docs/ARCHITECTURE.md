@@ -1,5 +1,9 @@
 # Архитектура VIBE VBI
 
+Бизнес-правила (что считается, этапы, остатки дней): **[PRODUCT.md](./PRODUCT.md)**.  
+Идеи из обзора K-Team HRM → VBI: **[K-TEAM-MAP.md](./K-TEAM-MAP.md)**.  
+Этот файл — карта кода, API и storage.
+
 ## Обзор
 
 ```mermaid
@@ -92,7 +96,10 @@ flowchart TB
 | `useWallet` | `useWallet.ts` | Баланс и транзакции |
 | `useMockData` | `useMockData.ts` | Демо-данные дашборда, магазин |
 | `useAdaptation` | `useAdaptation.ts` | Трек адаптации, тесты, `$fetch` к Nitro API |
+| `useProfileActivity` | `useProfileActivity.ts` | Лента «Недавняя активность» (сервер + авто) |
 | `useAdminData` | `useAdminData.ts` | Справочники админки (пользователи, отделы legacy) |
+| `useIdeasBank` | `useIdeasBank.ts` | Банк идей: список, голоса, создание, этапы, удаление |
+| `useAdminNotifications` | `useAdminNotifications.ts` | Колокольчик admin/HR (в т.ч. `idea_submitted`, юбилеи) |
 
 **Правило:** `useState()` только **внутри** функций composable / setup — не на уровне модуля (иначе SSR 500 и вечная «Загрузка...»).
 
@@ -106,7 +113,8 @@ flowchart TB
 - `adaptation.vue`
 - `organization.vue` → `OrgChart` readonly
 - `vacations.vue` — ветвление employee / manager UI
-- `tasks.vue`, `store.vue`, `wallet.vue`, `profile.vue`
+- `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
+- `ideas/index.vue` — банк идей (сотрудник)
 
 ### Админ
 
@@ -114,7 +122,34 @@ flowchart TB
 - `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue`
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
-- `profile.vue` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
+- `admin/activity.vue` — ручные события профиля («Недавняя активность»)
+- `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
+- `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
+
+---
+
+## Банк идей
+
+Продуктовые правила и этапы: **[PRODUCT.md](./PRODUCT.md)** §2.
+
+Поток статусов (`IdeaStatus`):
+
+```
+review (На рассмотрении)
+  ├─→ implementation (Реализация)
+  │      └─→ done (Реализовано)  → учитывается в топ-авторах
+  └─→ rejected (Отклонено)     → обязателен комментарий причины
+```
+
+| Кто | Что |
+|-----|-----|
+| Сотрудник | Создаёт идею → `review`; голосует; удаляет **свою**; получает уведомление (Vibe + Bitrix) при смене этапа |
+| Admin / HR | `/admin/ideas`: смена этапа (модалка + комментарий), удаление любой |
+| Система | `POST /api/ideas/notify` → admin `idea_submitted`; `POST /api/ideas/status-notify` → автору `idea_status_changed` + Bitrix |
+
+Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
+
+Данные: клиентский `localStorage` (`vbi-ideas-bank-v2`, голоса `vbi-ideas-votes-v1-{userId}`). Уведомления admin — `server/data/admin-notifications.json`.
 
 ---
 
@@ -146,6 +181,9 @@ flowchart TB
 |------|------------|
 | `adaptation-track.json` | Шаблон трека и вопросы (с `correct` только на сервере) |
 | `adaptation-state.json` | Попытки тестов и отметки шагов |
+| `adaptation-scenarios.json` | Каталог сценариев адаптации (CRUD admin/HR) |
+| `adaptation-assignments.json` | Назначения сценария сотруднику |
+| `profile-activity.json` | Ручные/тестовые события «Недавняя активность» в профиле |
 | `employees.json` | Справочник для привязки `platform_user_id` → ФИО |
 | `employee-managers.json` | Назначения руководителей (overlay по `id`/ФИО); не перезаписывается импортом, деплоем и синком Bitrix |
 | `admin-notifications.json` | Уведомления admin/hr о расхождениях ФИО/должности с Битрикс24 |
@@ -155,12 +193,20 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | Endpoint | Назначение |
 |----------|------------|
 | `GET /api/adaptation/me` | Прогресс текущего пользователя |
+| `GET /api/adaptation/scenarios` | Каталог сценариев + назначения (admin/HR) |
+| `POST /api/adaptation/scenarios` | Создать сценарий |
+| `PUT /api/adaptation/scenarios/:id` | Обновить сценарий |
+| `DELETE /api/adaptation/scenarios/:id` | Удалить сценарий |
+| `POST /api/adaptation/assign` | Назначить сценарий сотруднику |
 | `POST /api/adaptation/attempts` | Сдача теста → запись для админа |
 | `GET /api/adaptation/attempts` | Журнал (admin) или `?mine=1` |
 | `PATCH /api/adaptation/attempts/:id/seen` | Админ отметил просмотр |
 | `PATCH /api/adaptation/steps/:stepId` | Отметить шаг чеклиста |
+| `GET /api/profile-activity` | Лента активности (`?employee_id` / `platform_user_id`) |
+| `POST /api/profile-activity` | Ручная запись (admin/HR) |
+| `DELETE /api/profile-activity/:id` | Удалить запись |
 
-Клиент: `useAdaptation.ts`.
+Клиент: `useAdaptation.ts`, `useProfileActivity.ts`.
 
 ### Справочник сотрудников (API)
 
@@ -204,11 +250,15 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `PATCH /api/notifications/:id/seen` | Прочитано |
 | `PATCH /api/notifications/seen-all` | Прочитать все |
 
-Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`.
+Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа).
 
-Параллельно в Битрикс (`bitrixVacationNotify.ts`): `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём; чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true`.
+Хранение: до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
+
+Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём; чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true` (для отпусков; для идей чат не используется).
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
+
+Идеи: `POST /api/ideas/notify` (создание → admin), `POST /api/ideas/status-notify` (смена этапа → автор).
 
 ### Аватары сотрудников (API)
 
@@ -249,6 +299,8 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 ---
 
 ## Отпуска
+
+Продуктовые правила (формулы дней и баланса, этапы согласования, бронь): **[PRODUCT.md](./PRODUCT.md)** §1.
 
 1. `useEmployees` — кто чей руководитель; `findByUserForAuth()` по `platform_user_id` или email.
 2. `useVacations` — заявки, статусы, `canManagerApproveRequest()`, `formatMonthVacationRange()` (даты в месячной таблице: `DD.MM-DD.MM`).
@@ -304,6 +356,8 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |
+| `vbi-ideas-bank-v2` | `useIdeasBank` — идеи, этапы, комментарии к статусу |
+| `vbi-ideas-votes-v1-{userId}` | `useIdeasBank` — голоса пользователя за/против |
 
 Устаревшие ключи сбрасываются при смене `DEMO_PLATFORM_VERSION` (см. `LEGACY_STORAGE_KEYS` в плагине).
 

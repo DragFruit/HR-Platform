@@ -40,6 +40,28 @@ export type PatchVacationRequestBody = {
   approval_step?: VacationApprovalStep | null;
 };
 
+/** Год папки requestsByYear должен совпадать с годом даты начала. */
+const yearFromIsoDate = (iso: string): number => {
+  const y = Number(String(iso || '').slice(0, 4));
+  if (!Number.isFinite(y) || y < 2000 || y > 2100) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Некорректная дата отпуска'
+    });
+  }
+  return y;
+};
+
+const assertYearMatchesStart = (year: number, start: string) => {
+  const startYear = yearFromIsoDate(start);
+  if (startYear !== year) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Год заявки (${year}) не совпадает с датой начала (${startYear})`
+    });
+  }
+};
+
 const assertGroupLeadVacationOverlap = (
   state: VacationStoreState,
   employee: { name: string; department: string },
@@ -90,6 +112,8 @@ export async function createVacationRequest(
         statusMessage: `За ${body.year} год заявки создать нельзя — год только для просмотра`
       });
     }
+    assertYearMatchesStart(body.year, body.start);
+    yearFromIsoDate(body.end);
     if (employee) {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
@@ -125,6 +149,20 @@ export async function patchVacationRequest(
 
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
+
+    if (patch.start !== undefined || patch.end !== undefined) {
+      yearFromIsoDate(found.item.end);
+      const startYear = yearFromIsoDate(found.item.start);
+      const bucketYear = Number(found.yearKey);
+      if (startYear !== bucketYear) {
+        // Дата уехала в другой год — переносим заявку в правильную папку.
+        const nextList = found.list.filter((item) => item.id !== id);
+        state.requestsByYear[found.yearKey] = nextList;
+        const targetKey = String(startYear);
+        const target = state.requestsByYear[targetKey] ?? [];
+        state.requestsByYear[targetKey] = [...target, found.item];
+      }
+    }
 
     const employee = await findEmployeeByName(found.item.employee);
     if (employee && (patch.start !== undefined || patch.end !== undefined)) {

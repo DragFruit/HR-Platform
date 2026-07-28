@@ -7,9 +7,11 @@ export async function bootstrapAppData() {
   await useVacations().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
+  useIdeasBank().hydrate();
   applyTenureMilestoneRewards();
 
   const { user } = useAuth();
+  useTenureCelebration().evaluate();
   useUserNotifications().loadNotifications().catch(() => {});
   if (user.value?.role === 'admin' || user.value?.role === 'hr') {
     useAdminNotifications().loadNotifications().catch(() => {});

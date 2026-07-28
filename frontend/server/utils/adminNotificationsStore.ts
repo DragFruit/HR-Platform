@@ -2,19 +2,31 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-export type AdminNotificationKind = 'bitrix_employee_name' | 'bitrix_employee_title';
+export type AdminNotificationKind =
+  | 'bitrix_employee_name'
+  | 'bitrix_employee_title'
+  | 'tenure_gift_order'
+  | 'idea_submitted';
 
 export type AdminNotification = {
   id: string;
   kind: AdminNotificationKind;
   employee_id: number;
-  bitrix_user_id: number;
   employee_name: string;
-  field: 'name' | 'title';
-  platform_value: string;
-  bitrix_value: string;
   created_at: string;
   admin_seen: boolean;
+  /** Bitrix field sync */
+  bitrix_user_id?: number;
+  field?: 'name' | 'title';
+  platform_value?: string;
+  bitrix_value?: string;
+  /** Юбилейный набор */
+  years?: number;
+  sku?: string;
+  order_id?: string;
+  /** Банк идей */
+  idea_id?: string;
+  idea_title?: string;
 };
 
 type NotificationsState = {
@@ -117,15 +129,17 @@ export async function upsertBitrixFieldNotification(input: {
   const existing = state.items.find(
     (item) =>
       !item.admin_seen &&
+      (item.kind === 'bitrix_employee_name' || item.kind === 'bitrix_employee_title') &&
       item.employee_id === input.employee_id &&
       item.field === input.field &&
-      normalizeComparable(item.bitrix_value) === bitrix
+      normalizeComparable(item.bitrix_value || '') === bitrix
   );
   if (existing) return existing;
 
   const stale = state.items.findIndex(
     (item) =>
       !item.admin_seen &&
+      (item.kind === 'bitrix_employee_name' || item.kind === 'bitrix_employee_title') &&
       item.employee_id === input.employee_id &&
       item.field === input.field
   );
@@ -142,6 +156,70 @@ export async function upsertBitrixFieldNotification(input: {
     field: input.field,
     platform_value: input.platform_value,
     bitrix_value: input.bitrix_value,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createTenureGiftOrderNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  years: number;
+  sku: string;
+  order_id: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+
+  const existing = state.items.find(
+    (item) =>
+      !item.admin_seen &&
+      item.kind === 'tenure_gift_order' &&
+      item.order_id === input.order_id
+  );
+  if (existing) return existing;
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'tenure_gift_order',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    years: input.years,
+    sku: input.sku,
+    order_id: input.order_id,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createIdeaSubmittedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  idea_id: string;
+  idea_title: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+
+  const existing = state.items.find(
+    (item) =>
+      !item.admin_seen &&
+      item.kind === 'idea_submitted' &&
+      item.idea_id === input.idea_id
+  );
+  if (existing) return existing;
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'idea_submitted',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    idea_id: input.idea_id,
+    idea_title: input.idea_title,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

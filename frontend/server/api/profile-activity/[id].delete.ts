@@ -1,0 +1,20 @@
+import { requireVbiSession } from '../../utils/session';
+import { deleteProfileActivity } from '../../utils/profileActivityStore';
+
+export default defineEventHandler(async (event) => {
+  const session = await requireVbiSession(event);
+  if (session.role !== 'admin' && session.role !== 'hr') {
+    throw createError({ statusCode: 403, statusMessage: 'Только admin/HR' });
+  }
+
+  const id = getRouterParam(event, 'id');
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: 'Не указан id' });
+  }
+
+  const ok = await deleteProfileActivity(id);
+  if (!ok) {
+    throw createError({ statusCode: 404, statusMessage: 'Запись не найдена' });
+  }
+  return { ok: true };
+});

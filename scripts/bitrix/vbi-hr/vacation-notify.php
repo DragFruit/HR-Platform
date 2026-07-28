@@ -62,6 +62,31 @@ function vbiHrJsonExit(array $payload, int $http = 200): void
 	exit;
 }
 
+/**
+ * CIMNotify::Add кладёт событие в очередь Pull, а отправка на websocket
+ * обычно в epilog. У моста epilog нет (exit сразу) — без flush браузер
+ * узнаёт об уведомлении только после F5, без всплышки и счётчика.
+ */
+function vbiHrFlushPull(): void
+{
+	try {
+		if (!\Bitrix\Main\Loader::includeModule('pull')) {
+			return;
+		}
+		if (class_exists('\Bitrix\Pull\Event') && is_callable(['\Bitrix\Pull\Event', 'send'])) {
+			\Bitrix\Pull\Event::send();
+			return;
+		}
+		if (isset($GLOBALS['APPLICATION']) && is_object($GLOBALS['APPLICATION'])
+			&& method_exists($GLOBALS['APPLICATION'], 'FinalActions')) {
+			// FinalActions может завершить скрипт — вызываем только если JSON ещё не отдан.
+			$GLOBALS['APPLICATION']->FinalActions();
+		}
+	} catch (\Throwable $e) {
+		// Уведомление уже в БД; сбой flush не должен ломать ответ моста.
+	}
+}
+
 try {
 	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 		vbiHrJsonExit(['ok' => false, 'error' => 'POST_ONLY'], 405);
@@ -98,13 +123,30 @@ try {
 		vbiHrJsonExit(['ok' => false, 'error' => 'CIMNotify_MISSING'], 500);
 	}
 
+	// Текст для push / OS-оповещения (без BB-кодов). Без PUSH_MESSAGE
+	// уведомление часто только в ленте «Уведомления», без всплытия и звука.
+	$pushMessage = trim(preg_replace('/\s+/u', ' ', strip_tags(
+		preg_replace('/\[[^\]]*\]/', '', $message) ?? $message
+	)));
+	if ($pushMessage === '') {
+		$pushMessage = $message;
+	}
+	if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($pushMessage) > 180) {
+		$pushMessage = mb_substr($pushMessage, 0, 177) . '...';
+	} elseif (strlen($pushMessage) > 180) {
+		$pushMessage = substr($pushMessage, 0, 177) . '...';
+	}
+
 	$fields = [
 		'TO_USER_ID' => $userId,
 		'FROM_USER_ID' => 0,
 		'NOTIFY_TYPE' => IM_NOTIFY_SYSTEM,
 		'NOTIFY_MODULE' => VBIHR_NOTIFY_MODULE,
 		'NOTIFY_EVENT' => VBIHR_NOTIFY_EVENT,
+		'NOTIFY_TITLE' => 'VBI HR',
 		'NOTIFY_MESSAGE' => $message,
+		'MESSAGE' => $message,
+		'PUSH_MESSAGE' => $pushMessage,
 	];
 
 	if ($tag !== '') {
@@ -131,11 +173,14 @@ try {
 		], 200);
 	}
 
+	vbiHrFlushPull();
+
 	vbiHrJsonExit([
 		'ok' => true,
 		'notifyId' => $n,
 		'module' => VBIHR_NOTIFY_MODULE,
 		'event' => VBIHR_NOTIFY_EVENT,
+		'pullFlushed' => true,
 	]);
 } catch (\Throwable $e) {
 	vbiHrJsonExit([

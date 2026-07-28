@@ -15,23 +15,27 @@ const STORAGE_KEY = 'vbi-vacation-training-v1';
 type TrainingStorage = {
   completed: number[];
   skipped: number[];
+  /** userId → ISO-дата завершения (для ленты активности). */
+  completedAt?: Record<string, string>;
 };
 
 let trainingRequestSeq = -1000;
 let trainingReservationSeq = -2000;
 
 const readStorage = (): TrainingStorage => {
-  if (!import.meta.client) return { completed: [], skipped: [] };
+  if (!import.meta.client) return { completed: [], skipped: [], completedAt: {} };
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return { completed: [], skipped: [] };
+  if (!raw) return { completed: [], skipped: [], completedAt: {} };
   try {
     const parsed = JSON.parse(raw) as TrainingStorage;
     return {
       completed: Array.isArray(parsed.completed) ? parsed.completed : [],
-      skipped: Array.isArray(parsed.skipped) ? parsed.skipped : []
+      skipped: Array.isArray(parsed.skipped) ? parsed.skipped : [],
+      completedAt:
+        parsed.completedAt && typeof parsed.completedAt === 'object' ? parsed.completedAt : {}
     };
   } catch {
-    return { completed: [], skipped: [] };
+    return { completed: [], skipped: [], completedAt: {} };
   }
 };
 
@@ -205,6 +209,8 @@ export function useVacationTraining() {
       const store = readStorage();
       if (!store.completed.includes(id)) {
         store.completed.push(id);
+        store.completedAt = store.completedAt ?? {};
+        store.completedAt[String(id)] = new Date().toISOString();
         writeStorage(store);
       }
       bumpStorageRevision();
