@@ -46,8 +46,10 @@ export default defineNuxtConfig({
         process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED === 'true' ||
         (process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED !== 'false' &&
           (process.env.NUXT_PUBLIC_APP_ENV || 'development') !== 'production'),
-      /** `vacations` — только график отпусков; `full` — вся платформа */
-      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full',
+      /** `vacations` — только график отпусков; `full` — вся платформа (staging/dev) */
+      launchScope:
+        process.env.NUXT_PUBLIC_LAUNCH_SCOPE ||
+        ((process.env.NUXT_PUBLIC_APP_ENV || 'development') === 'production' ? 'vacations' : 'full'),
       /** QA-отдел «Тестировщики» для локальной проверки согласования (не для production) */
       qaTestDepartment:
         process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT === '1' ||

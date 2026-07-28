@@ -49,7 +49,7 @@ build:production:
     - if: $CI_COMMIT_BRANCH == "main"
   variables:
     NUXT_PUBLIC_APP_ENV: production
-    NUXT_PUBLIC_LAUNCH_SCOPE: full
+    NUXT_PUBLIC_LAUNCH_SCOPE: vacations
     NUXT_PUBLIC_ORG_LINKS_ENABLED: "false"
 
 # --- Деплой на VPS (только из CI, не с локальной машины в обычном потоке) ---

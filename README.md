@@ -13,9 +13,9 @@
 3. Откроется локальный фронт — войдите через Bitrix или демо (если включён QA).
 4. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
 
-**Полная платформа** (как на production и staging): `cd frontend && npm run dev`.
+**Полная платформа** (staging / локально): `cd frontend && npm run dev`.
 
-**Только график отпусков** (старый пилот): `cd frontend && npm run dev:vacations` или `NUXT_PUBLIC_LAUNCH_SCOPE=vacations` в `.env`.
+**Только график отпусков** (как на production / IP `45.12.74.25`): `npm run dev:vacations` или `NUXT_PUBLIC_LAUNCH_SCOPE=vacations`.
 
 Альтернатива из терминала:
 
