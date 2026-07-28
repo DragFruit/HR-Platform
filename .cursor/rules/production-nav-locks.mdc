@@ -15,7 +15,7 @@ alwaysApply: true
 
 Только точечно, по запросу: добавить путь в whitelist `isPathAllowed` в `frontend/app/composables/useLaunchScope.ts` (как отпуска, уведомления, сотрудники).
 
-Сейчас на бое открыты: `/vacations`, `/notifications`, `/admin/vacations`, `/admin/employees`, `/admin/notifications`, **`/profile`**.
+Сейчас на бое открыты: `/vacations`, `/notifications`, `/admin/vacations`, `/admin/employees`, `/admin/notifications`, **`/profile`**, **`/ideas`**, **`/admin/ideas`**.
 
 Внутри профиля: блок **Ачивки** пока с замком («Скоро откроются») — не открывать каталог, пока пользователь явно не попросит.
 
