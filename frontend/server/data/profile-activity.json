@@ -1,0 +1,74 @@
+{
+  "items": [
+    {
+      "id": "seed-jubilee-conference",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "talk",
+      "text": "Выступил на конференции «HR Digital Day» с докладом про адаптацию",
+      "occurred_at": "2026-07-18T10:00:00.000Z",
+      "source": "seed",
+      "created_at": "2026-07-18T10:00:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-merch",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "store",
+      "text": "Получил мерч в магазине — худи VBI",
+      "occurred_at": "2026-07-12T14:30:00.000Z",
+      "source": "seed",
+      "created_at": "2026-07-12T14:30:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-course",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "learning",
+      "text": "Успешно завершил курс обучения «Клиентский сервис»",
+      "occurred_at": "2026-07-05T09:00:00.000Z",
+      "source": "seed",
+      "created_at": "2026-07-05T09:00:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-promotion",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "promotion",
+      "text": "Получил повышение — ведущий специалист Digital",
+      "occurred_at": "2026-06-20T12:00:00.000Z",
+      "source": "seed",
+      "created_at": "2026-06-20T12:00:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-tenure",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "achievement",
+      "text": "Отметил юбилей — 5 лет в компании",
+      "occurred_at": "2026-07-24T08:00:00.000Z",
+      "source": "seed",
+      "created_at": "2026-07-24T08:00:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-welcome",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "welcome",
+      "text": "Присоединился к команде Digital — добро пожаловать!",
+      "occurred_at": "2021-07-24T09:00:00.000Z",
+      "source": "seed",
+      "created_at": "2021-07-24T09:00:00.000Z"
+    },
+    {
+      "id": "seed-jubilee-recognition",
+      "employee_id": 9100,
+      "platform_user_id": 9100,
+      "kind": "recognition",
+      "text": "Получил признание от команды — «Спасибо за поддержку новичков»",
+      "occurred_at": "2026-07-08T11:00:00.000Z",
+      "source": "seed",
+      "created_at": "2026-07-08T11:00:00.000Z"
+    }
+  ]
+}

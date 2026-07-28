@@ -2,6 +2,11 @@ import { requireVbiSession } from '../../utils/session';
 import { findEmployeeForSession } from '../../utils/employeesStore';
 import { listAttempts, listStepCompletions } from '../../utils/adaptationStore';
 import { daysSinceHire, loadTrackForClient } from '../../utils/trackLoader';
+import {
+  applyScenarioToTrack,
+  findAdaptationScenario,
+  getAssignmentForEmployee
+} from '../../utils/adaptationScenarios';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -11,6 +16,7 @@ export default defineEventHandler(async (event) => {
     return {
       employee: null,
       track: await loadTrackForClient(),
+      scenario: null,
       days_since_hire: null,
       attempts: [],
       step_completions: [],
@@ -18,7 +24,12 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  const track = await loadTrackForClient();
+  const assignment = await getAssignmentForEmployee(employee.id);
+  const scenario = assignment
+    ? await findAdaptationScenario(assignment.scenario_id)
+    : null;
+  const baseTrack = await loadTrackForClient();
+  const track = applyScenarioToTrack(baseTrack, scenario);
   const days = daysSinceHire(employee.hired_at);
   const attempts = await listAttempts({ platform_user_id: session.id });
   const stepCompletions = await listStepCompletions(employee.id);
@@ -56,6 +67,14 @@ export default defineEventHandler(async (event) => {
   return {
     employee,
     track: { ...track, phases },
+    scenario: scenario
+      ? {
+          id: scenario.id,
+          title: scenario.title,
+          short_title: scenario.short_title,
+          description: scenario.description
+        }
+      : null,
     days_since_hire: days,
     attempts,
     step_completions: stepCompletions,

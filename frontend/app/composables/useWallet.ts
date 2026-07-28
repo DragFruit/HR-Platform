@@ -150,6 +150,27 @@ export function useWallet() {
     persistWallets();
   };
 
+  const debitUser = (
+    userId: number,
+    amount: number,
+    reason: string
+  ): { ok: true } | { ok: false; error: string } => {
+    if (!userId || amount <= 0) return { ok: false, error: 'Некорректная сумма' };
+    if (calcBalance(userId, walletByUser.value) < amount) {
+      return { ok: false, error: 'Недостаточно валюты' };
+    }
+    if (!walletByUser.value[userId]) walletByUser.value[userId] = [];
+    walletByUser.value[userId].unshift({
+      idempotency_key: `debit-${userId}-${Date.now()}`,
+      type: 'debit',
+      amount,
+      reason,
+      created_at: today()
+    });
+    persistWallets();
+    return { ok: true };
+  };
+
   /** Начисление один раз по стабильному ключу (повторный вызов — no-op). */
   const creditUserOnce = (
     userId: number,
@@ -180,6 +201,7 @@ export function useWallet() {
     monthTurnover,
     giftToColleague,
     creditUser,
+    debitUser,
     creditUserOnce,
     hydrateWallets,
     persistWallets

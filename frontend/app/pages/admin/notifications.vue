@@ -4,7 +4,7 @@
       <p class="eyebrow">Администрирование</p>
       <h2>Уведомления</h2>
       <p class="muted">
-        Изменения ФИО и должностей в Битрикс24, которые не применяются на платформе автоматически.
+        Изменения в Битрикс24 и заявки на юбилейные наборы (собрать подарок).
       </p>
     </div>
     <button
@@ -35,8 +35,12 @@
           <p class="soft admin-notifications-page__date">{{ formatDate(item.created_at) }}</p>
         </div>
         <div class="admin-notifications-page__actions">
-          <NuxtLink to="/admin/employees" class="button ghost" @click="markIfUnseen(item.id, item.admin_seen)">
-            Открыть справочник
+          <NuxtLink
+            :to="notificationActionTo(item)"
+            class="button ghost"
+            @click="markIfUnseen(item.id, item.admin_seen)"
+          >
+            {{ notificationActionLabel(item) }}
           </NuxtLink>
           <button
             v-if="!item.admin_seen"
@@ -65,7 +69,9 @@ const {
   markAllSeen,
   formatNotificationTitle,
   formatNotificationBody,
-  formatDate
+  formatDate,
+  notificationActionLabel,
+  notificationActionTo
 } = useAdminNotifications();
 
 const markIfUnseen = async (id: string, seen: boolean) => {

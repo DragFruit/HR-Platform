@@ -12,8 +12,8 @@ export function useLaunchScope() {
   const launchScope = computed<LaunchScope>(() => {
     const raw = config.public.launchScope;
     if (raw === 'vacations') return 'vacations';
-    // На бое всегда пилот «только отпуска», даже если в конфиге по ошибке full
-    if (config.public.appEnv === 'production') return 'vacations';
+    if (raw === 'full') return 'full';
+    // Fallback: staging/dev — полная платформа; production без явного env тоже full
     return 'full';
   });
 

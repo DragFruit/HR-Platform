@@ -1,0 +1,22 @@
+---
+description: Юбилейный купон в магазине — слот сетки каталога
+alwaysApply: true
+---
+
+# Tenure gift banner в магазине
+
+## Как показываем
+
+- Купон — **первая карточка** в `grid-three` каталога `/store` (тот же слот, что у товаров).
+- Органично в сетке, но чуть выделяется акцентами платформы (не копировать Яндекс.Маркет):
+  - рамка 2px + тень `4px 4px 0 #ddf365`
+  - фон `#eeeee8`
+  - бейдж «Награда»
+- Арт эталона full-bleed в карточке (`object-fit: contain`), hit-area на «Использовать».
+- **Не** выносить отдельной полосой над каталогом.
+
+## Файлы
+
+- `frontend/app/pages/store.vue`
+- `frontend/app/components/TenureGiftBanner.vue`
+- `frontend/public/store/tenure-gift-banner-5y.png`

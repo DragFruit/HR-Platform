@@ -1,17 +1,28 @@
+export type AdminNotificationKind =
+  | 'bitrix_employee_name'
+  | 'bitrix_employee_title'
+  | 'tenure_gift_order'
+  | 'idea_submitted';
+
 export type AdminNotification = {
   id: string;
-  kind: 'bitrix_employee_name' | 'bitrix_employee_title';
+  kind: AdminNotificationKind;
   employee_id: number;
-  bitrix_user_id: number;
   employee_name: string;
-  field: 'name' | 'title';
-  platform_value: string;
-  bitrix_value: string;
   created_at: string;
   admin_seen: boolean;
+  bitrix_user_id?: number;
+  field?: 'name' | 'title';
+  platform_value?: string;
+  bitrix_value?: string;
+  years?: number;
+  sku?: string;
+  order_id?: string;
+  idea_id?: string;
+  idea_title?: string;
 };
 
-const fieldLabels: Record<AdminNotification['field'], string> = {
+const fieldLabels: Record<'name' | 'title', string> = {
   name: 'ФИО',
   title: 'должность'
 };
@@ -54,12 +65,24 @@ export function useAdminNotifications() {
   };
 
   const formatNotificationTitle = (item: AdminNotification) => {
-    const label = fieldLabels[item.field];
+    if (item.kind === 'tenure_gift_order') {
+      return `Собрать юбилейный набор (${item.years ?? '—'} лет)`;
+    }
+    if (item.kind === 'idea_submitted') {
+      return 'Новая идея в банке';
+    }
+    const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
 
   const formatNotificationBody = (item: AdminNotification) => {
-    const label = fieldLabels[item.field];
+    if (item.kind === 'tenure_gift_order') {
+      return `${item.employee_name} использовал(а) купон на набор «${item.years} лет». Соберите подарок: медаль, вино ${item.years} лет выдержки и премию.`;
+    }
+    if (item.kind === 'idea_submitted') {
+      return `${item.employee_name} предложил(а): «${item.idea_title || 'идея'}». Рассмотрите заявку в банке идей.`;
+    }
+    const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
   };
 
@@ -77,6 +100,18 @@ export function useAdminNotifications() {
     }
   };
 
+  const notificationActionLabel = (item: AdminNotification) => {
+    if (item.kind === 'tenure_gift_order') return 'К уведомлению';
+    if (item.kind === 'idea_submitted') return 'Банк идей';
+    return 'Справочник';
+  };
+
+  const notificationActionTo = (item: AdminNotification) => {
+    if (item.kind === 'tenure_gift_order') return '/admin/notifications';
+    if (item.kind === 'idea_submitted') return '/admin/ideas';
+    return '/admin/employees';
+  };
+
   return {
     notifications,
     unseenCount,
@@ -87,6 +122,8 @@ export function useAdminNotifications() {
     markAllSeen,
     formatNotificationTitle,
     formatNotificationBody,
-    formatDate
+    formatDate,
+    notificationActionLabel,
+    notificationActionTo
   };
 }

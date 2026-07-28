@@ -284,6 +284,47 @@ const sendBitrixSystemNotify = async (
   return { ok: false, error: finalErr };
 };
 
+/**
+ * Общий колокольчик Bitrix (im.notify.system.add / мост отпусков, если настроен).
+ * Ошибки не пробрасываются — только лог.
+ */
+export async function notifyBitrixSystemUser(input: {
+  bitrixUserId: number;
+  message: string;
+  tag: string;
+  subTag: string;
+  logLabel: string;
+}): Promise<void> {
+  const { bitrixUserId, message, tag, subTag, logLabel } = input;
+  if (!bitrixUserId || bitrixUserId <= 0 || !message.trim()) return;
+
+  const bridgeConfigured = Boolean(
+    String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_URL || '').trim() &&
+      String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_SECRET || '').trim()
+  );
+  const hasOAuth = await hasBitrixOAuthServiceToken();
+  await appendNotifyLog(
+    `${logLabel} → user ${bitrixUserId}, bridge=${bridgeConfigured}, oauth=${hasOAuth}`
+  );
+
+  if (!bridgeConfigured && !hasOAuth) {
+    await appendNotifyLog(`${logLabel}: SKIP — нет bridge и нет OAuth refresh_token`);
+    return;
+  }
+
+  const notifyResult = await sendBitrixSystemNotify(bitrixUserId, message, tag, subTag);
+  if (notifyResult.ok) {
+    await appendNotifyLog(
+      `${logLabel}: OK → user ${bitrixUserId} via ${notifyResult.method} id=${notifyResult.notifyId ?? '?'}`
+    );
+    return;
+  }
+
+  await appendNotifyLog(
+    `${logLabel}: FAIL → user ${bitrixUserId}: ${notifyResult.error ?? 'unknown'}`
+  );
+}
+
 /** Пуш в Битрикс текущему согласующему; только колокольчик. Ошибки не пробрасываются. */
 export async function notifyBitrixVacationApprover(
   request: VacationRequest,

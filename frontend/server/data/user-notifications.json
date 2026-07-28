@@ -1,3 +1,155 @@
 {
-  "items": []
+  "items": [
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 9106,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "id": "f63f0ab7-8055-45ca-81ca-73d4ed80c52a",
+      "created_at": "2026-07-13T11:33:42.503Z",
+      "seen": false
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 9106,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "id": "41b39781-c775-4c43-b9c8-fb84d5b94d02",
+      "created_at": "2026-07-13T11:33:42.507Z",
+      "seen": false
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1004,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "id": "3049cb91-67fe-4ba3-9ac1-926081a19aa6",
+      "created_at": "2026-07-13T11:33:49.843Z",
+      "seen": false
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 1004,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "id": "95ec529d-ee64-44fc-8720-571903d0c6f6",
+      "created_at": "2026-07-13T11:33:49.849Z",
+      "seen": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1005,
+      "employee_name": "Даша Тестова",
+      "start": "2026-10-05",
+      "end": "2026-10-11",
+      "id": "e8a2f545-c0af-4eb3-b3f1-57d788aa2a61",
+      "created_at": "2026-07-13T13:05:58.102Z",
+      "seen": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 2,
+      "employee_name": "Константин Тестов",
+      "idea_id": "idea-1785167500158",
+      "idea_title": "Как есть мороженное",
+      "stage_label": "Реализовано",
+      "status_comment": "ты молодец, это действительно удобнее!",
+      "id": "87efc352-293c-47bc-bcb8-77681ed79cfc",
+      "created_at": "2026-07-27T15:58:52.845Z",
+      "seen": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 9100,
+      "employee_name": "Юбилеев Тест",
+      "idea_id": "idea-1785174638366",
+      "idea_title": "ааааааа",
+      "stage_label": "Реализовано",
+      "id": "37f1c306-0c84-43ed-af16-9e683ec0387d",
+      "created_at": "2026-07-27T17:50:52.289Z",
+      "seen": true,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 4,
+      "employee_name": "Василий Тестов",
+      "idea_id": "idea-1785174604615",
+      "idea_title": "ккккккккк",
+      "stage_label": "Реализовано",
+      "id": "8a18a850-819c-46b3-b86e-ae98b12c857f",
+      "created_at": "2026-07-27T17:50:58.721Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 3,
+      "employee_name": "Даша Тестова",
+      "idea_id": "idea-1785174585680",
+      "idea_title": "МММмМ",
+      "stage_label": "Реализовано",
+      "id": "541c96d8-d72a-44b6-8a58-4410eed4daa0",
+      "created_at": "2026-07-27T17:51:00.171Z",
+      "seen": true,
+      "hidden_from_bell": true
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 100,
+      "employee_name": "Иванова А.",
+      "idea_id": "idea-1",
+      "idea_title": "Оптимизация процессов через Six Sigma",
+      "stage_label": "Реализовано",
+      "id": "62fe6430-14cf-40fc-8d2f-baa121568244",
+      "created_at": "2026-07-27T17:51:02.002Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 500,
+      "employee_name": "Новикова Е.",
+      "idea_id": "idea-6",
+      "idea_title": "Единый календарь дедлайнов проектов",
+      "stage_label": "Реализовано",
+      "id": "d474f6d2-942c-4d42-9e31-ef9f10d81592",
+      "created_at": "2026-07-27T17:51:03.638Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 600,
+      "employee_name": "Орлов П.",
+      "idea_id": "idea-7",
+      "idea_title": "Пятничные безмитинговые слоты",
+      "stage_label": "Реализовано",
+      "id": "764bb1a4-b861-4a5f-8543-a8bab5d2c8b9",
+      "created_at": "2026-07-27T17:51:05.339Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "idea_status_changed",
+      "recipient_user_id": 2,
+      "employee_name": "Константин Тестов",
+      "idea_id": "idea-1785174701414",
+      "idea_title": "цубаавбм бфуавм",
+      "stage_label": "Реализовано",
+      "id": "264ecb9b-7180-4bcd-9a8e-3d16e77befc2",
+      "created_at": "2026-07-27T17:51:53.503Z",
+      "seen": false,
+      "hidden_from_bell": false
+    }
+  ]
 }

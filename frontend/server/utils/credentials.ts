@@ -64,6 +64,14 @@ const credentials: Credential[] = [
     password: 'employee123',
     role: 'employee',
     department: 'Команда'
+  },
+  {
+    id: 9100,
+    name: 'Юбилеев Тест',
+    email: 'jubilee@vbi.local',
+    password: 'jubilee123',
+    role: 'employee',
+    department: 'Digital'
   }
 ];
 

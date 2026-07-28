@@ -53,6 +53,7 @@
           Адаптация
           <span v-if="adaptationUnseen > 0" class="tag learning">{{ adaptationUnseen }}</span>
         </NuxtLink>
+        <NuxtLink to="/admin/activity" class="button ghost">Активность</NuxtLink>
         <NuxtLink to="/admin/notifications" class="button ghost">
           Уведомления
           <span v-if="adminNotificationsUnseen > 0" class="tag learning">{{ adminNotificationsUnseen }}</span>

@@ -3,6 +3,10 @@
     <div>
       <p class="eyebrow">Адаптация новых сотрудников</p>
       <h2>{{ me?.track.title ?? 'Трек адаптации' }}</h2>
+      <p v-if="me?.scenario" class="soft">
+        Сценарий: <strong>{{ me.scenario.short_title }}</strong>
+        — {{ me.scenario.description }}
+      </p>
       <p v-if="me?.employee" class="muted">
         {{ me.employee.name }} · {{ me.employee.title }} · старт {{ me.employee.hired_at }}
       </p>

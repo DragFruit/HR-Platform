@@ -5,7 +5,7 @@
       class="admin-notifications-bell__btn"
       :aria-expanded="open"
       aria-haspopup="true"
-      aria-label="Уведомления по отпускам"
+      aria-label="Уведомления"
       @click="toggleOpen"
     >
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
@@ -20,11 +20,9 @@
       <span v-if="unseenCount > 0" class="admin-notifications-bell__badge">{{ badgeLabel }}</span>
     </button>
 
-    <div v-if="open" class="admin-notifications-bell__panel card" role="dialog" aria-label="Уведомления по отпускам">
-      <div class="admin-notifications-bell__head">
-        <strong>Отпуска</strong>
+    <div v-if="open" class="admin-notifications-bell__panel card" role="dialog" aria-label="Уведомления">
+      <div v-if="unseenCount > 0" class="admin-notifications-bell__head">
         <button
-          v-if="unseenCount > 0"
           type="button"
           class="button ghost admin-notifications-bell__mark-all"
           @click.stop="handleMarkAll"
@@ -34,7 +32,7 @@
       </div>
 
       <p v-if="loading" class="soft admin-notifications-bell__empty">Загрузка…</p>
-      <p v-else-if="!notifications.length" class="soft admin-notifications-bell__empty">
+      <p v-else-if="!bellNotifications.length" class="soft admin-notifications-bell__empty">
         Новых уведомлений нет
       </p>
       <ul v-else class="admin-notifications-bell__list list-reset">
@@ -47,8 +45,8 @@
           <button
             type="button"
             class="admin-notifications-bell__dismiss"
-            aria-label="Закрыть уведомление"
-            @click.stop="handleDismiss(item)"
+            aria-label="Убрать из списка"
+            @click.stop.prevent="handleHideFromBell(item)"
           >
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
               <path d="M4 4l8 8M12 4 4 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -70,7 +68,7 @@
       </ul>
 
       <button
-        v-if="notifications.length"
+        v-if="bellNotifications.length || notifications.length"
         type="button"
         class="admin-notifications-bell__footer"
         @click.stop="goToAll"
@@ -86,27 +84,27 @@ import type { UserNotification } from '~/composables/useUserNotifications';
 
 const {
   notifications,
+  bellNotifications,
   unseenCount,
   loading,
   loadNotifications,
   markSeen,
   markAllSeen,
-  dismiss,
+  hideFromBell,
   notificationLink,
   formatNotificationTitle,
   formatNotificationBody,
   formatDate,
-  isManagerAction
+  notificationActionLabel
 } = useUserNotifications();
 
 const open = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
 
-const previewItems = computed(() => notifications.value.slice(0, 5));
+const previewItems = computed(() => bellNotifications.value.slice(0, 5));
 const badgeLabel = computed(() => (unseenCount.value > 99 ? '99+' : String(unseenCount.value)));
 
-const linkLabel = (item: UserNotification) =>
-  isManagerAction(item) ? 'Согласование' : 'Мои отпуска';
+const linkLabel = (item: UserNotification) => notificationActionLabel(item);
 
 const toggleOpen = async () => {
   open.value = !open.value;
@@ -119,8 +117,8 @@ const handleMarkAll = async () => {
   await markAllSeen().catch(() => {});
 };
 
-const handleDismiss = async (item: UserNotification) => {
-  await dismiss(item.id).catch(() => {});
+const handleHideFromBell = async (item: UserNotification) => {
+  await hideFromBell(item.id).catch(() => {});
 };
 
 const goToNotification = async (item: UserNotification) => {

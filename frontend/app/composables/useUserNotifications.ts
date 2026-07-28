@@ -9,18 +9,24 @@ export type UserNotification = {
     | 'vacation_next_stage'
     | 'vacation_reservation_updated'
     | 'vacation_reservation_expiring'
-    | 'vacation_reservation_expiring_manager';
+    | 'vacation_reservation_expiring_manager'
+    | 'idea_status_changed';
   recipient_user_id: number;
-  vacation_request_id: number;
+  vacation_request_id?: number;
   employee_name: string;
-  start: string;
-  end: string;
+  start?: string;
+  end?: string;
   stage_label?: string;
+  idea_id?: string;
+  idea_title?: string;
+  status_comment?: string;
   created_at: string;
   seen: boolean;
+  hidden_from_bell?: boolean;
 };
 
-const formatPeriod = (start: string, end: string) => {
+const formatPeriod = (start?: string, end?: string) => {
+  if (!start || !end) return '';
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
@@ -34,6 +40,10 @@ export function useUserNotifications() {
   const unseenCount = useState<number>('user-notifications-unseen', () => 0);
   const loading = useState<boolean>('user-notifications-loading', () => false);
   const error = useState<string | null>('user-notifications-error', () => null);
+
+  const bellNotifications = computed(() =>
+    notifications.value.filter((item) => !item.hidden_from_bell)
+  );
 
   const loadNotifications = async (filters?: { unseen?: boolean }) => {
     loading.value = true;
@@ -66,14 +76,32 @@ export function useUserNotifications() {
     await loadNotifications();
   };
 
+  /** Убрать из колокольчика; остаётся на странице /notifications. */
+  const hideFromBell = async (id: string) => {
+    await $fetch(`/api/notifications/${id}/hide-bell`, { method: 'PATCH' });
+    notifications.value = notifications.value.map((item) =>
+      item.id === id ? { ...item, hidden_from_bell: true, seen: true } : item
+    );
+    unseenCount.value = notifications.value.filter(
+      (item) => !item.seen && !item.hidden_from_bell
+    ).length;
+  };
+
+  /** Полное удаление (страница уведомлений). */
   const dismiss = async (id: string) => {
     await $fetch(`/api/notifications/${id}`, { method: 'DELETE' });
     notifications.value = notifications.value.filter((item) => item.id !== id);
-    unseenCount.value = notifications.value.filter((item) => !item.seen).length;
+    unseenCount.value = notifications.value.filter(
+      (item) => !item.seen && !item.hidden_from_bell
+    ).length;
   };
 
-  const notificationLink = (item: UserNotification) =>
-    isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
+  const isIdeaNotification = (item: UserNotification) => item.kind === 'idea_status_changed';
+
+  const notificationLink = (item: UserNotification) => {
+    if (isIdeaNotification(item)) return '/ideas';
+    return isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
+  };
 
   const formatNotificationTitle = (item: UserNotification) => {
     switch (item.kind) {
@@ -95,12 +123,27 @@ export function useUserNotifications() {
         return 'Срок предварительной брони';
       case 'vacation_reservation_expiring_manager':
         return 'Бронь сотрудника истекает';
+      case 'idea_status_changed':
+        if (item.stage_label === 'Реализовано') return 'Идея реализована';
+        if (item.stage_label === 'Отклонено') return 'Идея отклонена';
+        if (item.stage_label === 'Реализация') return 'Идея взята в работу';
+        if (item.stage_label === 'На рассмотрении') return 'Идея на рассмотрении';
+        return 'Статус идеи обновлён';
       default:
-        return 'Отпуска';
+        return 'Уведомление';
     }
   };
 
   const formatNotificationBody = (item: UserNotification) => {
+    if (item.kind === 'idea_status_changed') {
+      const title = item.idea_title ? `«${item.idea_title}»` : 'Ваша идея';
+      const stage = item.stage_label ? `Этап: ${item.stage_label}.` : 'Этап обновлён.';
+      const comment = item.status_comment?.trim()
+        ? ` Комментарий: ${item.status_comment.trim()}`
+        : '';
+      return `${title}. ${stage}${comment}`;
+    }
+
     const period = formatPeriod(item.start, item.end);
     switch (item.kind) {
       case 'vacation_submitted':
@@ -155,19 +198,28 @@ export function useUserNotifications() {
     item.kind === 'vacation_reservation_updated' ||
     item.kind === 'vacation_reservation_expiring_manager';
 
+  const notificationActionLabel = (item: UserNotification) => {
+    if (isIdeaNotification(item)) return 'Банк идей';
+    return isManagerAction(item) ? 'Согласование' : 'Открыть отпуска';
+  };
+
   return {
     notifications,
+    bellNotifications,
     unseenCount,
     loading,
     error,
     loadNotifications,
     markSeen,
     markAllSeen,
+    hideFromBell,
     dismiss,
     notificationLink,
+    notificationActionLabel,
     formatNotificationTitle,
     formatNotificationBody,
     formatDate,
-    isManagerAction
+    isManagerAction,
+    isIdeaNotification
   };
 }

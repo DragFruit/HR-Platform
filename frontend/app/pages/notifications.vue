@@ -1,7 +1,7 @@
 <template>
   <section v-if="loading || error || notifications.length" class="card section-card admin-notifications-page">
     <header class="section-head">
-      <h3 class="section-title">Уведомления по отпускам</h3>
+      <h3 class="section-title">Уведомления</h3>
       <button
         v-if="unseenCount > 0"
         type="button"
@@ -39,7 +39,7 @@
         </div>
         <div class="admin-notifications-page__actions">
           <button type="button" class="button ghost" @click="goToNotification(item)">
-            {{ isManagerAction(item) ? 'Согласование' : 'Открыть отпуска' }}
+            {{ notificationActionLabel(item) }}
           </button>
           <button
             v-if="!item.seen"
@@ -73,7 +73,7 @@ const {
   formatNotificationTitle,
   formatNotificationBody,
   formatDate,
-  isManagerAction
+  notificationActionLabel
 } = useUserNotifications();
 
 const goToNotification = async (item: UserNotification) => {

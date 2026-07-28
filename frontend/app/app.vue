@@ -115,12 +115,14 @@
     <AppSiteFooter />
 
     <FirstLoginOnboarding
-      v-if="isAuthenticated && showOnboarding && user"
+      v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive"
       :user-name="user.name"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
     />
+
+    <TenureCelebrationOverlay v-if="isAuthenticated && user" />
   </div>
 </template>
 
@@ -130,6 +132,7 @@ import { PLATFORM_NAME } from '~/data/platformBrand';
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
   useAuth();
+const { isActive: tenureCelebrationActive } = useTenureCelebration();
 const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();

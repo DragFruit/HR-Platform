@@ -72,6 +72,12 @@ export type AdaptationMeResponse = {
     title: string;
     phases: AdaptationPhaseClient[];
   };
+  scenario: {
+    id: string;
+    title: string;
+    short_title: string;
+    description: string;
+  } | null;
   days_since_hire: number | null;
   attempts: AdaptationAttemptRecord[];
   step_completions: { step_id: string; employee_id: number; completed_at: string }[];

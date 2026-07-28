@@ -47,9 +47,7 @@ export default defineNuxtConfig({
         (process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED !== 'false' &&
           (process.env.NUXT_PUBLIC_APP_ENV || 'development') !== 'production'),
       /** `vacations` — только график отпусков; `full` — вся платформа */
-      launchScope:
-        process.env.NUXT_PUBLIC_LAUNCH_SCOPE ||
-        ((process.env.NUXT_PUBLIC_APP_ENV || 'development') === 'production' ? 'vacations' : 'full'),
+      launchScope: process.env.NUXT_PUBLIC_LAUNCH_SCOPE || 'full',
       /** QA-отдел «Тестировщики» для локальной проверки согласования (не для production) */
       qaTestDepartment:
         process.env.NUXT_PUBLIC_QA_TEST_DEPARTMENT === '1' ||
@@ -57,6 +55,8 @@ export default defineNuxtConfig({
           process.env.NODE_ENV === 'development'),
       /** Квест-обучение по отпускам — включено везде; отключить: NUXT_PUBLIC_VACATION_TRAINING_ENABLED=false */
       vacationTrainingEnabled: process.env.NUXT_PUBLIC_VACATION_TRAINING_ENABLED !== 'false',
+      /** Базовый URL портала Bitrix (ссылки на профили сотрудников) */
+      bitrixPortalUrl: process.env.NUXT_PUBLIC_BITRIX_PORTAL_URL || process.env.BITRIX_PORTAL_URL || 'https://crm.vbi.ru',
       /** Соцсети агентства VBI — переопределяются через NUXT_PUBLIC_SOCIAL_* */
       socialVkUrl: process.env.NUXT_PUBLIC_SOCIAL_VK_URL || 'https://vk.com/vbi.agency',
       socialTelegramUrl: process.env.NUXT_PUBLIC_SOCIAL_TELEGRAM_URL || 'https://t.me/vbi_agency',

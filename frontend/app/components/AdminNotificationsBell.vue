@@ -49,11 +49,11 @@
           <div class="admin-notifications-bell__meta">
             <span class="soft">{{ formatDate(item.created_at) }}</span>
             <NuxtLink
-              to="/admin/employees"
+              :to="notificationActionTo(item)"
               class="admin-notifications-bell__link"
-              @click="handleOpenEmployees(item)"
+              @click="handleOpenItem(item)"
             >
-              Справочник
+              {{ notificationActionLabel(item) }}
             </NuxtLink>
           </div>
         </li>
@@ -81,7 +81,9 @@ const {
   markAllSeen,
   formatNotificationTitle,
   formatNotificationBody,
-  formatDate
+  formatDate,
+  notificationActionLabel,
+  notificationActionTo
 } = useAdminNotifications();
 
 const open = ref(false);
@@ -101,7 +103,7 @@ const handleMarkAll = async () => {
   await markAllSeen().catch(() => {});
 };
 
-const handleOpenEmployees = async (item: (typeof notifications.value)[number]) => {
+const handleOpenItem = async (item: (typeof notifications.value)[number]) => {
   if (!item.admin_seen) {
     await markSeen(item.id).catch(() => {});
   }

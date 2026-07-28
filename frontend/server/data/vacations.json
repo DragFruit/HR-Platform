@@ -608,9 +608,866 @@
         "comment": "Заявка из платформы",
         "createdAt": "13.07.2026"
       }
+    ],
+    "2025": [
+      {
+        "id": 1006,
+        "employee": "Ревзина Ксения",
+        "start": "2025-03-24",
+        "end": "2025-03-25",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1007,
+        "employee": "Ревзина Ксения",
+        "start": "2025-04-28",
+        "end": "2025-04-30",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1008,
+        "employee": "Ревзина Ксения",
+        "start": "2025-06-20",
+        "end": "2025-06-20",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1009,
+        "employee": "Ревзина Ксения",
+        "start": "2025-07-07",
+        "end": "2025-07-20",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1010,
+        "employee": "Ревзина Ксения",
+        "start": "2025-12-23",
+        "end": "2025-12-30",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1011,
+        "employee": "Жукова Юлия",
+        "start": "2025-03-31",
+        "end": "2025-04-06",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1012,
+        "employee": "Жукова Юлия",
+        "start": "2025-05-28",
+        "end": "2025-05-28",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1013,
+        "employee": "Жукова Юлия",
+        "start": "2025-06-02",
+        "end": "2025-06-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1014,
+        "employee": "Жукова Юлия",
+        "start": "2025-06-14",
+        "end": "2025-06-15",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1015,
+        "employee": "Жукова Юлия",
+        "start": "2025-08-18",
+        "end": "2025-08-31",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1016,
+        "employee": "Левина Анастасия",
+        "start": "2025-07-04",
+        "end": "2025-07-04",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1017,
+        "employee": "Левина Анастасия",
+        "start": "2025-07-21",
+        "end": "2025-08-03",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1018,
+        "employee": "Левина Анастасия",
+        "start": "2025-08-28",
+        "end": "2025-08-29",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1019,
+        "employee": "Мощев Максим",
+        "start": "2025-06-02",
+        "end": "2025-06-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1020,
+        "employee": "Мощев Максим",
+        "start": "2025-09-15",
+        "end": "2025-09-28",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1021,
+        "employee": "Цхай Виталий",
+        "start": "2025-02-17",
+        "end": "2025-02-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1022,
+        "employee": "Цхай Виталий",
+        "start": "2025-10-30",
+        "end": "2025-11-02",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1023,
+        "employee": "Булатникова Алена",
+        "start": "2025-06-09",
+        "end": "2025-06-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1024,
+        "employee": "Булатникова Алена",
+        "start": "2025-06-14",
+        "end": "2025-06-22",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1025,
+        "employee": "Булатникова Алена",
+        "start": "2025-10-13",
+        "end": "2025-10-26",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1026,
+        "employee": "Шелободкина Анна",
+        "start": "2025-03-05",
+        "end": "2025-03-12",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1027,
+        "employee": "Шелободкина Анна",
+        "start": "2025-06-09",
+        "end": "2025-06-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1028,
+        "employee": "Шелободкина Анна",
+        "start": "2025-06-14",
+        "end": "2025-06-15",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1029,
+        "employee": "Шелободкина Анна",
+        "start": "2025-07-14",
+        "end": "2025-07-27",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1030,
+        "employee": "Кухарев Владислав",
+        "start": "2025-07-07",
+        "end": "2025-07-20",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1031,
+        "employee": "Кухарев Владислав",
+        "start": "2025-11-10",
+        "end": "2025-11-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1032,
+        "employee": "Александрова Анна",
+        "start": "2025-05-12",
+        "end": "2025-05-25",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1033,
+        "employee": "Александрова Анна",
+        "start": "2025-10-06",
+        "end": "2025-10-19",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1034,
+        "employee": "Павлов Вячеслав",
+        "start": "2025-04-14",
+        "end": "2025-04-20",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1035,
+        "employee": "Павлов Вячеслав",
+        "start": "2025-09-08",
+        "end": "2025-09-21",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1036,
+        "employee": "Павлов Вячеслав",
+        "start": "2025-11-10",
+        "end": "2025-11-16",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1037,
+        "employee": "Попов Виктор",
+        "start": "2025-05-05",
+        "end": "2025-05-07",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1038,
+        "employee": "Попов Виктор",
+        "start": "2025-05-10",
+        "end": "2025-05-18",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1039,
+        "employee": "Попов Виктор",
+        "start": "2025-07-28",
+        "end": "2025-08-03",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1040,
+        "employee": "Попов Виктор",
+        "start": "2025-08-25",
+        "end": "2025-08-26",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1041,
+        "employee": "Трифонов Николай",
+        "start": "2025-05-21",
+        "end": "2025-05-27",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1042,
+        "employee": "Трифонов Николай",
+        "start": "2025-07-14",
+        "end": "2025-07-27",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1043,
+        "employee": "Бояринова Мария",
+        "start": "2025-09-29",
+        "end": "2025-10-12",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1044,
+        "employee": "Хакимов Олег",
+        "start": "2025-03-10",
+        "end": "2025-03-14",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1045,
+        "employee": "Нижегородцев Василий",
+        "start": "2025-07-14",
+        "end": "2025-07-22",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1046,
+        "employee": "Нижегородцев Василий",
+        "start": "2025-09-15",
+        "end": "2025-09-24",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1047,
+        "employee": "Лунин Дмитрий",
+        "start": "2025-06-23",
+        "end": "2025-07-06",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1048,
+        "employee": "Лунин Дмитрий",
+        "start": "2025-08-11",
+        "end": "2025-08-24",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1049,
+        "employee": "Голуб Алина",
+        "start": "2025-04-10",
+        "end": "2025-04-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1050,
+        "employee": "Голуб Алина",
+        "start": "2025-10-06",
+        "end": "2025-10-19",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1051,
+        "employee": "Маленкова Кристина",
+        "start": "2025-03-17",
+        "end": "2025-03-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1052,
+        "employee": "Маленкова Кристина",
+        "start": "2025-05-26",
+        "end": "2025-06-08",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1053,
+        "employee": "Маленкова Кристина",
+        "start": "2025-09-15",
+        "end": "2025-09-21",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1054,
+        "employee": "Сухова Екатерина",
+        "start": "2025-05-05",
+        "end": "2025-05-07",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1055,
+        "employee": "Сухова Екатерина",
+        "start": "2025-05-10",
+        "end": "2025-05-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1056,
+        "employee": "Сухова Екатерина",
+        "start": "2025-09-08",
+        "end": "2025-09-14",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1057,
+        "employee": "Носков Никита",
+        "start": "2025-03-19",
+        "end": "2025-03-25",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1058,
+        "employee": "Носков Никита",
+        "start": "2025-07-07",
+        "end": "2025-07-13",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1059,
+        "employee": "Носков Никита",
+        "start": "2025-09-03",
+        "end": "2025-09-10",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1060,
+        "employee": "Седова Елизавета",
+        "start": "2025-03-10",
+        "end": "2025-03-16",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1061,
+        "employee": "Седова Елизавета",
+        "start": "2025-06-02",
+        "end": "2025-06-08",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1062,
+        "employee": "Седова Елизавета",
+        "start": "2025-09-22",
+        "end": "2025-10-05",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1063,
+        "employee": "Седова Елизавета",
+        "start": "2025-12-29",
+        "end": "2025-12-30",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1064,
+        "employee": "Грошева Дарья",
+        "start": "2025-07-07",
+        "end": "2025-07-15",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1065,
+        "employee": "Грошева Дарья",
+        "start": "2025-12-10",
+        "end": "2025-12-24",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1066,
+        "employee": "Трубицына Анна",
+        "start": "2025-06-02",
+        "end": "2025-06-16",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1067,
+        "employee": "Кобликова Валерия",
+        "start": "2025-04-01",
+        "end": "2025-04-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1068,
+        "employee": "Мороко Алексей",
+        "start": "2025-06-30",
+        "end": "2025-07-09",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1069,
+        "employee": "Волдайский Кирилл",
+        "start": "2025-07-25",
+        "end": "2025-08-03",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1070,
+        "employee": "Мирончиков Антон",
+        "start": "2025-12-15",
+        "end": "2025-12-29",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1071,
+        "employee": "Лашин Владислав",
+        "start": "2025-08-18",
+        "end": "2025-08-29",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1072,
+        "employee": "Пинарин Андрей",
+        "start": "2025-08-15",
+        "end": "2025-08-21",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1073,
+        "employee": "Топтыгина Татьяна",
+        "start": "2025-01-30",
+        "end": "2025-02-12",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1074,
+        "employee": "Топтыгина Татьяна",
+        "start": "2025-03-20",
+        "end": "2025-04-02",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1075,
+        "employee": "Топтыгина Татьяна",
+        "start": "2025-06-30",
+        "end": "2025-07-13",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1076,
+        "employee": "Музыка Сергей",
+        "start": "2025-06-18",
+        "end": "2025-07-01",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1077,
+        "employee": "Музыка Сергей",
+        "start": "2025-08-25",
+        "end": "2025-08-31",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1078,
+        "employee": "Музыка Сергей",
+        "start": "2025-11-18",
+        "end": "2025-11-21",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1079,
+        "employee": "Баранова Юлия",
+        "start": "2025-05-05",
+        "end": "2025-05-07",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1080,
+        "employee": "Баранова Юлия",
+        "start": "2025-06-02",
+        "end": "2025-06-11",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1081,
+        "employee": "Баранова Юлия",
+        "start": "2025-08-18",
+        "end": "2025-08-31",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1082,
+        "employee": "Бацюсь Юлия",
+        "start": "2025-05-19",
+        "end": "2025-06-01",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1083,
+        "employee": "Лавров Даниил",
+        "start": "2025-08-06",
+        "end": "2025-08-19",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1084,
+        "employee": "Скворцов Максим",
+        "start": "2025-07-28",
+        "end": "2025-08-10",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1085,
+        "employee": "Скворцов Максим",
+        "start": "2025-11-10",
+        "end": "2025-11-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1086,
+        "employee": "Волков Андрей",
+        "start": "2025-03-10",
+        "end": "2025-03-16",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1087,
+        "employee": "Волков Андрей",
+        "start": "2025-06-23",
+        "end": "2025-06-29",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1088,
+        "employee": "Ситников Василий",
+        "start": "2025-04-07",
+        "end": "2025-04-20",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1089,
+        "employee": "Ситников Василий",
+        "start": "2025-09-29",
+        "end": "2025-10-12",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1090,
+        "employee": "Плетнева Екатерина",
+        "start": "2025-07-21",
+        "end": "2025-08-03",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1091,
+        "employee": "Плетнева Екатерина",
+        "start": "2025-10-27",
+        "end": "2025-11-02",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1092,
+        "employee": "Малиновская Евгения",
+        "start": "2025-02-17",
+        "end": "2025-02-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1093,
+        "employee": "Малиновская Евгения",
+        "start": "2025-07-29",
+        "end": "2025-08-01",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1094,
+        "employee": "Желялетдинова Анастасия",
+        "start": "2025-03-10",
+        "end": "2025-03-16",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1095,
+        "employee": "Желялетдинова Анастасия",
+        "start": "2025-08-11",
+        "end": "2025-08-22",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1096,
+        "employee": "Желялетдинова Анастасия",
+        "start": "2025-11-17",
+        "end": "2025-11-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1097,
+        "employee": "Драго Станислава",
+        "start": "2025-02-24",
+        "end": "2025-02-28",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1098,
+        "employee": "Драго Станислава",
+        "start": "2025-08-25",
+        "end": "2025-09-07",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025)",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1099,
+        "employee": "Новосельцева Алина",
+        "start": "2025-07-16",
+        "end": "2025-07-23",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025), ранее Зайцева Алина",
+        "createdAt": "22.07.2026"
+      },
+      {
+        "id": 1100,
+        "employee": "Новосельцева Алина",
+        "start": "2025-07-28",
+        "end": "2025-08-03",
+        "status": "approved",
+        "comment": "Импорт из Excel (2025), ранее Зайцева Алина",
+        "createdAt": "22.07.2026"
+      }
     ]
   },
-  "nextRequestId": 1006,
+  "nextRequestId": 1101,
   "reservationsByYear": {
     "2026": [
       {

@@ -11,25 +11,35 @@ export type UserNotificationKind =
   | 'vacation_next_stage'
   | 'vacation_reservation_updated'
   | 'vacation_reservation_expiring'
-  | 'vacation_reservation_expiring_manager';
+  | 'vacation_reservation_expiring_manager'
+  | 'idea_status_changed';
 
 export type UserNotification = {
   id: string;
   kind: UserNotificationKind;
   recipient_user_id: number;
-  vacation_request_id: number;
+  /** Для уведомлений по отпускам; для идей может отсутствовать */
+  vacation_request_id?: number;
   employee_name: string;
-  start: string;
-  end: string;
-  /** Подпись этапа для vacation_next_stage */
+  start?: string;
+  end?: string;
+  /** Подпись этапа (отпуска / статус идеи) */
   stage_label?: string;
+  idea_id?: string;
+  idea_title?: string;
+  status_comment?: string;
   created_at: string;
   seen: boolean;
+  /** Скрыто из выпадающего колокольчика; остаётся на /notifications */
+  hidden_from_bell?: boolean;
 };
 
 type NotificationsState = {
   items: UserNotification[];
 };
+
+/** Максимум уведомлений на одного получателя; при превышении удаляются самые старые. */
+export const USER_NOTIFICATIONS_MAX_PER_RECIPIENT = 100;
 
 const DATA_FILE = join(process.cwd(), 'server/data/user-notifications.json');
 
@@ -60,14 +70,33 @@ async function writeState(state: NotificationsState): Promise<void> {
   await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
 }
 
+const trimRecipientToMax = (state: NotificationsState, recipientUserId: number) => {
+  const owned = state.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.recipient_user_id === recipientUserId)
+    .sort(
+      (a, b) =>
+        new Date(a.item.created_at).getTime() - new Date(b.item.created_at).getTime()
+    );
+
+  const overflow = owned.length - USER_NOTIFICATIONS_MAX_PER_RECIPIENT;
+  if (overflow <= 0) return;
+
+  const removeIndexes = new Set(owned.slice(0, overflow).map(({ index }) => index));
+  state.items = state.items.filter((_, index) => !removeIndexes.has(index));
+};
+
 export async function listUserNotifications(
   recipientUserId: number,
-  filters?: { unseen?: boolean }
+  filters?: { unseen?: boolean; forBell?: boolean }
 ): Promise<UserNotification[]> {
   const state = await readState();
   let list = state.items
     .filter((item) => item.recipient_user_id === recipientUserId)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  if (filters?.forBell) {
+    list = list.filter((item) => !item.hidden_from_bell);
+  }
   if (filters?.unseen) {
     list = list.filter((item) => !item.seen);
   }
@@ -76,8 +105,12 @@ export async function listUserNotifications(
 
 export async function countUnseenUserNotifications(recipientUserId: number): Promise<number> {
   const state = await readState();
-  return state.items.filter((item) => item.recipient_user_id === recipientUserId && !item.seen)
-    .length;
+  return state.items.filter(
+    (item) =>
+      item.recipient_user_id === recipientUserId &&
+      !item.seen &&
+      !item.hidden_from_bell
+  ).length;
 }
 
 export async function markUserNotificationSeen(
@@ -107,6 +140,23 @@ export async function markAllUserNotificationsSeen(recipientUserId: number): Pro
   return changed;
 }
 
+/** Убрать из колокольчика; запись остаётся в разделе «Уведомления». */
+export async function hideUserNotificationFromBell(
+  recipientUserId: number,
+  id: string
+): Promise<UserNotification | null> {
+  const state = await readState();
+  const item = state.items.find(
+    (row) => row.id === id && row.recipient_user_id === recipientUserId
+  );
+  if (!item) return null;
+  item.hidden_from_bell = true;
+  item.seen = true;
+  await writeState(state);
+  return item;
+}
+
+/** Полное удаление (раздел «Уведомления» / админская очистка). */
 export async function dismissUserNotification(
   recipientUserId: number,
   id: string
@@ -122,16 +172,18 @@ export async function dismissUserNotification(
 }
 
 export async function createUserNotification(
-  input: Omit<UserNotification, 'id' | 'created_at' | 'seen'>
+  input: Omit<UserNotification, 'id' | 'created_at' | 'seen' | 'hidden_from_bell'>
 ): Promise<UserNotification> {
   const state = await readState();
   const notification: UserNotification = {
     ...input,
     id: randomUUID(),
     created_at: new Date().toISOString(),
-    seen: false
+    seen: false,
+    hidden_from_bell: false
   };
   state.items.push(notification);
+  trimRecipientToMax(state, notification.recipient_user_id);
   await writeState(state);
   return notification;
 }
