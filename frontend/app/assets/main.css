@@ -3486,7 +3486,7 @@ a {
 }
 
   .profile-grid-2--own.profile-grid-2--compact-team .profile-activity__scroll {
-  max-height: min(360px, 46vh);
+  max-height: none;
 }
 
 .profile-left-stack {
@@ -3502,17 +3502,17 @@ a {
   flex: 1 1 auto;
 }
 
-/* ITMO-панели профиля: ачивки + активность */
+/* ITMO-панели профиля: ачивки + активность — как обычные card (команда) */
 .card.profile-itmo-panel {
   position: relative;
   display: grid;
   gap: 10px;
   padding: 12px 14px 14px;
-  overflow: visible;
-  background: #eeeee8;
-  border: 2px solid #111;
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 #111;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-brutal);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
   color: inherit;
   text-decoration: none;
 }
@@ -3522,8 +3522,8 @@ a {
 }
 
 .card.profile-itmo-panel:hover {
-  border-color: #111;
-  background: #eeeee8;
+  border-color: var(--border-brutal);
+  background: var(--bg-surface);
 }
 
 .profile-itmo-panel__title {
@@ -3537,35 +3537,7 @@ a {
 }
 
 .profile-itmo-panel__sq {
-  position: absolute;
-  z-index: 2;
-  width: 10px;
-  height: 10px;
-  pointer-events: none;
-}
-
-.profile-itmo-panel__sq--tl {
-  top: -2px;
-  left: 16px;
-  background: #ddf365;
-}
-
-.profile-itmo-panel__sq--tr {
-  top: -2px;
-  right: 16px;
-  background: #7451f4;
-}
-
-.profile-itmo-panel__sq--bl {
-  bottom: -2px;
-  left: 16px;
-  background: #7451f4;
-}
-
-.profile-itmo-panel__sq--br {
-  bottom: -2px;
-  right: 16px;
-  background: #ddf365;
+  display: none;
 }
 
 .profile-achievements-preview {
@@ -3755,17 +3727,19 @@ a {
   align-items: stretch;
   align-self: start;
   height: auto;
-  max-height: 100%;
   min-height: 0;
   gap: 10px;
 }
 
 .profile-activity__scroll {
+  --profile-activity-row: 72px;
   position: relative;
   z-index: 1;
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: min(360px, 46vh);
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  height: calc(var(--profile-activity-row) * 6.5);
+  min-height: calc(var(--profile-activity-row) * 6.5);
+  max-height: calc(var(--profile-activity-row) * 6.5);
   overflow-y: auto;
   overflow-x: hidden;
   margin: 0;
