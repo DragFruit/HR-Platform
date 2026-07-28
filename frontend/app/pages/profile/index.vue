@@ -55,7 +55,7 @@
               </a>
             </div>
             <ul
-              v-if="isOwnProfile && profileBadges.length"
+              v-if="isOwnProfile && !achievementsLocked && profileBadges.length"
               class="profile-identity__badges"
               :aria-label="`Достижения: ${profileBadges.length}`"
             >
@@ -232,7 +232,8 @@
     <section
       v-if="isOwnProfile"
       class="card profile-itmo-panel profile-achievements-preview profile-slot profile-slot--achievements"
-      aria-label="Ачивки"
+      :class="{ 'profile-achievements-preview--locked': achievementsLocked }"
+      :aria-label="achievementsLocked ? 'Ачивки — скоро откроются' : 'Ачивки'"
     >
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tl" aria-hidden="true" />
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tr" aria-hidden="true" />
@@ -241,7 +242,20 @@
 
       <div class="profile-achievements-preview__head">
         <h3 class="profile-itmo-panel__title">Ачивки</h3>
+        <p v-if="achievementsLocked" class="profile-achievements-preview__soon">
+          <svg class="profile-achievements-preview__lock" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="3.5" y="7" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+            <path
+              d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>Скоро откроются</span>
+        </p>
         <button
+          v-else
           type="button"
           class="profile-achievements-preview__all"
           @click="achievementsOpen = true"
@@ -249,7 +263,11 @@
           {{ `Все · ${catalogForProfile.length}` }}
         </button>
       </div>
-      <div ref="achievementsPreviewRef" class="profile-achievements-preview__track">
+      <div
+        v-if="!achievementsLocked"
+        ref="achievementsPreviewRef"
+        class="profile-achievements-preview__track"
+      >
         <button
           v-for="item in previewAchievements"
           :key="item.id"
@@ -277,6 +295,13 @@
         <p v-if="!previewAchievements.length" class="muted profile-achievements-preview__empty">
           Пока нет полученных — открой «Все», чтобы посмотреть каталог
         </p>
+      </div>
+      <div v-else class="profile-achievements-preview__locked-body" aria-hidden="true">
+        <span
+          v-for="n in 6"
+          :key="n"
+          class="profile-achievements-preview__ghost"
+        />
       </div>
     </section>
 
@@ -374,7 +399,7 @@
 
   <Teleport to="body">
     <div
-      v-if="achievementsOpen && isOwnProfile"
+      v-if="achievementsOpen && isOwnProfile && !achievementsLocked"
       class="org-confirm-overlay profile-achievements-overlay"
       role="presentation"
       @click.self="achievementsOpen = false"
@@ -538,6 +563,9 @@ const {
   hydrate: hydrateActivity,
   activityFor
 } = useProfileActivity();
+
+/** На бое ачивки пока закрыты — открываем только по явной команде. */
+const achievementsLocked = computed(() => isProduction.value);
 
 const showPicker = ref(false);
 const achievementsOpen = ref(false);

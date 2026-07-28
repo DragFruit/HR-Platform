@@ -3580,6 +3580,53 @@ a {
   z-index: 1;
 }
 
+.profile-achievements-preview__soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 2px solid #111;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 2px 2px 0 #ddf365;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #111;
+  white-space: nowrap;
+}
+
+.profile-achievements-preview__lock {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #7451f4;
+}
+
+.profile-achievements-preview--locked {
+  opacity: 1;
+}
+
+.profile-achievements-preview__locked-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 48px);
+  grid-auto-rows: 48px;
+  gap: 10px;
+  align-content: start;
+  min-height: calc(48px * 2 + 10px);
+  position: relative;
+  z-index: 1;
+}
+
+.profile-achievements-preview__ghost {
+  width: 48px;
+  height: 48px;
+  border: 2px dashed rgba(17, 17, 17, 0.22);
+  border-radius: 10px;
+  background: rgba(17, 17, 17, 0.04);
+}
+
 .profile-achievements-preview__all {
   margin: 0;
   padding: 6px 12px;
