@@ -1,5 +1,12 @@
 <template>
-  <div class="vac-team-calendar" :class="{ 'vac-team-calendar--employee-team': variant === 'employee-team' }">
+  <div
+    class="vac-team-calendar"
+    :class="{
+      'vac-team-calendar--employee-team': variant === 'employee-team',
+      'vac-team-calendar--fit-screen': fitScreen
+    }"
+    :style="fitScreenStyle"
+  >
     <div class="vac-team-calendar__frame">
       <div v-if="variant === 'manager'" class="vac-team-calendar__toolbar">
         <div class="vac-team-calendar__legend">
@@ -108,4 +115,15 @@ const { viewYear } = useVacations();
 const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
 const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
+
+const empRowCount = computed(() =>
+  props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
+);
+
+/** Уплотняем строки, чтобы большая команда (≈29) помещалась в один viewport. */
+const fitScreen = computed(() => props.variant === 'manager' && empRowCount.value >= 20);
+
+const fitScreenStyle = computed(() =>
+  fitScreen.value ? { '--vac-team-emp-rows': String(Math.max(empRowCount.value, 1)) } : undefined
+);
 </script>

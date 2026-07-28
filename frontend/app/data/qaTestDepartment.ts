@@ -13,7 +13,23 @@ export const QA_EMPLOYEE_MARINA_NAME = 'Марина Тестова';
 export const QA_EMPLOYEE_NAME = QA_EMPLOYEE_DASHA_NAME;
 
 /** Стабильные id — не попадают в employees.json при сохранении. */
-export const QA_EMPLOYEE_IDS = [9001, 9002, 9003, 9004, 9005, 9006, 9100] as const;
+export const QA_BULK_REPORT_COUNT = 24;
+export const QA_BULK_REPORT_ID_START = 9201;
+export const QA_BULK_REPORT_IDS = Array.from(
+  { length: QA_BULK_REPORT_COUNT },
+  (_, i) => QA_BULK_REPORT_ID_START + i
+);
+
+export const QA_EMPLOYEE_IDS = [
+  9001,
+  9002,
+  9003,
+  9004,
+  9005,
+  9006,
+  9100,
+  ...QA_BULK_REPORT_IDS
+] as const;
 export const QA_EMPLOYEE_ID_SET = new Set<number>(QA_EMPLOYEE_IDS);
 export const QA_EMPLOYEE_JUBILEE_NAME = 'Юбилеев Тест';
 
@@ -147,7 +163,24 @@ export function buildQaTestEmployees(): Employee[] {
       email: 'jubilee@vbi.local',
       account_role: 'employee',
       vacation_opening_balance: 28
-    }
+    },
+    /* 24 filler-подчинённых Кости → всего 28 reports + он сам = 29 в таблице отпусков */
+    ...QA_BULK_REPORT_IDS.map((id, index) => {
+      const n = index + 1;
+      const pad = String(n).padStart(2, '0');
+      return {
+        id,
+        name: `Тестовый Сотрудник ${pad}`,
+        title: 'Тестировщик',
+        department: QA_TEST_DEPARTMENT_NAME,
+        manager: QA_TEAM_LEAD_NAME,
+        hired_at: `2025-${String(((n - 1) % 12) + 1).padStart(2, '0')}-15`,
+        platform_user_id: null as number | null,
+        email: '',
+        account_role: 'employee' as const,
+        vacation_opening_balance: 28
+      };
+    })
   ];
 }
 
@@ -189,7 +222,7 @@ export function applyQaDemoSessionOverrides<
 }
 
 export const QA_DEMO_ACCOUNT_HINTS: Record<string, string> = {
-  'kostya@vbi.local': `Руководитель: ${QA_TEAM_LEAD_NAME} — команда 4 чел., согласование шаг 1`,
+  'kostya@vbi.local': `Руководитель: ${QA_TEAM_LEAD_NAME} — команда 28 чел. (+он = 29 в таблице), согласование шаг 1`,
   'katya@vbi.local': 'Сотрудник: Даша Тестова — заявки, бронь, обучалка',
   'vasya@vbi.local': 'Сотрудник: Василий Тестов — свой календарь и заявки',
   'alina@vbi.local': 'Сотрудник: Алина Тестова — заявка на согласовании',

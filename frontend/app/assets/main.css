@@ -7361,6 +7361,74 @@ a {
   background: #f3f0fc;
 }
 
+/* Большая команда: подогнать N строк сотрудников в высоту viewport */
+.vac-team-calendar--fit-screen {
+  --vac-team-fit-chrome: 10.5rem; /* toolbar + thead + dept-row */
+  --vac-team-emp-rows: 29;
+}
+
+.vac-team-calendar--fit-screen .emp-title {
+  display: none;
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-track-inner {
+  min-height: clamp(
+    18px,
+    calc((var(--vac-team-viewport-max) - var(--vac-team-fit-chrome)) / var(--vac-team-emp-rows)),
+    44px
+  );
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
+  font-size: 0.68rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-dept-row td {
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-head-month th,
+.vac-team-calendar--fit-screen .vac-detailed-head-days th,
+.vac-team-calendar--fit-screen .vac-detailed-head-weekdays th {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
+  font-size: 0.58rem;
+  padding: 0 3px;
+  line-height: 1.2;
+}
+
+.vac-team-calendar--fit-screen .vac-team-dept-row td {
+  padding: 2px 8px;
+  font-size: 0.68rem;
+}
+
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
   left: var(--vac-name-col-w);
