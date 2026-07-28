@@ -2,6 +2,7 @@ export type LaunchScope = 'full' | 'vacations';
 
 export const LAUNCH_VACATIONS_EMPLOYEE_PATH = '/vacations';
 export const LAUNCH_VACATIONS_NOTIFICATIONS_PATH = '/notifications';
+export const LAUNCH_VACATIONS_PROFILE_PATH = '/profile';
 export const LAUNCH_VACATIONS_ADMIN_PATH = '/admin/vacations';
 export const LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH = '/admin/employees';
 export const LAUNCH_VACATIONS_ADMIN_NOTIFICATIONS_PATH = '/admin/notifications';
@@ -28,6 +29,12 @@ export function useLaunchScope() {
     if (
       path === LAUNCH_VACATIONS_NOTIFICATIONS_PATH ||
       path.startsWith(`${LAUNCH_VACATIONS_NOTIFICATIONS_PATH}/`)
+    ) {
+      return true;
+    }
+    if (
+      path === LAUNCH_VACATIONS_PROFILE_PATH ||
+      path.startsWith(`${LAUNCH_VACATIONS_PROFILE_PATH}/`)
     ) {
       return true;
     }

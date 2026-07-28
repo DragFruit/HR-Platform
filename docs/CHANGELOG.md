@@ -4,6 +4,11 @@
 
 ## 2026-07-28
 
+### Production: открыт раздел «Профиль»
+
+- В пилоте `vacations` на бое добавлен whitelist `/profile` (остальное с замком).
+- Правило: не снимать все замки без явной команды (`.cursor/rules/production-nav-locks.mdc`).
+
 ### Production: снова пилот «только отпуска»
 
 - На бое `LAUNCH_SCOPE=vacations` + hard-lock в `useLaunchScope` (остальное с замком).
