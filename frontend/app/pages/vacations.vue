@@ -26,8 +26,23 @@
           />
 
           <template v-else>
-            <div class="vac-manager-toolbar">
-              <div class="filters">
+            <div class="vac-manager-chrome">
+              <div v-if="activeTab === 'calendar'" class="vac-manager-chrome__legend" aria-label="Легенда">
+                <span class="vac-legend-item">
+                  <span class="vac-legend-dot vac-legend-dot--approved" />
+                  Одобрено
+                </span>
+                <span class="vac-legend-item">
+                  <span class="vac-legend-dot vac-legend-dot--pending" />
+                  На согласовании
+                </span>
+                <span class="vac-legend-item">
+                  <span class="vac-legend-dot vac-legend-dot--reservation" />
+                  Бронь
+                </span>
+              </div>
+              <div class="vac-manager-chrome__spacer" aria-hidden="true" />
+              <div class="filters vac-manager-chrome__tabs">
                 <button
                   v-for="tab in visibleTabs"
                   :key="tab.id"
