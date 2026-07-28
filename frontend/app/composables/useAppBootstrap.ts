@@ -7,7 +7,7 @@ export async function bootstrapAppData() {
   await useVacations().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
-  useIdeasBank().hydrate();
+  await useIdeasBank().hydrate();
   applyTenureMilestoneRewards();
 
   const { user } = useAuth();

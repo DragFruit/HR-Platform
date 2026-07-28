@@ -246,9 +246,9 @@ const askDelete = (ideaId: string) => {
   pendingDeleteId.value = ideaId;
 };
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
   if (!pendingDeleteId.value) return;
-  deleteIdea(pendingDeleteId.value);
+  await deleteIdea(pendingDeleteId.value);
   pendingDeleteId.value = null;
 };
 
@@ -264,9 +264,9 @@ const cancelStatusChange = () => {
   statusError.value = '';
 };
 
-const confirmStatusChange = () => {
+const confirmStatusChange = async () => {
   if (!pendingStatus.value) return;
-  const result = setIdeaStatus(
+  const result = await setIdeaStatus(
     pendingStatus.value.ideaId,
     pendingStatus.value.status,
     statusComment.value
@@ -279,6 +279,6 @@ const confirmStatusChange = () => {
 };
 
 onMounted(() => {
-  hydrate();
+  void hydrate();
 });
 </script>

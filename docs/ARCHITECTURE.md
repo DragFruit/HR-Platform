@@ -62,7 +62,7 @@ flowchart TB
 - Ветки Git: `staging` → тест, `main` → бой. Подробно: [DEPLOYMENT.md](DEPLOYMENT.md).
 - CI: GitLab `.gitlab-ci.yml` (сборка + deploy на VPS); опционально GitHub Actions `ci.yml`, `release-artifact.yml`.
 - На сервере: `deploy/systemd/`, `deploy/nginx/`, порты 3300 (бой) / 3301 (тест).
-- **Данные на production/staging** — рабочие: `employees.json` merge (`merge-employees-seed.mjs`, сервер + overlay руководителей); `vacations.json` при деплое не перезаписывается, если файл уже на сервере.
+- **Данные на production/staging** — рабочие: `employees.json` merge (`merge-employees-seed.mjs`, сервер + overlay руководителей); `vacations.json` и `ideas.json` при деплое не перезаписываются, если файл уже на сервере.
 
 ### Битрикс24 (коробка)
 
@@ -145,11 +145,13 @@ review (На рассмотрении)
 |-----|-----|
 | Сотрудник | Создаёт идею → `review`; голосует; удаляет **свою**; получает уведомление (Vibe + Bitrix) при смене этапа |
 | Admin / HR | `/admin/ideas`: смена этапа (модалка + комментарий), удаление любой |
-| Система | `POST /api/ideas/notify` → admin `idea_submitted`; `POST /api/ideas/status-notify` → автору `idea_status_changed` + Bitrix |
+| Система | После create — admin `idea_submitted`; после смены этапа — автору `idea_status_changed` + Bitrix |
 
 Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
 
-Данные: клиентский `localStorage` (`vbi-ideas-bank-v2`, голоса `vbi-ideas-votes-v1-{userId}`). Демо-сид только вне production; на бое пустой старт и очистка сид-`id`. Уведомления admin — `server/data/admin-notifications.json`.
+Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json`.
+
+Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` остаются, но создание/статус шлют уведомления из server mutations.
 
 ---
 
@@ -258,7 +260,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
 
-Идеи: `POST /api/ideas/notify` (создание → admin), `POST /api/ideas/status-notify` (смена этапа → автор).
+Идеи: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id` (очередь в `ideas.json`; notify встроен в mutations). Legacy: `POST /api/ideas/notify`, `POST /api/ideas/status-notify`.
 
 ### Аватары сотрудников (API)
 
@@ -356,8 +358,8 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |
-| `vbi-ideas-bank-v2` | `useIdeasBank` — идеи, этапы, комментарии к статусу |
-| `vbi-ideas-votes-v1-{userId}` | `useIdeasBank` — голоса пользователя за/против |
+
+Идеи: сервер `server/data/ideas.json` (не localStorage). Устаревшие ключи `vbi-ideas-bank-v2` / `vbi-ideas-votes-v1-*` больше не используются.
 
 Устаревшие ключи сбрасываются при смене `DEMO_PLATFORM_VERSION` (см. `LEGACY_STORAGE_KEYS` в плагине).
 

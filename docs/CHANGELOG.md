@@ -4,9 +4,16 @@
 
 ## 2026-07-28
 
+### Банк идей: очередь на сервере
+
+- Идеи и голоса в `server/data/ideas.json` через `ideasStore` / `mutateIdeas` (как отпуска).
+- API: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`.
+- `useIdeasBank` больше не пишет в localStorage; деплой не затирает `ideas.json`, если файл уже на сервере.
+- Проверка: два пользователя — идея одного видна другому после обновления.
+
 ### Банк идей: на бое без демо-сида
 
-- `useIdeasBank`: сид только вне production; на бое пустой старт и автоочистка демо-`idea-1`… из localStorage.
+- (устарело для хранения) Ранее сид чистился в localStorage; теперь общий серверный банк без демо.
 
 ### Production: открыт банк идей
 

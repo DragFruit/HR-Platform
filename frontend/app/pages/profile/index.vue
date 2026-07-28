@@ -926,7 +926,7 @@ onMounted(() => {
       platformUserId: user.value?.id
     }).catch(() => {});
   }
-  hydrateIdeasBank();
+  void hydrateIdeasBank();
   hydrateVacations().catch(() => {});
 
   if (import.meta.client) {

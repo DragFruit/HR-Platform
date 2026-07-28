@@ -660,9 +660,16 @@ const closeCreate = () => {
   clearAttachment();
 };
 
-const submitCreate = () => {
+const submitCreate = async () => {
   createError.value = '';
-  const created = createIdea({
+  const title = createForm.title.trim();
+  const description = createForm.description.trim();
+  if (title.length < 3 || description.length < 10) {
+    createError.value = 'Заполните заголовок (от 3 символов) и описание (от 10 символов).';
+    return;
+  }
+
+  const created = await createIdea({
     title: createForm.title,
     description: createForm.description,
     category: createForm.category,
@@ -671,7 +678,7 @@ const submitCreate = () => {
   });
 
   if (!created) {
-    createError.value = 'Заполните заголовок (от 3 символов) и описание (от 10 символов).';
+    createError.value = 'Не удалось сохранить идею. Попробуйте ещё раз.';
     return;
   }
 
@@ -687,14 +694,14 @@ const askDelete = (ideaId: string) => {
   pendingDeleteId.value = ideaId;
 };
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
   if (!pendingDeleteId.value) return;
-  deleteIdea(pendingDeleteId.value);
+  await deleteIdea(pendingDeleteId.value);
   pendingDeleteId.value = null;
 };
 
 onMounted(() => {
-  hydrate();
+  void hydrate();
   document.addEventListener('click', onDocumentClick);
 });
 
