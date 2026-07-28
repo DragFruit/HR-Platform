@@ -149,7 +149,7 @@ review (На рассмотрении)
 
 Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
 
-Данные: клиентский `localStorage` (`vbi-ideas-bank-v2`, голоса `vbi-ideas-votes-v1-{userId}`). Уведомления admin — `server/data/admin-notifications.json`.
+Данные: клиентский `localStorage` (`vbi-ideas-bank-v2`, голоса `vbi-ideas-votes-v1-{userId}`). Демо-сид только вне production; на бое пустой старт и очистка сид-`id`. Уведомления admin — `server/data/admin-notifications.json`.
 
 ---
 

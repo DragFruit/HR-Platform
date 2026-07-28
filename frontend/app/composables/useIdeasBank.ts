@@ -158,6 +158,17 @@ const seedIdeas = (): Idea[] => [
   }
 ];
 
+const SEED_IDEA_IDS = new Set(seedIdeas().map((idea) => idea.id));
+
+const isProductionApp = () => {
+  try {
+    const config = useRuntimeConfig();
+    return config.public.appEnv === 'production';
+  } catch {
+    return false;
+  }
+};
+
 const readStore = (): IdeasStore => {
   if (!import.meta.client) return { ideas: [] };
   try {
@@ -206,14 +217,25 @@ export function useIdeasBank() {
 
   const hydrate = () => {
     if (!import.meta.client) return;
-    const store = readStore();
-    if (!store.ideas.length) {
+    const production = isProductionApp();
+    let store = readStore();
+
+    if (production) {
+      // На бое демо-сид не нужен; чистим, если уже записался в localStorage
+      const withoutSeed = store.ideas.filter((idea) => !SEED_IDEA_IDS.has(idea.id));
+      if (withoutSeed.length !== store.ideas.length) {
+        store = { ideas: withoutSeed };
+        writeStore(store);
+      }
+      ideas.value = store.ideas;
+    } else if (!store.ideas.length) {
       const seeded = seedIdeas();
       writeStore({ ideas: seeded });
       ideas.value = seeded;
     } else {
       ideas.value = store.ideas;
     }
+
     if (user.value?.id) {
       userVotes.value = readVotes(user.value.id);
     }
