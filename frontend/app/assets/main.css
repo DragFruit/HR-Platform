@@ -3458,6 +3458,7 @@ a {
   grid-column: 1;
   grid-row: 2;
   min-height: 0;
+  align-self: start;
 }
 
 .profile-grid-2--own .profile-slot--team {
@@ -3481,6 +3482,7 @@ a {
   grid-column: 2;
   grid-row: 1 / -1;
   min-height: 0;
+  align-self: start;
 }
 
   .profile-grid-2--own.profile-grid-2--compact-team .profile-activity__scroll {
@@ -3747,21 +3749,27 @@ a {
 }
 
 .profile-activity.card.profile-itmo-panel {
-  align-content: start;
-  align-self: stretch;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  align-self: start;
+  height: auto;
+  max-height: 100%;
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
 }
 
 .profile-activity__scroll {
   position: relative;
   z-index: 1;
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: min(360px, 46vh);
   overflow-y: auto;
   overflow-x: hidden;
-  margin: 2px -4px 0 0;
-  padding-right: 4px;
+  margin: 0;
+  padding: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
 }
@@ -3776,9 +3784,9 @@ a {
 }
 
 .profile-activity__list {
-  display: grid;
-  gap: 0;
+  display: block;
   margin: 0;
+  padding: 0;
 }
 
 .profile-activity__row {
