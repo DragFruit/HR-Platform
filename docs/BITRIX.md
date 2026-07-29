@@ -226,7 +226,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 | `BITRIX_ABSENCE_PROPERTY_USER` | Код свойства «сотрудник» (иначе авто из `lists.field.get`) |
 | `BITRIX_ABSENCE_PROPERTY_TYPE` | Код свойства «тип отсутствия» |
 
-Права приложения/вебхука: **lists** (обязательно для пальмы).
+Права приложения/вебхука: **lists** (обязательно для пальмы). После добавления scope в карточке приложения «VBI HR Platform» нужен **повторный вход админа** (чтобы обновился `refresh_token` с новыми правами). Для удаления ошибочных calendar-событий временно нужен ещё scope **calendar**.
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из мутаций заявок.  
 Починка ошибочных calendar-событий у владельца вебхука: `POST /api/admin/vacations/bitrix-absence-repair` (admin/hr).

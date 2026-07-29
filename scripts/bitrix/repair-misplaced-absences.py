@@ -124,6 +124,8 @@ def main() -> int:
             )
             ok = "result" in r and not r.get("error")
             deleted.append({"id": row.get("id"), "event": event_id, "ok": ok, "error": r.get("error") or r.get("error_description")})
+            if not ok:
+                continue
             row.pop("bitrix_absence_id", None)
             row.pop("bitrix_sync_status", None)
             row.pop("bitrix_sync_method", None)
