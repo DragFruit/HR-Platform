@@ -6,6 +6,7 @@ import {
   getBitrixServiceAccessToken,
   hasBitrixOAuthServiceToken
 } from './bitrixOAuthServiceToken';
+import { createBitrixVacationAbsenceFailedNotification } from './adminNotificationsStore';
 
 export type BitrixVacationSyncStatus = 'synced' | 'failed' | 'skipped';
 
@@ -292,6 +293,30 @@ const resolveBitrixUserId = async (employeeName: string): Promise<number> => {
   return bitrixUserId;
 };
 
+const notifyAdminBitrixAbsenceFailed = async (
+  request: VacationRequest,
+  absenceAction: 'create' | 'update' | 'remove',
+  errorMessage: string
+) => {
+  try {
+    const employee = await findEmployeeByName(request.employee);
+    await createBitrixVacationAbsenceFailedNotification({
+      employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
+      employee_name: request.employee,
+      vacation_request_id: request.id,
+      vacation_start: request.start,
+      vacation_end: request.end,
+      absence_action: absenceAction,
+      error_message: errorMessage
+    });
+  } catch (error) {
+    console.error(
+      '[bitrix-vacation] failed to create admin notification:',
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+};
+
 /** Удалить пальму в Bitrix (lists или legacy calendar). */
 export const removeVacationAbsenceFromBitrix = async (
   request: VacationRequest
@@ -405,6 +430,7 @@ export const syncApprovedVacationsToBitrix = async (
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`[bitrix-vacation] remove failed for request #${request.id}:`, message);
+        await notifyAdminBitrixAbsenceFailed(request, 'remove', message);
         state = updateRequestInState(state, request.id, {
           bitrix_sync_status: 'failed',
           bitrix_sync_error: `remove: ${message}`,
@@ -427,6 +453,7 @@ export const syncApprovedVacationsToBitrix = async (
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`[bitrix-vacation] update failed for request #${request.id}:`, message);
+        await notifyAdminBitrixAbsenceFailed(request, 'update', message);
         state = updateRequestInState(state, request.id, {
           bitrix_sync_status: 'failed',
           bitrix_sync_error: `update: ${message}`,
@@ -450,6 +477,7 @@ export const syncApprovedVacationsToBitrix = async (
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[bitrix-vacation] sync failed for request #${request.id}:`, message);
+      await notifyAdminBitrixAbsenceFailed(request, 'create', message);
       state = updateRequestInState(state, request.id, {
         bitrix_sync_status: 'failed',
         bitrix_sync_error: message,

@@ -6,7 +6,8 @@ export type AdminNotificationKind =
   | 'bitrix_employee_name'
   | 'bitrix_employee_title'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'bitrix_vacation_absence_failed';
 
 export type AdminNotification = {
   id: string;
@@ -27,6 +28,12 @@ export type AdminNotification = {
   /** Банк идей */
   idea_id?: string;
   idea_title?: string;
+  /** Сбой синка пальмы отпуска в Bitrix */
+  vacation_request_id?: number;
+  vacation_start?: string;
+  vacation_end?: string;
+  absence_action?: 'create' | 'update' | 'remove';
+  error_message?: string;
 };
 
 type NotificationsState = {
@@ -220,6 +227,51 @@ export async function createIdeaSubmittedNotification(input: {
     employee_name: input.employee_name,
     idea_id: input.idea_id,
     idea_title: input.idea_title,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createBitrixVacationAbsenceFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  vacation_request_id: number;
+  vacation_start: string;
+  vacation_end: string;
+  absence_action: 'create' | 'update' | 'remove';
+  error_message: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+
+  const existing = state.items.find(
+    (item) =>
+      !item.admin_seen &&
+      item.kind === 'bitrix_vacation_absence_failed' &&
+      item.vacation_request_id === input.vacation_request_id &&
+      item.absence_action === input.absence_action
+  );
+  if (existing) {
+    existing.error_message = input.error_message;
+    existing.vacation_start = input.vacation_start;
+    existing.vacation_end = input.vacation_end;
+    existing.created_at = new Date().toISOString();
+    await writeState(state);
+    return existing;
+  }
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'bitrix_vacation_absence_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    vacation_request_id: input.vacation_request_id,
+    vacation_start: input.vacation_start,
+    vacation_end: input.vacation_end,
+    absence_action: input.absence_action,
+    error_message: input.error_message,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

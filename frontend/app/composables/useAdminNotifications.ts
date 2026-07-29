@@ -2,7 +2,8 @@ export type AdminNotificationKind =
   | 'bitrix_employee_name'
   | 'bitrix_employee_title'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'bitrix_vacation_absence_failed';
 
 export type AdminNotification = {
   id: string;
@@ -20,6 +21,11 @@ export type AdminNotification = {
   order_id?: string;
   idea_id?: string;
   idea_title?: string;
+  vacation_request_id?: number;
+  vacation_start?: string;
+  vacation_end?: string;
+  absence_action?: 'create' | 'update' | 'remove';
+  error_message?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -71,8 +77,19 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') {
       return 'Новая идея в банке';
     }
+    if (item.kind === 'bitrix_vacation_absence_failed') {
+      if (item.absence_action === 'remove') return 'Не снялась пальма в Bitrix';
+      if (item.absence_action === 'update') return 'Не обновилась пальма в Bitrix';
+      return 'Не создалась пальма в Bitrix';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
+  };
+
+  const formatIsoDateRu = (iso?: string) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}.${m}.${y}` : iso;
   };
 
   const formatNotificationBody = (item: AdminNotification) => {
@@ -81,6 +98,16 @@ export function useAdminNotifications() {
     }
     if (item.kind === 'idea_submitted') {
       return `${item.employee_name} предложил(а): «${item.idea_title || 'идея'}». Рассмотрите заявку в банке идей.`;
+    }
+    if (item.kind === 'bitrix_vacation_absence_failed') {
+      const dates = `${formatIsoDateRu(item.vacation_start)} — ${formatIsoDateRu(item.vacation_end)}`;
+      const action =
+        item.absence_action === 'remove'
+          ? 'снять'
+          : item.absence_action === 'update'
+            ? 'обновить'
+            : 'создать';
+      return `${item.employee_name}, ${dates}: не удалось ${action} отсутствие в Bitrix. ${item.error_message || 'Проверьте вручную в графике отсутствий.'}`;
     }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
@@ -103,12 +130,14 @@ export function useAdminNotifications() {
   const notificationActionLabel = (item: AdminNotification) => {
     if (item.kind === 'tenure_gift_order') return 'К уведомлению';
     if (item.kind === 'idea_submitted') return 'Банк идей';
+    if (item.kind === 'bitrix_vacation_absence_failed') return 'Отпуска';
     return 'Справочник';
   };
 
   const notificationActionTo = (item: AdminNotification) => {
     if (item.kind === 'tenure_gift_order') return '/admin/notifications';
     if (item.kind === 'idea_submitted') return '/admin/ideas';
+    if (item.kind === 'bitrix_vacation_absence_failed') return '/admin/vacations';
     return '/admin/employees';
   };
 

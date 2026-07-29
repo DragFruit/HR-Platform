@@ -219,6 +219,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
    - смена дат у `approved` → `lists.element.update` (те же даты в Bitrix);
    - отклонение `approved` → `lists.element.delete` (пальма снимается);
    - удаление заявки → то же удаление в Bitrix.
+6. Если создать / обновить / снять не удалось — уведомление админу (`bitrix_vacation_absence_failed` в `/admin/notifications`).
 
 Опционально в env:
 

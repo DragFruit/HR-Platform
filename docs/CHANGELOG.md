@@ -4,6 +4,12 @@
 
 ## 2026-07-29
 
+### Bitrix: сбой пальмы — уведомление админу
+
+- Если не удалось создать / обновить / снять отсутствие в Bitrix, админ видит уведомление в колокольчике (`/admin/notifications`).
+- Не только лог сервера: текст с ФИО, датами и ошибкой.
+- Файлы: `adminNotificationsStore.ts`, `useAdminNotifications.ts`, `bitrixVacationAbsence.ts`, `vacationRequestMutations.ts`.
+
 ### Bitrix: пальма обновляется и снимается при правках заявки
 
 - Смена дат у `approved` → `lists.element.update` в графике отсутствий.

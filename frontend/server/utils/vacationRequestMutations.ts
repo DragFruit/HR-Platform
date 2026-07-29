@@ -6,6 +6,7 @@ import {
 } from '../../app/utils/vacationGroupLeadOverlap';
 import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix, removeVacationAbsenceFromBitrix } from './bitrixVacationAbsence';
+import { createBitrixVacationAbsenceFailedNotification } from './adminNotificationsStore';
 import { findEmployeeByName } from './employeesStore';
 import {
   notifyVacationRequestCreated,
@@ -223,6 +224,23 @@ export async function deleteVacationRequest(id: number): Promise<VacationStoreSt
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`[bitrix-vacation] remove on delete failed for request #${id}:`, message);
+        try {
+          const employee = await findEmployeeByName(removed.employee);
+          await createBitrixVacationAbsenceFailedNotification({
+            employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
+            employee_name: removed.employee,
+            vacation_request_id: removed.id,
+            vacation_start: removed.start,
+            vacation_end: removed.end,
+            absence_action: 'remove',
+            error_message: message
+          });
+        } catch (notifyError) {
+          console.error(
+            '[bitrix-vacation] admin notify on delete failed:',
+            notifyError instanceof Error ? notifyError.message : String(notifyError)
+          );
+        }
       }
     }
     await notifyVacationRequestDeleted(removed);
