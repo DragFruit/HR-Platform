@@ -65,6 +65,9 @@ const absenceUserPropertyEnv = () =>
 const absenceTypePropertyEnv = () =>
   String(process.env.BITRIX_ABSENCE_PROPERTY_TYPE || '').trim();
 
+/** Подпись в графике отсутствий Bitrix — не comment заявки (там «Импорт из Excel» и служебное). */
+export const BITRIX_ABSENCE_DISPLAY_NAME = 'Отпуск ежегодный (VBI HR)';
+
 /** Владелец входящего вебхука (`/rest/{userId}/…`) — сюда ошибочно падали calendar.event.add. */
 export function webhookOwnerUserId(): number | null {
   try {
@@ -202,7 +205,7 @@ const createViaAbsenceIblock = async (params: {
   const { userProperty, typeProperty } = await resolveAbsencePropertyCodes(iblockId);
 
   const fields: Record<string, unknown> = {
-    NAME: params.comment?.trim() || 'Отпуск ежегодный (VBI HR)',
+    NAME: BITRIX_ABSENCE_DISPLAY_NAME,
     ACTIVE_FROM: toBitrixDateTime(params.start, false),
     ACTIVE_TO: toBitrixDateTime(params.end, true),
     [userProperty]: params.bitrixUserId,

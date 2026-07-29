@@ -190,7 +190,7 @@ def main() -> int:
                     "IBLOCK_ID": iblock_id,
                     "ELEMENT_CODE": f"vbi-hr-vac-{row.get('id')}",
                     "FIELDS": {
-                        "NAME": (row.get("comment") or "").strip() or "Отпуск ежегодный (VBI HR)",
+                        "NAME": "Отпуск ежегодный (VBI HR)",
                         "ACTIVE_FROM": to_bitrix_dt(row["start"], False),
                         "ACTIVE_TO": to_bitrix_dt(row["end"], True),
                         user_prop: bitrix_uid,
