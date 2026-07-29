@@ -12,9 +12,9 @@ export default defineEventHandler(async (event) => {
 
   // На production показываем только “боевые” идеи.
   // Тестовые/QA идеи иногда остаются в ideas.json (исторически), но в UI они должны исчезать.
-  const { public: pub } = useRuntimeConfig();
-  const isProduction =
-    pub?.appEnv === 'production' || String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+  const host = String(event.node.req.headers.host || '').toLowerCase();
+  // На проде URL вида: 45.12.74.25/vacations (см. скрин).
+  const isProduction = host.includes('45.12.74.25');
 
   if (isProduction) {
     state.ideas = state.ideas.filter((idea) => !isTestLikeIdea(idea));
