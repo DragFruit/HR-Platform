@@ -17,6 +17,7 @@ const employeeNav: NavItem[] = [
   { to: '/tasks', label: 'Задачи' },
   { to: '/store', label: 'Магазин' },
   { to: '/wallet', label: 'Кошелёк' },
+  { to: '/ideas', label: 'Банк идей' },
   profileNavItem
 ];
 
