@@ -1,5 +1,4 @@
 import { requireVbiSession } from '../../utils/session';
-import { getDeployAppEnv } from '../../utils/appEnv';
 import { readIdeas, votesForUser } from '../../utils/ideasStore';
 
 function isTestLikeIdea(idea: { title: string; description?: string; authorName: string }) {
@@ -13,7 +12,11 @@ export default defineEventHandler(async (event) => {
 
   // На production показываем только “боевые” идеи.
   // Тестовые/QA идеи иногда остаются в ideas.json (исторически), но в UI они должны исчезать.
-  if (getDeployAppEnv() === 'production') {
+  const { public: pub } = useRuntimeConfig();
+  const isProduction =
+    pub?.appEnv === 'production' || String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+
+  if (isProduction) {
     state.ideas = state.ideas.filter((idea) => !isTestLikeIdea(idea));
   }
 
