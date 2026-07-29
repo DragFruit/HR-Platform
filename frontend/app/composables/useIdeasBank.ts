@@ -50,6 +50,20 @@ const STATUS_LABELS: Record<IdeaStatus, string> = {
   rejected: 'Отклонено'
 };
 
+function isTestLikeIdea(idea: { title: string; description?: string; authorName: string }) {
+  const haystack = `${idea.title} ${idea.description ?? ''} ${idea.authorName}`.toLowerCase();
+  // Согласуем с серверным фильтром: убираем "тест/qa/demo" (англ. demo).
+  // "демо" (кириллица) может встречаться в обычных названиях — его не трогаем.
+  return haystack.includes('тест') || haystack.includes('qa') || haystack.includes('demo');
+}
+
+function isProductionHostClient(): boolean {
+  if (!import.meta.client) return false;
+  const host = window.location.host.toLowerCase();
+  // Сейчас production — IP-домен, потом будет буквенный.
+  return host.includes('45.12.74.25') || host.includes('vibe.vbi');
+}
+
 const seedIdeas = (): Idea[] => [
   {
     id: 'idea-1',
@@ -207,13 +221,14 @@ export function useIdeasBank() {
   const hydrate = () => {
     if (!import.meta.client) return;
     const store = readStore();
-    if (!store.ideas.length) {
-      const seeded = seedIdeas();
-      writeStore({ ideas: seeded });
-      ideas.value = seeded;
-    } else {
-      ideas.value = store.ideas;
-    }
+
+    const shouldFilter = isProductionHostClient();
+    const loadedIdeas = store.ideas.length ? store.ideas : seedIdeas();
+    const filteredIdeas = shouldFilter ? loadedIdeas.filter((idea) => !isTestLikeIdea(idea)) : loadedIdeas;
+
+    ideas.value = filteredIdeas;
+    if (shouldFilter) writeStore({ ideas: filteredIdeas });
+
     if (user.value?.id) {
       userVotes.value = readVotes(user.value.id);
     }
