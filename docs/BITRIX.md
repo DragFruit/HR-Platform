@@ -211,8 +211,10 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 После **согласования** заявки в VBI HR сервер создаёт запись «отпуск ежегодный» в Битриксе:
 
-1. `lists.element.add` в инфоблок **График отсутствий** (основной путь, появляется пальма).
-2. Если не удалось — `calendar.event.add` с `accessibility: absent` (запасной путь).
+1. Основной (и единственный) путь: `lists.element.add` в инфоблок **График отсутствий**.
+2. В поле сотрудника передаётся `bitrix_user_id` из справочника — **один** OAuth/вебхук на всю компанию, не вебхук на каждого.
+3. Канал: сначала OAuth service token приложения «VBI HR Platform» (как колокольчик), иначе входящий вебхук.
+4. **`calendar.event.add` отключён**: через входящий вебхук события оказывались у владельца вебхука (не у сотрудника). Это баг/ограничение Битрикса, не «нужен вебхук на 70 человек».
 
 Опционально в env:
 
@@ -221,12 +223,15 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 | `BITRIX_ABSENCE_IBLOCK_ID` | ID инфоблока графика отсутствий (если не задан — автопоиск по имени) |
 | `BITRIX_ABSENCE_IBLOCK_TYPE_ID` | Тип инфоблока, по умолчанию `structure` |
 | `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «отпуск ежегодный», по умолчанию `1` |
+| `BITRIX_ABSENCE_PROPERTY_USER` | Код свойства «сотрудник» (иначе авто из `lists.field.get`) |
+| `BITRIX_ABSENCE_PROPERTY_TYPE` | Код свойства «тип отсутствия» |
 
-Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
+Права приложения/вебхука: **lists** (обязательно для пальмы).
 
-Проверка: согласовать отпуск в `/vacations` → в «Мои заявки» тег **Битрикс ✓** → в портале `crm.vbi.ru` пальма у сотрудника на даты отпуска.
+Код: `server/utils/bitrixVacationAbsence.ts`, вызов из мутаций заявок.  
+Починка ошибочных calendar-событий у владельца вебхука: `POST /api/admin/vacations/bitrix-absence-repair` (admin/hr).
 
-Проверка вебхука в генераторе: методы `user.get`, `department.get`, `lists.get`, `lists.element.add`, `im.notify`.
+Проверка: согласовать отпуск в `/vacations` → тег **Битрикс ✓** → пальма у **этого** сотрудника на `crm.vbi.ru`, не у владельца вебхука.
 
 ---
 

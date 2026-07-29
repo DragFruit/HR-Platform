@@ -2,6 +2,15 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-07-29
+
+### Bitrix: отсутствия только через график (не в календарь владельца вебхука)
+
+- После approve пишем пальму через `lists.element.add` нужному `bitrix_user_id` (один OAuth/вебхук на всех).
+- Запасной `calendar.event.add` отключён: через входящий вебхук события падали владельцу вебхука (Драго), а не сотруднику.
+- Ремонт: `POST /api/admin/vacations/bitrix-absence-repair` — удаляет ошибочные calendar-события и пересинкает через инфоблок.
+- Файлы: `bitrixVacationAbsence.ts`, `api/admin/vacations/bitrix-absence-repair.post.ts`, `docs/BITRIX.md`.
+
 ## 2026-07-28
 
 ### Production: открыт банк идей
