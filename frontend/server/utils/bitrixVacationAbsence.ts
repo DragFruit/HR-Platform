@@ -192,7 +192,6 @@ const createViaAbsenceIblock = async (params: {
   bitrixUserId: number;
   start: string;
   end: string;
-  comment: string;
   requestId: number;
 }): Promise<number> => {
   const iblockId = await resolveAbsenceIblockId();
@@ -220,17 +219,101 @@ const createViaAbsenceIblock = async (params: {
   });
 };
 
+const updateViaAbsenceIblock = async (params: {
+  absenceId: number;
+  bitrixUserId: number;
+  start: string;
+  end: string;
+}): Promise<void> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    throw new Error(
+      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.'
+    );
+  }
+
+  const { userProperty, typeProperty } = await resolveAbsencePropertyCodes(iblockId);
+
+  await bitrixCall('lists.element.update', {
+    IBLOCK_TYPE_ID: absenceIblockTypeId(),
+    IBLOCK_ID: iblockId,
+    ELEMENT_ID: params.absenceId,
+    FIELDS: {
+      NAME: BITRIX_ABSENCE_DISPLAY_NAME,
+      ACTIVE_FROM: toBitrixDateTime(params.start, false),
+      ACTIVE_TO: toBitrixDateTime(params.end, true),
+      [userProperty]: params.bitrixUserId,
+      [typeProperty]: absenceTypeEnum()
+    }
+  });
+};
+
+const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    throw new Error(
+      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.'
+    );
+  }
+
+  await bitrixCall('lists.element.delete', {
+    IBLOCK_TYPE_ID: absenceIblockTypeId(),
+    IBLOCK_ID: iblockId,
+    ELEMENT_ID: absenceId
+  });
+};
+
+const deleteViaCalendarEvent = async (eventId: number): Promise<void> => {
+  const ownerUserId = webhookOwnerUserId();
+  if (!ownerUserId) {
+    throw new Error('Не удалось определить владельца вебхука для calendar.event.delete');
+  }
+  await bitrixCall('calendar.event.delete', {
+    type: 'user',
+    ownerId: ownerUserId,
+    id: eventId
+  });
+};
+
+const clearBitrixSyncFields = (): Partial<VacationRequest> => ({
+  bitrix_absence_id: undefined,
+  bitrix_sync_status: undefined,
+  bitrix_sync_method: undefined,
+  bitrix_synced_at: undefined,
+  bitrix_sync_error: undefined
+});
+
+const resolveBitrixUserId = async (employeeName: string): Promise<number> => {
+  const employee = await findEmployeeByName(employeeName);
+  const bitrixUserId = employee?.bitrix_user_id ?? employee?.platform_user_id ?? employee?.id;
+  if (!bitrixUserId) {
+    throw new Error(`У сотрудника «${employeeName}» нет bitrix_user_id`);
+  }
+  return bitrixUserId;
+};
+
+/** Удалить пальму в Bitrix (lists или legacy calendar). */
+export const removeVacationAbsenceFromBitrix = async (
+  request: VacationRequest
+): Promise<void> => {
+  const absenceId = Number(request.bitrix_absence_id);
+  if (!Number.isFinite(absenceId) || absenceId <= 0) return;
+
+  if (request.bitrix_sync_method === 'calendar.event.add') {
+    await deleteViaCalendarEvent(absenceId);
+    return;
+  }
+
+  await deleteViaAbsenceIblock(absenceId);
+};
+
 export const pushVacationToBitrixAbsence = async (
   request: VacationRequest
 ): Promise<{
   absenceId: number;
   method: string;
 }> => {
-  const employee = await findEmployeeByName(request.employee);
-  const bitrixUserId = employee?.bitrix_user_id ?? employee?.platform_user_id ?? employee?.id;
-  if (!bitrixUserId) {
-    throw new Error(`У сотрудника «${request.employee}» нет bitrix_user_id`);
-  }
+  const bitrixUserId = await resolveBitrixUserId(request.employee);
 
   // Только инфоблок «График отсутствий» — пишет пальму нужному сотруднику.
   // calendar.event.add через входящий вебхук кладёт события владельцу вебхука (у нас 2684),
@@ -239,17 +322,61 @@ export const pushVacationToBitrixAbsence = async (
     bitrixUserId,
     start: request.start,
     end: request.end,
-    comment: request.comment,
     requestId: request.id
   });
   return { absenceId, method: 'lists.element.add' };
 };
 
-const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {
+const updateVacationAbsenceInBitrix = async (
+  request: VacationRequest
+): Promise<{ absenceId: number; method: string }> => {
+  const absenceId = Number(request.bitrix_absence_id);
+  if (!Number.isFinite(absenceId) || absenceId <= 0) {
+    return pushVacationToBitrixAbsence(request);
+  }
+
+  // Legacy calendar — удаляем и создаём правильную запись в графике отсутствий.
+  if (request.bitrix_sync_method === 'calendar.event.add') {
+    try {
+      await deleteViaCalendarEvent(absenceId);
+    } catch (error) {
+      console.warn(
+        `[bitrix-vacation] calendar delete before update failed for #${request.id}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+    return pushVacationToBitrixAbsence(request);
+  }
+
+  const bitrixUserId = await resolveBitrixUserId(request.employee);
+  await updateViaAbsenceIblock({
+    absenceId,
+    bitrixUserId,
+    start: request.start,
+    end: request.end
+  });
+  return { absenceId, method: 'lists.element.update' };
+};
+
+const needsBitrixCreate = (request: VacationRequest, previous?: VacationRequest): boolean => {
   if (request.status !== 'approved') return false;
   if (request.bitrix_sync_status === 'synced' && request.bitrix_absence_id) return false;
   if (!previous) return true;
   return previous.status !== 'approved';
+};
+
+const needsBitrixDateUpdate = (request: VacationRequest, previous?: VacationRequest): boolean => {
+  if (!previous) return false;
+  if (request.status !== 'approved' || previous.status !== 'approved') return false;
+  if (!request.bitrix_absence_id) return false;
+  return request.start !== previous.start || request.end !== previous.end;
+};
+
+const needsBitrixRemove = (request: VacationRequest, previous?: VacationRequest): boolean => {
+  if (!previous) return false;
+  if (previous.status !== 'approved') return false;
+  if (request.status === 'approved') return false;
+  return Boolean(previous.bitrix_absence_id || request.bitrix_absence_id);
 };
 
 export const syncApprovedVacationsToBitrix = async (
@@ -265,7 +392,51 @@ export const syncApprovedVacationsToBitrix = async (
 
   for (const request of flattenRequests(next)) {
     const prev = prevMap.get(request.id);
-    if (!needsBitrixSync(request, prev)) continue;
+
+    if (needsBitrixRemove(request, prev)) {
+      const absenceSource = {
+        ...request,
+        bitrix_absence_id: request.bitrix_absence_id ?? prev?.bitrix_absence_id,
+        bitrix_sync_method: request.bitrix_sync_method ?? prev?.bitrix_sync_method
+      };
+      try {
+        await removeVacationAbsenceFromBitrix(absenceSource);
+        state = updateRequestInState(state, request.id, clearBitrixSyncFields());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[bitrix-vacation] remove failed for request #${request.id}:`, message);
+        state = updateRequestInState(state, request.id, {
+          bitrix_sync_status: 'failed',
+          bitrix_sync_error: `remove: ${message}`,
+          bitrix_synced_at: new Date().toISOString()
+        });
+      }
+      continue;
+    }
+
+    if (needsBitrixDateUpdate(request, prev)) {
+      try {
+        const { absenceId, method } = await updateVacationAbsenceInBitrix(request);
+        state = updateRequestInState(state, request.id, {
+          bitrix_absence_id: absenceId,
+          bitrix_sync_status: 'synced',
+          bitrix_sync_method: method,
+          bitrix_synced_at: new Date().toISOString(),
+          bitrix_sync_error: undefined
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[bitrix-vacation] update failed for request #${request.id}:`, message);
+        state = updateRequestInState(state, request.id, {
+          bitrix_sync_status: 'failed',
+          bitrix_sync_error: `update: ${message}`,
+          bitrix_synced_at: new Date().toISOString()
+        });
+      }
+      continue;
+    }
+
+    if (!needsBitrixCreate(request, prev)) continue;
 
     try {
       const { absenceId, method } = await pushVacationToBitrixAbsence(request);
