@@ -50,18 +50,20 @@ const STATUS_LABELS: Record<IdeaStatus, string> = {
   rejected: 'Отклонено'
 };
 
-function isTestLikeIdea(idea: { title: string; description?: string; authorName: string }) {
-  const haystack = `${idea.title} ${idea.description ?? ''} ${idea.authorName}`.toLowerCase();
-  // Согласуем с серверным фильтром: убираем "тест/qa/demo" (англ. demo).
-  // "демо" (кириллица) может встречаться в обычных названиях — его не трогаем.
-  return haystack.includes('тест') || haystack.includes('qa') || haystack.includes('demo');
-}
+/** Фиксированные id демо-сида — как QA-отпуска: на production не подмешиваем и вычищаем из localStorage. */
+const SEED_IDEA_IDS = new Set([
+  'idea-1',
+  'idea-2',
+  'idea-3',
+  'idea-4',
+  'idea-5',
+  'idea-6',
+  'idea-7',
+  'idea-8'
+]);
 
-function isProductionHostClient(): boolean {
-  if (!import.meta.client) return false;
-  const host = window.location.host.toLowerCase();
-  // Сейчас production — IP-домен, потом будет буквенный.
-  return host.includes('45.12.74.25') || host.includes('vibe.vbi');
+function stripSeedIdeas(rows: Idea[]): Idea[] {
+  return rows.filter((idea) => !SEED_IDEA_IDS.has(idea.id));
 }
 
 const seedIdeas = (): Idea[] => [
@@ -214,6 +216,7 @@ const writeVotes = (userId: number, votes: VotesStore) => {
 
 export function useIdeasBank() {
   const { user } = useAuth();
+  const { isProduction } = useAppEnv();
   const ideas = useState<Idea[]>('vbi-ideas-bank', () => []);
   const userVotes = useState<VotesStore>('vbi-ideas-user-votes', () => ({}));
   const hydrated = useState('vbi-ideas-bank-hydrated', () => false);
@@ -222,12 +225,18 @@ export function useIdeasBank() {
     if (!import.meta.client) return;
     const store = readStore();
 
-    const shouldFilter = isProductionHostClient();
-    const loadedIdeas = store.ideas.length ? store.ideas : seedIdeas();
-    const filteredIdeas = shouldFilter ? loadedIdeas.filter((idea) => !isTestLikeIdea(idea)) : loadedIdeas;
-
-    ideas.value = filteredIdeas;
-    if (shouldFilter) writeStore({ ideas: filteredIdeas });
+    // Как QA-отпуска: на бою демо-сид не подмешиваем; если уже лежит в localStorage — вычищаем.
+    if (isProduction.value) {
+      const withoutSeed = stripSeedIdeas(store.ideas);
+      ideas.value = withoutSeed;
+      writeStore({ ideas: withoutSeed });
+    } else if (!store.ideas.length) {
+      const seeded = seedIdeas();
+      writeStore({ ideas: seeded });
+      ideas.value = seeded;
+    } else {
+      ideas.value = store.ideas;
+    }
 
     if (user.value?.id) {
       userVotes.value = readVotes(user.value.id);
