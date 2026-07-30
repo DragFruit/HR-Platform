@@ -63,7 +63,7 @@
   --vac-frame-radius: 16px;
   --vac-card-radius: 14px;
   --vac-frame-shadow: none;
-  --vac-aside-width: 280px;
+  --vac-aside-width: 248px;
   --vac-chrome-block: 78px;
   --vac-cal-gutter-x: clamp(24px, 4vw, 48px);
   --vac-weekend-bg: #e3f0fa;
@@ -5765,7 +5765,7 @@ a {
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) {
-  grid-template-columns: minmax(0, 1fr) minmax(248px, 288px);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 248px);
   max-width: 100%;
 }
 
@@ -9320,7 +9320,7 @@ a {
   overflow: hidden;
   box-sizing: border-box;
   --vac-cal-gutter-x: clamp(10px, 1.8vw, 24px);
-  --vac-aside-width: 268px;
+  --vac-aside-width: 240px;
 }
 
 /* Как у руководителя: панель справа с верхнего края рабочей зоны, не под тулбаром */
@@ -9424,15 +9424,19 @@ a {
   overflow: visible;
 }
 
-/* Ярлык года снаружи рамки (absolute), чтобы у pane снова был overflow:hidden и flex-высота таблицы. */
+/* Ярлык года над рамкой: в потоке (не absolute + translateY) — иначе overflow:hidden предков и scale обрезают. */
 .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
 .vac-year-tab.vac-emp-calendar-yeartab {
-  position: absolute;
-  top: 0;
-  right: 12px;
+  position: relative;
+  top: auto;
+  right: auto;
   left: auto;
+  align-self: flex-end;
+  flex-shrink: 0;
+  margin-right: 12px;
+  margin-bottom: -1px;
   z-index: 6;
-  transform: translateY(calc(-100% + 1px));
+  transform: none;
 }
 
 .vac-year-tab:not(.vac-emp-calendar-yeartab):not(.vac-team-calendar__yeartab) {
@@ -10216,7 +10220,7 @@ a {
 
 @media (max-width: 1280px) {
   :root {
-    --vac-aside-width: 260px;
+    --vac-aside-width: 228px;
   }
 
   .vacations-employee-shell .vac-emp-page.vac-emp-page--fit {
