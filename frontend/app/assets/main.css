@@ -140,15 +140,13 @@ a {
 }
 
 /*
- * Календарь руководителя: как масштаб страницы 90% —
- * всё (сайдбар, шапка, таблица) соразмерно меньше, на экран влезает больше.
- * width/height компенсируют zoom, чтобы не оставалась пустая полоса по краям.
+ * Базовый масштаб платформы (бывший «90%»): весь UI соразмерно компактнее.
+ * width/height компенсируют zoom, чтобы заполнять окно без пустой полосы.
  */
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) {
+.app-viewport:has(.app-shell) {
   zoom: 0.9;
   width: calc(100% / 0.9);
-  /* Один экран под shell + футер ниже — страница скроллится до «Следите за нами» */
-  min-height: calc(100dvh / 0.9);
+  min-height: calc(100vh / 0.9);
   height: auto;
   overflow-x: hidden;
   overflow-y: visible;
@@ -164,7 +162,7 @@ a {
   min-height: auto;
 }
 
-/* Первый экран целиком под shell (таблица до низа); футер после — скролл страницы */
+/* Календарь руководителя: первый экран целиком под shell; футер ниже — скролл страницы */
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
   flex: 0 0 auto;
   min-height: 0;

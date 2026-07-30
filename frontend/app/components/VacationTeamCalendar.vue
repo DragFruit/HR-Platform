@@ -93,10 +93,10 @@ import type { VacationReservation } from '~/utils/vacationReservations';
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 5;
 /**
- * Должен совпадать с zoom у `.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee))`.
- * max-height задаётся в layout-px внутри zoom — без деления остаётся дыра снизу.
+ * Базовый масштаб платформы (zoom 0.9 на .app-viewport:has(.app-shell)).
+ * max-height задаётся в layout-px внутри zoom — без деления высота не совпадёт с краем окна.
  */
-const MANAGER_VIEW_ZOOM = 0.9;
+const PLATFORM_VIEW_ZOOM = 0.9;
 
 const props = withDefaults(
   defineProps<{
@@ -141,7 +141,7 @@ const updateViewportMax = () => {
   const top = el.getBoundingClientRect().top;
   // До низа окна (футер на этом экране скрыт) — 5px зазор
   const visualRoom = window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX;
-  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom / MANAGER_VIEW_ZOOM));
+  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom / PLATFORM_VIEW_ZOOM));
 };
 
 const viewportStyle = computed(() => {
