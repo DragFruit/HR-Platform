@@ -5733,7 +5733,8 @@ a {
   min-width: 0;
   overflow-x: visible;
   overflow-y: visible;
-  padding: 6px 8px 8px;
+  /* Тот же правый/левый отступ, что в режиме «Сотрудник» (14px) */
+  padding: 6px 14px 8px;
 }
 
 .shell-main:has(.vac-manager-layout) .content .page-root {
