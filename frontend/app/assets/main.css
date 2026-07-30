@@ -162,6 +162,77 @@ a {
   min-height: auto;
 }
 
+/* Руководитель: оболочка на всю высоту над футером → таблица дотягивается до низа */
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
+  min-height: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main > .content {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 5px;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main > .content > .page-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-layout:not(.vac-manager-layout--employee) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-main {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-calendar-block {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar--with-side-tabs {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__main,
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__pane {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100% !important;
+  max-height: none !important;
+}
+
 .app-site-footer {
   flex-shrink: 0;
   border-top: 1px solid var(--border-brutal);
@@ -6758,8 +6829,8 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  /* Fallback до измерения JS: от верха рамки до низа экрана − 5px задаётся в VacationTeamCalendar */
-  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 52px);
+  /* Fallback с учётом zoom 0.9 (layout-px) */
+  --vac-team-viewport-max: calc((100dvh - var(--vac-chrome-block) - 52px) / 0.9);
   --vac-team-emp-row-h: 27px;
   height: auto;
   max-height: var(--vac-team-viewport-max);

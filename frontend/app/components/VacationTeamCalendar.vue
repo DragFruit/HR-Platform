@@ -97,8 +97,6 @@ const VIEWPORT_BOTTOM_GAP_PX = 5;
  * max-height задаётся в layout-px внутри zoom — без деления остаётся ~10% серой дыры снизу.
  */
 const MANAGER_VIEW_ZOOM = 0.9;
-/** От стольки людей рамка тянется до низа (иначе height:auto по контенту). */
-const FILL_VIEWPORT_MIN_ROWS = 12;
 
 const props = withDefaults(
   defineProps<{
@@ -134,9 +132,7 @@ const empRowCount = computed(() =>
   props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
 );
 
-const fillViewport = computed(
-  () => props.variant === 'manager' && empRowCount.value >= FILL_VIEWPORT_MIN_ROWS
-);
+const fillViewport = computed(() => props.variant === 'manager');
 
 const updateViewportMax = () => {
   if (props.variant !== 'manager' || !import.meta.client) return;
