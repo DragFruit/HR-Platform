@@ -6790,7 +6790,6 @@ a {
   --vac-team-name-col-w: 104px;
   --vac-team-title-col-w: 0px;
   --vac-team-sticky-left-w: var(--vac-team-name-col-w);
-  --vac-cell-dash: #202020;
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
@@ -6821,9 +6820,7 @@ a {
   top: 0;
   z-index: 5;
   background: #f0f2f5;
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash, #202020);
-  border-bottom: 1px dashed var(--vac-cell-dash, #202020);
+  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-name {
@@ -6833,9 +6830,6 @@ a {
   padding: 6px 6px 6px 8px;
   text-align: left;
   vertical-align: middle;
-  border-right: 1px dashed var(--vac-cell-dash, #202020);
-  border-bottom: 1px dashed var(--vac-cell-dash, #202020);
-  box-shadow: none;
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-title {
@@ -6849,9 +6843,7 @@ a {
   text-align: left;
   vertical-align: middle;
   background: var(--bg-surface);
-  border-right: 1px dashed var(--vac-cell-dash, #202020);
-  border-bottom: 1px dashed var(--vac-cell-dash, #202020);
-  box-shadow: none;
+  box-shadow: 1px 0 0 #e4e4de;
   color: var(--text-soft);
   font-weight: 500;
 }
@@ -6905,22 +6897,19 @@ a {
   max-width: var(--vac-team-sticky-left-w);
   padding: 8px 10px 8px 8px;
   background: rgba(116, 81, 244, 0.12);
-  box-shadow: none;
-  border-top: 3px double var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
-  border-right: 1px dashed var(--vac-cell-dash);
+  /* Мягкая фиолетовая полоска только между группами (не внутри отдела) */
+  box-shadow:
+    inset 0 2px 0 rgba(116, 81, 244, 0.4),
+    inset 0 -1px 0 rgba(116, 81, 244, 0.22),
+    1px 0 0 #e4e4de;
 }
 
 .vac-team-calendar .vacation-timeline .vac-dept-row-fill {
   padding: 0;
   background: rgba(116, 81, 244, 0.12);
-  border-top: 3px double var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
-}
-
-.vac-team-calendar .vacation-timeline td.vac-cell {
-  border-bottom: 1px dashed var(--vac-cell-dash);
-  border-right: 1px dashed rgba(32, 32, 32, 0.22);
+  box-shadow:
+    inset 0 2px 0 rgba(116, 81, 244, 0.4),
+    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
 }
 
 .vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title),
@@ -7351,8 +7340,7 @@ a {
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
   --vac-sticky-left-balance: calc(var(--vac-name-col-w) + var(--vac-title-col-w));
   --vac-sticky-left-total: calc(var(--vac-name-col-w) + var(--vac-title-col-w) + var(--vac-balance-col-w));
-  --vac-grid-line: #c8c8c0;
-  --vac-cell-dash: #202020;
+  --vac-grid-line: #e6e6e0;
   --vac-grid-fill: #ffffff;
   --vac-grid-weekend: #e3f0fa;
   --vac-row-hover: #f3f0fc;
@@ -7461,8 +7449,7 @@ a {
   color: var(--text);
   font-weight: 600;
   vertical-align: middle;
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash);
+  box-shadow: inset -1px 0 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline .sticky-col-title {
@@ -7477,16 +7464,15 @@ a {
   color: var(--text-soft);
   font-weight: 500;
   vertical-align: middle;
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash);
+  box-shadow: inset -1px 0 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance {
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
+  box-shadow:
+    inset -1px 0 0 var(--vac-grid-line),
+    inset 0 -1px 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head,
@@ -7496,9 +7482,9 @@ a {
   top: 0;
   z-index: 10;
   background: #f0f2f5;
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
+  box-shadow:
+    inset -1px 0 0 var(--vac-grid-line),
+    inset 0 -1px 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head {
@@ -7682,7 +7668,7 @@ a {
 
 .vac-team-calendar .vacation-timeline tbody .sticky-col-name {
   background: var(--bg-surface);
-  box-shadow: none;
+  box-shadow: 1px 0 0 #e4e4de;
 }
 
 .vac-team-calendar .vacation-timeline th,
@@ -7774,8 +7760,7 @@ a {
   font-weight: 600;
   font-size: 0.62rem;
   color: var(--text-muted);
-  box-shadow: none;
-  border-right: 1px dashed var(--vac-cell-dash);
+  box-shadow: inset -1px 0 0 var(--vac-grid-line);
   vertical-align: middle;
   overflow: hidden;
   font-variant-numeric: tabular-nums;
@@ -7821,12 +7806,12 @@ a {
 }
 
 .vac-detailed-dept-row td {
-  background: #f1ecfd;
+  background: rgba(116, 81, 244, 0.1);
 }
 
 .vac-detailed-dept-row .sticky-col-dept,
 .vac-detailed-dept-row .vac-detailed-dept-fill {
-  background: #f1ecfd;
+  background: rgba(116, 81, 244, 0.1);
 }
 
 .vac-detailed-dept-row .sticky-col-dept {
@@ -7836,24 +7821,26 @@ a {
   width: var(--vac-sticky-left-total);
   min-width: var(--vac-sticky-left-total);
   max-width: var(--vac-sticky-left-total);
-  padding: 8px 12px;
+  padding: 3px 10px;
   font-weight: 600;
+  font-size: 0.72rem;
+  line-height: 1.2;
   color: var(--primary-strong);
   cursor: pointer;
   user-select: none;
-  box-shadow: none;
-  /* Между отделами — двойная линия; внутри отдела только пунктир у сотрудников */
-  border-top: 3px double var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
-  border-right: 1px dashed var(--vac-cell-dash);
+  /* Мягкая фиолетовая полоска только между группами (не внутри отдела) */
+  box-shadow:
+    inset 0 2px 0 rgba(116, 81, 244, 0.4),
+    inset -1px 0 0 rgba(116, 81, 244, 0.18),
+    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
 }
 
 .vac-detailed-dept-row .vac-detailed-dept-fill {
   padding: 0;
   cursor: pointer;
-  box-shadow: none;
-  border-top: 3px double var(--vac-cell-dash);
-  border-bottom: 1px dashed var(--vac-cell-dash);
+  box-shadow:
+    inset 0 2px 0 rgba(116, 81, 244, 0.4),
+    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
 }
 
 .vac-detailed-dept-chevron {
@@ -7921,7 +7908,6 @@ a {
   vertical-align: top;
   overflow: hidden;
   background: var(--vac-grid-fill);
-  border-bottom: 1px dashed var(--vac-cell-dash);
 }
 
 .vac-detailed-track-inner {
