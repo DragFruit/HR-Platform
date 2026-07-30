@@ -19,17 +19,6 @@
         />
         <div class="vac-team-calendar__frame">
           <button
-            v-if="variant === 'manager'"
-            type="button"
-            class="vac-title-col-toggle"
-            :class="{ 'vac-title-col-toggle--on': showTitleColumn }"
-            :aria-pressed="showTitleColumn"
-            title="Показать или скрыть столбец «Должность»"
-            @click="toggleTitleColumn"
-          >
-            Должность
-          </button>
-          <button
             v-if="variant === 'manager' && isAdmin"
             type="button"
             class="vac-admin-add-btn vac-admin-add-btn--frame"
@@ -46,6 +35,8 @@
             :reservations="reservations"
             :show-department-daily-counts="showDepartmentDailyCounts"
             :show-title-column="showTitleColumn"
+            title-column-toggleable
+            @toggle-title-column="toggleTitleColumn"
           />
           <VacationMonthlyCalendar
             v-else
@@ -54,6 +45,8 @@
             :get-month-entries="getMonthEntries"
             :compact-cells="variant === 'employee-team'"
             :show-title-column="variant === 'manager' && showTitleColumn"
+            :title-column-toggleable="variant === 'manager'"
+            @toggle-title-column="toggleTitleColumn"
           />
         </div>
       </div>
