@@ -63,7 +63,7 @@
   --vac-frame-radius: 16px;
   --vac-card-radius: 14px;
   --vac-frame-shadow: none;
-  --vac-aside-width: 248px;
+  --vac-aside-width: 272px;
   --vac-chrome-block: 78px;
   --vac-cal-gutter-x: clamp(24px, 4vw, 48px);
   --vac-weekend-bg: #e3f0fa;
@@ -5783,7 +5783,7 @@ a {
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
   /* Умеренные поля: календарь крупнее вбок, но не впритык к краям */
   --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
-  --vac-aside-width: 220px;
+  --vac-aside-width: 272px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -8907,6 +8907,7 @@ a {
   font-size: 13px;
   font-weight: 600;
   color: #7dd3fc;
+  white-space: nowrap;
 }
 
 .emp-projection-panel {
@@ -9357,7 +9358,7 @@ a {
   box-sizing: border-box;
   /* Боковые поля: календарь крупный, но с воздухом */
   --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
-  --vac-aside-width: 240px;
+  --vac-aside-width: 272px;
 }
 
 /* Как у руководителя: панель справа с верхнего края рабочей зоны, не под тулбаром */
@@ -10285,7 +10286,7 @@ a {
 
 @media (max-width: 1280px) {
   :root {
-    --vac-aside-width: 228px;
+    --vac-aside-width: 260px;
   }
 
   .vacations-employee-shell .vac-emp-page.vac-emp-page--fit {
