@@ -152,6 +152,11 @@ a {
   overflow: hidden;
 }
 
+/* Футер «Следите за нами» прячем — таблица занимает место до низа экрана */
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-site-footer {
+  display: none;
+}
+
 .app-viewport > .app-shell,
 .app-viewport > .auth-screen {
   flex: 1;
@@ -162,10 +167,11 @@ a {
   min-height: auto;
 }
 
-/* Руководитель: оболочка на всю высоту над футером → таблица дотягивается до низа */
+/* Руководитель: оболочка на весь экран (без футера) → таблица до низа */
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
   min-height: 0;
   flex: 1 1 auto;
+  height: 100%;
   align-self: stretch;
 }
 
