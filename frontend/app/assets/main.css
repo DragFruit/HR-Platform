@@ -6821,7 +6821,9 @@ a {
   top: 0;
   z-index: 5;
   background: #f0f2f5;
-  box-shadow: 1px 0 0 #e4e4de, 0 1px 0 #e4e4de;
+  box-shadow: none;
+  border-right: 1px dashed var(--vac-cell-dash, #202020);
+  border-bottom: 1px dashed var(--vac-cell-dash, #202020);
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-name {
@@ -7680,7 +7682,7 @@ a {
 
 .vac-team-calendar .vacation-timeline tbody .sticky-col-name {
   background: var(--bg-surface);
-  box-shadow: 1px 0 0 #e4e4de;
+  box-shadow: none;
 }
 
 .vac-team-calendar .vacation-timeline th,
