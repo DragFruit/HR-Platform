@@ -1,10 +1,4 @@
 :root {
-  /*
-   * Базовый масштаб платформы.
-   * Бывший «браузерный 90%» = наш визуальный 100% (зафиксировано).
-   * Менять только здесь.
-   */
-  --platform-zoom: 0.9;
   /* ITMO neo-brutalist: light content surfaces */
   --page-bg: #eeeee8;
   --bg: #eeeee8;
@@ -104,11 +98,6 @@ body,
   color: var(--text);
 }
 
-/* Не даём случайному горизонтальному хвосту уехать в скролл страницы */
-html {
-  overflow-x: clip;
-}
-
 body::after {
   content: '';
   position: fixed;
@@ -150,28 +139,6 @@ a {
   flex-direction: column;
 }
 
-/*
- * Базовый масштаб платформы (= бывший браузерный 90%).
- *
- * ИНВАРИАНТ — нужны ОБА условия сразу:
- * 1) размер --platform-zoom (0.9)
- * 2) выравнивание слева сверху, без съезда вправо
- *
- * CSS zoom рисует от центра → aside/правый край уезжают или обрезаются.
- * Поэтому только transform: scale + transform-origin: top left.
- * width + margin-right компенсируют layout после scale (окно заполнено, без гориз. скролла).
- * Не ставить overflow-x: hidden сюда — обрежет правую колонку.
- */
-.app-viewport:has(.app-shell) {
-  width: calc(100% / var(--platform-zoom));
-  min-height: calc(100vh / var(--platform-zoom));
-  height: auto;
-  transform: scale(var(--platform-zoom));
-  transform-origin: top left;
-  margin-right: calc(100% * (1 - 1 / var(--platform-zoom)));
-  overflow: visible;
-}
-
 .app-viewport > .app-shell,
 .app-viewport > .auth-screen {
   flex: 1;
@@ -180,84 +147,6 @@ a {
 
 .app-viewport > .app-shell {
   min-height: auto;
-}
-
-/* Календарь руководителя: первый экран целиком под shell; футер ниже — скролл страницы */
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
-  flex: 0 0 auto;
-  min-height: 0;
-  height: calc(100dvh / var(--platform-zoom));
-  max-height: calc(100dvh / var(--platform-zoom));
-  align-self: stretch;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-site-footer {
-  display: block;
-  flex-shrink: 0;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main {
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main > .content {
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 5px;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main > .content > .page-root {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-layout:not(.vac-manager-layout--employee) {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  align-items: stretch;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-main {
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-manager-calendar-block {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar--with-side-tabs {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__main,
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__pane {
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .vac-team-calendar__frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100% !important;
-  max-height: none !important;
 }
 
 .app-site-footer {
@@ -5638,6 +5527,12 @@ a {
   white-space: nowrap;
 }
 
+.vacation-timeline .dept-row td {
+  background: rgba(116, 81, 244, 0.12);
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
 .vacation-timeline .emp-name {
   display: block;
 }
@@ -5717,10 +5612,6 @@ a {
   padding: 10px 16px;
 }
 
-.shell-main:has(.vac-manager-layout--employee) .topbar {
-  padding: 8px 16px;
-}
-
 /* График отпусков: фиолетовая шапка прокручивается вместе со страницей */
 .shell-main:has(.vac-team-calendar) .topbar,
 .shell-main:has(.vac-emp-page--fit) .topbar,
@@ -5733,7 +5624,8 @@ a {
   min-width: 0;
   overflow-x: clip;
   overflow-y: visible;
-  padding: 6px 8px 8px;
+  /* Как у сотрудника на тесте: те же поля контента */
+  padding: 12px 16px 14px;
 }
 
 .shell-main:has(.vac-manager-layout) .content .page-root {
@@ -5774,37 +5666,34 @@ a {
 }
 
 .vac-manager-layout--with-aside {
+  /* Как vacations-employee-shell: ширина aside и зазор до календаря */
+  --vac-aside-width: 268px;
   align-items: start;
-  gap: 14px;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) {
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 230px);
-  max-width: 100%;
-}
-
-.vac-manager-layout--with-aside:not(.vac-manager-layout--employee) .vac-manager-aside-panel {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  overflow: visible;
+  grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
 }
 
 .vac-manager-layout--with-aside .vac-manager-aside-panel {
   align-self: start;
+  width: var(--vac-aside-width);
+  min-width: var(--vac-aside-width);
+  max-width: var(--vac-aside-width);
+  /* Как у сотрудника: отступ сверху колонки aside */
+  margin-top: 8px;
 }
 
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
-  /* Как на проде (browser 90%): компактный aside, умеренные gutters */
-  --vac-cal-gutter-x: clamp(10px, 1.8vw, 24px);
-  --vac-aside-width: 268px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   height: 100%;
-  min-height: 0;
-  max-height: 100%;
-  flex: 1 1 auto;
+  min-height: calc(100dvh - var(--vac-chrome-block) - 72px);
+  max-height: none;
+  flex: 1;
   margin: 0;
   overflow: hidden;
   align-items: stretch;
@@ -5827,31 +5716,15 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
-}
-
-.vac-manager-layout--employee .vac-emp-toolbar {
-  margin-left: var(--vac-cal-gutter-x, 14px);
-  padding-top: 2px;
-  padding-bottom: 2px;
-}
-
-.vac-manager-layout--employee .vac-emp-calendar-slot {
-  margin-left: var(--vac-cal-gutter-x, 14px);
-  margin-right: 0;
-  min-width: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  height: auto;
 }
 
 .vac-manager-layout--employee .vac-manager-aside-panel {
   width: var(--vac-aside-width);
   min-width: var(--vac-aside-width);
   max-width: var(--vac-aside-width);
-  height: 100%;
+  height: auto;
   max-height: 100%;
-  align-self: stretch;
+  align-self: start;
   overflow-y: auto;
 }
 
@@ -5864,26 +5737,6 @@ a {
   top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  /* Как у сотрудника: переключатель снаружи, контент в отдельной рамке */
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  box-sizing: border-box;
-  min-width: 0;
-  width: 100%;
-  overflow: visible;
-}
-
-.vac-manager-aside-panel .emp-aside-role-strip {
-  margin-bottom: 0;
-  flex-shrink: 0;
-}
-
-.vac-manager-aside-body {
-  display: flex;
-  flex-direction: column;
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--vac-frame-border);
@@ -5891,8 +5744,11 @@ a {
   background: var(--bg-surface);
   box-shadow: var(--vac-frame-shadow);
   box-sizing: border-box;
-  min-width: 0;
-  overflow: visible;
+}
+
+.vac-manager-aside-panel .emp-aside-role-strip {
+  /* Как у сотрудника в .employee-aside--fit */
+  margin-bottom: 8px;
 }
 
 .vac-manager-aside-panel--employee-view {
@@ -5955,10 +5811,9 @@ a {
   flex: 1;
   min-height: 0;
   width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   overflow: hidden;
 }
 
@@ -5971,22 +5826,6 @@ a {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.vac-manager-layout--employee .vac-emp-calendar-main,
-.vac-manager-layout--employee .vac-emp-calendar-frame-row {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-.vac-manager-layout--employee .vac-emp-calendar-main {
-  padding-top: 24px;
-}
-
-.vac-manager-layout--employee .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
-.vac-manager-layout--employee .vac-year-tab.vac-emp-calendar-yeartab {
-  top: 24px;
 }
 
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded {
@@ -6028,14 +5867,14 @@ a {
   background: var(--bg-surface);
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-card-radius);
-  padding: 6px 8px 4px;
+  padding: 8px 10px 6px;
   box-shadow: none;
 }
 
 .vac-emp-page--embedded .emp-cal-grid--compact .hr-month-title {
   font-size: 12px;
   font-weight: 700;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   line-height: 1;
   color: var(--text);
   flex-shrink: 0;
@@ -6123,31 +5962,22 @@ a {
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-card-radius);
   background: var(--bg-surface);
-  overflow: visible;
-  min-width: 0;
 }
 
 .vac-aside-stat-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 6px;
-  white-space: normal;
-  overflow: visible;
-  word-break: break-word;
-  line-height: 1.3;
 }
 
 .vac-aside-stat-value {
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.25;
-  white-space: normal;
-  overflow: visible;
-  word-break: break-word;
+  line-height: 1.2;
 }
 
 .vac-cap-notice-backdrop {
@@ -6196,10 +6026,7 @@ a {
 
 .vac-aside-stat-line-label {
   color: var(--text-soft);
-  white-space: normal;
-  overflow: visible;
-  flex-shrink: 1;
-  min-width: 0;
+  white-space: nowrap;
 }
 
 .vac-aside-stat-line-dots {
@@ -6222,75 +6049,25 @@ a {
   text-decoration: none;
 }
 
-/* Легенда + Календарь/Согласование — на верхнем крае рамки таблицы */
-.vac-manager-calendar-block {
-  position: relative;
-  margin-top: 28px; /* чуть ниже — больше места под строки команды */
-  min-width: 0;
-}
-
-.vac-manager-chrome {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
-  min-height: 0;
-  width: max-content;
-  max-width: calc(100% - 96px); /* место под ярлык года справа */
-  position: relative;
-  z-index: 5;
-}
-
-.vac-manager-calendar-block > .vac-manager-chrome {
-  position: absolute;
-  left: 0;
-  right: auto;
-  top: 0;
-  transform: translateY(calc(-100% + 1px));
-  z-index: 7;
-  pointer-events: auto;
-}
-
-.vac-manager-chrome--approval {
+.vac-manager-toolbar {
   display: flex;
-  width: 100%;
-  max-width: none;
-  justify-content: flex-start;
-  margin-bottom: 8px;
-}
-
-.vac-manager-chrome__legend {
-  display: flex;
-  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 12px;
-  font-size: 0.74rem;
-  line-height: 1.2;
-  color: var(--text-muted);
-  white-space: nowrap;
+  gap: 12px;
+  margin-bottom: 2px;
 }
 
-.vac-manager-chrome__tabs.filters {
+.vac-manager-toolbar .filters {
   margin: 0;
-  flex-shrink: 0;
 }
 
-.vac-manager-chrome .filter-btn {
-  padding: 4px 10px;
-  font-size: 0.7rem;
-}
-
-.vac-manager-chrome .filter-btn .mini-pill {
+.vac-manager-toolbar .filter-btn .mini-pill {
   background: rgba(52, 211, 153, 0.14);
   color: #6ee7b7;
   border-color: rgba(52, 211, 153, 0.28);
 }
 
-.vac-manager-chrome + .vac-approval-panel,
-.vac-manager-chrome--approval + .vac-approval-panel {
-  margin-top: 8px;
+.vac-manager-toolbar + .vac-team-calendar {
+  margin-top: 14px;
 }
 
 .shell-main:has(.vac-team-calendar) .content {
@@ -6911,35 +6688,10 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  /* Fallback layout-px с учётом --platform-zoom */
-  --vac-team-viewport-max: calc((100dvh - var(--vac-chrome-block) - 52px) / var(--platform-zoom));
-  --vac-team-emp-row-h: 21.5px;
+  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 72px);
   height: auto;
   max-height: var(--vac-team-viewport-max);
   overflow: hidden;
-}
-
-/* Много сотрудников: рамка на всю доступную высоту (до футера − 5px), скролл внутри */
-.vac-team-calendar--fill-viewport .vac-team-calendar__frame {
-  height: var(--vac-team-viewport-max);
-  max-height: var(--vac-team-viewport-max);
-}
-
-.vac-team-calendar--fill-viewport .vacation-calendar-wrap,
-.vac-team-calendar--fill-viewport .vac-detailed-wrap {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-.vac-team-calendar--fill-viewport .vac-table-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-.vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
-  position: relative;
 }
 
 .vac-team-calendar__toolbar {
@@ -6948,7 +6700,7 @@ a {
 
 .vac-team-calendar .vacation-calendar-wrap,
 .vac-team-calendar .vac-detailed-wrap {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   min-width: 0;
   max-width: 100%;
@@ -6972,11 +6724,10 @@ a {
 }
 
 .vac-team-calendar .vac-table-scroll {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   height: auto;
   min-height: 0;
-  /* Высоту режет frame (max-height); height:auto + flex не вытягивает маленькую команду */
-  max-height: none;
+  max-height: calc(var(--vac-team-viewport-max, 100dvh) - 3.25rem);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -6993,19 +6744,11 @@ a {
 
 .vac-team-calendar .vacation-timeline {
   --vac-team-name-col-w: 104px;
-  --vac-team-title-col-w: 0px;
-  --vac-team-sticky-left-w: var(--vac-team-name-col-w);
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.82rem;
-}
-
-.vac-team-calendar .vacation-timeline--with-title {
-  --vac-team-name-col-w: 100px;
-  --vac-team-title-col-w: 120px;
-  --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
 }
 
 .vac-team-calendar .vacation-timeline thead th {
@@ -7034,67 +6777,61 @@ a {
   max-width: var(--vac-team-name-col-w);
   padding: 6px 6px 6px 8px;
   text-align: left;
-  vertical-align: middle;
-}
-
-.vac-team-calendar .vacation-timeline .sticky-col-title {
-  position: sticky;
-  left: var(--vac-team-name-col-w);
-  z-index: 4;
-  width: var(--vac-team-title-col-w);
-  min-width: var(--vac-team-title-col-w);
-  max-width: var(--vac-team-title-col-w);
-  padding: 6px 6px;
-  text-align: left;
-  vertical-align: middle;
-  background: var(--bg-surface);
-  box-shadow: 1px 0 0 #e4e4de;
-  color: var(--text-soft);
-  font-weight: 500;
-}
-
-.vac-team-calendar .vacation-timeline thead .sticky-col-title--head {
-  top: 0;
-  z-index: 5;
-  background: #f0f2f5;
-  font-family: var(--font-display);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  font-weight: 600;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .vac-team-calendar .vacation-timeline .emp-name--inline {
-  display: block;
-  font-size: 0.7rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.78rem;
   line-height: 1.2;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: normal;
 }
 
-.vac-team-calendar .vacation-timeline .emp-title--col {
-  display: block;
+.vac-team-calendar .vacation-timeline .emp-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: normal;
   line-height: 1.15;
-  font-size: 0.61rem;
-  margin: 0;
-  color: var(--text-soft);
-  font-weight: 500;
+  font-size: 0.68rem;
+  margin-top: 2px;
 }
 
-.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title),
+.vac-team-calendar .vacation-timeline .dept-row td {
+  background: rgba(116, 81, 244, 0.12);
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.vac-team-calendar .vacation-timeline .sticky-col-dept {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: var(--vac-team-name-col-w);
+  min-width: var(--vac-team-name-col-w);
+  max-width: var(--vac-team-name-col-w);
+  padding: 8px 10px 8px 8px;
+  background: rgba(116, 81, 244, 0.12);
+  box-shadow: 1px 0 0 #e4e4de;
+}
+
+.vac-team-calendar .vacation-timeline .vac-dept-row-fill {
+  padding: 0;
+  background: rgba(116, 81, 244, 0.12);
+}
+
+.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name),
 .vac-team-calendar .vacation-timeline td.vac-cell {
-  width: calc((100% - var(--vac-team-sticky-left-w)) / 12);
+  width: calc((100% - var(--vac-team-name-col-w)) / 12);
   min-width: 0;
-  max-width: calc((100% - var(--vac-team-sticky-left-w)) / 12);
+  max-width: calc((100% - var(--vac-team-name-col-w)) / 12);
 }
 
-.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title) {
+.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name) {
   padding: 5px 2px;
   font-size: 0.68rem;
   line-height: 1.15;
@@ -7187,78 +6924,6 @@ a {
   gap: 8px;
 }
 
-.vac-team-calendar--with-side-tabs {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0;
-  overflow: visible;
-  min-height: 0;
-}
-
-.vac-team-calendar__main {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  align-self: stretch;
-  overflow: visible;
-}
-
-.vac-team-calendar__pane {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: visible;
-}
-
-.vac-team-calendar__pane > .vac-team-calendar__yeartab,
-.vac-year-tab.vac-team-calendar__yeartab {
-  position: absolute;
-  top: 0;
-  /* Чуть левее скругления рамки, чтобы уголок не резал ярлык года */
-  right: 18px;
-  left: auto;
-  z-index: 6;
-  transform: translateY(calc(-100% + 1px));
-}
-
-.vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-}
-
-.vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
-  align-self: stretch;
-  /* Как у сотрудника: вкладки ниже скругления рамки, уголок не режет ярлыки */
-  padding-top: 14px;
-}
-
-.vac-cal-side-tab--detailed.vac-cal-side-tab--active::before,
-.vac-cal-side-tab--months.vac-cal-side-tab--active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-}
-
-.vac-cal-side-tab--detailed.vac-cal-side-tab--active::before {
-  background: var(--accent-lime, #ddf365);
-}
-
-.vac-cal-side-tab--months.vac-cal-side-tab--active::before {
-  background: var(--primary);
-}
-
 .vac-admin-add-btn {
   appearance: none;
   border: 1px solid #d8d8d2;
@@ -7277,15 +6942,6 @@ a {
 .vac-admin-add-btn:hover {
   border-color: #c8c8c2;
   background: #fafaf6;
-}
-
-.vac-admin-add-btn--frame {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  z-index: 4;
-  padding: 5px 10px;
-  font-size: 0.72rem;
 }
 
 .vac-admin-add-btn:focus-visible {
@@ -7504,17 +7160,13 @@ a {
 }
 
 .vac-detailed-timeline {
-  --vac-detailed-head-r1: 1.65rem;
-  --vac-detailed-head-r2: 1.15rem;
+  --vac-detailed-head-r1: 2.05rem;
+  --vac-detailed-head-r2: 1.35rem;
   --vac-day-col-w: 22px;
-  --vac-name-col-span: 7;
-  --vac-title-col-span: 7;
+  --vac-name-col-span: 8;
   --vac-balance-col-span: 3;
   --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
-  --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
-  --vac-sticky-left-balance: calc(var(--vac-name-col-w) + var(--vac-title-col-w));
-  --vac-sticky-left-total: calc(var(--vac-name-col-w) + var(--vac-title-col-w) + var(--vac-balance-col-w));
   --vac-grid-line: #e6e6e0;
   --vac-grid-fill: #ffffff;
   --vac-grid-weekend: #e3f0fa;
@@ -7526,10 +7178,6 @@ a {
   border-spacing: 0;
   font-size: 0.8rem;
   background: var(--vac-grid-fill);
-}
-
-.vac-detailed-timeline--with-title {
-  --vac-title-col-w: calc(var(--vac-day-col-w) * var(--vac-title-col-span));
 }
 
 .vac-detailed-timeline th,
@@ -7545,12 +7193,12 @@ a {
   color: var(--text-muted);
   font-weight: 600;
   text-align: center;
-  padding: 2px 1px;
-  font-size: 0.62rem;
+  padding: 4px 1px;
+  font-size: 0.68rem;
   box-shadow: inset -1px 0 0 var(--vac-grid-line), inset 0 -1px 0 var(--vac-grid-line);
 }
 
-.vac-detailed-timeline thead th:not(.sticky-col-name):not(.sticky-col-title):not(.sticky-col-balance) {
+.vac-detailed-timeline thead th:not(.sticky-col-name):not(.sticky-col-balance) {
   min-width: var(--vac-day-col-w);
   width: var(--vac-day-col-w);
 }
@@ -7578,10 +7226,10 @@ a {
   background: rgba(116, 81, 244, 0.14);
   color: #5b3fd4;
   font-weight: 700;
-  font-size: 0.58rem;
-  line-height: 1.05;
-  padding: 1px 0;
-  min-height: 1rem;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  padding: 3px 0;
+  min-height: 1.25rem;
   box-shadow: inset -1px 0 0 rgba(116, 81, 244, 0.22), inset 0 -2px 0 rgba(116, 81, 244, 0.35);
 }
 
@@ -7591,8 +7239,8 @@ a {
 
 .vac-detailed-month-label {
   font-family: var(--font-display);
-  font-size: 0.62rem !important;
-  padding: 3px 4px !important;
+  font-size: 0.68rem !important;
+  padding: 6px 4px !important;
   color: var(--text) !important;
   font-weight: 600;
   text-transform: uppercase;
@@ -7623,27 +7271,11 @@ a {
   background: var(--vac-grid-fill);
   color: var(--text);
   font-weight: 600;
-  vertical-align: middle;
-  box-shadow: inset -1px 0 0 var(--vac-grid-line);
-}
-
-.vac-detailed-timeline .sticky-col-title {
-  position: sticky;
-  left: var(--vac-name-col-w);
-  z-index: 4;
-  width: var(--vac-title-col-w);
-  min-width: var(--vac-title-col-w);
-  max-width: var(--vac-title-col-w);
-  padding: 6px 6px;
-  background: var(--vac-grid-fill);
-  color: var(--text-soft);
-  font-weight: 500;
-  vertical-align: middle;
+  vertical-align: top;
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance {
   box-shadow:
     inset -1px 0 0 var(--vac-grid-line),
@@ -7651,7 +7283,6 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head,
-.vac-detailed-timeline thead .sticky-col-title--head,
 .vac-detailed-timeline thead .sticky-col-balance--head {
   position: sticky;
   top: 0;
@@ -7666,157 +7297,36 @@ a {
   left: 0;
   vertical-align: middle;
   text-align: left;
-  padding: 6px 8px;
+  padding: 10px 8px;
   font-family: var(--font-display);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.vac-detailed-timeline thead .sticky-col-title--head {
-  left: var(--vac-name-col-w);
-  vertical-align: middle;
-  text-align: left;
-  padding: 6px 6px;
-  font-family: var(--font-display);
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
 }
 
 .vac-detailed-timeline thead .sticky-col-balance--head {
-  left: var(--vac-sticky-left-balance);
+  left: var(--vac-name-col-w);
   vertical-align: middle;
   text-align: center;
-  padding: 4px 2px;
+  padding: 10px 4px;
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  /* hidden: повёрнутый ярлык иначе раздувает ячейку и шапка дат уезжает от сетки */
-  overflow: hidden;
-}
-
-.vac-detailed-timeline .vac-balance-head-label {
-  display: inline-block;
-  max-width: 100%;
-  transform: rotate(-52deg);
-  transform-origin: center center;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.55rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head-spacer,
-.vac-detailed-timeline thead .sticky-col-title--head-spacer,
 .vac-detailed-timeline thead .sticky-col-balance--head-spacer {
   display: none;
 }
 
-.vac-detailed-timeline .vac-employee-head-label,
-.vac-detailed-timeline .vac-title-head-label {
+.vac-detailed-timeline .vac-employee-head-label {
   display: block;
   min-height: 0;
   font-size: inherit;
   font-weight: 600;
   line-height: 1.2;
   text-align: left;
-}
-
-.vac-title-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.vac-name-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-  width: 100%;
-}
-
-.vac-name-head .vac-employee-head-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.vac-title-head-label {
-  min-width: 0;
-  overflow: visible;
-  white-space: nowrap;
-  text-overflow: clip;
-  flex-shrink: 0;
-}
-
-.vac-title-col-chevron {
-  appearance: none;
-  flex: 0 0 auto;
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: #3d9e4a;
-  cursor: pointer;
-  line-height: 0;
-}
-
-.vac-title-col-chevron:hover {
-  background: rgba(61, 158, 74, 0.12);
-}
-
-.vac-title-col-chevron:focus-visible {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 1px;
-}
-
-/* Двойная стрелка » (как на референсе): вправо = открыть, влево = скрыть */
-.vac-title-col-chevron__icon {
-  position: relative;
-  display: block;
-  width: 13px;
-  height: 11px;
-  transition: transform 0.16s ease;
-}
-
-.vac-title-col-chevron__icon::before,
-.vac-title-col-chevron__icon::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 5.5px 0 5.5px 7px;
-  border-color: transparent transparent transparent currentColor;
-}
-
-.vac-title-col-chevron__icon::before {
-  left: 0;
-}
-
-.vac-title-col-chevron__icon::after {
-  left: 5px;
-}
-
-.vac-title-col-chevron--open .vac-title-col-chevron__icon {
-  transform: scaleX(-1);
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {
@@ -7861,83 +7371,37 @@ a {
   background: #f3f0fc;
 }
 
-/* Менеджер: фиксированная высота строк; контейнер режется max-height (не растягиваем мало людей) */
-.vac-team-calendar--with-side-tabs .vac-detailed-track-inner {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  min-height: var(--vac-team-emp-row-h, 21.5px);
-}
-
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-name,
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-title,
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  max-height: var(--vac-team-emp-row-h, 21.5px);
-  padding: 3px 6px 3px 8px;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  box-sizing: border-box;
-}
-
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
-  padding: 3px 2px;
-  font-size: 0.62rem;
-}
-
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-name--inline {
-  font-size: 0.7rem;
-  line-height: 1.2;
-}
-
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-title--col {
-  font-size: 0.61rem;
-  line-height: 1.15;
-}
-
-.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
-.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
-.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  max-height: var(--vac-team-emp-row-h, 21.5px);
-  min-height: var(--vac-team-emp-row-h, 21.5px);
-  padding: 3px 6px 3px 8px;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  box-sizing: border-box;
-  vertical-align: middle;
-}
-
-.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  padding: 3px 2px;
-  overflow: hidden;
-}
-
-.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
-  font-size: 0.61rem;
-  padding: 2px 4px;
-  line-height: 1.2;
-}
-
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
-  left: var(--vac-sticky-left-balance);
+  left: var(--vac-name-col-w);
   z-index: 4;
   min-width: var(--vac-balance-col-w);
   width: var(--vac-balance-col-w);
   max-width: var(--vac-balance-col-w);
-  padding: 3px 2px;
+  padding: 6px 4px;
   background: var(--vac-grid-fill);
   text-align: center;
   font-weight: 600;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
   vertical-align: middle;
-  overflow: hidden;
-  font-variant-numeric: tabular-nums;
+  overflow: visible;
+}
+
+.vac-detailed-timeline .vac-balance-head-label {
+  display: block;
+  transform: none;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
-.vac-detailed-timeline thead .sticky-col-title,
 .vac-detailed-timeline thead .sticky-col-balance {
   font-size: 0.72rem;
   line-height: 1.15;
@@ -7949,9 +7413,9 @@ a {
 
 .vac-detailed-head-month th[colspan] {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  padding: 3px 6px;
+  padding: 6px 8px;
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -7975,25 +7439,67 @@ a {
   font-weight: 700;
 }
 
-.vac-detailed-emp-row .emp-name--inline {
-  display: block;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.vac-detailed-dept-row td {
+  background: #f1ecfd;
 }
 
-.vac-detailed-emp-row .emp-title--col {
-  display: block;
+.vac-detailed-dept-row .sticky-col-dept,
+.vac-detailed-dept-row .vac-detailed-dept-fill {
+  background: #f1ecfd;
+}
+
+.vac-detailed-dept-row .sticky-col-dept {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  min-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  max-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--primary-strong);
+  cursor: pointer;
+  user-select: none;
+  box-shadow: inset -1px 0 0 var(--vac-grid-line), inset 0 -1px 0 var(--vac-grid-line);
+}
+
+.vac-detailed-dept-row .vac-detailed-dept-fill {
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 -1px 0 var(--vac-grid-line);
+}
+
+.vac-detailed-dept-chevron {
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 0.15s ease;
+}
+
+.vac-detailed-dept-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.vac-detailed-emp-row .emp-name--inline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.78rem;
+  line-height: 1.2;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  margin: 0;
+  white-space: normal;
+}
+
+.vac-detailed-emp-row .emp-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 2px;
   color: var(--text-soft);
-  font-size: 0.61rem;
+  font-size: 0.68rem;
   font-weight: 500;
   line-height: 1.15;
+  white-space: normal;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row {
@@ -8001,7 +7507,6 @@ a {
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track-inner,
@@ -8010,7 +7515,6 @@ a {
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-name,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-balance,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track-inner,
@@ -8038,7 +7542,7 @@ a {
   display: grid;
   grid-template-columns: repeat(var(--days), var(--vac-day-col-w, 22px));
   align-items: stretch;
-  min-height: 38px;
+  min-height: 44px;
   min-width: max-content;
   background: var(--vac-grid-fill);
 }
@@ -8937,7 +8441,6 @@ a {
   font-size: 13px;
   font-weight: 600;
   color: #7dd3fc;
-  white-space: nowrap;
 }
 
 .emp-projection-panel {
@@ -9386,7 +8889,6 @@ a {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  /* Эталон прода при browser 90%: узкий aside, небольшие gutters */
   --vac-cal-gutter-x: clamp(10px, 1.8vw, 24px);
   --vac-aside-width: 268px;
 }
@@ -9490,45 +8992,20 @@ a {
   min-height: 0;
   align-self: stretch;
   overflow: visible;
-  /* Место под ярлык года (absolute вверх) — не обрезается overflow предков */
-  padding-top: 30px;
 }
 
-/* Рамка + боковые вкладки в одном ряду — вкладки стыкуются к верху рамки */
-.vac-emp-calendar-frame-row {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: visible;
-}
-
-.vac-emp-calendar-frame-row > .vac-emp-calendar-pane {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* Ярлык года — папка на верхнем краю рамки (внутри padding-top, без обрезки). */
+/* Ярлык года снаружи рамки (absolute), чтобы у pane снова был overflow:hidden и flex-высота таблицы. */
 .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
 .vac-year-tab.vac-emp-calendar-yeartab {
   position: absolute;
-  top: 30px;
-  right: 18px;
+  top: 0;
+  right: 12px;
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
 }
 
-.vac-emp-calendar-slot--with-tabs .vac-emp-calendar-yeartab,
-.vac-emp-calendar-slot--with-tabs .vac-year-tab.vac-emp-calendar-yeartab {
-  /* Чуть левее, чтобы не наезжать на скругление у боковых вкладок */
-  right: 44px;
-}
-
-.vac-year-tab:not(.vac-emp-calendar-yeartab):not(.vac-team-calendar__yeartab) {
+.vac-year-tab:not(.vac-emp-calendar-yeartab) {
   position: relative;
 }
 
@@ -9706,16 +9183,9 @@ a {
   flex-shrink: 0;
   align-items: stretch;
   justify-content: flex-start;
-  /* Ниже скругления рамки — уголок не режет ярлыки */
   padding-top: 14px;
   gap: 5px;
   z-index: 2;
-}
-
-/* В frame-row вкладки уже напротив рамки — только отступ от уголка */
-.vac-emp-calendar-frame-row > .vac-cal-side-tabs {
-  align-self: stretch;
-  padding-top: 14px;
 }
 
 .vac-cal-side-tab {
@@ -10025,7 +9495,8 @@ a {
   --vac-team-name-col-w: 124px;
 }
 
-.vac-team-calendar--employee-team .vacation-timeline .sticky-col-name {
+.vac-team-calendar--employee-team .vacation-timeline .sticky-col-name,
+.vac-team-calendar--employee-team .vacation-timeline .sticky-col-dept {
   padding-left: 7px;
   padding-right: 5px;
 }
@@ -10252,7 +9723,7 @@ a {
   border-radius: 0 6px 6px 0;
 }
 
-/* Календарь на всю область рабочей зоны — месяцы растягиваются вместе с рамкой */
+/* Календарь на всю область рабочей зоны */
 .vac-manager-layout--employee .vac-emp-page--embedded .emp-cal-grid--compact,
 .vacations-employee-shell .vac-emp-page--fit .emp-cal-grid--compact {
   display: grid;
@@ -10262,7 +9733,7 @@ a {
   height: 100%;
   flex: 1;
   min-height: 0;
-  gap: clamp(10px, 1.2vw, 16px) clamp(10px, 1vw, 14px);
+  gap: clamp(8px, 1vw, 14px) clamp(8px, 0.8vw, 12px);
   align-content: stretch;
   justify-items: stretch;
 }
@@ -10301,7 +9772,7 @@ a {
   width: 100%;
   height: 100%;
   line-height: 1;
-  font-size: clamp(10px, 0.75vw, 14px);
+  font-size: clamp(9px, 0.65vw, 13px);
 }
 
 @media (min-width: 1440px) {

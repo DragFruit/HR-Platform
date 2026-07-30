@@ -5,91 +5,56 @@
     <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
     <ManagerVacationTrainingOverlay v-if="vacationTrainingEnabled" />
 
-    <div v-if="showFullEmployeeVacations" class="vacations-employee-shell">
-      <EmployeeVacationPanel :view-year="viewYear" @update:view-year="onViewYearChange" />
+    <div
+      v-if="showFullEmployeeVacations || showManagerAsEmployee"
+      class="vacations-employee-shell"
+    >
+      <EmployeeVacationPanel
+        :view-year="viewYear"
+        :ui-mode="showManagerShell ? managerUiMode : undefined"
+        team-mode-label="Руководитель"
+        @update:view-year="onViewYearChange"
+        @update:ui-mode="managerUiMode = $event"
+      />
     </div>
 
     <template v-else>
       <div
         class="vac-manager-layout"
         :class="{
-          'vac-manager-layout--with-aside': showManagerShell,
-          'vac-manager-layout--employee': showManagerShell && managerUiMode === 'employee'
+          'vac-manager-layout--with-aside': showManagerShell
         }"
       >
         <div class="vac-manager-main">
-          <EmployeeVacationPanel
-            v-if="showManagerShell && managerUiMode === 'employee'"
-            embedded
-            :view-year="viewYear"
-            @update:view-year="onViewYearChange"
-          />
-
-          <template v-else>
-            <div v-if="activeTab === 'calendar'" class="vac-manager-calendar-block">
-              <div class="vac-manager-chrome">
-                <div class="filters vac-manager-chrome__tabs">
-                  <button
-                    v-for="tab in visibleTabs"
-                    :key="tab.id"
-                    type="button"
-                    class="filter-btn"
-                    :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
-                    :class="{ active: activeTab === tab.id }"
-                    @click="setActiveTab(tab.id)"
-                  >
-                    {{ tab.label }}
-                    <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
-                      {{ approvalQueue.length }}
-                    </span>
-                  </button>
-                </div>
-                <div class="vac-manager-chrome__legend" aria-label="Легенда">
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--approved" />
-                    Одобрено
+            <div class="vac-manager-toolbar">
+              <div class="filters">
+                <button
+                  v-for="tab in visibleTabs"
+                  :key="tab.id"
+                  type="button"
+                  class="filter-btn"
+                  :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
+                  :class="{ active: activeTab === tab.id }"
+                  @click="setActiveTab(tab.id)"
+                >
+                  {{ tab.label }}
+                  <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
+                    {{ approvalQueue.length }}
                   </span>
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--pending" />
-                    На согласовании
-                  </span>
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--reservation" />
-                    Бронь
-                  </span>
-                </div>
+                </button>
               </div>
-
-              <VacationTeamCalendar
-                :departments="calendarDepartments"
-                :requests="yearRequests"
-                :reservations="yearReservations"
-                :get-month-entries="getMonthEntries"
-                :show-department-daily-counts="showDepartmentDailyCounts"
-              />
             </div>
 
-            <template v-else>
-              <div class="vac-manager-chrome vac-manager-chrome--approval">
-                <div class="filters vac-manager-chrome__tabs">
-                  <button
-                    v-for="tab in visibleTabs"
-                    :key="tab.id"
-                    type="button"
-                    class="filter-btn"
-                    :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
-                    :class="{ active: activeTab === tab.id }"
-                    @click="setActiveTab(tab.id)"
-                  >
-                    {{ tab.label }}
-                    <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
-                      {{ approvalQueue.length }}
-                    </span>
-                  </button>
-                </div>
-              </div>
+            <VacationTeamCalendar
+              v-if="activeTab === 'calendar'"
+              :departments="calendarDepartments"
+              :requests="yearRequests"
+              :reservations="yearReservations"
+              :get-month-entries="getMonthEntries"
+              :show-department-daily-counts="showDepartmentDailyCounts"
+            />
 
-              <section class="card section-card vac-approval-panel">
+            <section v-else class="card section-card vac-approval-panel">
               <header class="vac-approval-panel__head">
                 <h3 class="section-title vac-approval-panel__title">Очередь согласования</h3>
                 <span v-if="approvalQueue.length" class="vac-approval-panel__count">
@@ -149,8 +114,6 @@
                 </li>
               </ul>
             </section>
-            </template>
-          </template>
         </div>
 
         <ManagerVacationAside
@@ -233,6 +196,11 @@ const showManagerShell = computed(() => {
   if (!user.value) return false;
   return user.value.role === 'manager' || user.value.role === 'hr';
 });
+
+/** Режим «Сотрудник» у руководителя — тот же shell, что у сотрудника на проде. */
+const showManagerAsEmployee = computed(
+  () => showManagerShell.value && managerUiMode.value === 'employee'
+);
 
 /** Календарь и статистика по ограниченной команде (подчинённые руководителя). */
 const usesScopedTeamView = computed(
