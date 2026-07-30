@@ -5677,7 +5677,7 @@ a {
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) {
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 230px);
+  grid-template-columns: minmax(0, 1fr) 260px;
 }
 
 .vac-manager-layout--with-aside .vac-manager-aside-panel {
@@ -5736,12 +5736,15 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-frame-radius);
   background: var(--bg-surface);
   box-shadow: var(--vac-frame-shadow);
   box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
 }
 
 .vac-manager-aside-panel .emp-aside-role-strip {
@@ -5965,16 +5968,21 @@ a {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: var(--text-muted);
   margin-bottom: 6px;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
 }
 
 .vac-aside-stat-value {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--text);
   line-height: 1.2;
+  white-space: normal;
+  overflow: visible;
 }
 
 .vac-cap-notice-backdrop {
@@ -6023,7 +6031,10 @@ a {
 
 .vac-aside-stat-line-label {
   color: var(--text-soft);
-  white-space: nowrap;
+  white-space: normal;
+  overflow: visible;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .vac-aside-stat-line-dots {
@@ -7313,8 +7324,8 @@ a {
   --vac-detailed-head-r2: 1.35rem;
   --vac-day-col-w: 22px;
   --vac-name-col-span: 7;
-  --vac-title-col-span: 6;
-  --vac-balance-col-span: 2;
+  --vac-title-col-span: 7;
+  --vac-balance-col-span: 3;
   --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
   --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
@@ -7499,7 +7510,7 @@ a {
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .vac-detailed-timeline .vac-balance-head-label {
@@ -7509,10 +7520,10 @@ a {
   transform-origin: center center;
   white-space: nowrap;
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -7558,9 +7569,10 @@ a {
 
 .vac-title-head-label {
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+  flex-shrink: 0;
 }
 
 .vac-title-col-chevron {
