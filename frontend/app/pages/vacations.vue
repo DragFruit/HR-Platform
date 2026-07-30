@@ -28,20 +28,6 @@
           <template v-else>
             <div v-if="activeTab === 'calendar'" class="vac-manager-calendar-block">
               <div class="vac-manager-chrome">
-                <div class="vac-manager-chrome__legend" aria-label="Легенда">
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--approved" />
-                    Одобрено
-                  </span>
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--pending" />
-                    На согласовании
-                  </span>
-                  <span class="vac-legend-item">
-                    <span class="vac-legend-dot vac-legend-dot--reservation" />
-                    Бронь
-                  </span>
-                </div>
                 <div class="filters vac-manager-chrome__tabs">
                   <button
                     v-for="tab in visibleTabs"
@@ -57,6 +43,20 @@
                       {{ approvalQueue.length }}
                     </span>
                   </button>
+                </div>
+                <div class="vac-manager-chrome__legend" aria-label="Легенда">
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--approved" />
+                    Одобрено
+                  </span>
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--pending" />
+                    На согласовании
+                  </span>
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--reservation" />
+                    Бронь
+                  </span>
                 </div>
               </div>
 
