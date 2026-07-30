@@ -7662,7 +7662,7 @@ a {
   background: #f3f0fc;
 }
 
-/* Большая команда: подогнать N строк сотрудников в высоту viewport */
+/* Большая команда: высота строк под viewport, шрифт как на production */
 .vac-team-calendar--fit-screen {
   --vac-team-fit-chrome: 5.25rem; /* thead + dept-row (chrome вынесен на рамку) */
   --vac-team-emp-rows: 29;
@@ -7670,69 +7670,59 @@ a {
 
 .vac-team-calendar--fit-screen .vac-detailed-track-inner {
   min-height: clamp(
-    26px,
+    36px,
     calc((var(--vac-team-viewport-max) - var(--vac-team-fit-chrome)) / var(--vac-team-emp-rows)),
-    52px
+    44px
   );
 }
 
+/* Шрифт и отступы — как на бою (без уменьшения) */
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding: 6px 6px 6px 8px;
   font-size: 0.78rem;
   line-height: 1.2;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline,
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
+  padding: 6px 4px;
+  font-size: 0.72rem;
+}
+
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-title--col {
-  font-size: 0.78rem;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.vac-team-calendar--fit-screen .vac-detailed-dept-row td {
-  padding: 5px 8px;
-  font-size: 0.76rem;
-  line-height: 1.25;
-}
-
-.vac-team-calendar--fit-screen .vac-detailed-head-month th,
-.vac-team-calendar--fit-screen .vac-detailed-head-days th,
-.vac-team-calendar--fit-screen .vac-detailed-head-weekdays th {
-  padding-top: 4px;
-  padding-bottom: 4px;
   font-size: 0.68rem;
   line-height: 1.15;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-bar {
-  height: 16px;
-  margin-top: -8px;
-  border-radius: 8px;
+.vac-team-calendar--fit-screen .vac-detailed-dept-row td {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding: 6px 6px 6px 8px;
   font-size: 0.78rem;
   line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   padding: 2px 4px;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vac-team-dept-row td {
-  padding: 5px 8px;
-  font-size: 0.76rem;
+  padding: 8px 10px;
+  font-size: 0.8rem;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
