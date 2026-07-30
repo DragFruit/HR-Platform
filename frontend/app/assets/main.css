@@ -5707,6 +5707,10 @@ a {
   padding: 10px 16px;
 }
 
+.shell-main:has(.vac-manager-layout--employee) .topbar {
+  padding: 8px 16px;
+}
+
 /* График отпусков: фиолетовая шапка прокручивается вместе со страницей */
 .shell-main:has(.vac-team-calendar) .topbar,
 .shell-main:has(.vac-emp-page--fit) .topbar,
@@ -5732,7 +5736,7 @@ a {
 }
 
 .shell-main:has(.vac-manager-layout--employee) .content {
-  padding: 10px 14px 8px;
+  padding: 6px 14px 4px;
   overflow: visible;
   min-height: 0;
   display: flex;
@@ -5818,8 +5822,8 @@ a {
 
 .vac-manager-layout--employee .vac-emp-toolbar {
   margin-left: var(--vac-cal-gutter-x, 14px);
-  padding-top: 4px;
-  padding-bottom: 6px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .vac-manager-layout--employee .vac-emp-calendar-slot {
@@ -5929,7 +5933,7 @@ a {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   overflow: hidden;
 }
 
@@ -5952,12 +5956,12 @@ a {
 }
 
 .vac-manager-layout--employee .vac-emp-calendar-main {
-  padding-top: 28px;
+  padding-top: 24px;
 }
 
 .vac-manager-layout--employee .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
 .vac-manager-layout--employee .vac-year-tab.vac-emp-calendar-yeartab {
-  top: 28px;
+  top: 24px;
 }
 
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded {
@@ -5966,7 +5970,7 @@ a {
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 12px 18px;
+  padding: 8px 16px 10px;
 }
 
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded .emp-cal-grid {
@@ -5999,14 +6003,14 @@ a {
   background: var(--bg-surface);
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-card-radius);
-  padding: 8px 10px 6px;
+  padding: 6px 8px 4px;
   box-shadow: none;
 }
 
 .vac-emp-page--embedded .emp-cal-grid--compact .hr-month-title {
   font-size: 12px;
   font-weight: 700;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   line-height: 1;
   color: var(--text);
   flex-shrink: 0;
