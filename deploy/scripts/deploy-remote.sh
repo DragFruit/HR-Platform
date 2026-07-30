@@ -56,8 +56,21 @@ fi
 
 echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo chown -R '${DEPLOY_USER}:www-data' '${DEPLOY_PATH}'"
-"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output' '${DEPLOY_PATH}/server/data'"
-RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az --delete "${OUTPUT_DIR}/" "${REMOTE}:${DEPLOY_PATH}/.output/"
+"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output' '${DEPLOY_PATH}/.output/public/_nuxt' '${DEPLOY_PATH}/server/data'"
+
+# Вебвизор Яндекс.Метрики при воспроизведении тянет CSS/JS с live-сайта по URL из момента визита.
+# Если rsync --delete сносит старые хеши в public/_nuxt, записи выглядят «сломанными»
+# (дефолтные кнопки, UI в углу, гигантские артефакты) — хотя пользователи видели нормальный сайт.
+# Поэтому _nuxt мержим без --delete; остальной .output обновляем с --delete как раньше.
+RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az --delete \
+  --exclude 'public/_nuxt/' \
+  "${OUTPUT_DIR}/" "${REMOTE}:${DEPLOY_PATH}/.output/"
+RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az \
+  "${OUTPUT_DIR}/public/_nuxt/" "${REMOTE}:${DEPLOY_PATH}/.output/public/_nuxt/"
+
+# Хранилище Вебвизора ~15 суток — подчищаем клиентские ассеты старше 20 дней
+"${SSH_CMD[@]}" "${REMOTE}" \
+  "find '${DEPLOY_PATH}/.output/public/_nuxt' -type f -mtime +20 -delete 2>/dev/null || true"
 
 SEED_DATA_DIR="${ROOT}/frontend/server/data"
 MERGE_SCRIPT="${ROOT}/deploy/scripts/merge-employees-seed.mjs"
