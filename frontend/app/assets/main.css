@@ -9319,7 +9319,8 @@ a {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  --vac-cal-gutter-x: clamp(10px, 1.8vw, 24px);
+  /* Больше боковых полей — сетка месяцев менее «вытянутая» */
+  --vac-cal-gutter-x: clamp(36px, 5.5vw, 72px);
   --vac-aside-width: 240px;
 }
 
@@ -9333,7 +9334,7 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 6px 8px;
+  gap: 6px 16px;
   overflow: hidden;
   align-content: stretch;
 }
@@ -9365,7 +9366,7 @@ a {
   max-height: 100%;
   min-width: 0;
   margin-left: var(--vac-cal-gutter-x);
-  margin-right: clamp(6px, 1.2vw, 14px);
+  margin-right: var(--vac-cal-gutter-x);
   overflow: visible;
 }
 
@@ -9422,21 +9423,42 @@ a {
   min-height: 0;
   align-self: stretch;
   overflow: visible;
+  /* Место под ярлык года (absolute вверх) — не обрезается overflow предков */
+  padding-top: 30px;
 }
 
-/* Ярлык года над рамкой: в потоке (не absolute + translateY) — иначе overflow:hidden предков и scale обрезают. */
+/* Рамка + боковые вкладки в одном ряду — вкладки стыкуются к верху рамки */
+.vac-emp-calendar-frame-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.vac-emp-calendar-frame-row > .vac-emp-calendar-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Ярлык года — папка на верхнем краю рамки (внутри padding-top, без обрезки). */
 .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
 .vac-year-tab.vac-emp-calendar-yeartab {
-  position: relative;
-  top: auto;
-  right: auto;
+  position: absolute;
+  top: 30px;
+  right: 18px;
   left: auto;
-  align-self: flex-end;
-  flex-shrink: 0;
-  margin-right: 12px;
-  margin-bottom: -1px;
   z-index: 6;
-  transform: none;
+  transform: translateY(calc(-100% + 1px));
+}
+
+.vac-emp-calendar-slot--with-tabs .vac-emp-calendar-yeartab,
+.vac-emp-calendar-slot--with-tabs .vac-year-tab.vac-emp-calendar-yeartab {
+  /* Чуть левее, чтобы не наезжать на скругление у боковых вкладок */
+  right: 44px;
 }
 
 .vac-year-tab:not(.vac-emp-calendar-yeartab):not(.vac-team-calendar__yeartab) {
@@ -9568,7 +9590,7 @@ a {
   margin: 0;
   width: auto;
   max-width: none;
-  padding: 14px 16px;
+  padding: 16px 28px;
   align-items: stretch;
   overflow: hidden;
   flex-shrink: 1;
@@ -9617,9 +9639,16 @@ a {
   flex-shrink: 0;
   align-items: stretch;
   justify-content: flex-start;
+  /* Ниже скругления рамки — уголок не режет ярлыки */
   padding-top: 14px;
   gap: 5px;
   z-index: 2;
+}
+
+/* В frame-row вкладки уже напротив рамки — только отступ от уголка */
+.vac-emp-calendar-frame-row > .vac-cal-side-tabs {
+  align-self: stretch;
+  padding-top: 14px;
 }
 
 .vac-cal-side-tab {
@@ -9910,7 +9939,7 @@ a {
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane--team {
-  padding: 14px 12px;
+  padding: 16px 24px;
 }
 
 .vac-emp-calendar-pane--team .vac-team-calendar {

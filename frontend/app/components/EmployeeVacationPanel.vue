@@ -87,55 +87,57 @@
             :years="yearOptions"
             @update:model-value="emit('update:viewYear', $event)"
           />
-          <section
-            class="vac-emp-calendar-pane"
-            :class="{
-              'vac-emp-calendar-pane--embedded': embedded,
-              'vac-emp-calendar-pane--team': showTeamCalendar
-            }"
-            data-tour="vac-calendar"
-          >
-            <VacationTeamCalendar
-              v-if="showTeamCalendar"
-              variant="employee-team"
-              :departments="teamDepartments"
-              :requests="yearRequests"
-              :reservations="employeeReservationsList"
-              :get-month-entries="getMonthEntries"
-              :year="props.viewYear"
+          <div class="vac-emp-calendar-frame-row">
+            <section
+              class="vac-emp-calendar-pane"
+              :class="{
+                'vac-emp-calendar-pane--embedded': embedded,
+                'vac-emp-calendar-pane--team': showTeamCalendar
+              }"
+              data-tour="vac-calendar"
+            >
+              <VacationTeamCalendar
+                v-if="showTeamCalendar"
+                variant="employee-team"
+                :departments="teamDepartments"
+                :requests="yearRequests"
+                :reservations="employeeReservationsList"
+                :get-month-entries="getMonthEntries"
+                :year="props.viewYear"
+              />
+              <EmployeeYearCalendar
+                v-else-if="employeeName"
+                compact
+                :employee-name="employeeName"
+                :year="props.viewYear"
+                :requests="displayRequests"
+                :reservations="employeeReservationsList"
+                :highlight-month-index="highlightMonthIndex"
+                :range-pick-start="isHistoricalYear ? null : rangePickStart"
+                :range-pick-hover="isHistoricalYear ? null : rangePickHover"
+                :selected-range-start="isHistoricalYear ? null : form.start || null"
+                :selected-range-end="isHistoricalYear ? null : form.end || null"
+                :min-selectable-iso="minIso"
+                :read-only="isHistoricalYear"
+                :reservation-control-override="isHistoricalYear ? null : reservationControlOverride"
+                :reservation-cap-blocked-months="isHistoricalYear ? [] : reservationCapBlockedMonths"
+                @day-click="onCalendarDayClick"
+                @day-hover="onCalendarDayHover"
+                @reservation-month-click="openReservationDialog"
+                @reservation-cap-blocked="openReservationCapNotice"
+              />
+              <p v-else class="vac-emp-empty">
+                Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
+                вашим email.
+              </p>
+            </section>
+            <VacationCalendarScopeToggle
+              v-if="hasTeamCalendar"
+              :model-value="calendarScope"
+              @update:model-value="setCalendarScope"
             />
-            <EmployeeYearCalendar
-              v-else-if="employeeName"
-              compact
-              :employee-name="employeeName"
-              :year="props.viewYear"
-              :requests="displayRequests"
-              :reservations="employeeReservationsList"
-              :highlight-month-index="highlightMonthIndex"
-              :range-pick-start="isHistoricalYear ? null : rangePickStart"
-              :range-pick-hover="isHistoricalYear ? null : rangePickHover"
-              :selected-range-start="isHistoricalYear ? null : form.start || null"
-              :selected-range-end="isHistoricalYear ? null : form.end || null"
-              :min-selectable-iso="minIso"
-              :read-only="isHistoricalYear"
-              :reservation-control-override="isHistoricalYear ? null : reservationControlOverride"
-              :reservation-cap-blocked-months="isHistoricalYear ? [] : reservationCapBlockedMonths"
-              @day-click="onCalendarDayClick"
-              @day-hover="onCalendarDayHover"
-              @reservation-month-click="openReservationDialog"
-              @reservation-cap-blocked="openReservationCapNotice"
-            />
-            <p v-else class="vac-emp-empty">
-              Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
-              вашим email.
-            </p>
-          </section>
+          </div>
         </div>
-        <VacationCalendarScopeToggle
-          v-if="hasTeamCalendar"
-          :model-value="calendarScope"
-          @update:model-value="setCalendarScope"
-        />
       </div>
 
       <EmployeeVacationAside
