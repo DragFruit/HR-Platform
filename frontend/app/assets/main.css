@@ -7327,7 +7327,7 @@ a {
   --vac-day-col-w: 22px;
   --vac-name-col-span: 7;
   --vac-title-col-span: 6;
-  --vac-balance-col-span: 3;
+  --vac-balance-col-span: 2;
   --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
   --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
@@ -7507,11 +7507,26 @@ a {
   left: var(--vac-sticky-left-balance);
   vertical-align: middle;
   text-align: center;
-  padding: 10px 4px;
+  padding: 4px 2px;
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.vac-detailed-timeline .vac-balance-head-label {
+  display: inline-block;
+  max-width: none;
+  transform: rotate(-52deg);
+  transform-origin: center center;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head-spacer,
@@ -7686,8 +7701,8 @@ a {
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
-  padding: 3px 4px;
-  font-size: 0.65rem;
+  padding: 3px 2px;
+  font-size: 0.62rem;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
@@ -7732,27 +7747,16 @@ a {
   min-width: var(--vac-balance-col-w);
   width: var(--vac-balance-col-w);
   max-width: var(--vac-balance-col-w);
-  padding: 6px 4px;
+  padding: 3px 2px;
   background: var(--vac-grid-fill);
   text-align: center;
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
   vertical-align: middle;
-  overflow: visible;
-}
-
-.vac-detailed-timeline .vac-balance-head-label {
-  display: block;
-  transform: none;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.65rem;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
