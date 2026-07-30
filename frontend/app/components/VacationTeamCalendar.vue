@@ -92,6 +92,11 @@ import type { VacationReservation } from '~/utils/vacationReservations';
 
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 5;
+/**
+ * Базовый масштаб платформы (--platform-zoom / CSS zoom на .app-viewport).
+ * getBoundingClientRect — визуальные px; CSS height — layout внутри zoom.
+ */
+const PLATFORM_VIEW_ZOOM = 0.9;
 
 const props = withDefaults(
   defineProps<{
@@ -136,7 +141,7 @@ const updateViewportMax = () => {
   const top = el.getBoundingClientRect().top;
   // До низа окна (футер на этом экране скрыт) — 5px зазор
   const visualRoom = window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX;
-  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom));
+  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom / PLATFORM_VIEW_ZOOM));
 };
 
 const viewportStyle = computed(() => {

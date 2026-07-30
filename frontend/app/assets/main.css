@@ -1,4 +1,10 @@
 :root {
+  /*
+   * Базовый масштаб платформы.
+   * Бывший «браузерный 90%» = наш визуальный 100% (так зафиксировали).
+   * Менять только здесь. Не путать с zoom браузера пользователя.
+   */
+  --platform-zoom: 0.9;
   /* ITMO neo-brutalist: light content surfaces */
   --page-bg: #eeeee8;
   --bg: #eeeee8;
@@ -144,6 +150,20 @@ a {
   flex-direction: column;
 }
 
+/*
+ * Базовый масштаб (= бывший 90%): компактный UI на всех страницах с shell.
+ * width компенсирует zoom, чтобы заполнять окно.
+ * overflow: visible — не обрезать правый край (zoom рисует от центра).
+ * Не использовать transform:scale на этом узле.
+ */
+.app-viewport:has(.app-shell) {
+  zoom: var(--platform-zoom);
+  width: calc(100% / var(--platform-zoom));
+  min-height: calc(100vh / var(--platform-zoom));
+  height: auto;
+  overflow: visible;
+}
+
 .app-viewport > .app-shell,
 .app-viewport > .auth-screen {
   flex: 1;
@@ -158,8 +178,8 @@ a {
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
   flex: 0 0 auto;
   min-height: 0;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: calc(100dvh / var(--platform-zoom));
+  max-height: calc(100dvh / var(--platform-zoom));
   align-self: stretch;
 }
 
@@ -6868,8 +6888,8 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  /* Fallback с учётом zoom 0.9 (layout-px) */
-  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 52px);
+  /* Fallback layout-px с учётом --platform-zoom */
+  --vac-team-viewport-max: calc((100dvh - var(--vac-chrome-block) - 52px) / var(--platform-zoom));
   --vac-team-emp-row-h: 21.5px;
   height: auto;
   max-height: var(--vac-team-viewport-max);
@@ -7651,12 +7671,13 @@ a {
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  overflow: visible;
+  /* hidden: повёрнутый ярлык иначе раздувает ячейку и шапка дат уезжает от сетки */
+  overflow: hidden;
 }
 
 .vac-detailed-timeline .vac-balance-head-label {
   display: inline-block;
-  max-width: none;
+  max-width: 100%;
   transform: rotate(-52deg);
   transform-origin: center center;
   white-space: nowrap;
