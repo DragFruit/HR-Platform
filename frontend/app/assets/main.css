@@ -5527,12 +5527,6 @@ a {
   white-space: nowrap;
 }
 
-.vacation-timeline .dept-row td {
-  background: rgba(116, 81, 244, 0.12);
-  font-weight: 700;
-  color: var(--primary-strong);
-}
-
 .vacation-timeline .emp-name {
   display: block;
 }
@@ -6882,36 +6876,6 @@ a {
   font-weight: 500;
 }
 
-.vac-team-calendar .vacation-timeline .dept-row td {
-  background: rgba(116, 81, 244, 0.12);
-  font-weight: 700;
-  color: var(--primary-strong);
-}
-
-.vac-team-calendar .vacation-timeline .sticky-col-dept {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  width: var(--vac-team-sticky-left-w);
-  min-width: var(--vac-team-sticky-left-w);
-  max-width: var(--vac-team-sticky-left-w);
-  padding: 8px 10px 8px 8px;
-  background: rgba(116, 81, 244, 0.12);
-  /* Мягкая фиолетовая полоска только между группами (не внутри отдела) */
-  box-shadow:
-    inset 0 2px 0 rgba(116, 81, 244, 0.4),
-    inset 0 -1px 0 rgba(116, 81, 244, 0.22),
-    1px 0 0 #e4e4de;
-}
-
-.vac-team-calendar .vacation-timeline .vac-dept-row-fill {
-  padding: 0;
-  background: rgba(116, 81, 244, 0.12);
-  box-shadow:
-    inset 0 2px 0 rgba(116, 81, 244, 0.4),
-    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
-}
-
 .vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title),
 .vac-team-calendar .vacation-timeline td.vac-cell {
   width: calc((100% - var(--vac-team-sticky-left-w)) / 12);
@@ -7686,7 +7650,7 @@ a {
 
 /* Большая команда: высота строк под viewport, шрифт как на production */
 .vac-team-calendar--fit-screen {
-  --vac-team-fit-chrome: 5.25rem; /* thead + dept-row (chrome вынесен на рамку) */
+  --vac-team-fit-chrome: 4.5rem; /* thead (chrome вынесен на рамку) */
   --vac-team-emp-rows: 29;
 }
 
@@ -7722,12 +7686,6 @@ a {
   line-height: 1.15;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-dept-row td {
-  padding: 5px 12px;
-  font-size: 0.72rem;
-  line-height: 1.25;
-}
-
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
@@ -7740,11 +7698,6 @@ a {
   font-size: 0.61rem;
   padding: 2px 4px;
   line-height: 1.2;
-}
-
-.vac-team-calendar--fit-screen .vac-team-dept-row td {
-  padding: 5px 10px;
-  font-size: 0.72rem;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
@@ -7803,41 +7756,6 @@ a {
   background: #cfe4f5;
   color: var(--text);
   font-weight: 700;
-}
-
-.vac-detailed-dept-row td {
-  background: rgba(116, 81, 244, 0.1);
-}
-
-.vac-detailed-dept-row .sticky-col-dept,
-.vac-detailed-dept-row .vac-detailed-dept-fill {
-  background: rgba(116, 81, 244, 0.1);
-}
-
-.vac-detailed-dept-row .sticky-col-dept {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  width: var(--vac-sticky-left-total);
-  min-width: var(--vac-sticky-left-total);
-  max-width: var(--vac-sticky-left-total);
-  padding: 3px 10px;
-  font-weight: 600;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  color: var(--primary-strong);
-  /* Мягкая фиолетовая полоска только между группами (не внутри отдела) */
-  box-shadow:
-    inset 0 2px 0 rgba(116, 81, 244, 0.4),
-    inset -1px 0 0 rgba(116, 81, 244, 0.18),
-    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
-}
-
-.vac-detailed-dept-row .vac-detailed-dept-fill {
-  padding: 0;
-  box-shadow:
-    inset 0 2px 0 rgba(116, 81, 244, 0.4),
-    inset 0 -1px 0 rgba(116, 81, 244, 0.22);
 }
 
 .vac-detailed-emp-row .emp-name--inline {
@@ -9856,8 +9774,7 @@ a {
   --vac-team-name-col-w: 124px;
 }
 
-.vac-team-calendar--employee-team .vacation-timeline .sticky-col-name,
-.vac-team-calendar--employee-team .vacation-timeline .sticky-col-dept {
+.vac-team-calendar--employee-team .vacation-timeline .sticky-col-name {
   padding-left: 7px;
   padding-right: 5px;
 }

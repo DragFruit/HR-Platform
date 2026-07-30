@@ -90,53 +90,49 @@
           </tr>
         </thead>
         <tbody>
-          <template v-for="dep in visibleDepartments" :key="dep.name">
-            <tr class="dept-row vac-detailed-dept-row">
-              <td :colspan="stickyColCount" class="sticky-col-dept">
-                {{ dep.name }}
-              </td>
-              <td :colspan="totalDays" class="vac-detailed-dept-fill" aria-hidden="true" />
-            </tr>
-            <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
-              <td class="sticky-col-name">
-                <span class="emp-name emp-name--inline">{{ emp.name }}</span>
-              </td>
-              <td v-if="showTitleColumn" class="sticky-col-title">
-                <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
-              </td>
-              <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
-              <td :colspan="totalDays" class="vac-detailed-track">
-                <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
-                  <span
-                    v-for="cell in yearDays"
-                    :key="`bg-${emp.id}-${cell.iso}`"
-                    class="vac-detailed-day-bg"
-                    :class="{
-                      'is-weekend': cell.weekend,
-                      'is-month-start': cell.monthStart
-                    }"
-                  />
-                  <span
-                    v-for="(bar, idx) in barsFor(emp.name)"
-                    :key="`${emp.id}-bar-${idx}`"
-                    class="vac-detailed-bar"
-                    :class="bar.status"
-                    :style="barStyle(bar)"
-                    :title="bar.title"
-                  />
-                  <span
-                    v-for="(band, idx) in reservationBandsFor(emp.name)"
-                    :key="`${emp.id}-res-${idx}`"
-                    class="vac-detailed-reservation"
-                    :style="barStyle(band)"
-                    :title="band.title"
-                  >
-                    <span class="vac-reservation-label">{{ band.label }}</span>
-                  </span>
-                </div>
-              </td>
-            </tr>
-          </template>
+          <tr
+            v-for="emp in visibleEmployees"
+            :key="emp.id"
+            class="vac-detailed-emp-row"
+          >
+            <td class="sticky-col-name">
+              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+            </td>
+            <td v-if="showTitleColumn" class="sticky-col-title">
+              <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+            </td>
+            <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
+            <td :colspan="totalDays" class="vac-detailed-track">
+              <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
+                <span
+                  v-for="cell in yearDays"
+                  :key="`bg-${emp.id}-${cell.iso}`"
+                  class="vac-detailed-day-bg"
+                  :class="{
+                    'is-weekend': cell.weekend,
+                    'is-month-start': cell.monthStart
+                  }"
+                />
+                <span
+                  v-for="(bar, idx) in barsFor(emp.name)"
+                  :key="`${emp.id}-bar-${idx}`"
+                  class="vac-detailed-bar"
+                  :class="bar.status"
+                  :style="barStyle(bar)"
+                  :title="bar.title"
+                />
+                <span
+                  v-for="(band, idx) in reservationBandsFor(emp.name)"
+                  :key="`${emp.id}-res-${idx}`"
+                  class="vac-detailed-reservation"
+                  :style="barStyle(band)"
+                  :title="band.title"
+                >
+                  <span class="vac-reservation-label">{{ band.label }}</span>
+                </span>
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -203,8 +199,6 @@ const props = withDefaults(
 const emit = defineEmits<{
   'toggle-title-column': [];
 }>();
-
-const stickyColCount = computed(() => (props.showTitleColumn ? 3 : 2));
 
 const DAY_COL_PX = 22;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
@@ -295,13 +289,11 @@ const monthSpans = computed(() => {
 
 const headRowSpan = computed(() => (props.showDepartmentDailyCounts ? 4 : 3));
 
-const visibleDepartments = computed(() =>
-  props.departments.filter((dep) => dep.employees.length > 0)
+const visibleEmployees = computed(() =>
+  props.departments.flatMap((dep) => dep.employees)
 );
 
-const visibleEmployeeNames = computed(() =>
-  visibleDepartments.value.flatMap((dep) => dep.employees.map((emp) => emp.name))
-);
+const visibleEmployeeNames = computed(() => visibleEmployees.value.map((emp) => emp.name));
 
 const dayIndex = (date: Date) => {
   const month = date.getMonth();

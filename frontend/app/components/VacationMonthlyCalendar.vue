@@ -46,49 +46,45 @@
           </tr>
         </thead>
         <tbody>
-          <template v-for="dep in departments" :key="dep.name">
-            <tr class="dept-row vac-team-dept-row">
-              <td :colspan="showTitleColumn ? 2 : 1" class="sticky-col-dept">
-                {{ dep.name }}
-              </td>
-              <td colspan="12" class="vac-dept-row-fill" aria-hidden="true" />
-            </tr>
-              <tr v-for="emp in dep.employees" :key="emp.id" class="vac-team-emp-row">
-              <td class="sticky-col-name">
-                <span class="emp-name emp-name--inline">{{ emp.name }}</span>
-              </td>
-              <td v-if="showTitleColumn" class="sticky-col-title">
-                <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
-              </td>
-              <td
-                v-for="monthIndex in 12"
-                :key="`${emp.id}-${monthIndex}`"
-                class="vac-cell"
-                :class="{ 'vac-cell--compact': compactCells }"
-              >
-                <div v-if="compactCells" class="vac-cell-blocks">
-                  <span
-                    v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
-                    :key="idx"
-                    class="vac-block"
-                    :class="blockClass(block)"
-                  >
-                    {{ block.label }}
-                  </span>
-                </div>
-                <template v-else>
-                  <span
-                    v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
-                    :key="idx"
-                    class="vac-block"
-                    :class="blockClass(block)"
-                  >
-                    {{ block.label }}
-                  </span>
-                </template>
-              </td>
-            </tr>
-          </template>
+          <tr
+            v-for="emp in flatEmployees"
+            :key="emp.id"
+            class="vac-team-emp-row"
+          >
+            <td class="sticky-col-name">
+              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+            </td>
+            <td v-if="showTitleColumn" class="sticky-col-title">
+              <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+            </td>
+            <td
+              v-for="monthIndex in 12"
+              :key="`${emp.id}-${monthIndex}`"
+              class="vac-cell"
+              :class="{ 'vac-cell--compact': compactCells }"
+            >
+              <div v-if="compactCells" class="vac-cell-blocks">
+                <span
+                  v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                  :key="idx"
+                  class="vac-block"
+                  :class="blockClass(block)"
+                >
+                  {{ block.label }}
+                </span>
+              </div>
+              <template v-else>
+                <span
+                  v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                  :key="idx"
+                  class="vac-block"
+                  :class="blockClass(block)"
+                >
+                  {{ block.label }}
+                </span>
+              </template>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -120,6 +116,8 @@ const emit = defineEmits<{
 
 const { MONTHS_RU } = useVacations();
 const monthHeaders = computed(() => MONTHS_RU.map((label) => label.slice(0, 3)));
+
+const flatEmployees = computed(() => props.departments.flatMap((dep) => dep.employees));
 
 const cellBlocks = (employeeName: string, month: number) =>
   props.getMonthEntries(employeeName, month, props.year);
