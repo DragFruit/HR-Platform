@@ -317,12 +317,15 @@
 
       <h3 class="profile-itmo-panel__title">Недавняя активность</h3>
       <div
-        v-if="profileActivity.length"
         ref="activityScrollRef"
         class="profile-activity__scroll"
         :style="activityScrollStyle"
       >
-        <ul ref="activityListRef" class="list-reset profile-activity__list">
+        <ul
+          v-if="profileActivity.length"
+          ref="activityListRef"
+          class="list-reset profile-activity__list"
+        >
           <li
             v-for="item in profileActivity"
             :key="item.id"
@@ -353,10 +356,10 @@
             </div>
           </li>
         </ul>
+        <p v-else class="muted profile-activity__empty">
+          Пока тихо — события появятся сами чуть позже.
+        </p>
       </div>
-      <p v-else class="muted profile-activity__empty">
-        Пока тихо — события появятся сами чуть позже.
-      </p>
     </section>
 
     <section
@@ -575,33 +578,24 @@ const activityScrollRef = ref<HTMLElement | null>(null);
 const activityListRef = ref<HTMLElement | null>(null);
 const activityScrollMaxHeight = ref<number | null>(null);
 
-const ACTIVITY_VISIBLE_ROWS = 6;
-const ACTIVITY_PEEK_RATIO = 0.38;
+/** Высота поля = 6.5 строк активности (хвост полстроки). */
+const ACTIVITY_SLOT_ROWS = 6.5;
+const ACTIVITY_ROW_FALLBACK_PX = 72;
 
-const activityScrollStyle = computed(() =>
-  activityScrollMaxHeight.value
-    ? { maxHeight: `${activityScrollMaxHeight.value}px` }
-    : undefined
-);
+const activityScrollStyle = computed(() => {
+  const height = activityScrollMaxHeight.value ?? Math.round(ACTIVITY_ROW_FALLBACK_PX * ACTIVITY_SLOT_ROWS);
+  return {
+    height: `${height}px`,
+    minHeight: `${height}px`,
+    maxHeight: `${height}px`
+  };
+});
 
 const measureActivityScroll = () => {
   const list = activityListRef.value;
-  if (!list) {
-    activityScrollMaxHeight.value = null;
-    return;
-  }
-  const rows = [...list.querySelectorAll<HTMLElement>('.profile-activity__row')];
-  if (rows.length <= ACTIVITY_VISIBLE_ROWS) {
-    activityScrollMaxHeight.value = null;
-    return;
-  }
-  let height = 0;
-  for (let i = 0; i < ACTIVITY_VISIBLE_ROWS; i++) {
-    height += rows[i]?.offsetHeight || 0;
-  }
-  const peek = rows[ACTIVITY_VISIBLE_ROWS];
-  if (peek) height += Math.round(peek.offsetHeight * ACTIVITY_PEEK_RATIO);
-  activityScrollMaxHeight.value = Math.max(height, 1);
+  const row = list?.querySelector<HTMLElement>('.profile-activity__row');
+  const rowH = row?.offsetHeight || ACTIVITY_ROW_FALLBACK_PX;
+  activityScrollMaxHeight.value = Math.max(1, Math.round(rowH * ACTIVITY_SLOT_ROWS));
 };
 
 const PREVIEW_ICON = 48;
@@ -926,7 +920,7 @@ onMounted(() => {
       platformUserId: user.value?.id
     }).catch(() => {});
   }
-  hydrateIdeasBank();
+  void hydrateIdeasBank();
   hydrateVacations().catch(() => {});
 
   if (import.meta.client) {
