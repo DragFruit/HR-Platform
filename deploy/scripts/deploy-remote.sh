@@ -102,7 +102,7 @@ esac
 
 if "${SSH_CMD[@]}" "${REMOTE}" "test -r '${BITRIX_ENV_SRC}'"; then
   echo "→ копирование ${BITRIX_ENV_SRC} → ${DEPLOY_PATH}/.env"
-  "${SSH_CMD[@]}" "${REMOTE}" "cp '${BITRIX_ENV_SRC}' '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
+  "${SSH_CMD[@]}" "${REMOTE}" "cp '${BITRIX_ENV_SRC}' '${DEPLOY_PATH}/.env' && chown deploy:deploy '${DEPLOY_PATH}/.env' && chmod 600 '${DEPLOY_PATH}/.env'"
 fi
 
 if [[ -f "${RUN_SCRIPT}" ]]; then
