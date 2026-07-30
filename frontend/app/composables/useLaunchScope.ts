@@ -1,3 +1,5 @@
+import { isProductionBrowserHost } from '~/utils/productionHost';
+
 export type LaunchScope = 'full' | 'vacations';
 
 export const LAUNCH_VACATIONS_EMPLOYEE_PATH = '/vacations';
@@ -11,11 +13,13 @@ export const LAUNCH_VACATIONS_ADMIN_IDEAS_PATH = '/admin/ideas';
 
 export function useLaunchScope() {
   const config = useRuntimeConfig();
+  const url = useRequestURL();
 
   const launchScope = computed<LaunchScope>(() => {
+    // Бой :80 — всегда пилот «только отпуска», даже если в бандле full/development
+    if (isProductionBrowserHost(url.hostname, url.port)) return 'vacations';
     const raw = config.public.launchScope;
     if (raw === 'vacations') return 'vacations';
-    // На бое всегда пилот «только отпуска» — остальное с замком, даже если в конфиге full
     if (config.public.appEnv === 'production') return 'vacations';
     if (raw === 'full') return 'full';
     return 'full';

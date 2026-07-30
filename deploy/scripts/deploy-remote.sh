@@ -32,6 +32,11 @@ esac
 
 REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
 
+if [[ "$ENV" == "production" ]]; then
+  echo "→ проверка артефакта: только production + vacations (защита замков меню)"
+  bash "${ROOT}/deploy/scripts/verify-production-build.sh" "${OUTPUT_DIR}"
+fi
+
 SSH_CMD=(ssh)
 RSYNC_SSH=(ssh)
 SCP_CMD=(scp -o IdentitiesOnly=yes)

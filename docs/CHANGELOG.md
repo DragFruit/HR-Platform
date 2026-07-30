@@ -4,6 +4,13 @@
 
 ## 2026-07-30
 
+### Защита замков меню на бое
+
+- Клиент: на `45.12.74.25` (порт 80) всегда `launchScope=vacations` и `appEnv=production`, даже если в бандле `full`/`development` (`productionHost.ts`, `useLaunchScope`, `useAppEnv`).
+- Деплой: `deploy-remote.sh production` проверяет артефакт через `verify-production-build.sh` и **не выкладывает** сборку без `production` + `vacations`.
+- Причина: повторные выкладки локального `npm run build` открывали сотрудникам черновики разделов.
+- Проверка: ошибочный бандл на :80 — замки на месте; `deploy-remote.sh production` после голого `npm run build` — abort.
+
 ### Календарь руководителя: верхняя полоса снова на рамке
 
 - Легенда + «Календарь / Согласование» сидят на верхнем крае таблицы (`vac-manager-calendar-block`), год справа — без наезда на шапку месяцев.
