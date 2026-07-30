@@ -6838,7 +6838,7 @@ a {
   min-width: 0;
   /* Fallback с учётом zoom 0.9 (layout-px) */
   --vac-team-viewport-max: calc((100dvh - var(--vac-chrome-block) - 52px) / 0.9);
-  --vac-team-emp-row-h: 24px;
+  --vac-team-emp-row-h: 23px;
   height: auto;
   max-height: var(--vac-team-viewport-max);
   overflow: hidden;
@@ -7787,15 +7787,15 @@ a {
 
 /* Менеджер: фиксированная высота строк; контейнер режется max-height (не растягиваем мало людей) */
 .vac-team-calendar--with-side-tabs .vac-detailed-track-inner {
-  height: var(--vac-team-emp-row-h, 24px);
-  min-height: var(--vac-team-emp-row-h, 24px);
+  height: var(--vac-team-emp-row-h, 23px);
+  min-height: var(--vac-team-emp-row-h, 23px);
 }
 
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-title,
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
-  height: var(--vac-team-emp-row-h, 24px);
-  max-height: var(--vac-team-emp-row-h, 24px);
+  height: var(--vac-team-emp-row-h, 23px);
+  max-height: var(--vac-team-emp-row-h, 23px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
@@ -7820,9 +7820,9 @@ a {
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  height: var(--vac-team-emp-row-h, 24px);
-  max-height: var(--vac-team-emp-row-h, 24px);
-  min-height: var(--vac-team-emp-row-h, 24px);
+  height: var(--vac-team-emp-row-h, 23px);
+  max-height: var(--vac-team-emp-row-h, 23px);
+  min-height: var(--vac-team-emp-row-h, 23px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
