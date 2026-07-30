@@ -147,14 +147,11 @@ a {
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) {
   zoom: 0.9;
   width: calc(100% / 0.9);
-  min-height: calc(100vh / 0.9);
-  height: calc(100dvh / 0.9);
-  overflow: hidden;
-}
-
-/* Футер «Следите за нами» прячем — таблица занимает место до низа экрана */
-.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-site-footer {
-  display: none;
+  /* Один экран под shell + футер ниже — страница скроллится до «Следите за нами» */
+  min-height: calc(100dvh / 0.9);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .app-viewport > .app-shell,
@@ -167,12 +164,18 @@ a {
   min-height: auto;
 }
 
-/* Руководитель: оболочка на весь экран (без футера) → таблица до низа */
+/* Первый экран целиком под shell (таблица до низа); футер после — скролл страницы */
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
+  flex: 0 0 auto;
   min-height: 0;
-  flex: 1 1 auto;
-  height: 100%;
+  height: calc(100dvh / 0.9);
+  max-height: calc(100dvh / 0.9);
   align-self: stretch;
+}
+
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-site-footer {
+  display: block;
+  flex-shrink: 0;
 }
 
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) .shell-main {
