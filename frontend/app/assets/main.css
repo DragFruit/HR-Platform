@@ -7664,68 +7664,75 @@ a {
 
 /* Большая команда: подогнать N строк сотрудников в высоту viewport */
 .vac-team-calendar--fit-screen {
-  --vac-team-fit-chrome: 6.5rem; /* thead + dept-row (тулбар вынесен) */
+  --vac-team-fit-chrome: 5.25rem; /* thead + dept-row (chrome вынесен на рамку) */
   --vac-team-emp-rows: 29;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-track-inner {
   min-height: clamp(
-    18px,
+    26px,
     calc((var(--vac-team-viewport-max) - var(--vac-team-fit-chrome)) / var(--vac-team-emp-rows)),
-    44px
+    52px
   );
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
-  padding-top: 0;
-  padding-bottom: 0;
-  font-size: 0.68rem;
-  line-height: 1.15;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-title--col {
-  font-size: 0.68rem;
-  line-height: 1.15;
+  font-size: 0.78rem;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-dept-row td {
-  padding: 2px 8px;
-  font-size: 0.68rem;
-  line-height: 1.2;
+  padding: 5px 8px;
+  font-size: 0.76rem;
+  line-height: 1.25;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-head-month th,
 .vac-team-calendar--fit-screen .vac-detailed-head-days th,
 .vac-team-calendar--fit-screen .vac-detailed-head-weekdays th {
-  padding-top: 2px;
-  padding-bottom: 2px;
-  font-size: 0.62rem;
-  line-height: 1.1;
-}
-
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  padding-top: 1px;
-  padding-bottom: 1px;
+  padding-top: 4px;
+  padding-bottom: 4px;
   font-size: 0.68rem;
   line-height: 1.15;
 }
 
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
-  font-size: 0.58rem;
-  padding: 0 3px;
+.vac-team-calendar--fit-screen .vac-detailed-bar {
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 8px;
+}
+
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 0.78rem;
   line-height: 1.2;
 }
 
+.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
+  font-size: 0.64rem;
+  padding: 2px 4px;
+  line-height: 1.25;
+}
+
 .vac-team-calendar--fit-screen .vac-team-dept-row td {
-  padding: 2px 8px;
-  font-size: 0.68rem;
+  padding: 5px 8px;
+  font-size: 0.76rem;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
