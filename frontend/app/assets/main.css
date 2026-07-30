@@ -5793,6 +5793,59 @@ a {
   min-height: 0;
 }
 
+/*
+ * Таблица руководителя на тесте: кегль как у /admin/vacations при browser 90%
+ * (те же селекторы × 0.9; админскую таблицу не трогаем).
+ */
+.vac-manager-main .vac-detailed-timeline {
+  font-size: 0.72rem;
+}
+
+.vac-manager-main .vac-detailed-timeline thead th {
+  font-size: 0.612rem;
+}
+
+.vac-manager-main .vac-detailed-timeline tr.vac-detailed-head-counts th {
+  font-size: 0.558rem;
+}
+
+.vac-manager-main .vac-detailed-month-label {
+  font-size: 0.612rem !important;
+}
+
+.vac-manager-main .vac-detailed-timeline thead .sticky-col-name--head,
+.vac-manager-main .vac-detailed-timeline thead .sticky-col-balance--head {
+  font-size: 0.585rem;
+}
+
+.vac-manager-main .vac-detailed-timeline .sticky-col-balance {
+  font-size: 0.648rem;
+}
+
+.vac-manager-main .vac-detailed-emp-row .emp-name--inline {
+  font-size: 0.7rem;
+}
+
+.vac-manager-main .vac-detailed-emp-row .emp-title {
+  font-size: 0.612rem;
+}
+
+.vac-manager-main .vac-team-calendar .vacation-timeline .emp-name--inline {
+  font-size: 0.7rem;
+}
+
+.vac-manager-main .vac-team-calendar .vacation-timeline .emp-title {
+  font-size: 0.612rem;
+}
+
+.vac-manager-main .vac-team-calendar .vacation-timeline thead .sticky-col-name {
+  font-size: 0.648rem;
+}
+
+.vac-manager-main .vac-team-calendar .vac-cell {
+  font-size: 0.504rem;
+}
+
 .vac-manager-aside-panel {
   position: sticky;
   top: 8px;
