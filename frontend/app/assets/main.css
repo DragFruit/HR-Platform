@@ -139,6 +139,19 @@ a {
   flex-direction: column;
 }
 
+/*
+ * Календарь руководителя: как масштаб страницы 90% —
+ * всё (сайдбар, шапка, таблица) соразмерно меньше, на экран влезает больше.
+ * width/height компенсируют zoom, чтобы не оставалась пустая полоса по краям.
+ */
+.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) {
+  zoom: 0.9;
+  width: calc(100% / 0.9);
+  min-height: calc(100vh / 0.9);
+  height: calc(100dvh / 0.9);
+  overflow: hidden;
+}
+
 .app-viewport > .app-shell,
 .app-viewport > .auth-screen {
   flex: 1;
