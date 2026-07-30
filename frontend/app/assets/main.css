@@ -5732,7 +5732,7 @@ a {
 }
 
 .shell-main:has(.vac-manager-layout--employee) .content {
-  padding: 12px 16px 14px;
+  padding: 12px 28px 14px;
   overflow: visible;
   min-height: 0;
   display: flex;
@@ -5781,6 +5781,8 @@ a {
 }
 
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
+  --vac-cal-gutter-x: clamp(40px, 6vw, 80px);
+  --vac-aside-width: 220px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -5791,7 +5793,7 @@ a {
   margin: 0;
   overflow: hidden;
   align-items: stretch;
-  gap: 14px;
+  gap: 24px;
   grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
 }
 
@@ -5810,6 +5812,16 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.vac-manager-layout--employee .vac-emp-toolbar {
+  margin-left: var(--vac-cal-gutter-x, 40px);
+}
+
+.vac-manager-layout--employee .vac-emp-calendar-slot {
+  margin-left: var(--vac-cal-gutter-x, 40px);
+  margin-right: 4px;
+  min-width: 0;
 }
 
 .vac-manager-layout--employee .vac-manager-aside-panel {
@@ -5930,7 +5942,7 @@ a {
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 10px 12px;
+  padding: 18px 36px;
 }
 
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded .emp-cal-grid {
