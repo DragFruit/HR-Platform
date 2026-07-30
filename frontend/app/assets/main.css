@@ -6863,7 +6863,7 @@ a {
 
 .vac-team-calendar .vacation-timeline .emp-name--inline {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   line-height: 1.2;
   overflow: hidden;
   white-space: nowrap;
@@ -6876,7 +6876,7 @@ a {
   white-space: nowrap;
   text-overflow: ellipsis;
   line-height: 1.15;
-  font-size: 0.68rem;
+  font-size: 0.61rem;
   margin: 0;
   color: var(--text-soft);
   font-weight: 500;
@@ -7676,33 +7676,33 @@ a {
   );
 }
 
-/* Шрифт и отступы — как на бою (без уменьшения) */
+/* Шрифт и отступы — на ~10% меньше боевых (0.78 → 0.70) */
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
   padding: 6px 6px 6px 8px;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
   padding: 6px 4px;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-title--col {
-  font-size: 0.68rem;
+  font-size: 0.61rem;
   line-height: 1.15;
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-dept-row td {
   padding: 8px 12px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   line-height: 1.25;
 }
 
@@ -7710,19 +7710,19 @@ a {
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
   padding: 6px 6px 6px 8px;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
-  font-size: 0.68rem;
+  font-size: 0.61rem;
   padding: 2px 4px;
   line-height: 1.2;
 }
 
 .vac-team-calendar--fit-screen .vac-team-dept-row td {
   padding: 8px 10px;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
 }
 
 .vac-detailed-timeline .sticky-col-balance {
@@ -7736,7 +7736,7 @@ a {
   background: var(--vac-grid-fill);
   text-align: center;
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
   vertical-align: middle;
@@ -7836,7 +7836,7 @@ a {
 
 .vac-detailed-emp-row .emp-name--inline {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   line-height: 1.2;
   overflow: hidden;
   white-space: nowrap;
@@ -7850,7 +7850,7 @@ a {
   text-overflow: ellipsis;
   margin: 0;
   color: var(--text-soft);
-  font-size: 0.68rem;
+  font-size: 0.61rem;
   font-weight: 500;
   line-height: 1.15;
 }
