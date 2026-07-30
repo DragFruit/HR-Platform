@@ -1,4 +1,6 @@
 :root {
+  /* Базовый масштаб платформы (бывший «90%»). Менять только здесь. */
+  --platform-zoom: 0.9;
   /* ITMO neo-brutalist: light content surfaces */
   --page-bg: #eeeee8;
   --bg: #eeeee8;
@@ -98,6 +100,11 @@ body,
   color: var(--text);
 }
 
+/* Не даём горизонтальному хвосту от scale уехать в скролл страницы */
+html {
+  overflow-x: clip;
+}
+
 body::after {
   content: '';
   position: fixed;
@@ -140,16 +147,19 @@ a {
 }
 
 /*
- * Базовый масштаб платформы (бывший «90%»): весь UI соразмерно компактнее.
- * width/height компенсируют zoom, чтобы заполнять окно без пустой полосы.
+ * Базовый масштаб платформы: весь UI соразмерно компактнее.
+ * CSS zoom рисует от центра (MDN) → контент уезжал вправо, правое меню обрезалось.
+ * Поэтому scale + origin top left; width/margin-right компенсируют layout после scale.
  */
 .app-viewport:has(.app-shell) {
-  zoom: 0.9;
-  width: calc(100% / 0.9);
-  min-height: calc(100vh / 0.9);
+  width: calc(100% / var(--platform-zoom));
+  min-height: calc(100vh / var(--platform-zoom));
   height: auto;
-  overflow-x: hidden;
-  overflow-y: visible;
+  transform: scale(var(--platform-zoom));
+  transform-origin: top left;
+  /* layout-ширина 111% → после scale визуально 100%; отрицательный margin убирает хвост */
+  margin-right: calc(100% * (1 - 1 / var(--platform-zoom)));
+  overflow: visible;
 }
 
 .app-viewport > .app-shell,
@@ -166,8 +176,8 @@ a {
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
   flex: 0 0 auto;
   min-height: 0;
-  height: calc(100dvh / 0.9);
-  max-height: calc(100dvh / 0.9);
+  height: calc(100dvh / var(--platform-zoom));
+  max-height: calc(100dvh / var(--platform-zoom));
   align-self: stretch;
 }
 

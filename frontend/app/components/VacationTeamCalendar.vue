@@ -93,8 +93,8 @@ import type { VacationReservation } from '~/utils/vacationReservations';
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 5;
 /**
- * Базовый масштаб платформы (zoom 0.9 на .app-viewport:has(.app-shell)).
- * max-height задаётся в layout-px внутри zoom — без деления высота не совпадёт с краем окна.
+ * Базовый масштаб платформы (scale на .app-viewport:has(.app-shell), --platform-zoom).
+ * getBoundingClientRect / innerHeight — визуальные px; CSS height — в layout до scale.
  */
 const PLATFORM_VIEW_ZOOM = 0.9;
 
