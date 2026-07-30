@@ -3,7 +3,7 @@
     class="vac-team-calendar"
     :class="{
       'vac-team-calendar--employee-team': variant === 'employee-team',
-      'vac-team-calendar--with-side-tabs': variant === 'manager',
+      'vac-team-calendar--with-side-tabs': variant === 'manager' && !hideChrome,
       'vac-team-calendar--fill-viewport': fillViewport
     }"
     :style="viewportStyle"
@@ -11,7 +11,7 @@
     <div class="vac-team-calendar__main">
       <div class="vac-team-calendar__pane">
         <VacationYearTab
-          v-if="variant === 'manager'"
+          v-if="variant === 'manager' && !hideChrome"
           class="vac-team-calendar__yeartab"
           :model-value="viewYear"
           :years="yearOptions"
@@ -28,7 +28,7 @@
           </button>
 
           <VacationDetailedCalendar
-            v-if="variant === 'manager' && viewMode === 'detailed'"
+            v-if="variant === 'manager' && resolvedViewMode === 'detailed'"
             :departments="departments"
             :year="viewYear"
             :requests="requests"
@@ -53,7 +53,7 @@
     </div>
 
     <div
-      v-if="variant === 'manager'"
+      v-if="variant === 'manager' && !hideChrome"
       class="vac-cal-side-tabs"
       role="tablist"
       aria-label="Вид календаря"
@@ -63,9 +63,9 @@
         type="button"
         role="tab"
         class="vac-cal-side-tab vac-cal-side-tab--detailed"
-        :class="{ 'vac-cal-side-tab--active': viewMode === 'detailed' }"
-        :aria-selected="viewMode === 'detailed'"
-        @click="viewMode = 'detailed'"
+        :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'detailed' }"
+        :aria-selected="resolvedViewMode === 'detailed'"
+        @click="setViewMode('detailed')"
       >
         Детально
       </button>
@@ -73,9 +73,9 @@
         type="button"
         role="tab"
         class="vac-cal-side-tab vac-cal-side-tab--months"
-        :class="{ 'vac-cal-side-tab--active': viewMode === 'months' }"
-        :aria-selected="viewMode === 'months'"
-        @click="viewMode = 'months'"
+        :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'months' }"
+        :aria-selected="resolvedViewMode === 'months'"
+        @click="setViewMode('months')"
       >
         По месяцам
       </button>
@@ -111,19 +111,42 @@ const props = withDefaults(
     /** manager — год + боковые вкладки вида; employee-team — только таблица по месяцам */
     variant?: 'manager' | 'employee-team';
     defaultViewMode?: 'detailed' | 'months';
+    /** Внешнее управление видом (правое меню руководителя). */
+    viewMode?: 'detailed' | 'months';
+    /** Скрыть год и боковые вкладки — они в ManagerVacationAside. */
+    hideChrome?: boolean;
     year?: number;
     /** Суммарная строка «в отпуске» по дням (Digital Director). */
     showDepartmentDailyCounts?: boolean;
   }>(),
-  { variant: 'manager', defaultViewMode: 'detailed', showDepartmentDailyCounts: false }
+  {
+    variant: 'manager',
+    defaultViewMode: 'detailed',
+    hideChrome: false,
+    showDepartmentDailyCounts: false
+  }
 );
+
+const emit = defineEmits<{
+  'update:viewMode': [value: 'detailed' | 'months'];
+}>();
 
 const { isAdmin } = usePermissions();
 const { viewYear, state } = useVacations();
 
 const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
-const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
+const localViewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
+
+const resolvedViewMode = computed(() => props.viewMode ?? localViewMode.value);
+
+const setViewMode = (mode: 'detailed' | 'months') => {
+  if (props.viewMode !== undefined) {
+    emit('update:viewMode', mode);
+    return;
+  }
+  localViewMode.value = mode;
+};
 
 const frameRef = ref<HTMLElement | null>(null);
 const viewportMaxPx = ref<number | null>(null);
@@ -179,7 +202,7 @@ const yearOptions = computed(() => {
   return [primary - 1, primary, primary + 1];
 });
 
-watch(viewMode, () => nextTick(updateViewportMax));
+watch(resolvedViewMode, () => nextTick(updateViewportMax));
 watch(empRowCount, () => nextTick(updateViewportMax));
 
 onMounted(() => {

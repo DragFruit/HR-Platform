@@ -1,8 +1,5 @@
 <template>
-  <aside
-    class="vac-manager-aside-panel"
-    :class="{ 'vac-manager-aside-panel--employee-view': modelValue === 'employee' }"
-  >
+  <aside class="vac-manager-aside-panel">
     <VacationUiModeToggle
       :model-value="modelValue"
       :team-mode-label="props.managerModeLabel"
@@ -10,7 +7,7 @@
     />
 
     <div
-      v-if="showHrTab && modelValue === 'manager'"
+      v-if="showHrTab"
       class="role-switch role-switch--aside"
       role="group"
       aria-label="Раздел платформы"
@@ -20,49 +17,73 @@
       <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
     </div>
 
-    <template v-if="modelValue === 'manager'">
-      <div class="vac-aside-stat-card">
-        <div class="vac-aside-stat-label">Сегодня</div>
-        <div class="vac-aside-stat-value">{{ todayLabel }}</div>
+    <div class="vac-aside-stat-card">
+      <div class="vac-aside-stat-label">Сейчас в отпуске</div>
+      <div class="vac-aside-stat-value">{{ onVacationNow }} из {{ teamTotal }}</div>
+    </div>
+
+    <ManagerVacationTrainingPrompt />
+
+    <div class="vac-aside-stat-card vac-aside-controls-card">
+      <div class="vac-aside-stat-label">Раздел</div>
+      <div class="vac-aside-seg" role="group" aria-label="Раздел графика">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          type="button"
+          class="vac-aside-seg__btn"
+          :class="{ active: activeTab === tab.id }"
+          :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
+          @click="emit('update:activeTab', tab.id)"
+        >
+          {{ tab.label }}
+          <span v-if="tab.id === 'approval' && approvalCount" class="pill mini-pill">
+            {{ approvalCount }}
+          </span>
+        </button>
       </div>
+    </div>
 
-      <div class="vac-aside-stat-card">
-        <div class="vac-aside-stat-label">Сейчас в отпуске</div>
-        <div class="vac-aside-stat-value">{{ onVacationNow }} из {{ teamTotal }}</div>
+    <div v-if="activeTab === 'calendar'" class="vac-aside-stat-card vac-aside-controls-card">
+      <div class="vac-aside-stat-label">Вид</div>
+      <div
+        class="vac-aside-seg"
+        role="tablist"
+        aria-label="Вид календаря"
+        data-tour="vac-calendar-view-toggle"
+      >
+        <button
+          type="button"
+          role="tab"
+          class="vac-aside-seg__btn"
+          :class="{ active: viewMode === 'detailed' }"
+          :aria-selected="viewMode === 'detailed'"
+          @click="emit('update:viewMode', 'detailed')"
+        >
+          Детально
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="vac-aside-seg__btn"
+          :class="{ active: viewMode === 'months' }"
+          :aria-selected="viewMode === 'months'"
+          @click="emit('update:viewMode', 'months')"
+        >
+          По месяцам
+        </button>
       </div>
+    </div>
 
-      <ManagerVacationTrainingPrompt />
-
-      <div class="vac-aside-stat-card">
-        <div class="vac-aside-stat-label">Заявки</div>
-        <ul class="vac-aside-requests list-reset">
-          <li class="vac-aside-stat-line">
-            <span class="vac-aside-stat-line-label">Всего заявок:</span>
-            <span class="vac-aside-stat-line-dots" aria-hidden="true" />
-            <span class="vac-aside-stat-line-value">{{ stats.total }}</span>
-          </li>
-          <li class="vac-aside-stat-line">
-            <span class="vac-aside-stat-line-label">На согласовании:</span>
-            <span class="vac-aside-stat-line-dots" aria-hidden="true" />
-            <span class="vac-aside-stat-line-value">{{ stats.pending }}</span>
-          </li>
-          <li class="vac-aside-stat-line">
-            <span class="vac-aside-stat-line-label">Одобрено:</span>
-            <span class="vac-aside-stat-line-dots" aria-hidden="true" />
-            <span class="vac-aside-stat-line-value">{{ stats.approved }}</span>
-          </li>
-          <li class="vac-aside-stat-line">
-            <span class="vac-aside-stat-line-label">Отклонено:</span>
-            <span class="vac-aside-stat-line-dots" aria-hidden="true" />
-            <span class="vac-aside-stat-line-value">{{ stats.rejected }}</span>
-          </li>
-        </ul>
-      </div>
-    </template>
-
-    <template v-else>
-      <EmployeeVacationAside :view-year="viewYear" />
-    </template>
+    <div class="vac-aside-stat-card vac-aside-controls-card">
+      <div class="vac-aside-stat-label">Год</div>
+      <VacationYearTab
+        class="vac-aside-year-tab"
+        :model-value="viewYear"
+        :years="yearOptions"
+        @update:model-value="emit('update:viewYear', $event)"
+      />
+    </div>
   </aside>
 </template>
 
@@ -70,31 +91,36 @@
 import type { VacationUiMode } from '~/components/VacationUiModeToggle.vue';
 
 export type ManagerVacationUiMode = VacationUiMode;
+export type ManagerCalendarViewMode = 'detailed' | 'months';
+export type ManagerActiveTab = 'calendar' | 'approval';
 
-export type VacationRequestStats = {
-  total: number;
-  pending: number;
-  approved: number;
-  rejected: number;
+export type ManagerAsideTab = {
+  id: ManagerActiveTab;
+  label: string;
 };
 
 const props = withDefaults(
   defineProps<{
     modelValue: ManagerVacationUiMode;
     viewYear: number;
-    todayLabel: string;
+    yearOptions: number[];
     onVacationNow: number;
     teamTotal: number;
-    stats: VacationRequestStats;
+    activeTab: ManagerActiveTab;
+    viewMode: ManagerCalendarViewMode;
+    tabs: ManagerAsideTab[];
+    approvalCount?: number;
     showHrTab?: boolean;
-    /** Подпись режима «команда/отдел» (по умолчанию «Руководитель»). */
     managerModeLabel?: string;
   }>(),
-  { managerModeLabel: 'Руководитель' }
+  { managerModeLabel: 'Руководитель', approvalCount: 0 }
 );
 
 const emit = defineEmits<{
   'update:modelValue': [value: ManagerVacationUiMode];
+  'update:activeTab': [value: ManagerActiveTab];
+  'update:viewMode': [value: ManagerCalendarViewMode];
+  'update:viewYear': [value: number];
 }>();
 
 const setMode = (mode: ManagerVacationUiMode) => {

@@ -5782,6 +5782,15 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Как у правого меню: тот же отступ от шапки */
+  padding-top: 8px;
+  box-sizing: border-box;
+}
+
+.vac-manager-main > .vac-team-calendar,
+.vac-manager-main > .vac-approval-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .vac-manager-aside-panel {
@@ -6031,6 +6040,83 @@ a {
   font-weight: 700;
   color: var(--text);
   line-height: 1.2;
+}
+
+.vac-aside-controls-card .vac-aside-stat-label {
+  margin-bottom: 8px;
+}
+
+.vac-aside-seg {
+  display: flex;
+  width: 100%;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  box-sizing: border-box;
+}
+
+.vac-aside-seg__btn {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vac-aside-seg__btn.active {
+  background: var(--bg-surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.vac-aside-seg__btn .mini-pill {
+  margin: 0;
+  font-size: 0.62rem;
+  padding: 1px 5px;
+}
+
+.vac-aside-year-tab {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.vac-aside-year-tab.vac-year-tab,
+.vac-aside-year-tab .vac-year-tab__btn {
+  width: 100%;
+}
+
+.vac-aside-year-tab .vac-year-tab__btn {
+  justify-content: space-between;
+  border-radius: 10px;
+  border-bottom-color: var(--border-strong, var(--border));
+  padding: 8px 12px;
+  box-shadow: none;
+}
+
+.vac-aside-year-tab .vac-year-tab__btn::before {
+  display: none;
+}
+
+.vac-aside-year-tab .vac-year-tab__menu {
+  left: 0;
+  right: 0;
+  min-width: 100%;
 }
 
 .vac-cap-notice-backdrop {

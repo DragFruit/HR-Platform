@@ -26,32 +26,16 @@
         }"
       >
         <div class="vac-manager-main">
-            <div class="vac-manager-toolbar">
-              <div class="filters">
-                <button
-                  v-for="tab in visibleTabs"
-                  :key="tab.id"
-                  type="button"
-                  class="filter-btn"
-                  :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
-                  :class="{ active: activeTab === tab.id }"
-                  @click="setActiveTab(tab.id)"
-                >
-                  {{ tab.label }}
-                  <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
-                    {{ approvalQueue.length }}
-                  </span>
-                </button>
-              </div>
-            </div>
-
             <VacationTeamCalendar
               v-if="activeTab === 'calendar'"
+              hide-chrome
+              :view-mode="managerViewMode"
               :departments="calendarDepartments"
               :requests="yearRequests"
               :reservations="yearReservations"
               :get-month-entries="getMonthEntries"
               :show-department-daily-counts="showDepartmentDailyCounts"
+              @update:view-mode="managerViewMode = $event"
             />
 
             <section v-else class="card section-card vac-approval-panel">
@@ -120,12 +104,18 @@
           v-if="showManagerShell"
           v-model="managerUiMode"
           :view-year="viewYear"
-          :today-label="todayLabel"
+          :year-options="managerYearOptions"
           :on-vacation-now="onVacationNow"
           :team-total="teamTotal"
-          :stats="teamRequestStats"
+          :active-tab="activeTab"
+          :view-mode="managerViewMode"
+          :tabs="visibleTabs"
+          :approval-count="approvalQueue.length"
           :show-hr-tab="isHr"
           :manager-mode-label="'Руководитель'"
+          @update:active-tab="setActiveTab"
+          @update:view-mode="managerViewMode = $event"
+          @update:view-year="onViewYearChange"
         />
       </div>
     </template>
@@ -167,6 +157,7 @@ const {
 
 const activeTab = ref<'calendar' | 'approval'>('calendar');
 const managerUiMode = ref<'manager' | 'employee'>('manager');
+const managerViewMode = ref<'detailed' | 'months'>('detailed');
 const route = useRoute();
 
 const parseVacationTab = (raw: unknown): 'calendar' | 'approval' | null => {
@@ -304,13 +295,6 @@ const teamRequests = computed(() =>
   yearRequests.value.filter((req) => teamEmployeeNames.value.includes(req.employee))
 );
 
-const teamRequestStats = computed(() => ({
-  total: teamRequests.value.length,
-  pending: teamRequests.value.filter((r) => r.status === 'pending').length,
-  approved: teamRequests.value.filter((r) => r.status === 'approved').length,
-  rejected: teamRequests.value.filter((r) => r.status === 'rejected').length
-}));
-
 const teamTotal = computed(() => teamMembers.value.length);
 
 const onVacationNow = computed(() => {
@@ -326,13 +310,10 @@ const onVacationNow = computed(() => {
   return active.size;
 });
 
-const todayLabel = computed(() =>
-  new Date().toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
-);
+const managerYearOptions = computed(() => {
+  const primary = state.value.primaryYear || new Date().getFullYear();
+  return [primary - 1, primary, primary + 1];
+});
 
 const formatRange = (start: string, end: string) => {
   const fmt = (iso: string) =>
