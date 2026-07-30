@@ -5732,7 +5732,7 @@ a {
 }
 
 .shell-main:has(.vac-manager-layout--employee) .content {
-  padding: 12px 28px 14px;
+  padding: 10px 14px 8px;
   overflow: visible;
   min-height: 0;
   display: flex;
@@ -5781,19 +5781,20 @@ a {
 }
 
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
-  --vac-cal-gutter-x: clamp(40px, 6vw, 80px);
+  /* Умеренные поля: календарь крупнее вбок, но не впритык к краям */
+  --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
   --vac-aside-width: 220px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   height: 100%;
-  min-height: calc(100dvh - var(--vac-chrome-block) - 72px);
-  max-height: none;
-  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  flex: 1 1 auto;
   margin: 0;
   overflow: hidden;
   align-items: stretch;
-  gap: 24px;
+  gap: 16px;
   grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
 }
 
@@ -5812,25 +5813,31 @@ a {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%;
 }
 
 .vac-manager-layout--employee .vac-emp-toolbar {
-  margin-left: var(--vac-cal-gutter-x, 40px);
+  margin-left: var(--vac-cal-gutter-x, 14px);
+  padding-top: 4px;
+  padding-bottom: 6px;
 }
 
 .vac-manager-layout--employee .vac-emp-calendar-slot {
-  margin-left: var(--vac-cal-gutter-x, 40px);
-  margin-right: 4px;
+  margin-left: var(--vac-cal-gutter-x, 14px);
+  margin-right: 0;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
 }
 
 .vac-manager-layout--employee .vac-manager-aside-panel {
   width: var(--vac-aside-width);
   min-width: var(--vac-aside-width);
   max-width: var(--vac-aside-width);
-  height: auto;
+  height: 100%;
   max-height: 100%;
-  align-self: start;
+  align-self: stretch;
   overflow-y: auto;
 }
 
@@ -5919,9 +5926,10 @@ a {
   flex: 1;
   min-height: 0;
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow: hidden;
 }
 
@@ -5936,13 +5944,29 @@ a {
   flex-direction: column;
 }
 
+.vac-manager-layout--employee .vac-emp-calendar-main,
+.vac-manager-layout--employee .vac-emp-calendar-frame-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.vac-manager-layout--employee .vac-emp-calendar-main {
+  padding-top: 28px;
+}
+
+.vac-manager-layout--employee .vac-emp-calendar-main > .vac-emp-calendar-yeartab,
+.vac-manager-layout--employee .vac-year-tab.vac-emp-calendar-yeartab {
+  top: 28px;
+}
+
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded {
   flex: 1;
   min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 18px 36px;
+  padding: 12px 18px;
 }
 
 .vac-emp-page--embedded .vac-emp-calendar-pane--embedded .emp-cal-grid {
@@ -9331,8 +9355,8 @@ a {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  /* Больше боковых полей — сетка месяцев менее «вытянутая» */
-  --vac-cal-gutter-x: clamp(36px, 5.5vw, 72px);
+  /* Боковые поля: календарь крупный, но с воздухом */
+  --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
   --vac-aside-width: 240px;
 }
 
@@ -10197,7 +10221,7 @@ a {
   border-radius: 0 6px 6px 0;
 }
 
-/* Календарь на всю область рабочей зоны */
+/* Календарь на всю область рабочей зоны — месяцы растягиваются вместе с рамкой */
 .vac-manager-layout--employee .vac-emp-page--embedded .emp-cal-grid--compact,
 .vacations-employee-shell .vac-emp-page--fit .emp-cal-grid--compact {
   display: grid;
@@ -10207,7 +10231,7 @@ a {
   height: 100%;
   flex: 1;
   min-height: 0;
-  gap: clamp(8px, 1vw, 14px) clamp(8px, 0.8vw, 12px);
+  gap: clamp(10px, 1.2vw, 16px) clamp(10px, 1vw, 14px);
   align-content: stretch;
   justify-items: stretch;
 }
@@ -10246,7 +10270,7 @@ a {
   width: 100%;
   height: 100%;
   line-height: 1;
-  font-size: clamp(9px, 0.65vw, 13px);
+  font-size: clamp(10px, 0.75vw, 14px);
 }
 
 @media (min-width: 1440px) {
