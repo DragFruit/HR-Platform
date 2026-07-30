@@ -6722,7 +6722,9 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  /* Fallback до измерения JS: от верха рамки до низа экрана − 5px задаётся в VacationTeamCalendar */
   --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 52px);
+  --vac-team-emp-row-h: 34px;
   height: auto;
   max-height: var(--vac-team-viewport-max);
   overflow: hidden;
@@ -6738,7 +6740,7 @@ a {
 
 .vac-team-calendar .vacation-calendar-wrap,
 .vac-team-calendar .vac-detailed-wrap {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   max-width: 100%;
@@ -6762,10 +6764,11 @@ a {
 }
 
 .vac-team-calendar .vac-table-scroll {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   height: auto;
   min-height: 0;
-  max-height: calc(var(--vac-team-viewport-max, 100dvh) - 3.25rem);
+  /* Высоту режет frame (max-height); height:auto + flex не вытягивает маленькую команду */
+  max-height: none;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -7648,53 +7651,57 @@ a {
   background: #f3f0fc;
 }
 
-/* Большая команда: высота строк под viewport, шрифт как на production */
-.vac-team-calendar--fit-screen {
-  --vac-team-fit-chrome: 4.5rem; /* thead (chrome вынесен на рамку) */
-  --vac-team-emp-rows: 29;
+/* Менеджер: фиксированная высота строк; контейнер режется max-height (не растягиваем мало людей) */
+.vac-team-calendar--with-side-tabs .vac-detailed-track-inner {
+  height: var(--vac-team-emp-row-h, 34px);
+  min-height: var(--vac-team-emp-row-h, 34px);
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-track-inner {
-  min-height: clamp(
-    30px,
-    calc((var(--vac-team-viewport-max) - var(--vac-team-fit-chrome)) / var(--vac-team-emp-rows)),
-    38px
-  );
-}
-
-/* Шрифт и отступы — на ~10% меньше боевых (0.78 → 0.70) */
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-title,
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-title,
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
+  height: var(--vac-team-emp-row-h, 34px);
+  max-height: var(--vac-team-emp-row-h, 34px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
+  box-sizing: border-box;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
   padding: 3px 2px;
   font-size: 0.62rem;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-name--inline {
   font-size: 0.7rem;
   line-height: 1.2;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-title--col {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-title--col {
   font-size: 0.61rem;
   line-height: 1.15;
 }
 
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
+.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
+.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+  height: var(--vac-team-emp-row-h, 34px);
+  max-height: var(--vac-team-emp-row-h, 34px);
+  min-height: var(--vac-team-emp-row-h, 34px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
+  box-sizing: border-box;
+  vertical-align: middle;
 }
 
-.vac-team-calendar--fit-screen .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
+.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+  padding: 3px 2px;
+  overflow: hidden;
+}
+
+.vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-block {
   font-size: 0.61rem;
   padding: 2px 4px;
   line-height: 1.2;

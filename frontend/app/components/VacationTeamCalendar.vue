@@ -3,10 +3,9 @@
     class="vac-team-calendar"
     :class="{
       'vac-team-calendar--employee-team': variant === 'employee-team',
-      'vac-team-calendar--fit-screen': fitScreen,
       'vac-team-calendar--with-side-tabs': variant === 'manager'
     }"
-    :style="fitScreenStyle"
+    :style="viewportStyle"
   >
     <div class="vac-team-calendar__main">
       <div class="vac-team-calendar__pane">
@@ -17,7 +16,7 @@
           :years="yearOptions"
           @update:model-value="viewYear = $event"
         />
-        <div class="vac-team-calendar__frame">
+        <div ref="frameRef" class="vac-team-calendar__frame">
           <button
             v-if="variant === 'manager' && isAdmin"
             type="button"
@@ -90,6 +89,9 @@ import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 
+/** Зазор от нижнего края экрана до поля таблицы (px). */
+const VIEWPORT_BOTTOM_GAP_PX = 5;
+
 const props = withDefaults(
   defineProps<{
     departments: EmployeeDepartment[];
@@ -117,6 +119,22 @@ const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
 const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
 
+const frameRef = ref<HTMLElement | null>(null);
+const viewportMaxPx = ref<number | null>(null);
+
+const updateViewportMax = () => {
+  if (props.variant !== 'manager' || !import.meta.client) return;
+  const el = frameRef.value;
+  if (!el) return;
+  const top = el.getBoundingClientRect().top;
+  viewportMaxPx.value = Math.max(160, Math.floor(window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX));
+};
+
+const viewportStyle = computed(() => {
+  if (props.variant !== 'manager' || viewportMaxPx.value == null) return undefined;
+  return { '--vac-team-viewport-max': `${viewportMaxPx.value}px` };
+});
+
 const TITLE_COL_STORAGE_KEY = 'vbi-vac-show-title-col-v1';
 
 const readTitleColumnPref = (): boolean => {
@@ -142,23 +160,28 @@ const toggleTitleColumn = () => {
   }
 };
 
-onMounted(() => {
-  showTitleColumn.value = readTitleColumnPref();
-});
-
 const yearOptions = computed(() => {
   const primary = state.value.primaryYear || new Date().getFullYear();
   return [primary - 1, primary, primary + 1];
 });
 
-const empRowCount = computed(() =>
-  props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
-);
+watch(viewMode, () => nextTick(updateViewportMax));
 
-/** Уплотняем строки, чтобы большая команда (≈29) помещалась в один viewport. */
-const fitScreen = computed(() => props.variant === 'manager' && empRowCount.value >= 20);
+onMounted(() => {
+  showTitleColumn.value = readTitleColumnPref();
+  if (!import.meta.client) return;
+  const scheduleMeasure = () => {
+    nextTick(() => {
+      updateViewportMax();
+      requestAnimationFrame(updateViewportMax);
+    });
+  };
+  scheduleMeasure();
+  window.addEventListener('resize', updateViewportMax);
+});
 
-const fitScreenStyle = computed(() =>
-  fitScreen.value ? { '--vac-team-emp-rows': String(Math.max(empRowCount.value, 1)) } : undefined
-);
+onBeforeUnmount(() => {
+  if (!import.meta.client) return;
+  window.removeEventListener('resize', updateViewportMax);
+});
 </script>
