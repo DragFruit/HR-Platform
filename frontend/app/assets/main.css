@@ -5629,7 +5629,7 @@ a {
 
 .shell-main:has(.vac-manager-layout) .content {
   min-width: 0;
-  overflow-x: clip;
+  overflow-x: visible;
   overflow-y: visible;
   padding: 6px 8px 8px;
 }
@@ -5677,7 +5677,15 @@ a {
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) {
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) minmax(248px, 288px);
+  max-width: 100%;
+}
+
+.vac-manager-layout--with-aside:not(.vac-manager-layout--employee) .vac-manager-aside-panel {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
 }
 
 .vac-manager-layout--with-aside .vac-manager-aside-panel {
@@ -5962,27 +5970,31 @@ a {
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-card-radius);
   background: var(--bg-surface);
+  overflow: visible;
+  min-width: 0;
 }
 
 .vac-aside-stat-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   color: var(--text-muted);
   margin-bottom: 6px;
   white-space: normal;
   overflow: visible;
-  line-height: 1.25;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .vac-aside-stat-value {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: normal;
   overflow: visible;
+  word-break: break-word;
 }
 
 .vac-cap-notice-backdrop {
@@ -6752,6 +6764,25 @@ a {
   height: auto;
   max-height: var(--vac-team-viewport-max);
   overflow: hidden;
+}
+
+/* Много сотрудников: рамка на всю доступную высоту (до футера − 5px), скролл внутри */
+.vac-team-calendar--fill-viewport .vac-team-calendar__frame {
+  height: var(--vac-team-viewport-max);
+  max-height: var(--vac-team-viewport-max);
+}
+
+.vac-team-calendar--fill-viewport .vacation-calendar-wrap,
+.vac-team-calendar--fill-viewport .vac-detailed-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.vac-team-calendar--fill-viewport .vac-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .vac-team-calendar--with-side-tabs .vac-team-calendar__frame {

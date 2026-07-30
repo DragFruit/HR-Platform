@@ -3,7 +3,8 @@
     class="vac-team-calendar"
     :class="{
       'vac-team-calendar--employee-team': variant === 'employee-team',
-      'vac-team-calendar--with-side-tabs': variant === 'manager'
+      'vac-team-calendar--with-side-tabs': variant === 'manager',
+      'vac-team-calendar--fill-viewport': fillViewport
     }"
     :style="viewportStyle"
   >
@@ -89,8 +90,15 @@ import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 
-/** Зазор от нижнего края экрана до поля таблицы (px). */
+/** Зазор от нижнего края (футер / окно) до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 5;
+/**
+ * Должен совпадать с zoom у `.app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee))`.
+ * max-height задаётся в layout-px внутри zoom — без деления остаётся ~10% серой дыры снизу.
+ */
+const MANAGER_VIEW_ZOOM = 0.9;
+/** От стольки людей рамка тянется до низа (иначе height:auto по контенту). */
+const FILL_VIEWPORT_MIN_ROWS = 12;
 
 const props = withDefaults(
   defineProps<{
@@ -122,12 +130,26 @@ const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
 const frameRef = ref<HTMLElement | null>(null);
 const viewportMaxPx = ref<number | null>(null);
 
+const empRowCount = computed(() =>
+  props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
+);
+
+const fillViewport = computed(
+  () => props.variant === 'manager' && empRowCount.value >= FILL_VIEWPORT_MIN_ROWS
+);
+
 const updateViewportMax = () => {
   if (props.variant !== 'manager' || !import.meta.client) return;
   const el = frameRef.value;
   if (!el) return;
   const top = el.getBoundingClientRect().top;
-  viewportMaxPx.value = Math.max(160, Math.floor(window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX));
+  const footer = document.querySelector('.app-site-footer') as HTMLElement | null;
+  const footerTop = footer?.getBoundingClientRect().top;
+  const bottomEdge =
+    footerTop != null && footerTop > top ? footerTop : window.innerHeight;
+  const visualRoom = bottomEdge - top - VIEWPORT_BOTTOM_GAP_PX;
+  // layout px внутри zoom:0.9 → визуально совпадёт с краем
+  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom / MANAGER_VIEW_ZOOM));
 };
 
 const viewportStyle = computed(() => {
@@ -166,6 +188,7 @@ const yearOptions = computed(() => {
 });
 
 watch(viewMode, () => nextTick(updateViewportMax));
+watch(empRowCount, () => nextTick(updateViewportMax));
 
 onMounted(() => {
   showTitleColumn.value = readTitleColumnPref();
