@@ -6039,14 +6039,43 @@ a {
   text-decoration: none;
 }
 
+/* Легенда + Календарь/Согласование — на верхнем крае рамки таблицы */
+.vac-manager-calendar-block {
+  position: relative;
+  margin-top: 36px; /* место под chrome над рамкой */
+  min-width: 0;
+}
+
 .vac-manager-chrome {
-  display: flex;
+  display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   min-height: 0;
+  width: max-content;
+  max-width: calc(100% - 96px); /* место под ярлык года справа */
+  position: relative;
+  z-index: 5;
+}
+
+.vac-manager-calendar-block > .vac-manager-chrome {
+  position: absolute;
+  left: 0;
+  right: auto;
+  top: 0;
+  transform: translateY(calc(-100% + 1px));
+  z-index: 7;
+  pointer-events: auto;
+}
+
+.vac-manager-chrome--approval {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
 .vac-manager-chrome__legend {
@@ -6058,11 +6087,6 @@ a {
   line-height: 1.2;
   color: var(--text-muted);
   white-space: nowrap;
-}
-
-.vac-manager-chrome__spacer {
-  flex: 1 1 auto;
-  min-width: 8px;
 }
 
 .vac-manager-chrome__tabs.filters {
@@ -6081,11 +6105,8 @@ a {
   border-color: rgba(52, 211, 153, 0.28);
 }
 
-.vac-manager-chrome + .vac-team-calendar {
-  margin-top: 22px; /* место под ярлык года на верхнем краю рамки */
-}
-
-.vac-manager-chrome + .vac-approval-panel {
+.vac-manager-chrome + .vac-approval-panel,
+.vac-manager-chrome--approval + .vac-approval-panel {
   margin-top: 8px;
 }
 

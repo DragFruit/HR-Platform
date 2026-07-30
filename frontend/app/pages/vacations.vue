@@ -26,50 +26,70 @@
           />
 
           <template v-else>
-            <div class="vac-manager-chrome">
-              <div v-if="activeTab === 'calendar'" class="vac-manager-chrome__legend" aria-label="Легенда">
-                <span class="vac-legend-item">
-                  <span class="vac-legend-dot vac-legend-dot--approved" />
-                  Одобрено
-                </span>
-                <span class="vac-legend-item">
-                  <span class="vac-legend-dot vac-legend-dot--pending" />
-                  На согласовании
-                </span>
-                <span class="vac-legend-item">
-                  <span class="vac-legend-dot vac-legend-dot--reservation" />
-                  Бронь
-                </span>
-              </div>
-              <div class="vac-manager-chrome__spacer" aria-hidden="true" />
-              <div class="filters vac-manager-chrome__tabs">
-                <button
-                  v-for="tab in visibleTabs"
-                  :key="tab.id"
-                  type="button"
-                  class="filter-btn"
-                  :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
-                  :class="{ active: activeTab === tab.id }"
-                  @click="setActiveTab(tab.id)"
-                >
-                  {{ tab.label }}
-                  <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
-                    {{ approvalQueue.length }}
+            <div v-if="activeTab === 'calendar'" class="vac-manager-calendar-block">
+              <div class="vac-manager-chrome">
+                <div class="vac-manager-chrome__legend" aria-label="Легенда">
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--approved" />
+                    Одобрено
                   </span>
-                </button>
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--pending" />
+                    На согласовании
+                  </span>
+                  <span class="vac-legend-item">
+                    <span class="vac-legend-dot vac-legend-dot--reservation" />
+                    Бронь
+                  </span>
+                </div>
+                <div class="filters vac-manager-chrome__tabs">
+                  <button
+                    v-for="tab in visibleTabs"
+                    :key="tab.id"
+                    type="button"
+                    class="filter-btn"
+                    :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
+                    :class="{ active: activeTab === tab.id }"
+                    @click="setActiveTab(tab.id)"
+                  >
+                    {{ tab.label }}
+                    <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
+                      {{ approvalQueue.length }}
+                    </span>
+                  </button>
+                </div>
               </div>
+
+              <VacationTeamCalendar
+                :departments="calendarDepartments"
+                :requests="yearRequests"
+                :reservations="yearReservations"
+                :get-month-entries="getMonthEntries"
+                :show-department-daily-counts="showDepartmentDailyCounts"
+              />
             </div>
 
-            <VacationTeamCalendar
-              v-if="activeTab === 'calendar'"
-              :departments="calendarDepartments"
-              :requests="yearRequests"
-              :reservations="yearReservations"
-              :get-month-entries="getMonthEntries"
-              :show-department-daily-counts="showDepartmentDailyCounts"
-            />
+            <template v-else>
+              <div class="vac-manager-chrome vac-manager-chrome--approval">
+                <div class="filters vac-manager-chrome__tabs">
+                  <button
+                    v-for="tab in visibleTabs"
+                    :key="tab.id"
+                    type="button"
+                    class="filter-btn"
+                    :data-tour="tab.id === 'approval' ? 'vac-approval-tab' : null"
+                    :class="{ active: activeTab === tab.id }"
+                    @click="setActiveTab(tab.id)"
+                  >
+                    {{ tab.label }}
+                    <span v-if="tab.id === 'approval' && approvalQueue.length" class="pill mini-pill">
+                      {{ approvalQueue.length }}
+                    </span>
+                  </button>
+                </div>
+              </div>
 
-            <section v-else class="card section-card vac-approval-panel">
+              <section class="card section-card vac-approval-panel">
               <header class="vac-approval-panel__head">
                 <h3 class="section-title vac-approval-panel__title">Очередь согласования</h3>
                 <span v-if="approvalQueue.length" class="vac-approval-panel__count">
@@ -129,6 +149,7 @@
                 </li>
               </ul>
             </section>
+            </template>
           </template>
         </div>
 
