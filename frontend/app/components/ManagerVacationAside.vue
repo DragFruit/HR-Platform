@@ -20,7 +20,7 @@
       <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
     </div>
 
-    <template v-if="modelValue === 'manager'">
+    <div v-if="modelValue === 'manager'" class="vac-manager-aside-body">
       <div class="vac-aside-stat-card">
         <div class="vac-aside-stat-label">Сегодня</div>
         <div class="vac-aside-stat-value">{{ todayLabel }}</div>
@@ -58,11 +58,9 @@
           </li>
         </ul>
       </div>
-    </template>
+    </div>
 
-    <template v-else>
-      <EmployeeVacationAside :view-year="viewYear" />
-    </template>
+    <EmployeeVacationAside v-else :view-year="viewYear" />
   </aside>
 </template>
 

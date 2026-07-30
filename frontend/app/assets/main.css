@@ -5779,14 +5779,15 @@ a {
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 248px);
+  --vac-aside-width: 300px;
+  grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
   max-width: 100%;
 }
 
 .vac-manager-layout--with-aside:not(.vac-manager-layout--employee) .vac-manager-aside-panel {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
+  width: var(--vac-aside-width);
+  min-width: var(--vac-aside-width);
+  max-width: var(--vac-aside-width);
   overflow: visible;
 }
 
@@ -5797,7 +5798,7 @@ a {
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
   /* Умеренные поля: календарь крупнее вбок, но не впритык к краям */
   --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
-  --vac-aside-width: 272px;
+  --vac-aside-width: 300px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -5864,12 +5865,12 @@ a {
   top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--vac-frame-border);
-  border-radius: var(--vac-frame-radius);
-  background: var(--bg-surface);
-  box-shadow: var(--vac-frame-shadow);
+  gap: 10px;
+  /* Как у сотрудника: переключатель снаружи, контент в отдельной рамке */
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
@@ -5878,6 +5879,21 @@ a {
 
 .vac-manager-aside-panel .emp-aside-role-strip {
   margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.vac-manager-aside-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--vac-frame-border);
+  border-radius: var(--vac-frame-radius);
+  background: var(--bg-surface);
+  box-shadow: var(--vac-frame-shadow);
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: visible;
 }
 
 .vac-manager-aside-panel--employee-view {
@@ -9373,7 +9389,7 @@ a {
   box-sizing: border-box;
   /* Боковые поля: календарь крупный, но с воздухом */
   --vac-cal-gutter-x: clamp(14px, 2vw, 28px);
-  --vac-aside-width: 272px;
+  --vac-aside-width: 300px;
 }
 
 /* Как у руководителя: панель справа с верхнего края рабочей зоны, не под тулбаром */
