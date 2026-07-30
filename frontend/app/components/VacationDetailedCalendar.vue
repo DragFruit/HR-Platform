@@ -91,54 +91,51 @@
         </thead>
         <tbody>
           <template v-for="dep in visibleDepartments" :key="dep.name">
-            <tr class="dept-row vac-detailed-dept-row" @click="toggleDept(dep.name)">
+            <tr class="dept-row vac-detailed-dept-row">
               <td :colspan="stickyColCount" class="sticky-col-dept">
-                <span class="vac-detailed-dept-chevron" :class="{ collapsed: isCollapsed(dep.name) }">▾</span>
                 {{ dep.name }}
               </td>
               <td :colspan="totalDays" class="vac-detailed-dept-fill" aria-hidden="true" />
             </tr>
-            <template v-if="!isCollapsed(dep.name)">
-              <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
-                <td class="sticky-col-name">
-                  <span class="emp-name emp-name--inline">{{ emp.name }}</span>
-                </td>
-                <td v-if="showTitleColumn" class="sticky-col-title">
-                  <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
-                </td>
-                <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
-                <td :colspan="totalDays" class="vac-detailed-track">
-                  <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
-                    <span
-                      v-for="cell in yearDays"
-                      :key="`bg-${emp.id}-${cell.iso}`"
-                      class="vac-detailed-day-bg"
-                      :class="{
-                        'is-weekend': cell.weekend,
-                        'is-month-start': cell.monthStart
-                      }"
-                    />
-                    <span
-                      v-for="(bar, idx) in barsFor(emp.name)"
-                      :key="`${emp.id}-bar-${idx}`"
-                      class="vac-detailed-bar"
-                      :class="bar.status"
-                      :style="barStyle(bar)"
-                      :title="bar.title"
-                    />
-                    <span
-                      v-for="(band, idx) in reservationBandsFor(emp.name)"
-                      :key="`${emp.id}-res-${idx}`"
-                      class="vac-detailed-reservation"
-                      :style="barStyle(band)"
-                      :title="band.title"
-                    >
-                      <span class="vac-reservation-label">{{ band.label }}</span>
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </template>
+            <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
+              <td class="sticky-col-name">
+                <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+              </td>
+              <td v-if="showTitleColumn" class="sticky-col-title">
+                <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+              </td>
+              <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
+              <td :colspan="totalDays" class="vac-detailed-track">
+                <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
+                  <span
+                    v-for="cell in yearDays"
+                    :key="`bg-${emp.id}-${cell.iso}`"
+                    class="vac-detailed-day-bg"
+                    :class="{
+                      'is-weekend': cell.weekend,
+                      'is-month-start': cell.monthStart
+                    }"
+                  />
+                  <span
+                    v-for="(bar, idx) in barsFor(emp.name)"
+                    :key="`${emp.id}-bar-${idx}`"
+                    class="vac-detailed-bar"
+                    :class="bar.status"
+                    :style="barStyle(bar)"
+                    :title="bar.title"
+                  />
+                  <span
+                    v-for="(band, idx) in reservationBandsFor(emp.name)"
+                    :key="`${emp.id}-res-${idx}`"
+                    class="vac-detailed-reservation"
+                    :style="barStyle(band)"
+                    :title="band.title"
+                  >
+                    <span class="vac-reservation-label">{{ band.label }}</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
           </template>
         </tbody>
       </table>
@@ -215,7 +212,6 @@ const TODAY_SCROLL_OFFSET_COLS = 3;
 
 const scrollWrapRef = ref<HTMLElement | null>(null);
 const tableRef = ref<HTMLTableElement | null>(null);
-const collapsedDepts = ref<Set<string>>(new Set());
 
 const measureStickyHeaderHeights = () => {
   const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
@@ -368,15 +364,6 @@ const dayHeaderClass = (cell: YearDayCell) => {
   return classes;
 };
 
-const isCollapsed = (name: string) => collapsedDepts.value.has(name);
-
-const toggleDept = (name: string) => {
-  const next = new Set(collapsedDepts.value);
-  if (next.has(name)) next.delete(name);
-  else next.add(name);
-  collapsedDepts.value = next;
-};
-
 const balanceFor = (emp: Employee) => {
   const b = calcEmployeeBalance(
     emp.name,
@@ -487,6 +474,4 @@ watch(
   () => nextTick(measureStickyHeaderHeights),
   { deep: true }
 );
-
-watch(collapsedDepts, () => nextTick(measureStickyHeaderHeights));
 </script>

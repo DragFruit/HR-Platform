@@ -7826,8 +7826,6 @@ a {
   font-size: 0.72rem;
   line-height: 1.2;
   color: var(--primary-strong);
-  cursor: pointer;
-  user-select: none;
   /* Мягкая фиолетовая полоска только между группами (не внутри отдела) */
   box-shadow:
     inset 0 2px 0 rgba(116, 81, 244, 0.4),
@@ -7837,20 +7835,9 @@ a {
 
 .vac-detailed-dept-row .vac-detailed-dept-fill {
   padding: 0;
-  cursor: pointer;
   box-shadow:
     inset 0 2px 0 rgba(116, 81, 244, 0.4),
     inset 0 -1px 0 rgba(116, 81, 244, 0.22);
-}
-
-.vac-detailed-dept-chevron {
-  display: inline-block;
-  margin-right: 6px;
-  transition: transform 0.15s ease;
-}
-
-.vac-detailed-dept-chevron.collapsed {
-  transform: rotate(-90deg);
 }
 
 .vac-detailed-emp-row .emp-name--inline {
