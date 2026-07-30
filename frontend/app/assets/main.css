@@ -1,6 +1,4 @@
 :root {
-  /* Базовый масштаб платформы (бывший «90%»). Менять только здесь. */
-  --platform-zoom: 0.9;
   /* ITMO neo-brutalist: light content surfaces */
   --page-bg: #eeeee8;
   --bg: #eeeee8;
@@ -100,7 +98,7 @@ body,
   color: var(--text);
 }
 
-/* Не даём горизонтальному хвосту уехать в скролл страницы */
+/* Не даём случайному горизонтальному хвосту уехать в скролл страницы */
 html {
   overflow-x: clip;
 }
@@ -146,22 +144,6 @@ a {
   flex-direction: column;
 }
 
-/*
- * Базовый масштаб платформы (компактнее UI).
- * Важно: НЕ использовать transform: scale на корне —
- * Вебвизор Яндекс.Метрики тогда показывает «сломанный» экран
- * (UI в углу, гигантские артефакты). CSS zoom Вебвизор переносит нормально.
- * width компенсирует zoom, чтобы не оставалась пустая полоса справа.
- * overflow: visible — иначе при zoom от центра обрезается правый край.
- */
-.app-viewport:has(.app-shell) {
-  zoom: var(--platform-zoom);
-  width: calc(100% / var(--platform-zoom));
-  min-height: calc(100vh / var(--platform-zoom));
-  height: auto;
-  overflow: visible;
-}
-
 .app-viewport > .app-shell,
 .app-viewport > .auth-screen {
   flex: 1;
@@ -176,8 +158,8 @@ a {
 .app-viewport:has(.vac-manager-layout:not(.vac-manager-layout--employee)) > .app-shell {
   flex: 0 0 auto;
   min-height: 0;
-  height: calc(100dvh / var(--platform-zoom));
-  max-height: calc(100dvh / var(--platform-zoom));
+  height: 100dvh;
+  max-height: 100dvh;
   align-self: stretch;
 }
 
@@ -6887,7 +6869,7 @@ a {
   max-width: 100%;
   min-width: 0;
   /* Fallback с учётом zoom 0.9 (layout-px) */
-  --vac-team-viewport-max: calc((100dvh - var(--vac-chrome-block) - 52px) / 0.9);
+  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 52px);
   --vac-team-emp-row-h: 21.5px;
   height: auto;
   max-height: var(--vac-team-viewport-max);
