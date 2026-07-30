@@ -355,6 +355,7 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-employees-v3` | `useEmployees` |
 | `vbi-vacations-state-v6` | `useVacations` (заявки + предварительные брони; миграция с v5) |
 | `vbi-employee-vac-calendar-scope-v1` | `useEmployeeVacationTeamView` — «Мой календарь» / «Общий» |
+| `vbi-vac-show-title-col-v1` | `VacationTeamCalendar` — показать столбец «Должность» (`1`/`0`) |
 | `vbi-org-structure-v1` | `useOrgStructure` |
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |

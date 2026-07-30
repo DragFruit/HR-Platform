@@ -6767,11 +6767,19 @@ a {
 
 .vac-team-calendar .vacation-timeline {
   --vac-team-name-col-w: 104px;
+  --vac-team-title-col-w: 0px;
+  --vac-team-sticky-left-w: var(--vac-team-name-col-w);
   min-width: 100%;
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.82rem;
+}
+
+.vac-team-calendar .vacation-timeline--with-title {
+  --vac-team-name-col-w: 100px;
+  --vac-team-title-col-w: 120px;
+  --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
 }
 
 .vac-team-calendar .vacation-timeline thead th {
@@ -6800,28 +6808,56 @@ a {
   max-width: var(--vac-team-name-col-w);
   padding: 6px 6px 6px 8px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.vac-team-calendar .vacation-timeline .sticky-col-title {
+  position: sticky;
+  left: var(--vac-team-name-col-w);
+  z-index: 4;
+  width: var(--vac-team-title-col-w);
+  min-width: var(--vac-team-title-col-w);
+  max-width: var(--vac-team-title-col-w);
+  padding: 6px 6px;
+  text-align: left;
+  vertical-align: middle;
+  background: var(--bg-surface);
+  box-shadow: 1px 0 0 #e4e4de;
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+.vac-team-calendar .vacation-timeline thead .sticky-col-title--head {
+  top: 0;
+  z-index: 5;
+  background: #f0f2f5;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .vac-team-calendar .vacation-timeline .emp-name--inline {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
   font-size: 0.78rem;
   line-height: 1.2;
   overflow: hidden;
-  white-space: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.vac-team-calendar .vacation-timeline .emp-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.vac-team-calendar .vacation-timeline .emp-title--col {
+  display: block;
   overflow: hidden;
-  white-space: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   line-height: 1.15;
   font-size: 0.68rem;
-  margin-top: 2px;
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 500;
 }
 
 .vac-team-calendar .vacation-timeline .dept-row td {
@@ -6834,9 +6870,9 @@ a {
   position: sticky;
   left: 0;
   z-index: 4;
-  width: var(--vac-team-name-col-w);
-  min-width: var(--vac-team-name-col-w);
-  max-width: var(--vac-team-name-col-w);
+  width: var(--vac-team-sticky-left-w);
+  min-width: var(--vac-team-sticky-left-w);
+  max-width: var(--vac-team-sticky-left-w);
   padding: 8px 10px 8px 8px;
   background: rgba(116, 81, 244, 0.12);
   box-shadow: 1px 0 0 #e4e4de;
@@ -6847,14 +6883,14 @@ a {
   background: rgba(116, 81, 244, 0.12);
 }
 
-.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name),
+.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title),
 .vac-team-calendar .vacation-timeline td.vac-cell {
-  width: calc((100% - var(--vac-team-name-col-w)) / 12);
+  width: calc((100% - var(--vac-team-sticky-left-w)) / 12);
   min-width: 0;
-  max-width: calc((100% - var(--vac-team-name-col-w)) / 12);
+  max-width: calc((100% - var(--vac-team-sticky-left-w)) / 12);
 }
 
-.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name) {
+.vac-team-calendar .vacation-timeline thead th:not(.sticky-col-name):not(.sticky-col-title) {
   padding: 5px 2px;
   font-size: 0.68rem;
   line-height: 1.15;
@@ -7044,6 +7080,45 @@ a {
   z-index: 4;
   padding: 5px 10px;
   font-size: 0.72rem;
+}
+
+.vac-title-col-toggle {
+  appearance: none;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 4;
+  padding: 5px 10px;
+  border: 1px solid #d8d8d2;
+  border-radius: 8px;
+  background: #fafaf6;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vac-team-calendar__frame:has(.vac-admin-add-btn--frame) .vac-title-col-toggle {
+  right: 148px;
+}
+
+.vac-title-col-toggle:hover {
+  border-color: #c8c8c2;
+  color: var(--text);
+}
+
+.vac-title-col-toggle--on {
+  border-color: rgba(116, 81, 244, 0.45);
+  background: rgba(116, 81, 244, 0.12);
+  color: var(--primary-strong);
+}
+
+.vac-title-col-toggle:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 .vac-admin-add-btn:focus-visible {
@@ -7265,10 +7340,14 @@ a {
   --vac-detailed-head-r1: 2.05rem;
   --vac-detailed-head-r2: 1.35rem;
   --vac-day-col-w: 22px;
-  --vac-name-col-span: 8;
+  --vac-name-col-span: 7;
+  --vac-title-col-span: 6;
   --vac-balance-col-span: 3;
   --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
+  --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
+  --vac-sticky-left-balance: calc(var(--vac-name-col-w) + var(--vac-title-col-w));
+  --vac-sticky-left-total: calc(var(--vac-name-col-w) + var(--vac-title-col-w) + var(--vac-balance-col-w));
   --vac-grid-line: #e6e6e0;
   --vac-grid-fill: #ffffff;
   --vac-grid-weekend: #e3f0fa;
@@ -7280,6 +7359,10 @@ a {
   border-spacing: 0;
   font-size: 0.8rem;
   background: var(--vac-grid-fill);
+}
+
+.vac-detailed-timeline--with-title {
+  --vac-title-col-w: calc(var(--vac-day-col-w) * var(--vac-title-col-span));
 }
 
 .vac-detailed-timeline th,
@@ -7300,7 +7383,7 @@ a {
   box-shadow: inset -1px 0 0 var(--vac-grid-line), inset 0 -1px 0 var(--vac-grid-line);
 }
 
-.vac-detailed-timeline thead th:not(.sticky-col-name):not(.sticky-col-balance) {
+.vac-detailed-timeline thead th:not(.sticky-col-name):not(.sticky-col-title):not(.sticky-col-balance) {
   min-width: var(--vac-day-col-w);
   width: var(--vac-day-col-w);
 }
@@ -7373,11 +7456,27 @@ a {
   background: var(--vac-grid-fill);
   color: var(--text);
   font-weight: 600;
-  vertical-align: top;
+  vertical-align: middle;
+  box-shadow: inset -1px 0 0 var(--vac-grid-line);
+}
+
+.vac-detailed-timeline .sticky-col-title {
+  position: sticky;
+  left: var(--vac-name-col-w);
+  z-index: 4;
+  width: var(--vac-title-col-w);
+  min-width: var(--vac-title-col-w);
+  max-width: var(--vac-title-col-w);
+  padding: 6px 6px;
+  background: var(--vac-grid-fill);
+  color: var(--text-soft);
+  font-weight: 500;
+  vertical-align: middle;
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance {
   box-shadow:
     inset -1px 0 0 var(--vac-grid-line),
@@ -7385,6 +7484,7 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head,
+.vac-detailed-timeline thead .sticky-col-title--head,
 .vac-detailed-timeline thead .sticky-col-balance--head {
   position: sticky;
   top: 0;
@@ -7406,8 +7506,20 @@ a {
   letter-spacing: 0.04em;
 }
 
-.vac-detailed-timeline thead .sticky-col-balance--head {
+.vac-detailed-timeline thead .sticky-col-title--head {
   left: var(--vac-name-col-w);
+  vertical-align: middle;
+  text-align: left;
+  padding: 10px 6px;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.vac-detailed-timeline thead .sticky-col-balance--head {
+  left: var(--vac-sticky-left-balance);
   vertical-align: middle;
   text-align: center;
   padding: 10px 4px;
@@ -7418,11 +7530,13 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head-spacer,
+.vac-detailed-timeline thead .sticky-col-title--head-spacer,
 .vac-detailed-timeline thead .sticky-col-balance--head-spacer {
   display: none;
 }
 
-.vac-detailed-timeline .vac-employee-head-label {
+.vac-detailed-timeline .vac-employee-head-label,
+.vac-detailed-timeline .vac-title-head-label {
   display: block;
   min-height: 0;
   font-size: inherit;
@@ -7479,10 +7593,6 @@ a {
   --vac-team-emp-rows: 29;
 }
 
-.vac-team-calendar--fit-screen .emp-title {
-  display: none;
-}
-
 .vac-team-calendar--fit-screen .vac-detailed-track-inner {
   min-height: clamp(
     18px,
@@ -7492,6 +7602,7 @@ a {
 }
 
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-title,
 .vac-team-calendar--fit-screen .vac-detailed-emp-row .sticky-col-balance {
   padding-top: 0;
   padding-bottom: 0;
@@ -7499,7 +7610,8 @@ a {
   line-height: 1.15;
 }
 
-.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline {
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-name--inline,
+.vac-team-calendar--fit-screen .vac-detailed-emp-row .emp-title--col {
   font-size: 0.68rem;
   line-height: 1.15;
   white-space: nowrap;
@@ -7543,7 +7655,7 @@ a {
 
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
-  left: var(--vac-name-col-w);
+  left: var(--vac-sticky-left-balance);
   z-index: 4;
   min-width: var(--vac-balance-col-w);
   width: var(--vac-balance-col-w);
@@ -7572,6 +7684,7 @@ a {
 }
 
 .vac-detailed-timeline thead .sticky-col-name,
+.vac-detailed-timeline thead .sticky-col-title,
 .vac-detailed-timeline thead .sticky-col-balance {
   font-size: 0.72rem;
   line-height: 1.15;
@@ -7622,9 +7735,9 @@ a {
   position: sticky;
   left: 0;
   z-index: 4;
-  width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
-  min-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
-  max-width: calc(var(--vac-name-col-w) + var(--vac-balance-col-w));
+  width: var(--vac-sticky-left-total);
+  min-width: var(--vac-sticky-left-total);
+  max-width: var(--vac-sticky-left-total);
   padding: 8px 12px;
   font-weight: 600;
   color: var(--primary-strong);
@@ -7650,26 +7763,24 @@ a {
 }
 
 .vac-detailed-emp-row .emp-name--inline {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
   font-size: 0.78rem;
   line-height: 1.2;
   overflow: hidden;
-  white-space: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.vac-detailed-emp-row .emp-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+.vac-detailed-emp-row .emp-title--col {
+  display: block;
   overflow: hidden;
-  margin-top: 2px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0;
   color: var(--text-soft);
   font-size: 0.68rem;
   font-weight: 500;
   line-height: 1.15;
-  white-space: normal;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row {
@@ -7677,6 +7788,7 @@ a {
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track-inner,
@@ -7685,6 +7797,7 @@ a {
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-name,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-balance,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track-inner,

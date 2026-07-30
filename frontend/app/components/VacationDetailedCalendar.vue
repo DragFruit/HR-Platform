@@ -1,11 +1,22 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
     <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
-      <table ref="tableRef" class="vac-detailed-timeline">
+      <table
+        ref="tableRef"
+        class="vac-detailed-timeline"
+        :class="{ 'vac-detailed-timeline--with-title': showTitleColumn }"
+      >
         <thead>
           <tr class="vac-detailed-head-month">
             <th :rowspan="headRowSpan" class="sticky-col-name sticky-col-name--head">
               <span class="vac-employee-head-label">Сотрудник</span>
+            </th>
+            <th
+              v-if="showTitleColumn"
+              :rowspan="headRowSpan"
+              class="sticky-col-title sticky-col-title--head"
+            >
+              <span class="vac-title-head-label">Должность</span>
             </th>
             <th :rowspan="headRowSpan" class="sticky-col-balance sticky-col-balance--head">
               <span class="vac-balance-head-label">Остаток</span>
@@ -51,7 +62,7 @@
         <tbody>
           <template v-for="dep in visibleDepartments" :key="dep.name">
             <tr class="dept-row vac-detailed-dept-row" @click="toggleDept(dep.name)">
-              <td colspan="2" class="sticky-col-dept">
+              <td :colspan="stickyColCount" class="sticky-col-dept">
                 <span class="vac-detailed-dept-chevron" :class="{ collapsed: isCollapsed(dep.name) }">▾</span>
                 {{ dep.name }}
               </td>
@@ -61,7 +72,9 @@
               <tr v-for="emp in dep.employees" :key="emp.id" class="vac-detailed-emp-row">
                 <td class="sticky-col-name">
                   <span class="emp-name emp-name--inline">{{ emp.name }}</span>
-                  <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
+                </td>
+                <td v-if="showTitleColumn" class="sticky-col-title">
+                  <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
                 </td>
                 <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
                 <td :colspan="totalDays" class="vac-detailed-track">
@@ -140,14 +153,21 @@ type ReservationBand = {
   label: string;
 };
 
-const props = defineProps<{
-  departments: EmployeeDepartment[];
-  year: number;
-  requests: VacationRequest[];
-  reservations?: VacationReservation[];
-  /** Суммарное число сотрудников в отпуске по дням (вся видимая команда). */
-  showDepartmentDailyCounts?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    departments: EmployeeDepartment[];
+    year: number;
+    requests: VacationRequest[];
+    reservations?: VacationReservation[];
+    /** Суммарное число сотрудников в отпуске по дням (вся видимая команда). */
+    showDepartmentDailyCounts?: boolean;
+    /** Отдельный столбец «Должность» (можно скрыть). */
+    showTitleColumn?: boolean;
+  }>(),
+  { showDepartmentDailyCounts: false, showTitleColumn: true }
+);
+
+const stickyColCount = computed(() => (props.showTitleColumn ? 3 : 2));
 
 const DAY_COL_PX = 22;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */

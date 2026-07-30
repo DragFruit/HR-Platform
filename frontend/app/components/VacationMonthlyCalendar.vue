@@ -1,11 +1,17 @@
 <template>
   <div class="vacation-calendar-wrap">
     <div class="timeline-scroll-x vac-table-scroll">
-      <table class="vacation-timeline">
+      <table
+        class="vacation-timeline"
+        :class="{ 'vacation-timeline--with-title': showTitleColumn }"
+      >
         <thead>
           <tr>
             <th class="sticky-col-name sticky-col-name--head">
               <span class="vac-employee-head-label">Сотрудник</span>
+            </th>
+            <th v-if="showTitleColumn" class="sticky-col-title sticky-col-title--head">
+              <span class="vac-title-head-label">Должность</span>
             </th>
             <th v-for="month in monthHeaders" :key="month">{{ month }}</th>
           </tr>
@@ -13,13 +19,15 @@
         <tbody>
           <template v-for="dep in departments" :key="dep.name">
             <tr class="dept-row vac-team-dept-row">
-              <td class="sticky-col-dept">{{ dep.name }}</td>
+              <td :colspan="showTitleColumn ? 2 : 1" class="sticky-col-dept">{{ dep.name }}</td>
               <td colspan="12" class="vac-dept-row-fill" aria-hidden="true" />
             </tr>
               <tr v-for="emp in dep.employees" :key="emp.id" class="vac-team-emp-row">
               <td class="sticky-col-name">
                 <span class="emp-name emp-name--inline">{{ emp.name }}</span>
-                <span v-if="emp.title" class="emp-title">{{ emp.title }}</span>
+              </td>
+              <td v-if="showTitleColumn" class="sticky-col-title">
+                <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
               </td>
               <td
                 v-for="monthIndex in 12"
@@ -60,13 +68,18 @@
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationMonthEntry } from '~/utils/vacationReservations';
 
-const props = defineProps<{
-  departments: EmployeeDepartment[];
-  year: number;
-  getMonthEntries: (employeeName: string, month: number, year: number) => VacationMonthEntry[];
-  /** Узкие ячейки сотрудника: плашки в flex-обёртке, без съезда текста */
-  compactCells?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    departments: EmployeeDepartment[];
+    year: number;
+    getMonthEntries: (employeeName: string, month: number, year: number) => VacationMonthEntry[];
+    /** Узкие ячейки сотрудника: плашки в flex-обёртке, без съезда текста */
+    compactCells?: boolean;
+    /** Отдельный столбец «Должность» (можно скрыть). */
+    showTitleColumn?: boolean;
+  }>(),
+  { compactCells: false, showTitleColumn: false }
+);
 
 const { MONTHS_RU } = useVacations();
 const monthHeaders = computed(() => MONTHS_RU.map((label) => label.slice(0, 3)));

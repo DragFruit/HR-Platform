@@ -19,6 +19,17 @@
         />
         <div class="vac-team-calendar__frame">
           <button
+            v-if="variant === 'manager'"
+            type="button"
+            class="vac-title-col-toggle"
+            :class="{ 'vac-title-col-toggle--on': showTitleColumn }"
+            :aria-pressed="showTitleColumn"
+            title="Показать или скрыть столбец «Должность»"
+            @click="toggleTitleColumn"
+          >
+            Должность
+          </button>
+          <button
             v-if="variant === 'manager' && isAdmin"
             type="button"
             class="vac-admin-add-btn vac-admin-add-btn--frame"
@@ -34,6 +45,7 @@
             :requests="requests"
             :reservations="reservations"
             :show-department-daily-counts="showDepartmentDailyCounts"
+            :show-title-column="showTitleColumn"
           />
           <VacationMonthlyCalendar
             v-else
@@ -41,6 +53,7 @@
             :year="calendarYear"
             :get-month-entries="getMonthEntries"
             :compact-cells="variant === 'employee-team'"
+            :show-title-column="variant === 'manager' && showTitleColumn"
           />
         </div>
       </div>
@@ -110,6 +123,35 @@ const { viewYear, state } = useVacations();
 const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);
 const viewMode = ref<'detailed' | 'months'>(props.defaultViewMode);
+
+const TITLE_COL_STORAGE_KEY = 'vbi-vac-show-title-col-v1';
+
+const readTitleColumnPref = (): boolean => {
+  if (!import.meta.client) return true;
+  try {
+    const raw = localStorage.getItem(TITLE_COL_STORAGE_KEY);
+    if (raw === null) return true;
+    return raw === '1' || raw === 'true';
+  } catch {
+    return true;
+  }
+};
+
+const showTitleColumn = ref(true);
+
+const toggleTitleColumn = () => {
+  showTitleColumn.value = !showTitleColumn.value;
+  if (!import.meta.client) return;
+  try {
+    localStorage.setItem(TITLE_COL_STORAGE_KEY, showTitleColumn.value ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+};
+
+onMounted(() => {
+  showTitleColumn.value = readTitleColumnPref();
+});
 
 const yearOptions = computed(() => {
   const primary = state.value.primaryYear || new Date().getFullYear();
