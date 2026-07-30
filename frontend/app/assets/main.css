@@ -5609,13 +5609,18 @@ a {
 }
 
 .shell-main:has(.vac-manager-layout) .topbar {
-  padding: 10px 16px;
+  /* Как у сотрудника (vac-emp-page--fit): не ужимать шапку */
+  padding: 16px 28px;
+}
+
+.shell-main:has(.vac-manager-layout) .topbar h1 {
+  font-size: 1rem;
 }
 
 /* График отпусков: фиолетовая шапка прокручивается вместе со страницей */
 .shell-main:has(.vac-team-calendar) .topbar,
 .shell-main:has(.vac-emp-page--fit) .topbar,
-.shell-main:has(.vac-manager-layout--employee) .topbar {
+.shell-main:has(.vac-manager-layout) .topbar {
   position: static;
   top: auto;
 }
@@ -5631,6 +5636,34 @@ a {
 .shell-main:has(.vac-manager-layout) .content .page-root {
   gap: 6px;
   width: 100%;
+}
+
+/* Руководитель с aside: та же высота рабочей зоны, что у сотрудника */
+.app-shell:has(.vac-manager-layout--with-aside) {
+  min-height: 100dvh;
+}
+
+.shell-main:has(.vac-manager-layout--with-aside) {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+
+.shell-main:has(.vac-manager-layout--with-aside) .content {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.shell-main:has(.vac-manager-layout--with-aside) .content .page-root {
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .app-shell:has(.vac-manager-layout--employee) {
@@ -5666,9 +5699,18 @@ a {
 }
 
 .vac-manager-layout--with-aside {
-  /* Как vacations-employee-shell: ширина aside и зазор до календаря */
+  /* Как vacations-employee-shell: ширина aside, зазор, высота колонки */
   --vac-aside-width: 268px;
-  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: calc(100dvh - var(--vac-chrome-block) - 72px);
+  max-height: calc(100dvh - var(--vac-chrome-block) - 72px);
+  margin: 0;
+  overflow: hidden;
+  align-items: stretch;
   gap: 8px;
   grid-template-columns: minmax(0, 1fr) var(--vac-aside-width);
 }
@@ -5678,12 +5720,17 @@ a {
 }
 
 .vac-manager-layout--with-aside .vac-manager-aside-panel {
-  align-self: start;
+  align-self: stretch;
   width: var(--vac-aside-width);
   min-width: var(--vac-aside-width);
   max-width: var(--vac-aside-width);
-  /* Как у сотрудника: отступ сверху колонки aside */
+  /* Как у сотрудника: отступ сверху + высота до низа */
   margin-top: 8px;
+  height: calc(100% - 8px);
+  max-height: calc(100% - 8px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .vac-manager-layout--employee.vac-manager-layout--with-aside {
@@ -5730,6 +5777,11 @@ a {
 
 .vac-manager-main {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vac-manager-aside-panel {
@@ -5747,8 +5799,9 @@ a {
 }
 
 .vac-manager-aside-panel .emp-aside-role-strip {
-  /* Как у сотрудника в .employee-aside--fit */
-  margin-bottom: 8px;
+  /* Как у сотрудника: 8px до следующего блока (gap 12 − 4) */
+  margin-bottom: -4px;
+  flex-shrink: 0;
 }
 
 .vac-manager-aside-panel--employee-view {
@@ -6053,7 +6106,10 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 2px;
+  /* Как vac-emp-toolbar: тот же верх, чтобы toggle совпал по Y */
+  padding: 8px 0 10px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .vac-manager-toolbar .filters {
@@ -6067,7 +6123,9 @@ a {
 }
 
 .vac-manager-toolbar + .vac-team-calendar {
-  margin-top: 14px;
+  margin-top: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .shell-main:has(.vac-team-calendar) .content {
