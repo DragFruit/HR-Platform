@@ -1,8 +1,8 @@
 :root {
   /*
    * Базовый масштаб платформы.
-   * Бывший «браузерный 90%» = наш визуальный 100% (так зафиксировали).
-   * Менять только здесь. Не путать с zoom браузера пользователя.
+   * Бывший «браузерный 90%» = наш визуальный 100% (зафиксировано).
+   * Менять только здесь.
    */
   --platform-zoom: 0.9;
   /* ITMO neo-brutalist: light content surfaces */
@@ -151,16 +151,24 @@ a {
 }
 
 /*
- * Базовый масштаб (= бывший 90%): компактный UI на всех страницах с shell.
- * width компенсирует zoom, чтобы заполнять окно.
- * overflow: visible — не обрезать правый край (zoom рисует от центра).
- * Не использовать transform:scale на этом узле.
+ * Базовый масштаб платформы (= бывший браузерный 90%).
+ *
+ * ИНВАРИАНТ — нужны ОБА условия сразу:
+ * 1) размер --platform-zoom (0.9)
+ * 2) выравнивание слева сверху, без съезда вправо
+ *
+ * CSS zoom рисует от центра → aside/правый край уезжают или обрезаются.
+ * Поэтому только transform: scale + transform-origin: top left.
+ * width + margin-right компенсируют layout после scale (окно заполнено, без гориз. скролла).
+ * Не ставить overflow-x: hidden сюда — обрежет правую колонку.
  */
 .app-viewport:has(.app-shell) {
-  zoom: var(--platform-zoom);
   width: calc(100% / var(--platform-zoom));
   min-height: calc(100vh / var(--platform-zoom));
   height: auto;
+  transform: scale(var(--platform-zoom));
+  transform-origin: top left;
+  margin-right: calc(100% * (1 - 1 / var(--platform-zoom)));
   overflow: visible;
 }
 
