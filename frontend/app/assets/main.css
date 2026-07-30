@@ -7039,7 +7039,8 @@ a {
 .vac-year-tab.vac-team-calendar__yeartab {
   position: absolute;
   top: 0;
-  right: 10px;
+  /* Чуть левее скругления рамки, чтобы уголок не резал ярлык года */
+  right: 18px;
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
@@ -7053,7 +7054,8 @@ a {
 
 .vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
   align-self: stretch;
-  padding-top: 0;
+  /* Как у сотрудника: вкладки ниже скругления рамки, уголок не режет ярлыки */
+  padding-top: 14px;
 }
 
 .vac-cal-side-tab--detailed.vac-cal-side-tab--active::before,
