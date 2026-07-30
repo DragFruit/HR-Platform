@@ -6782,11 +6782,6 @@ a {
   --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
 }
 
-.vac-team-calendar .vacation-timeline--title-collapsed {
-  --vac-team-title-col-w: 28px;
-  --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
-}
-
 .vac-team-calendar .vacation-timeline thead th {
   position: sticky;
   top: 0;
@@ -7332,10 +7327,6 @@ a {
   --vac-title-col-w: calc(var(--vac-day-col-w) * var(--vac-title-col-span));
 }
 
-.vac-detailed-timeline--title-collapsed {
-  --vac-title-col-w: 28px;
-}
-
 .vac-detailed-timeline th,
 .vac-detailed-timeline td {
   border: none;
@@ -7524,6 +7515,22 @@ a {
   max-width: 100%;
 }
 
+.vac-name-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.vac-name-head .vac-employee-head-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vac-title-head-label {
   min-width: 0;
   overflow: hidden;
@@ -7588,17 +7595,6 @@ a {
 
 .vac-title-col-chevron--open .vac-title-col-chevron__icon {
   transform: scaleX(-1);
-}
-
-.sticky-col-title--collapsed {
-  padding-left: 4px !important;
-  padding-right: 4px !important;
-  text-align: center;
-}
-
-.sticky-col-title--collapsed .vac-title-head {
-  justify-content: center;
-  width: 100%;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-name {

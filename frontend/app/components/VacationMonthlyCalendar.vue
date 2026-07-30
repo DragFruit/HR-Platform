@@ -3,35 +3,43 @@
     <div class="timeline-scroll-x vac-table-scroll">
       <table
         class="vacation-timeline"
-        :class="{
-          'vacation-timeline--with-title': showTitleColumn,
-          'vacation-timeline--title-collapsed': titleColumnToggleable && !showTitleColumn
-        }"
+        :class="{ 'vacation-timeline--with-title': showTitleColumn }"
       >
         <thead>
           <tr>
-            <th class="sticky-col-name sticky-col-name--head">
-              <span class="vac-employee-head-label">Сотрудник</span>
-            </th>
             <th
-              v-if="titleColumnToggleable || showTitleColumn"
-              class="sticky-col-title sticky-col-title--head"
-              :class="{ 'sticky-col-title--collapsed': titleColumnToggleable && !showTitleColumn }"
+              class="sticky-col-name sticky-col-name--head"
+              :class="{ 'sticky-col-name--title-expand': titleColumnToggleable && !showTitleColumn }"
             >
-              <div class="vac-title-head">
+              <div class="vac-name-head">
+                <span class="vac-employee-head-label">Сотрудник</span>
                 <button
-                  v-if="titleColumnToggleable"
+                  v-if="titleColumnToggleable && !showTitleColumn"
                   type="button"
                   class="vac-title-col-chevron"
-                  :class="{ 'vac-title-col-chevron--open': showTitleColumn }"
-                  :aria-label="showTitleColumn ? 'Скрыть столбец «Должность»' : 'Показать столбец «Должность»'"
-                  :aria-pressed="showTitleColumn"
-                  :title="showTitleColumn ? 'Скрыть должность' : 'Показать должность'"
+                  aria-label="Показать столбец «Должность»"
+                  :aria-pressed="false"
+                  title="Показать должность"
                   @click.stop="emit('toggle-title-column')"
                 >
                   <span class="vac-title-col-chevron__icon" aria-hidden="true" />
                 </button>
-                <span v-if="showTitleColumn" class="vac-title-head-label">Должность</span>
+              </div>
+            </th>
+            <th v-if="showTitleColumn" class="sticky-col-title sticky-col-title--head">
+              <div class="vac-title-head">
+                <button
+                  v-if="titleColumnToggleable"
+                  type="button"
+                  class="vac-title-col-chevron vac-title-col-chevron--open"
+                  aria-label="Скрыть столбец «Должность»"
+                  :aria-pressed="true"
+                  title="Скрыть должность"
+                  @click.stop="emit('toggle-title-column')"
+                >
+                  <span class="vac-title-col-chevron__icon" aria-hidden="true" />
+                </button>
+                <span class="vac-title-head-label">Должность</span>
               </div>
             </th>
             <th v-for="month in monthHeaders" :key="month">{{ month }}</th>
@@ -40,7 +48,7 @@
         <tbody>
           <template v-for="dep in departments" :key="dep.name">
             <tr class="dept-row vac-team-dept-row">
-              <td :colspan="titleColumnToggleable || showTitleColumn ? 2 : 1" class="sticky-col-dept">
+              <td :colspan="showTitleColumn ? 2 : 1" class="sticky-col-dept">
                 {{ dep.name }}
               </td>
               <td colspan="12" class="vac-dept-row-fill" aria-hidden="true" />
@@ -49,12 +57,8 @@
               <td class="sticky-col-name">
                 <span class="emp-name emp-name--inline">{{ emp.name }}</span>
               </td>
-              <td
-                v-if="titleColumnToggleable || showTitleColumn"
-                class="sticky-col-title"
-                :class="{ 'sticky-col-title--collapsed': titleColumnToggleable && !showTitleColumn }"
-              >
-                <span v-if="showTitleColumn" class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+              <td v-if="showTitleColumn" class="sticky-col-title">
+                <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
               </td>
               <td
                 v-for="monthIndex in 12"

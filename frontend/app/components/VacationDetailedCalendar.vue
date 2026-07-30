@@ -4,36 +4,48 @@
       <table
         ref="tableRef"
         class="vac-detailed-timeline"
-        :class="{
-          'vac-detailed-timeline--with-title': showTitleColumn,
-          'vac-detailed-timeline--title-collapsed': titleColumnToggleable && !showTitleColumn
-        }"
+        :class="{ 'vac-detailed-timeline--with-title': showTitleColumn }"
       >
         <thead>
           <tr class="vac-detailed-head-month">
-            <th :rowspan="headRowSpan" class="sticky-col-name sticky-col-name--head">
-              <span class="vac-employee-head-label">Сотрудник</span>
+            <th
+              :rowspan="headRowSpan"
+              class="sticky-col-name sticky-col-name--head"
+              :class="{ 'sticky-col-name--title-expand': titleColumnToggleable && !showTitleColumn }"
+            >
+              <div class="vac-name-head">
+                <span class="vac-employee-head-label">Сотрудник</span>
+                <button
+                  v-if="titleColumnToggleable && !showTitleColumn"
+                  type="button"
+                  class="vac-title-col-chevron"
+                  aria-label="Показать столбец «Должность»"
+                  :aria-pressed="false"
+                  title="Показать должность"
+                  @click.stop="emit('toggle-title-column')"
+                >
+                  <span class="vac-title-col-chevron__icon" aria-hidden="true" />
+                </button>
+              </div>
             </th>
             <th
-              v-if="titleColumnToggleable || showTitleColumn"
+              v-if="showTitleColumn"
               :rowspan="headRowSpan"
               class="sticky-col-title sticky-col-title--head"
-              :class="{ 'sticky-col-title--collapsed': titleColumnToggleable && !showTitleColumn }"
             >
               <div class="vac-title-head">
                 <button
                   v-if="titleColumnToggleable"
                   type="button"
-                  class="vac-title-col-chevron"
-                  :class="{ 'vac-title-col-chevron--open': showTitleColumn }"
-                  :aria-label="showTitleColumn ? 'Скрыть столбец «Должность»' : 'Показать столбец «Должность»'"
-                  :aria-pressed="showTitleColumn"
-                  :title="showTitleColumn ? 'Скрыть должность' : 'Показать должность'"
+                  class="vac-title-col-chevron vac-title-col-chevron--open"
+                  aria-label="Скрыть столбец «Должность»"
+                  :aria-pressed="true"
+                  title="Скрыть должность"
                   @click.stop="emit('toggle-title-column')"
                 >
                   <span class="vac-title-col-chevron__icon" aria-hidden="true" />
                 </button>
-                <span v-if="showTitleColumn" class="vac-title-head-label">Должность</span>
+                <span class="vac-title-head-label">Должность</span>
               </div>
             </th>
             <th :rowspan="headRowSpan" class="sticky-col-balance sticky-col-balance--head">
@@ -91,12 +103,8 @@
                 <td class="sticky-col-name">
                   <span class="emp-name emp-name--inline">{{ emp.name }}</span>
                 </td>
-                <td
-                  v-if="titleColumnToggleable || showTitleColumn"
-                  class="sticky-col-title"
-                  :class="{ 'sticky-col-title--collapsed': titleColumnToggleable && !showTitleColumn }"
-                >
-                  <span v-if="showTitleColumn" class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+                <td v-if="showTitleColumn" class="sticky-col-title">
+                  <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
                 </td>
                 <td class="sticky-col-balance">{{ balanceFor(emp) }}</td>
                 <td :colspan="totalDays" class="vac-detailed-track">
@@ -199,9 +207,7 @@ const emit = defineEmits<{
   'toggle-title-column': [];
 }>();
 
-const stickyColCount = computed(() =>
-  props.titleColumnToggleable || props.showTitleColumn ? 3 : 2
-);
+const stickyColCount = computed(() => (props.showTitleColumn ? 3 : 2));
 
 const DAY_COL_PX = 22;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
