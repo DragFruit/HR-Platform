@@ -8314,9 +8314,9 @@ a {
   background: var(--vac-row-hover-weekend);
 }
 
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .vac-detailed-track,
+/* Один уровень opacity — иначе track × inner ≈ 0.08 и сетка пропадает */
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .vac-detailed-track-inner {
-  opacity: 0.28;
+  opacity: 0.35;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .sticky-col-name,
