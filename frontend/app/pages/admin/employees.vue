@@ -133,6 +133,7 @@
             </td>
             <td class="col-actions">
               <button
+                v-if="emp.account_role !== 'admin'"
                 class="personnel-delete-btn"
                 type="button"
                 aria-label="Удалить сотрудника"

@@ -322,6 +322,8 @@ export function useEmployees() {
   };
 
   const removeEmployee = (id: number) => {
+    const target = employeesRaw.value.find((emp) => emp.id === id);
+    if (target?.account_role === 'admin') return;
     employeesRaw.value = employeesRaw.value.filter((emp) => emp.id !== id);
     persist();
   };

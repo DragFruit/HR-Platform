@@ -28,6 +28,7 @@ const adminNav: NavItem[] = [
   { to: '/admin/employees', label: 'Сотрудники' },
   { to: '/admin/tasks', label: 'Задачи' },
   { to: '/admin/vacations', label: 'График отпусков' },
+  { to: '/admin/how-it-looks', label: 'Как выглядит' },
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
   { to: '/admin/activity', label: 'Активность' },
@@ -111,6 +112,9 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/ideas') || route.path.startsWith('/admin/ideas')) {
       return 'Банк идей';
+    }
+    if (route.path === '/admin/how-it-looks') {
+      return 'Как выглядит';
     }
     const current = navItems.value.find((item) => item.to === route.path);
     return current?.label ?? (isAdmin.value ? 'Администрирование' : 'Платформа');

@@ -35,6 +35,7 @@
             :reservations="reservations"
             :show-department-daily-counts="showDepartmentDailyCounts"
             :show-title-column="showTitleColumn"
+            :highlight-employee-names="highlightEmployeeNames"
             title-column-toggleable
             @toggle-title-column="toggleTitleColumn"
           />
@@ -46,6 +47,7 @@
             :compact-cells="variant === 'employee-team'"
             :show-title-column="variant === 'manager' && showTitleColumn"
             :title-column-toggleable="variant === 'manager'"
+            :highlight-employee-names="highlightEmployeeNames"
             @toggle-title-column="toggleTitleColumn"
           />
         </div>
@@ -115,13 +117,16 @@ const props = withDefaults(
     year?: number;
     /** Суммарная строка «в отпуске» по дням (Digital Director). */
     showDepartmentDailyCounts?: boolean;
+    /** Подсветка строк (например «сейчас в отпуске»); null = выкл. */
+    highlightEmployeeNames?: string[] | null;
   }>(),
   {
     variant: 'manager',
     defaultViewMode: 'detailed',
     hideChrome: false,
     hideAdminAdd: false,
-    showDepartmentDailyCounts: false
+    showDepartmentDailyCounts: false,
+    highlightEmployeeNames: null
   }
 );
 

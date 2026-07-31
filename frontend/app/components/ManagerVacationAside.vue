@@ -1,28 +1,52 @@
 <template>
   <aside class="vac-manager-aside-panel">
-    <VacationUiModeToggle
-      :model-value="modelValue"
-      :team-mode-label="props.managerModeLabel"
-      @update:model-value="setMode"
-    />
+    <div class="vac-aside-stat-card vac-aside-mode-card">
+      <VacationUiModeToggle
+        :model-value="modelValue"
+        :team-mode-label="props.managerModeLabel"
+        @update:model-value="setMode"
+      />
+
+      <!-- Геометрия как у .emp-balance-card (fit); клик — подсветка в календаре -->
+      <button
+        type="button"
+        class="vac-aside-now-card"
+        :class="{
+          'vac-aside-now-card--active': focusOnVacation,
+          'vac-aside-now-card--empty': vacationNowCount === 0
+        }"
+        :title="nowCardTitle"
+        :aria-pressed="focusOnVacation"
+        @click="toggleFocusOnVacation"
+      >
+        <div class="vac-aside-stat-label">
+          Сейчас в отпуске
+          <span class="vac-aside-now-card__scope">· {{ teamScopeLabel }}</span>
+        </div>
+        <div class="vac-aside-stat-value">
+          <span class="vac-aside-stat-value__num">{{ vacationNowCount }}</span>
+          <span class="vac-aside-stat-value__sep"> из </span>
+          <span class="vac-aside-stat-value__num">{{ teamTotal }}</span>
+        </div>
+      </button>
+    </div>
 
     <div
       v-if="showHrTab"
-      class="role-switch role-switch--aside"
+      class="vac-aside-hr-switch"
       role="group"
       aria-label="Раздел платформы"
     >
-      <button type="button" class="role-btn active">Руководитель</button>
-      <button type="button" class="role-btn" @click="setMode('employee')">Сотрудник</button>
-      <NuxtLink to="/admin/vacations" class="role-btn role-btn--link">HR</NuxtLink>
+      <button type="button" class="vac-aside-hr-switch__btn vac-aside-hr-switch__btn--active">
+        Руководитель
+      </button>
+      <button type="button" class="vac-aside-hr-switch__btn" @click="setMode('employee')">
+        Сотрудник
+      </button>
+      <NuxtLink to="/admin/vacations" class="vac-aside-hr-switch__btn vac-aside-hr-switch__link">
+        HR
+      </NuxtLink>
     </div>
-
-    <div class="vac-aside-stat-card">
-      <div class="vac-aside-stat-label">Сейчас в отпуске</div>
-      <div class="vac-aside-stat-value">{{ onVacationNow }} из {{ teamTotal }}</div>
-    </div>
-
-    <ManagerVacationTrainingPrompt />
 
     <div class="vac-aside-stat-card vac-aside-controls-card">
       <div class="vac-aside-stat-label">Раздел</div>
@@ -37,14 +61,22 @@
           @click="emit('update:activeTab', tab.id)"
         >
           {{ tab.label }}
-          <span v-if="tab.id === 'approval' && approvalCount" class="pill mini-pill">
+          <span
+            v-if="tab.id === 'approval'"
+            class="pill mini-pill"
+            :class="{ 'mini-pill--zero': !approvalCount }"
+          >
             {{ approvalCount }}
           </span>
         </button>
       </div>
     </div>
 
-    <div v-if="activeTab === 'calendar'" class="vac-aside-stat-card vac-aside-controls-card">
+    <!-- Слот всегда на месте — высота aside не прыгает при смене раздела -->
+    <div
+      class="vac-aside-stat-card vac-aside-controls-card"
+      :class="{ 'vac-aside-controls-card--muted': activeTab !== 'calendar' }"
+    >
       <div class="vac-aside-stat-label">Вид</div>
       <div
         class="vac-aside-seg"
@@ -58,6 +90,7 @@
           class="vac-aside-seg__btn"
           :class="{ active: viewMode === 'detailed' }"
           :aria-selected="viewMode === 'detailed'"
+          :disabled="activeTab !== 'calendar'"
           @click="emit('update:viewMode', 'detailed')"
         >
           Детально
@@ -68,6 +101,7 @@
           class="vac-aside-seg__btn"
           :class="{ active: viewMode === 'months' }"
           :aria-selected="viewMode === 'months'"
+          :disabled="activeTab !== 'calendar'"
           @click="emit('update:viewMode', 'months')"
         >
           По месяцам
@@ -84,6 +118,8 @@
         @update:model-value="emit('update:viewYear', $event)"
       />
     </div>
+
+    <ManagerVacationTrainingPrompt />
   </aside>
 </template>
 
@@ -104,7 +140,8 @@ const props = withDefaults(
     modelValue: ManagerVacationUiMode;
     viewYear: number;
     yearOptions: number[];
-    onVacationNow: number;
+    /** Сколько человек сейчас в отпуске (approved ∩ сегодня). */
+    vacationNowCount: number;
     teamTotal: number;
     activeTab: ManagerActiveTab;
     viewMode: ManagerCalendarViewMode;
@@ -112,8 +149,16 @@ const props = withDefaults(
     approvalCount?: number;
     showHrTab?: boolean;
     managerModeLabel?: string;
+    /** Подпись среза: «команда» / «весь график». */
+    teamScopeLabel?: string;
+    focusOnVacation?: boolean;
   }>(),
-  { managerModeLabel: 'Руководитель', approvalCount: 0 }
+  {
+    managerModeLabel: 'Руководитель',
+    approvalCount: 0,
+    teamScopeLabel: 'команда',
+    focusOnVacation: false
+  }
 );
 
 const emit = defineEmits<{
@@ -121,9 +166,24 @@ const emit = defineEmits<{
   'update:activeTab': [value: ManagerActiveTab];
   'update:viewMode': [value: ManagerCalendarViewMode];
   'update:viewYear': [value: number];
+  'update:focusOnVacation': [value: boolean];
 }>();
 
 const setMode = (mode: ManagerVacationUiMode) => {
   emit('update:modelValue', mode);
+};
+
+const nowCardTitle = computed(() => {
+  if (props.vacationNowCount === 0) {
+    return `Сейчас никто не в отпуске (${props.teamScopeLabel})`;
+  }
+  return props.focusOnVacation
+    ? 'Снять подсветку сотрудников в отпуске'
+    : 'Подсветить в календаре, кто сейчас в отпуске';
+});
+
+const toggleFocusOnVacation = () => {
+  if (props.vacationNowCount === 0 && !props.focusOnVacation) return;
+  emit('update:focusOnVacation', !props.focusOnVacation);
 };
 </script>

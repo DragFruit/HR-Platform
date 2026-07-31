@@ -54,7 +54,7 @@ flowchart TB
 ### Поэтапный запуск (`useLaunchScope.ts`)
 
 - Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — `full` (по умолчанию) или `vacations`.
-- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков» и «Сотрудники» (даты выхода, руководитель = согласование).
+- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков», «Как выглядит» (превью UI руководителя), «Сотрудники», уведомления, идеи, профиль.
 - **Хардлок боя:** хост `45.12.74.25` без порта `:8080` всегда `vacations` (`utils/productionHost.ts`), даже если в бандле ошибочно `full` / `appEnv=development`.
 
 ### Окружения и деплой
@@ -115,7 +115,7 @@ flowchart TB
 - `index.vue` — главная
 - `adaptation.vue`
 - `organization.vue` → `OrgChart` readonly
-- `vacations.vue` — ветвление employee / manager UI
+- `vacations.vue` — employee UI или `VacationsManagerExperience` (manager/hr)
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
 
@@ -124,6 +124,7 @@ flowchart TB
 - `admin/index.vue` — хаб ссылок
 - `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue`
+- `admin/how-it-looks.vue` — превью календаря как у руководителя (`VacationsManagerExperience` preview)
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление

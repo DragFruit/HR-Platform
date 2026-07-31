@@ -1,11 +1,35 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
+    <div
+      ref="nameMeasureRef"
+      class="vac-team-name-measure vac-team-name-measure--detailed"
+      aria-hidden="true"
+    >
+      <span class="vac-team-name-measure__head">Сотрудник</span>
+      <span
+        v-for="emp in visibleEmployees"
+        :key="`measure-${emp.id}`"
+        class="vac-team-name-measure__name"
+      >{{ emp.name }}</span>
+    </div>
+
     <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
       <table
         ref="tableRef"
         class="vac-detailed-timeline"
         :class="{ 'vac-detailed-timeline--with-title': showTitleColumn }"
+        :style="timelineStyle"
       >
+        <colgroup>
+          <col class="vac-col-name" />
+          <col v-if="showTitleColumn" class="vac-col-title" />
+          <col class="vac-col-balance" />
+          <col
+            v-for="cell in yearDays"
+            :key="`col-${cell.iso}`"
+            class="vac-col-day"
+          />
+        </colgroup>
         <thead>
           <tr class="vac-detailed-head-month">
             <th
@@ -94,9 +118,10 @@
             v-for="emp in visibleEmployees"
             :key="emp.id"
             class="vac-detailed-emp-row"
+            :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+              <span class="emp-name emp-name--inline" :title="emp.name">{{ emp.name }}</span>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -143,6 +168,7 @@
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
+import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
 import {
   formatReservationLabel,
@@ -188,11 +214,14 @@ const props = withDefaults(
     showTitleColumn?: boolean;
     /** Стрелка в шапке для скрытия / показа столбца. */
     titleColumnToggleable?: boolean;
+    /** Подсветка ФИО; null = режим выкл. */
+    highlightEmployeeNames?: string[] | null;
   }>(),
   {
     showDepartmentDailyCounts: false,
     showTitleColumn: true,
-    titleColumnToggleable: false
+    titleColumnToggleable: false,
+    highlightEmployeeNames: null
   }
 );
 
@@ -200,12 +229,18 @@ const emit = defineEmits<{
   'toggle-title-column': [];
 }>();
 
-const DAY_COL_PX = 22;
+/** Ширина дня — только сетка дат/баров; не связана с ФИО. */
+const DAY_COL_PX = 18;
+const NAME_COL_PAD_X = 16;
+const NAME_COL_CHEVRON = 24;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
 const TODAY_SCROLL_OFFSET_COLS = 3;
 
 const scrollWrapRef = ref<HTMLElement | null>(null);
 const tableRef = ref<HTMLTableElement | null>(null);
+const nameMeasureRef = ref<HTMLElement | null>(null);
+/** Подвижная ширина колонки ФИО (max в видимом списке). */
+const nameColPx = ref(120);
 
 const measureStickyHeaderHeights = () => {
   const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
@@ -218,13 +253,55 @@ const measureStickyHeaderHeights = () => {
     tableRef.value.style.setProperty('--vac-detailed-head-r2', `${rowDays.offsetHeight}px`);
   }
   if (rowWeekdays && tableRef.value) {
-    const countsRow = tableRef.value.querySelector('.vac-detailed-head-counts') as HTMLElement | null;
-    const extra = countsRow?.offsetHeight ?? 0;
-    tableRef.value.style.setProperty(
-      '--vac-detailed-head-r3',
-      `${rowWeekdays.offsetHeight + extra}px`
-    );
+    tableRef.value.style.setProperty('--vac-detailed-head-r3', `${rowWeekdays.offsetHeight}px`);
   }
+};
+
+const remeasureNameCol = () => {
+  if (!import.meta.client) return;
+
+  const root = nameMeasureRef.value;
+  const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
+  const nameEl = root?.querySelector('.vac-team-name-measure__name') as HTMLElement | null;
+
+  const headStyle = headEl ? getComputedStyle(headEl) : null;
+  const nameStyle = nameEl ? getComputedStyle(nameEl) : null;
+
+  const headFont = buildFontFromStyle(
+    headStyle,
+    '600 9.6px Unbounded, system-ui, sans-serif'
+  );
+  const nameFont = buildFontFromStyle(
+    nameStyle,
+    '600 11.2px Golos Text, system-ui, sans-serif'
+  );
+  const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
+
+  let max = measureCssText('СОТРУДНИК', headFont, headSpacing);
+  for (const emp of visibleEmployees.value) {
+    max = Math.max(max, measureCssText(emp.name, nameFont, 0));
+  }
+
+  if (root && max < 40) {
+    for (const child of root.children) {
+      const el = child as HTMLElement;
+      max = Math.max(max, el.scrollWidth, el.offsetWidth);
+    }
+  }
+
+  if (max <= 0) return;
+
+  const chevron =
+    props.titleColumnToggleable && !props.showTitleColumn ? NAME_COL_CHEVRON : 0;
+  nameColPx.value = Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron));
+};
+
+const scheduleRemeasureNameCol = async () => {
+  await nextTick();
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+  remeasureNameCol();
 };
 
 const parseIso = (iso: string) => {
@@ -274,6 +351,12 @@ const yearDays = computed(() => buildYearDays(props.year));
 
 const totalDays = computed(() => yearDays.value.length);
 
+const timelineStyle = computed(() => ({
+  '--vac-days': totalDays.value,
+  '--days': totalDays.value,
+  '--vac-name-col-w': `${nameColPx.value}px`
+}));
+
 const monthSpans = computed(() => {
   const spans: { month: number; label: string; days: number }[] = [];
   yearDays.value.forEach((cell) => {
@@ -292,6 +375,18 @@ const headRowSpan = computed(() => (props.showDepartmentDailyCounts ? 4 : 3));
 const visibleEmployees = computed(() =>
   props.departments.flatMap((dep) => dep.employees)
 );
+
+const highlightSet = computed(() => {
+  const names = props.highlightEmployeeNames;
+  if (!names) return null;
+  return new Set(names);
+});
+
+const employeeHighlightClass = (name: string) => {
+  const set = highlightSet.value;
+  if (!set) return null;
+  return set.has(name) ? 'is-vacation-focus' : 'is-vacation-dim';
+};
 
 const visibleEmployeeNames = computed(() => visibleEmployees.value.map((emp) => emp.name));
 
@@ -409,11 +504,11 @@ const reservationBandsFor = (employeeName: string): ReservationBand[] => {
 };
 
 const barStyle = (bar: { startIdx: number; endIdx: number }) => {
-  const total = totalDays.value;
   const span = bar.endIdx - bar.startIdx + 1;
+  // Пиксели той же сетки, что day-col (22px) — проценты от ширины td расходятся с шапкой дат
   return {
-    left: `${(bar.startIdx / total) * 100}%`,
-    width: `${(span / total) * 100}%`
+    left: `${bar.startIdx * DAY_COL_PX}px`,
+    width: `${span * DAY_COL_PX}px`
   };
 };
 
@@ -445,8 +540,15 @@ let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
   scheduleScrollToToday();
+  void scheduleRemeasureNameCol();
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    void document.fonts.ready.then(() => scheduleRemeasureNameCol());
+  }
   if (typeof ResizeObserver !== 'undefined' && scrollWrapRef.value) {
-    resizeObserver = new ResizeObserver(() => measureStickyHeaderHeights());
+    resizeObserver = new ResizeObserver(() => {
+      measureStickyHeaderHeights();
+      void scheduleRemeasureNameCol();
+    });
     resizeObserver.observe(scrollWrapRef.value);
   }
 });
@@ -462,8 +564,11 @@ watch(
 );
 
 watch(
-  () => props.departments,
-  () => nextTick(measureStickyHeaderHeights),
+  () => [props.departments, props.showTitleColumn, props.titleColumnToggleable] as const,
+  () => {
+    nextTick(measureStickyHeaderHeights);
+    void scheduleRemeasureNameCol();
+  },
   { deep: true }
 );
 </script>

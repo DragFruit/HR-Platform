@@ -153,15 +153,34 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
     requestId: request.id
   };
 
+  let absenceId: number;
+  let method: string;
+
   try {
-    const absenceId = await createViaAbsenceIblock(payload);
-    return { absenceId, method: 'lists.element.add' };
+    absenceId = await createViaAbsenceIblock(payload);
+    method = 'lists.element.add';
   } catch (iblockError) {
     const message = iblockError instanceof Error ? iblockError.message : String(iblockError);
     console.warn('[bitrix-vacation] iblock sync failed, trying calendar.event.add:', message);
-    const absenceId = await createViaCalendarAbsent(payload);
-    return { absenceId, method: 'calendar.event.add' };
+    absenceId = await createViaCalendarAbsent(payload);
+    method = 'calendar.event.add';
+    return { absenceId, method };
   }
+
+  // Пальма в графике отсутствий + событие в календаре Bitrix (как раньше визуально на сетке).
+  // Ошибка календаря не откатывает lists — предупреждение во встречах уже даёт iblock.
+  try {
+    const calendarEventId = await createViaCalendarAbsent(payload);
+    method = `lists.element.add+calendar.event.add:${calendarEventId}`;
+  } catch (calendarError) {
+    const message = calendarError instanceof Error ? calendarError.message : String(calendarError);
+    console.warn(
+      `[bitrix-vacation] calendar.event.add failed for request #${request.id}:`,
+      message
+    );
+  }
+
+  return { absenceId, method };
 };
 
 const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {

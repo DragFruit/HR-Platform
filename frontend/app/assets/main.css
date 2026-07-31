@@ -5467,6 +5467,7 @@ a {
 }
 
 .vacation-calendar-wrap {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--vac-frame-border);
   border-radius: var(--vac-frame-radius);
@@ -5815,6 +5816,8 @@ a {
 }
 
 .vac-manager-main {
+  position: relative;
+  z-index: 0;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -5835,84 +5838,19 @@ a {
   flex-direction: column;
 }
 
-/*
- * Таблица руководителя на тесте: кегль как у /admin/vacations при browser 90%
- * (те же селекторы × 0.9; админскую таблицу не трогаем).
- */
-.vac-manager-main .vac-detailed-timeline {
-  font-size: 0.72rem;
-}
-
-.vac-manager-main .vac-detailed-timeline thead th {
-  font-size: 0.612rem;
-}
-
-.vac-manager-main .vac-detailed-timeline tr.vac-detailed-head-counts th {
-  font-size: 0.558rem;
-}
-
-.vac-manager-main .vac-detailed-month-label {
-  font-size: 0.612rem !important;
-}
-
-.vac-manager-main .vac-detailed-timeline thead .sticky-col-name--head,
-.vac-manager-main .vac-detailed-timeline thead .sticky-col-balance--head {
-  font-size: 0.585rem;
-}
-
-.vac-manager-main .vac-detailed-timeline .sticky-col-balance {
-  font-size: 0.648rem;
-}
-
-.vac-manager-main .vac-detailed-emp-row .emp-name--inline {
-  font-size: 0.7rem;
-}
-
-.vac-manager-main .vac-detailed-emp-row .emp-title {
-  font-size: 0.612rem;
-}
-
-.vac-manager-main .vac-team-calendar .vacation-timeline .emp-name--inline {
-  font-size: 0.7rem;
-}
-
-.vac-manager-main .vac-team-calendar .vacation-timeline .emp-title {
-  font-size: 0.612rem;
-}
-
-.vac-manager-main .vac-team-calendar .vacation-timeline thead .sticky-col-name {
-  font-size: 0.648rem;
-}
-
-.vac-manager-main .vac-team-calendar .vac-cell {
-  font-size: 0.504rem;
-}
-
-/* Чуть плотнее шапка: месяц ↔ число ↔ день недели */
-.vac-manager-main .vac-detailed-month-label,
-.vac-manager-main .vac-detailed-head-month th[colspan] {
-  padding-top: 3px !important;
-  padding-bottom: 2px !important;
-}
-
-.vac-manager-main .vac-detailed-timeline tr.vac-detailed-head-days th,
-.vac-manager-main .vac-detailed-timeline tr.vac-detailed-head-weekdays th {
-  padding-top: 1px;
-  padding-bottom: 1px;
-  line-height: 1.05;
-}
-
 .vac-manager-aside-panel {
   position: sticky;
   top: 8px;
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--vac-frame-border);
-  border-radius: var(--vac-frame-radius);
-  background: var(--bg-surface);
-  box-shadow: var(--vac-frame-shadow);
+  gap: 10px;
+  /* Стопка карточек на фоне страницы — без внешней «коробки» (как на боевом скрине) */
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   box-sizing: border-box;
 }
 
@@ -6129,10 +6067,107 @@ a {
 }
 
 .vac-aside-stat-card {
-  padding: 12px;
-  border: 1px solid var(--vac-frame-border);
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-brutal);
   border-radius: var(--vac-card-radius);
   background: var(--bg-surface);
+  /* Контролы: лаймовая тень — основной ритм aside */
+  box-shadow: 3px 3px 0 var(--accent-lime);
+  box-sizing: border-box;
+}
+
+/* Идентичность режима — единственная фиолетовая «коробка» */
+.vac-aside-mode-card {
+  padding: 16px;
+  box-shadow: 3px 3px 0 #7451f4;
+}
+
+.vac-aside-mode-card .mgr-emp-slide {
+  border: 1.5px solid var(--border-brutal);
+  background: #eeeee8;
+}
+
+.vac-aside-mode-card .emp-aside-role-strip {
+  margin-bottom: 8px;
+}
+
+.vac-manager-aside-panel .vac-aside-mode-card .emp-aside-role-strip {
+  margin-bottom: 8px;
+}
+
+/*
+ * Геометрия = emp-balance fit (padding 10px, цифра 2rem / mt 6px).
+ * Вариант 4 приглушённый: белая заливка, фиолет в подписи; без вложенной тени.
+ */
+.vac-aside-mode-card .vac-aside-now-card {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border-brutal);
+  border-radius: var(--vac-card-radius);
+  background: var(--bg-surface);
+  box-shadow: none;
+  box-sizing: border-box;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vac-aside-mode-card .vac-aside-now-card:hover:not(:disabled) {
+  background: rgba(116, 81, 244, 0.06);
+}
+
+.vac-aside-mode-card .vac-aside-now-card--active {
+  border-color: #7451f4;
+  background: rgba(116, 81, 244, 0.1);
+}
+
+.vac-aside-mode-card .vac-aside-now-card--empty {
+  cursor: default;
+}
+
+.vac-aside-now-card .vac-aside-stat-label {
+  margin-bottom: 0;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: #7451f4;
+}
+
+.vac-aside-now-card__scope {
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.vac-aside-now-card .vac-aside-stat-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.28em;
+  margin-top: 6px;
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.vac-aside-now-card .vac-aside-stat-value__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.vac-aside-now-card .vac-aside-stat-value__sep {
+  font-size: 0.55em;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
 }
 
 .vac-aside-stat-label {
@@ -6145,14 +6180,41 @@ a {
 }
 
 .vac-aside-stat-value {
-  font-size: 1.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.28em;
+  font-size: 1.85rem;
   font-weight: 700;
+  font-family: var(--font-display);
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.vac-aside-stat-value__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.vac-aside-stat-value__sep {
+  font-size: 0.55em;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
 }
 
 .vac-aside-controls-card .vac-aside-stat-label {
   margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.vac-aside-controls-card--muted {
+  opacity: 0.55;
+}
+
+.vac-aside-controls-card--muted .vac-aside-seg__btn:disabled {
+  cursor: not-allowed;
 }
 
 .vac-aside-seg {
@@ -6161,8 +6223,8 @@ a {
   gap: 4px;
   padding: 3px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
+  border: 1.5px solid var(--border-brutal);
+  background: #eeeee8;
   box-sizing: border-box;
 }
 
@@ -6175,7 +6237,7 @@ a {
   min-width: 0;
   margin: 0;
   padding: 7px 8px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
@@ -6187,16 +6249,42 @@ a {
   white-space: nowrap;
 }
 
-.vac-aside-seg__btn.active {
-  background: var(--bg-surface);
-  color: var(--text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+.vac-aside-seg__btn:disabled {
+  opacity: 0.7;
 }
 
+.vac-aside-seg__btn.active {
+  background: var(--accent-lime);
+  color: var(--text-on-light);
+  border-color: var(--border-brutal);
+  box-shadow: none;
+}
+
+/* Счётчик согласований — отдельный цвет, не фиолет карточек */
 .vac-aside-seg__btn .mini-pill {
   margin: 0;
   font-size: 0.62rem;
   padding: 1px 5px;
+  background: #c44b5a;
+  color: #fff;
+  border-color: var(--border-brutal);
+}
+
+.vac-aside-seg__btn .mini-pill.mini-pill--zero {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.vac-aside-seg__btn.active .mini-pill {
+  background: #fff;
+  color: var(--text-on-light);
+  border-color: var(--border-brutal);
+}
+
+.vac-aside-seg__btn.active .mini-pill.mini-pill--zero {
+  background: rgba(32, 32, 32, 0.08);
+  color: var(--text-muted);
 }
 
 .vac-aside-year-tab {
@@ -6213,9 +6301,12 @@ a {
 .vac-aside-year-tab .vac-year-tab__btn {
   justify-content: space-between;
   border-radius: 10px;
-  border-bottom-color: var(--border-strong, var(--border));
+  border: 1.5px solid var(--border-brutal);
+  border-bottom-color: var(--border-brutal);
   padding: 8px 12px;
+  background: #eeeee8;
   box-shadow: none;
+  font-weight: 700;
 }
 
 .vac-aside-year-tab .vac-year-tab__btn::before {
@@ -6226,6 +6317,52 @@ a {
   left: 0;
   right: 0;
   min-width: 100%;
+  border: 1.5px solid var(--border-brutal);
+  box-shadow: 3px 3px 0 var(--accent-lime);
+}
+
+/* HR-переключатель в том же ITMO-языке, что сегменты */
+.vac-aside-hr-switch {
+  display: flex;
+  width: 100%;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-brutal);
+  background: #eeeee8;
+  box-sizing: border-box;
+}
+
+.vac-aside-hr-switch__btn,
+.vac-aside-hr-switch__link {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vac-aside-hr-switch__btn--active {
+  background: var(--accent-lime);
+  color: var(--text-on-light);
+  border-color: var(--border-brutal);
+}
+
+.vac-aside-hr-switch__link:hover {
+  color: var(--text);
 }
 
 .vac-cap-notice-backdrop {
@@ -7035,7 +7172,8 @@ a {
 }
 
 .vac-team-calendar .vacation-timeline {
-  --vac-team-name-col-w: 104px;
+  /* Fallback до замера; фактическая ширина — max ФИО в текущей команде */
+  --vac-team-name-col-w: 120px;
   --vac-team-title-col-w: 0px;
   --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
   min-width: 100%;
@@ -7045,8 +7183,8 @@ a {
   font-size: 0.82rem;
 }
 .vac-team-calendar .vacation-timeline--with-title {
-  --vac-team-name-col-w: 100px;
-  --vac-team-title-col-w: 120px;
+  --vac-team-name-col-w: 120px;
+  --vac-team-title-col-w: 112px;
   --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
 }
 
@@ -7075,9 +7213,10 @@ a {
   width: var(--vac-team-name-col-w);
   min-width: var(--vac-team-name-col-w);
   max-width: var(--vac-team-name-col-w);
-  padding: 6px 6px 6px 8px;
+  padding: 6px 8px 6px 8px;
   text-align: left;
   vertical-align: middle;
+  overflow: visible;
 }
 
 .vac-team-calendar .vacation-timeline .sticky-col-title {
@@ -7094,6 +7233,7 @@ a {
   box-shadow: 1px 0 0 #e4e4de;
   color: var(--text-soft);
   font-weight: 500;
+  overflow: hidden;
 }
 
 .vac-team-calendar .vacation-timeline thead .sticky-col-title--head {
@@ -7110,13 +7250,50 @@ a {
 }
 
 .vac-team-calendar .vacation-timeline .emp-name--inline {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 0.78rem;
+  display: block;
+  font-size: 0.72rem;
   line-height: 1.2;
-  overflow: hidden;
-  white-space: normal;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+/* Скрытый зонд: ширина колонки = max(«Сотрудник», ФИО в видимой команде).
+ * Не ставить visibility:hidden / height:0 — иначе ширина текста = 0. */
+.vac-team-name-measure {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.vac-team-name-measure__head {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.vac-team-name-measure__name {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Замер под компактный детальный вид рук-а (0.7rem в строке 21.5px) */
+.vac-team-name-measure--detailed .vac-team-name-measure__head {
+  font-size: 0.6rem;
+}
+
+.vac-team-name-measure--detailed .vac-team-name-measure__name {
+  font-size: 0.7rem;
 }
 
 .vac-team-calendar .vacation-timeline .emp-title {
@@ -7502,28 +7679,62 @@ a {
 }
 
 .vac-detailed-timeline {
+  /*
+   * Три независимые оси (не смешивать):
+   * 1) --vac-day-col-w      — ширина дня / шапка дат / бары
+   * 2) --vac-team-emp-row-h — высота строки сотрудника (--fill-viewport / side-tabs)
+   * 3) --vac-name-col-w     — ширина ФИО; задаёт JS по самому длинному ФИО в колонке
+   */
   --vac-detailed-head-r1: 2.05rem;
   --vac-detailed-head-r2: 1.35rem;
-  --vac-day-col-w: 22px;
-  --vac-name-col-span: 8;
+  --vac-detailed-head-r3: 1.35rem;
+  --vac-day-col-w: 18px;
+  --vac-days: 365;
+  --vac-name-col-w: 120px; /* fallback до замера */
   --vac-title-col-span: 7;
   --vac-balance-col-span: 3;
-  --vac-name-col-w: calc(var(--vac-day-col-w) * var(--vac-name-col-span));
   --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
   --vac-sticky-left-balance: calc(var(--vac-name-col-w) + var(--vac-title-col-w));
   --vac-sticky-left-total: calc(var(--vac-name-col-w) + var(--vac-title-col-w) + var(--vac-balance-col-w));
+  --vac-days-total-w: calc(var(--vac-day-col-w) * var(--vac-days));
   --vac-grid-line: #e6e6e0;
   --vac-grid-fill: #ffffff;
   --vac-grid-weekend: #e3f0fa;
   --vac-row-hover: #f3f0fc;
   --vac-row-hover-weekend: #e4ddf8;
-  width: max-content;
-  min-width: 100%;
+  table-layout: fixed;
+  width: calc(var(--vac-sticky-left-total) + var(--vac-days-total-w));
+  min-width: calc(var(--vac-sticky-left-total) + var(--vac-days-total-w));
+  max-width: calc(var(--vac-sticky-left-total) + var(--vac-days-total-w));
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.8rem;
   background: var(--vac-grid-fill);
+}
+
+.vac-detailed-timeline col.vac-col-name {
+  width: var(--vac-name-col-w);
+  min-width: var(--vac-name-col-w);
+  max-width: var(--vac-name-col-w);
+}
+
+.vac-detailed-timeline col.vac-col-title {
+  width: var(--vac-title-col-w);
+  min-width: var(--vac-title-col-w);
+  max-width: var(--vac-title-col-w);
+}
+
+.vac-detailed-timeline col.vac-col-balance {
+  width: var(--vac-balance-col-w);
+  min-width: var(--vac-balance-col-w);
+  max-width: var(--vac-balance-col-w);
+}
+
+.vac-detailed-timeline col.vac-col-day {
+  width: var(--vac-day-col-w);
+  min-width: var(--vac-day-col-w);
+  max-width: var(--vac-day-col-w);
 }
 
 .vac-detailed-timeline th,
@@ -7532,6 +7743,7 @@ a {
   padding: 0;
   vertical-align: middle;
   background: var(--vac-grid-fill);
+  box-sizing: border-box;
 }
 
 .vac-detailed-timeline thead th {
@@ -7539,13 +7751,67 @@ a {
   color: var(--text-muted);
   font-weight: 600;
   text-align: center;
-  padding: 4px 1px;
-  font-size: 0.68rem;
+  padding: 2px 0;
+  font-size: 0.62rem;
   box-shadow: inset -1px 0 0 var(--vac-grid-line), inset 0 -1px 0 var(--vac-grid-line);
 }
 
+/* Вертикальный скролл: месяцы / числа / дни недели (и счётчики) остаются сверху */
+.vac-detailed-timeline tr.vac-detailed-head-month > th:not(.sticky-col-name--head):not(.sticky-col-title--head):not(.sticky-col-balance--head) {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: #f0f2f5;
+}
 
+.vac-detailed-timeline tr.vac-detailed-head-days > th,
+.vac-detailed-timeline tr.vac-detailed-head-weekdays > th,
+.vac-detailed-timeline tr.vac-detailed-head-counts > th {
+  width: var(--vac-day-col-w);
+  min-width: var(--vac-day-col-w);
+  max-width: var(--vac-day-col-w);
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
 
+.vac-detailed-timeline tr.vac-detailed-head-days > th {
+  position: sticky;
+  top: var(--vac-detailed-head-r1);
+  z-index: 8;
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-weekdays > th {
+  position: sticky;
+  top: calc(var(--vac-detailed-head-r1) + var(--vac-detailed-head-r2));
+  z-index: 8;
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-counts > th {
+  position: sticky;
+  top: calc(
+    var(--vac-detailed-head-r1) + var(--vac-detailed-head-r2) + var(--vac-detailed-head-r3)
+  );
+  z-index: 8;
+  background: #f0f2f5;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-days > th.is-weekend,
+.vac-detailed-timeline tr.vac-detailed-head-weekdays > th.is-weekend,
+.vac-detailed-timeline tr.vac-detailed-head-counts > th.is-weekend {
+  background: var(--vac-grid-weekend);
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-days > th.is-today,
+.vac-detailed-timeline tr.vac-detailed-head-weekdays > th.is-today,
+.vac-detailed-timeline tr.vac-detailed-head-counts > th.is-today {
+  background: #cfe4f5;
+}
 
 .vac-detailed-timeline--with-title {
   --vac-title-col-w: calc(var(--vac-day-col-w) * var(--vac-title-col-span));
@@ -7554,7 +7820,7 @@ a {
 .vac-detailed-timeline .sticky-col-name {
   position: sticky;
   left: 0;
-  z-index: 4;
+  z-index: 6;
   width: var(--vac-name-col-w);
   min-width: var(--vac-name-col-w);
   max-width: var(--vac-name-col-w);
@@ -7564,12 +7830,13 @@ a {
   font-weight: 600;
   vertical-align: middle;
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
+  overflow: hidden;
 }
 
 .vac-detailed-timeline .sticky-col-title {
   position: sticky;
   left: var(--vac-name-col-w);
-  z-index: 4;
+  z-index: 5;
   width: var(--vac-title-col-w);
   min-width: var(--vac-title-col-w);
   max-width: var(--vac-title-col-w);
@@ -7579,6 +7846,7 @@ a {
   font-weight: 500;
   vertical-align: middle;
   box-shadow: inset -1px 0 0 var(--vac-grid-line);
+  overflow: hidden;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
@@ -7594,11 +7862,22 @@ a {
 .vac-detailed-timeline thead .sticky-col-balance--head {
   position: sticky;
   top: 0;
-  z-index: 10;
   background: #f0f2f5;
   box-shadow:
     inset -1px 0 0 var(--vac-grid-line),
     inset 0 -1px 0 var(--vac-grid-line);
+}
+
+.vac-detailed-timeline thead .sticky-col-name--head {
+  z-index: 13;
+}
+
+.vac-detailed-timeline thead .sticky-col-title--head {
+  z-index: 12;
+}
+
+.vac-detailed-timeline thead .sticky-col-balance--head {
+  z-index: 11;
 }
 
 .vac-detailed-timeline thead .sticky-col-name--head {
@@ -7686,17 +7965,18 @@ a {
 
 .vac-name-head .vac-employee-head-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
 .vac-title-head-label {
   min-width: 0;
-  overflow: visible;
+  flex: 1 1 auto;
+  overflow: hidden;
   white-space: nowrap;
-  text-overflow: clip;
-  flex-shrink: 0;
+  text-overflow: ellipsis;
 }
 
 .vac-title-col-chevron {
@@ -7780,6 +8060,8 @@ a {
   font-weight: 600;
   line-height: 1.2;
   text-align: left;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .vac-team-calendar .vacation-timeline tbody .sticky-col-name {
@@ -7800,15 +8082,19 @@ a {
   background: #f3f0fc;
 }
 
-/* Менеджер: фиксированная высота строк; контейнер режется max-height (не растягиваем мало людей) */
-.vac-team-calendar--with-side-tabs .vac-detailed-track-inner {
+/* Менеджер: фиксированная высота строк (и с боковыми вкладками, и с hide-chrome / fill-viewport) */
+.vac-team-calendar--with-side-tabs .vac-detailed-track-inner,
+.vac-team-calendar--fill-viewport .vac-detailed-track-inner {
   height: var(--vac-team-emp-row-h, 21.5px);
   min-height: var(--vac-team-emp-row-h, 21.5px);
 }
 
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-title,
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-title,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-balance {
   height: var(--vac-team-emp-row-h, 21.5px);
   max-height: var(--vac-team-emp-row-h, 21.5px);
   padding: 3px 6px 3px 8px;
@@ -7817,19 +8103,29 @@ a {
   box-sizing: border-box;
 }
 
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-balance {
   padding: 3px 2px;
   font-size: 0.62rem;
 }
 
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-name--inline {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-name--inline,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .emp-name--inline {
+  display: block;
   font-size: 0.7rem;
   line-height: 1.2;
+  max-height: 1.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
 }
 
-.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-title--col {
+.vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-title--col,
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .emp-title--col {
   font-size: 0.61rem;
   line-height: 1.15;
+  -webkit-line-clamp: 1;
 }
 
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
@@ -7858,6 +8154,7 @@ a {
 
 .vac-detailed-timeline .sticky-col-balance {
   position: sticky;
+  /* Всегда справа от ФИО+Должность — иначе при скролле «Остаток» наезжает на должность */
   left: var(--vac-sticky-left-balance);
   z-index: 4;
   min-width: var(--vac-balance-col-w);
@@ -7875,6 +8172,12 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* Страховка от старых правил left: var(--vac-name-col-w) на «Остаток» */
+.vac-detailed-timeline thead .sticky-col-balance--head,
+.vac-detailed-timeline tbody .sticky-col-balance {
+  left: var(--vac-sticky-left-balance);
+}
+
 .vac-detailed-timeline thead .sticky-col-name,
 .vac-detailed-timeline thead .sticky-col-title,
 .vac-detailed-timeline thead .sticky-col-balance {
@@ -7890,10 +8193,11 @@ a {
   font-family: var(--font-display);
   font-size: 0.62rem;
   font-weight: 600;
-  padding: 3px 6px;
+  padding: 3px 0;
   color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  overflow: hidden;
 }
 
 
@@ -8004,11 +8308,42 @@ a {
   background: var(--vac-row-hover-weekend);
 }
 
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim {
+  opacity: 0.28;
+}
+
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-name,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-title,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-balance {
+  background: rgba(116, 81, 244, 0.12);
+}
+
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .emp-name--inline {
+  color: #7451f4;
+  font-weight: 800;
+}
+
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-dim {
+  opacity: 0.28;
+}
+
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .sticky-col-name,
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .sticky-col-title {
+  background: rgba(116, 81, 244, 0.12);
+}
+
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .emp-name--inline {
+  color: #7451f4;
+  font-weight: 800;
+}
+
 .vac-detailed-track {
   position: relative;
   padding: 0 !important;
   height: 1px;
-  min-width: 0;
+  width: var(--vac-days-total-w);
+  min-width: var(--vac-days-total-w);
+  max-width: var(--vac-days-total-w);
   vertical-align: top;
   overflow: hidden;
   background: var(--vac-grid-fill);
@@ -8016,17 +8351,23 @@ a {
 
 .vac-detailed-track-inner {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: var(--vac-days-total-w);
+  min-width: var(--vac-days-total-w);
   display: grid;
-  grid-template-columns: repeat(var(--days), var(--vac-day-col-w, 22px));
+  grid-template-columns: repeat(var(--days), var(--vac-day-col-w));
   align-items: stretch;
   min-height: 44px;
-  min-width: max-content;
   background: var(--vac-grid-fill);
 }
 
 .vac-detailed-day-bg {
   display: block;
+  width: var(--vac-day-col-w);
+  min-width: var(--vac-day-col-w);
+  max-width: var(--vac-day-col-w);
   min-height: 100%;
   box-sizing: border-box;
   box-shadow: inset -1px 0 0 var(--vac-grid-line);

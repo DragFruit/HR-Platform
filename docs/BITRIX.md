@@ -207,12 +207,13 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 Отчёт прогона: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.  
 CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/`.
 
-### Отпуска → график отсутствий (пальма)
+### Отпуска → график отсутствий (пальма) + календарь
 
-После **согласования** заявки в VBI HR сервер создаёт запись «отпуск ежегодный» в Битриксе:
+После **согласования** заявки в VBI HR сервер создаёт отсутствие в Битриксе:
 
-1. `lists.element.add` в инфоблок **График отсутствий** (основной путь, появляется пальма).
-2. Если не удалось — `calendar.event.add` с `accessibility: absent` (запасной путь).
+1. `lists.element.add` в инфоблок **График отсутствий** (пальма + предупреждения во встречах).
+2. Дополнительно `calendar.event.add` с `accessibility: absent` — цветная отметка в календаре Bitrix (как раньше на сетке). Ошибка календаря не откатывает lists.
+3. Если lists не удалось — только `calendar.event.add` (запасной путь).
 
 Опционально в env:
 
@@ -224,9 +225,9 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
 
-Проверка: согласовать отпуск в `/vacations` → в «Мои заявки» тег **Битрикс ✓** → в портале `crm.vbi.ru` пальма у сотрудника на даты отпуска.
+Проверка: согласовать отпуск в `/vacations` → тег **Битрикс ✓** → пальма + событие отсутствия в календаре `crm.vbi.ru`.
 
-Проверка вебхука в генераторе: методы `user.get`, `department.get`, `lists.get`, `lists.element.add`, `im.notify`.
+Проверка вебхука в генераторе: методы `user.get`, `department.get`, `lists.get`, `lists.element.add`, `calendar.event.add`, `im.notify`.
 
 ---
 

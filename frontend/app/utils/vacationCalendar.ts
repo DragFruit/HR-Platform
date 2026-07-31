@@ -303,3 +303,24 @@ export const isPastApprovedVacationRequest = (
   request: { status: string; end: string },
   asOf = todayIso()
 ) => request.status === 'approved' && request.end < asOf;
+
+/** ФИО с отпуском, пересекающим день (по умолчанию только approved). */
+export const namesOnVacationOnIso = (
+  requests: Array<{ employee: string; start: string; end: string; status: string }>,
+  iso: string,
+  options?: {
+    statuses?: string[];
+    scopeNames?: Iterable<string>;
+  }
+): string[] => {
+  const statuses = new Set(options?.statuses ?? ['approved']);
+  const scope = options?.scopeNames ? new Set(options.scopeNames) : null;
+  const active = new Set<string>();
+  for (const req of requests) {
+    if (!statuses.has(req.status)) continue;
+    if (scope && !scope.has(req.employee)) continue;
+    if (!isIsoInRange(iso, req.start, req.end)) continue;
+    active.add(req.employee);
+  }
+  return [...active].sort((a, b) => a.localeCompare(b, 'ru'));
+};
