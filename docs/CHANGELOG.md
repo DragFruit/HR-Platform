@@ -2,7 +2,24 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-07-31
+
+### Календарь: колонка «Должность» снова sticky
+
+- После восстановления CSS столбец «Должность» уезжал при горизонтальном скролле таблицы (ломались `left` у «Остаток» и пропадали sticky-правила у «Сотрудник»).
+- Починены `position: sticky` + `left` для Сотрудник / Должность / Остаток; `--vac-title-col-w` и `--vac-sticky-left-balance`.
+- Файлы: `frontend/app/assets/main.css` (ключ предпочтения `vbi-vac-show-title-col-v2` в `VacationTeamCalendar.vue`).
+- Проверка: `/vacations` или `/admin/how-it-looks` → горизонтальный скролл сетки — три левые колонки стоят на месте.
+
 ## 2026-07-30
+
+### Админ: раздел «Как выглядит» (превью календаря руководителя)
+
+- Пункт меню `/admin/how-it-looks` — тот же UI, что у руководителя на вкладке «Руководитель» (таблица + правое меню).
+- Открыт в пилоте `LAUNCH_SCOPE=vacations` (whitelist на бое).
+- Общий компонент: `VacationsManagerExperience.vue` (используется и `/vacations` у manager/hr).
+- Файлы: `pages/admin/how-it-looks.vue`, `VacationsManagerExperience.vue`, `useLaunchScope.ts`, `usePlatformContext.ts`, `vacations.vue`.
+- Проверка: под админом на localhost — «Как выглядит» в меню; на бое — после выкладки.
 
 ### Локальный тест: календарь сотрудника = прод + aside руководителя в тех же координатах
 

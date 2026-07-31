@@ -19,7 +19,7 @@
         />
         <div ref="frameRef" class="vac-team-calendar__frame">
           <button
-            v-if="variant === 'manager' && isAdmin"
+            v-if="variant === 'manager' && isAdmin && !hideAdminAdd"
             type="button"
             class="vac-admin-add-btn vac-admin-add-btn--frame"
             @click="adminAddOpen = true"
@@ -81,7 +81,7 @@
       </button>
     </div>
 
-    <AdminAddVacationDialog v-if="isAdmin" v-model:open="adminAddOpen" />
+    <AdminAddVacationDialog v-if="isAdmin && !hideAdminAdd" v-model:open="adminAddOpen" />
   </div>
 </template>
 
@@ -91,12 +91,7 @@ import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
-const VIEWPORT_BOTTOM_GAP_PX = 5;
-/**
- * Базовый масштаб платформы (scale на .app-viewport, --platform-zoom).
- * getBoundingClientRect / innerHeight — визуальные px; CSS height — layout до scale.
- */
-const PLATFORM_VIEW_ZOOM = 0.9;
+const VIEWPORT_BOTTOM_GAP_PX = 8;
 
 const props = withDefaults(
   defineProps<{
@@ -115,6 +110,8 @@ const props = withDefaults(
     viewMode?: 'detailed' | 'months';
     /** Скрыть год и боковые вкладки — они в ManagerVacationAside. */
     hideChrome?: boolean;
+    /** Скрыть «+ Добавить отпуск» (превью «Как выглядит»). */
+    hideAdminAdd?: boolean;
     year?: number;
     /** Суммарная строка «в отпуске» по дням (Digital Director). */
     showDepartmentDailyCounts?: boolean;
@@ -123,6 +120,7 @@ const props = withDefaults(
     variant: 'manager',
     defaultViewMode: 'detailed',
     hideChrome: false,
+    hideAdminAdd: false,
     showDepartmentDailyCounts: false
   }
 );
@@ -162,9 +160,9 @@ const updateViewportMax = () => {
   const el = frameRef.value;
   if (!el) return;
   const top = el.getBoundingClientRect().top;
-  // До низа окна (футер на этом экране скрыт) — 5px зазор
+  // До низа окна (первый экран = 100dvh, футер ниже fold) — 8px зазор
   const visualRoom = window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX;
-  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom / PLATFORM_VIEW_ZOOM));
+  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom));
 };
 
 const viewportStyle = computed(() => {
@@ -172,7 +170,7 @@ const viewportStyle = computed(() => {
   return { '--vac-team-viewport-max': `${viewportMaxPx.value}px` };
 });
 
-const TITLE_COL_STORAGE_KEY = 'vbi-vac-show-title-col-v1';
+const TITLE_COL_STORAGE_KEY = 'vbi-vac-show-title-col-v2';
 
 const readTitleColumnPref = (): boolean => {
   if (!import.meta.client) return true;
