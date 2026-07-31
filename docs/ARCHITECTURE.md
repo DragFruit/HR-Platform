@@ -123,8 +123,8 @@ flowchart TB
 
 - `admin/index.vue` — хаб ссылок
 - `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа
-- `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue`
-- `admin/how-it-looks.vue` — превью календаря как у руководителя (`VacationsManagerExperience` preview)
+- `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue` (`VacationsManagerExperience` preview)
+- `admin/how-it-looks.vue` — то же превью; на бое с замком после выката рук-ам
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление

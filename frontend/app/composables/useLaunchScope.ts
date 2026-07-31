@@ -51,12 +51,7 @@ export function useLaunchScope() {
     if (path === LAUNCH_VACATIONS_ADMIN_PATH || path.startsWith(`${LAUNCH_VACATIONS_ADMIN_PATH}/`)) {
       return true;
     }
-    if (
-      path === LAUNCH_VACATIONS_ADMIN_HOW_IT_LOOKS_PATH ||
-      path.startsWith(`${LAUNCH_VACATIONS_ADMIN_HOW_IT_LOOKS_PATH}/`)
-    ) {
-      return true;
-    }
+    // /admin/how-it-looks — с замком на бое (превью закрыто после выката рук-ам)
     if (
       path === LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH ||
       path.startsWith(`${LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH}/`)

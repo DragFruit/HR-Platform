@@ -11,8 +11,8 @@ alwaysApply: true
 
 Пилот: **`LAUNCH_SCOPE=vacations`**. Открыты только whitelist-пути в `useLaunchScope.ts`.
 
-Сейчас: `/vacations`, `/notifications`, `/profile`, `/ideas`, `/admin/vacations`, `/admin/how-it-looks`, `/admin/employees`, `/admin/notifications`, `/admin/ideas`.  
-Ачивки в профиле — с замком («Скоро»), пока пользователь явно не попросит открыть.
+Сейчас: `/vacations`, `/notifications`, `/profile`, `/ideas`, `/admin/vacations`, `/admin/employees`, `/admin/notifications`, `/admin/ideas`.  
+**С замком:** `/admin/how-it-looks` (превью закрыто). Ачивки в профиле — с замком («Скоро»), пока пользователь явно не попросит открыть.
 
 Полная платформа без замков — только **staging** `:8080`.
 

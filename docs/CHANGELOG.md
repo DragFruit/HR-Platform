@@ -43,6 +43,13 @@
 - Файлы: `VacationDetailedCalendar.vue`, `VacationMonthlyCalendar.vue`.
 - Проверка: свернуть/развернуть должность — один плавный сдвиг, без догона.
 
+### Админ: замок «Как выглядит» + график как у руководителя
+
+- На бое `/admin/how-it-looks` снова с замком (убрали из whitelist).
+- `/admin/vacations` — `VacationsManagerExperience` (preview): та же вёрстка, что у рук-ей; согласование с `force`.
+- Файлы: `useLaunchScope.ts`, `admin/vacations.vue`, `VacationsManagerExperience.vue`, `.cursor/rules/production-nav-locks.mdc`.
+- Проверка: админ → «Как выглядит» с замком; «График отпусков» — таблица + aside без карточной ломки.
+
 ### Bitrix: отпуск и в календаре, и пальмой
 
 - После согласования: `lists.element.add` (пальма) **и** `calendar.event.add` с `accessibility: absent` (отметка на сетке календаря Bitrix).
