@@ -7069,6 +7069,73 @@ a {
   --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 72px);
 }
 
+/* Админ / chrome с вкладками: год на рамке, «+ Добавить» в углу, вкладки справа */
+.vac-team-calendar--with-side-tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  overflow: visible;
+}
+
+.vac-team-calendar--with-side-tabs .vac-team-calendar__main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.vac-team-calendar--with-side-tabs .vac-team-calendar__pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+  /* Место под ярлык года над рамкой */
+  padding-top: 2.1rem;
+}
+
+.vac-team-calendar__pane > .vac-team-calendar__yeartab,
+.vac-year-tab.vac-team-calendar__yeartab {
+  position: absolute;
+  top: 2.1rem;
+  right: 44px;
+  left: auto;
+  z-index: 6;
+  transform: translateY(calc(-100% + 1px));
+}
+
+.vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
+  padding-top: 10px;
+  align-self: flex-start;
+}
+
+.vac-admin-vacations {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+
+.vac-admin-vacations__calendar {
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
 .vac-team-calendar__frame {
   position: sticky;
   top: 0;
@@ -7462,6 +7529,17 @@ a {
   background: var(--bg-surface);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.vac-admin-add-btn--frame {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 8;
+  width: auto;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .vac-admin-add-btn:hover {
@@ -9851,7 +9929,7 @@ a {
   transform: translateY(calc(-100% + 1px));
 }
 
-.vac-year-tab:not(.vac-emp-calendar-yeartab) {
+.vac-year-tab:not(.vac-emp-calendar-yeartab):not(.vac-team-calendar__yeartab) {
   position: relative;
 }
 
@@ -10080,8 +10158,8 @@ a {
     0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.vac-cal-side-tab--mine.vac-cal-side-tab--active::before,
-.vac-cal-side-tab--team.vac-cal-side-tab--active::before {
+.vac-cal-side-tab--detailed.vac-cal-side-tab--active::before,
+.vac-cal-side-tab--months.vac-cal-side-tab--active::before {
   content: '';
   position: absolute;
   left: 0;
@@ -10089,6 +10167,14 @@ a {
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
+}
+
+.vac-cal-side-tab--detailed.vac-cal-side-tab--active::before {
+  background: var(--accent-lime, #ddf365);
+}
+
+.vac-cal-side-tab--months.vac-cal-side-tab--active::before {
+  background: var(--primary);
 }
 
 .vac-cal-side-tab--mine.vac-cal-side-tab--active::before {

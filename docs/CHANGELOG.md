@@ -51,6 +51,12 @@
 - Файлы: `useLaunchScope.ts`, `admin/vacations.vue`, `VacationTeamCalendar.vue`, `.cursor/rules/production-nav-locks.mdc`.
 - Проверка: админ → «Как выглядит» с замком; «График отпусков» — год/Детально/Добавить + очередь заявок.
 
+### Админ: год, «+ Добавить» и боковые вкладки на место
+
+- Вернул absolute для ярлыка года и `vac-admin-add-btn--frame`; вкладки снова прижаты к рамке.
+- Файлы: `main.css`.
+- Проверка: `/admin/vacations` → год на верхнем краю рамки, кнопка справа в углу, Детально/По месяцам сбоку.
+
 ### Bitrix: отпуск и в календаре, и пальмой
 
 - После согласования: `lists.element.add` (пальма) **и** `calendar.event.add` с `accessibility: absent` (отметка на сетке календаря Bitrix).
