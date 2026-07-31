@@ -138,8 +138,7 @@ const props = withDefaults(
 const { user } = useAuth();
 const runtimeConfig = useRuntimeConfig();
 const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
-const { isAdmin, isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } =
-  usePermissions();
+const { isManager, isHr, canApproveVacations, canSeeAllVacationApprovals } = usePermissions();
 const { notifyApprovalTabOpened, currentStep, isActive: isManagerTrainingActive } = useManagerVacationTraining();
 const {
   departmentsGrouped,
@@ -359,12 +358,7 @@ const approvalStepLabel = (req: VacationRequest) =>
 const handoffStatusLabel = (req: VacationRequest) =>
   vacationPendingStatusLabel('director', findByName(req.employee) ?? undefined);
 
-const approve = (id: number) =>
-  approveRequest(
-    id,
-    managerProfileName(user.value) || null,
-    props.preview || isAdmin.value ? { force: true } : undefined
-  );
+const approve = (id: number) => approveRequest(id, managerProfileName(user.value) || null);
 const reject = (id: number) => setRequestStatus(id, 'rejected');
 
 const onViewYearChange = (year: number) => {

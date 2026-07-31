@@ -158,7 +158,7 @@ const empRowCount = computed(() =>
   props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
 );
 
-const fillViewport = computed(() => props.variant === 'manager');
+const fillViewport = computed(() => props.variant === 'manager' && props.hideChrome);
 
 const updateViewportMax = () => {
   if (props.variant !== 'manager' || !import.meta.client) return;
