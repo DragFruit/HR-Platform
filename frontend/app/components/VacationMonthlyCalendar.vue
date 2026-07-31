@@ -217,8 +217,7 @@ const remeasureNameCol = () => {
 
   if (max <= 0) return;
 
-  const chevron =
-    props.titleColumnToggleable && !props.showTitleColumn ? NAME_COL_CHEVRON : 0;
+  const chevron = props.titleColumnToggleable ? NAME_COL_CHEVRON : 0;
   nameColPx.value = Math.min(
     NAME_COL_MAX_PX,
     Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
@@ -255,11 +254,7 @@ const blockClass = (block: VacationMonthEntry) => ({
 });
 
 watch(
-  [
-    flatEmployees,
-    () => props.showTitleColumn,
-    () => props.titleColumnToggleable
-  ],
+  [flatEmployees, () => props.titleColumnToggleable],
   () => {
     void scheduleRemeasure();
   },

@@ -300,8 +300,9 @@ const remeasureNameCol = () => {
 
   if (max <= 0) return;
 
-  const chevron =
-    props.titleColumnToggleable && !props.showTitleColumn ? NAME_COL_CHEVRON : 0;
+  // Место под шеврон всегда, если колонку должности можно прятать —
+  // иначе при toggle сначала уезжает «Должность», потом прыгает ФИО (+24px).
+  const chevron = props.titleColumnToggleable ? NAME_COL_CHEVRON : 0;
   nameColPx.value = Math.min(
     NAME_COL_MAX_PX,
     Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
@@ -580,12 +581,20 @@ watch(
 );
 
 watch(
-  () => [props.departments, props.showTitleColumn, props.titleColumnToggleable] as const,
+  () => [props.departments, props.titleColumnToggleable] as const,
   () => {
     nextTick(measureStickyHeaderHeights);
     void scheduleRemeasureNameCol();
   },
   { deep: true }
+);
+
+watch(
+  () => props.showTitleColumn,
+  () => {
+    // Только sticky-шапка — ширину ФИО не трогаем (шеврон уже зарезервирован).
+    nextTick(measureStickyHeaderHeights);
+  }
 );
 
 watch(
