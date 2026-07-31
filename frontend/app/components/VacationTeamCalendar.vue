@@ -10,77 +10,83 @@
   >
     <div class="vac-team-calendar__main">
       <div class="vac-team-calendar__pane">
-        <VacationYearTab
+        <div
           v-if="variant === 'manager' && !hideChrome"
-          class="vac-team-calendar__yeartab"
-          :model-value="viewYear"
-          :years="yearOptions"
-          @update:model-value="viewYear = $event"
-        />
-        <div ref="frameRef" class="vac-team-calendar__frame">
+          class="vac-team-calendar__chrome"
+        >
           <button
-            v-if="variant === 'manager' && isAdmin && !hideAdminAdd"
+            v-if="isAdmin && !hideAdminAdd"
             type="button"
-            class="vac-admin-add-btn vac-admin-add-btn--frame"
+            class="vac-admin-add-btn vac-admin-add-btn--chrome"
             @click="adminAddOpen = true"
           >
             + Добавить отпуск
           </button>
-
-          <VacationDetailedCalendar
-            v-if="variant === 'manager' && resolvedViewMode === 'detailed'"
-            :departments="departments"
-            :year="viewYear"
-            :requests="requests"
-            :reservations="reservations"
-            :show-department-daily-counts="showDepartmentDailyCounts"
-            :show-title-column="showTitleColumn"
-            :highlight-employee-names="highlightEmployeeNames"
-            title-column-toggleable
-            @toggle-title-column="toggleTitleColumn"
-          />
-          <VacationMonthlyCalendar
-            v-else
-            :departments="departments"
-            :year="calendarYear"
-            :get-month-entries="getMonthEntries"
-            :compact-cells="variant === 'employee-team'"
-            :show-title-column="variant === 'manager' && showTitleColumn"
-            :title-column-toggleable="variant === 'manager'"
-            :highlight-employee-names="highlightEmployeeNames"
-            @toggle-title-column="toggleTitleColumn"
+          <VacationYearTab
+            class="vac-team-calendar__yeartab"
+            :model-value="viewYear"
+            :years="yearOptions"
+            @update:model-value="viewYear = $event"
           />
         </div>
-      </div>
-    </div>
 
-    <div
-      v-if="variant === 'manager' && !hideChrome"
-      class="vac-cal-side-tabs"
-      role="tablist"
-      aria-label="Вид календаря"
-      data-tour="vac-calendar-view-toggle"
-    >
-      <button
-        type="button"
-        role="tab"
-        class="vac-cal-side-tab vac-cal-side-tab--detailed"
-        :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'detailed' }"
-        :aria-selected="resolvedViewMode === 'detailed'"
-        @click="setViewMode('detailed')"
-      >
-        Детально
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="vac-cal-side-tab vac-cal-side-tab--months"
-        :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'months' }"
-        :aria-selected="resolvedViewMode === 'months'"
-        @click="setViewMode('months')"
-      >
-        По месяцам
-      </button>
+        <div class="vac-team-calendar__body">
+          <div ref="frameRef" class="vac-team-calendar__frame">
+            <VacationDetailedCalendar
+              v-if="variant === 'manager' && resolvedViewMode === 'detailed'"
+              :departments="departments"
+              :year="viewYear"
+              :requests="requests"
+              :reservations="reservations"
+              :show-department-daily-counts="showDepartmentDailyCounts"
+              :show-title-column="showTitleColumn"
+              :highlight-employee-names="highlightEmployeeNames"
+              title-column-toggleable
+              @toggle-title-column="toggleTitleColumn"
+            />
+            <VacationMonthlyCalendar
+              v-else
+              :departments="departments"
+              :year="calendarYear"
+              :get-month-entries="getMonthEntries"
+              :compact-cells="variant === 'employee-team'"
+              :show-title-column="variant === 'manager' && showTitleColumn"
+              :title-column-toggleable="variant === 'manager'"
+              :highlight-employee-names="highlightEmployeeNames"
+              @toggle-title-column="toggleTitleColumn"
+            />
+          </div>
+
+          <div
+            v-if="variant === 'manager' && !hideChrome"
+            class="vac-cal-side-tabs"
+            role="tablist"
+            aria-label="Вид календаря"
+            data-tour="vac-calendar-view-toggle"
+          >
+            <button
+              type="button"
+              role="tab"
+              class="vac-cal-side-tab vac-cal-side-tab--detailed"
+              :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'detailed' }"
+              :aria-selected="resolvedViewMode === 'detailed'"
+              @click="setViewMode('detailed')"
+            >
+              Детально
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="vac-cal-side-tab vac-cal-side-tab--months"
+              :class="{ 'vac-cal-side-tab--active': resolvedViewMode === 'months' }"
+              :aria-selected="resolvedViewMode === 'months'"
+              @click="setViewMode('months')"
+            >
+              По месяцам
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <AdminAddVacationDialog v-if="isAdmin && !hideAdminAdd" v-model:open="adminAddOpen" />

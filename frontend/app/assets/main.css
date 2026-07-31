@@ -7069,56 +7069,63 @@ a {
   --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 72px);
 }
 
-/* Админ / chrome с вкладками: год на рамке, «+ Добавить» в углу, вкладки справа */
+/* Админ / chrome с вкладками: год + «+ Добавить» на рамке, вкладки встык справа */
 .vac-team-calendar--with-side-tabs {
+  min-width: 0;
+  overflow: visible;
+}
+
+.vac-team-calendar--with-side-tabs .vac-team-calendar__main,
+.vac-team-calendar--with-side-tabs .vac-team-calendar__pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.vac-team-calendar__chrome {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-right: 12px;
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 6;
+}
+
+.vac-team-calendar__chrome .vac-team-calendar__yeartab,
+.vac-team-calendar__chrome .vac-year-tab.vac-team-calendar__yeartab {
+  position: static;
+  transform: none;
+  top: auto;
+  right: auto;
+}
+
+.vac-team-calendar__body {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 0;
-  min-width: 0;
-  overflow: visible;
-}
-
-.vac-team-calendar--with-side-tabs .vac-team-calendar__main {
-  position: relative;
-  display: flex;
-  flex-direction: column;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  overflow: visible;
-}
-
-.vac-team-calendar--with-side-tabs .vac-team-calendar__pane {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: visible;
-  /* Место под ярлык года над рамкой */
-  padding-top: 2.1rem;
-}
-
-.vac-team-calendar__pane > .vac-team-calendar__yeartab,
-.vac-year-tab.vac-team-calendar__yeartab {
-  position: absolute;
-  top: 2.1rem;
-  right: 44px;
-  left: auto;
-  z-index: 6;
-  transform: translateY(calc(-100% + 1px));
 }
 
 .vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
   position: relative;
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
 }
 
 .vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
-  padding-top: 10px;
+  /* Встык к правому краю рамки, верх = верх таблицы */
+  padding-top: 0;
+  margin-left: -1px;
   align-self: flex-start;
 }
 
@@ -7160,13 +7167,18 @@ a {
 }
 
 .vac-team-calendar--fill-viewport .vac-team-calendar__main,
-.vac-team-calendar--fill-viewport .vac-team-calendar__pane {
+.vac-team-calendar--fill-viewport .vac-team-calendar__pane,
+.vac-team-calendar--fill-viewport .vac-team-calendar__body {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   height: 100%;
+}
+
+.vac-team-calendar--fill-viewport .vac-team-calendar__body {
+  flex-direction: row;
 }
 
 .vac-team-calendar--fill-viewport .vac-team-calendar__frame {
@@ -7531,7 +7543,17 @@ a {
   white-space: nowrap;
 }
 
+.vac-admin-add-btn--chrome {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  border-radius: 10px 10px 0 0;
+  border-bottom-color: var(--bg-surface);
+  box-shadow: 0 -4px 14px rgba(116, 81, 244, 0.07);
+}
+
 .vac-admin-add-btn--frame {
+  /* legacy: кнопка больше не внутри frame */
   position: absolute;
   top: 8px;
   right: 12px;
@@ -7539,7 +7561,6 @@ a {
   width: auto;
   padding: 5px 10px;
   font-size: 0.72rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .vac-admin-add-btn:hover {
