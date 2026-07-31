@@ -235,6 +235,8 @@ const emit = defineEmits<{
 const DAY_COL_PX = 18;
 const NAME_COL_PAD_X = 16;
 const NAME_COL_CHEVRON = 24;
+/** Потолок — иначе ошибка замера раздувает таблицу на весь экран. */
+const NAME_COL_MAX_PX = 280;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
 const TODAY_SCROLL_OFFSET_COLS = 3;
 
@@ -264,7 +266,8 @@ const maxDomTextWidth = (root: HTMLElement | null | undefined) => {
   let max = 0;
   for (const child of root.children) {
     const el = child as HTMLElement;
-    max = Math.max(max, el.scrollWidth, el.offsetWidth);
+    // Только контент зонда (inline-block + max-content), не ширину ячейки таблицы.
+    max = Math.max(max, el.scrollWidth);
   }
   return max;
 };
@@ -273,17 +276,7 @@ const remeasureNameCol = () => {
   if (!import.meta.client) return;
 
   const root = nameMeasureRef.value;
-  // DOM-зонд в том же шрифте, что UI — canvas часто занижает Golos Text до загрузки/фолбэка.
   let max = maxDomTextWidth(root);
-
-  // Уже отрисованные ФИО: scrollWidth даёт полную ширину даже при ellipsis.
-  const rendered = tableRef.value?.querySelectorAll(
-    '.vac-detailed-emp-row .emp-name--inline'
-  );
-  rendered?.forEach((node) => {
-    const el = node as HTMLElement;
-    max = Math.max(max, el.scrollWidth);
-  });
 
   if (max < 40) {
     const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
@@ -309,7 +302,10 @@ const remeasureNameCol = () => {
 
   const chevron =
     props.titleColumnToggleable && !props.showTitleColumn ? NAME_COL_CHEVRON : 0;
-  nameColPx.value = Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron));
+  nameColPx.value = Math.min(
+    NAME_COL_MAX_PX,
+    Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
+  );
 };
 
 const scheduleRemeasureNameCol = async () => {
@@ -567,7 +563,7 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && scrollWrapRef.value) {
     resizeObserver = new ResizeObserver(() => {
       measureStickyHeaderHeights();
-      void scheduleRemeasureNameCol();
+      // Не пересчитывать ФИО здесь — scrollWidth ячеек зацикливает раздувание колонки.
     });
     resizeObserver.observe(scrollWrapRef.value);
   }

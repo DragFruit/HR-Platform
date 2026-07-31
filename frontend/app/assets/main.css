@@ -7258,20 +7258,24 @@ a {
   text-overflow: clip;
 }
 
-/* Скрытый зонд: ширина колонки = max(«Сотрудник», ФИО в видимой команде).
- * Teleport в body — иначе overflow:hidden у wrap клипит left:-99999 и scrollWidth=0. */
+/* Скрытый зонд: ширина колонки = max(«Сотрудник», ФИО).
+ * Teleport в body + max-content: не клипится overflow wrap и не растягивается на viewport. */
 .vac-team-name-measure {
   position: fixed;
   left: 0;
   top: 0;
   z-index: -1;
+  width: max-content;
+  max-width: none;
+  transform: translate(-100%, -100%);
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
 }
 
 .vac-team-name-measure__head {
-  display: block;
+  display: inline-block;
+  width: max-content;
   font-family: var(--font-display);
   font-size: 0.65rem;
   font-weight: 600;
@@ -7281,7 +7285,8 @@ a {
 }
 
 .vac-team-name-measure__name {
-  display: block;
+  display: inline-block;
+  width: max-content;
   font-family: var(--font-body);
   font-size: 0.72rem;
   font-weight: 600;

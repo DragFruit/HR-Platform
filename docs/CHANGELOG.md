@@ -18,8 +18,10 @@
 
 - Зонд уезжал за `overflow:hidden` → ширина 0/занижена; canvas без Golos Text обрезал длинные имена.
 - Зонд через `Teleport` в `body` + DOM `scrollWidth`; canvas только fallback.
+- Баг ПК: замер `scrollWidth` у block-ячеек + ResizeObserver раздувал колонку ФИО → сетка «уезжала».
+- Только зонд (`inline-block` + `max-content`), потолок 280px, resize не трогает ФИО.
 - Файлы: `VacationDetailedCalendar.vue`, `VacationMonthlyCalendar.vue`, `main.css`.
-- Проверка: бой `/admin/how-it-looks` → hard refresh → колонка = самое длинное ФИО.
+- Проверка: бой `/admin/how-it-looks` → hard refresh → колонка по длинному ФИО, даты на месте.
 
 ### Bitrix: отпуск и в календаре, и пальмой
 

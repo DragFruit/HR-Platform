@@ -114,6 +114,7 @@ import type { VacationMonthEntry } from '~/utils/vacationReservations';
 
 const NAME_COL_PAD_X = 16;
 const NAME_COL_CHEVRON = 24;
+const NAME_COL_MAX_PX = 280;
 
 let measureCtx: CanvasRenderingContext2D | null = null;
 
@@ -218,7 +219,10 @@ const remeasureNameCol = () => {
 
   const chevron =
     props.titleColumnToggleable && !props.showTitleColumn ? NAME_COL_CHEVRON : 0;
-  nameColPx.value = Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron));
+  nameColPx.value = Math.min(
+    NAME_COL_MAX_PX,
+    Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
+  );
 };
 
 const scheduleRemeasure = async () => {
