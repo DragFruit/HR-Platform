@@ -7259,11 +7259,12 @@ a {
 }
 
 /* Скрытый зонд: ширина колонки = max(«Сотрудник», ФИО в видимой команде).
- * Не ставить visibility:hidden / height:0 — иначе ширина текста = 0. */
+ * Teleport в body — иначе overflow:hidden у wrap клипит left:-99999 и scrollWidth=0. */
 .vac-team-name-measure {
-  position: absolute;
-  left: -99999px;
+  position: fixed;
+  left: 0;
   top: 0;
+  z-index: -1;
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;

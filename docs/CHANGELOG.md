@@ -9,10 +9,17 @@
 - При вертикальном скролле закреплены строки месяцев, чисел и дней недели (и счётчиков директора).
 - «Сейчас в отпуске»: только `approved` из **тех же** `yearRequests`, что рисует календарь; `todayIso` + `namesOnVacationOnIso`; срез = видимые в календаре.
 - Полоски Gantt: позиция в px; колонка дня **18px** (`--vac-day-col-w`); таблица `max-width` = сумма колонок — без растягивания в простор.
-- Три оси отдельно: день **18px**; строка **21.5px**; ФИО — **по самому длинному** в видимой колонке (`measureCssText` + зонд `--detailed`).
+- Три оси отдельно: день **18px**; строка **21.5px**; ФИО — **по самому длинному** в видимой колонке (DOM-зонд в `body`, не canvas).
 - Prop метрики: `vacationNowCount`; aside `z-index: 30`.
 - Файлы: `main.css`, `VacationDetailedCalendar.vue`, `utils/measureCssText.ts`, `VacationsManagerExperience.vue`, `ManagerVacationAside.vue`, `utils/vacationCalendar.ts`.
 - Проверка: `/vacations` → hard refresh → длинное ФИО целиком; даты 18px; строки 21.5; метрика = полоска на «сегодня».
+
+### Календарь: фикс замера колонки ФИО
+
+- Зонд уезжал за `overflow:hidden` → ширина 0/занижена; canvas без Golos Text обрезал длинные имена.
+- Зонд через `Teleport` в `body` + DOM `scrollWidth`; canvas только fallback.
+- Файлы: `VacationDetailedCalendar.vue`, `VacationMonthlyCalendar.vue`, `main.css`.
+- Проверка: бой `/admin/how-it-looks` → hard refresh → колонка = самое длинное ФИО.
 
 ### Bitrix: отпуск и в календаре, и пальмой
 

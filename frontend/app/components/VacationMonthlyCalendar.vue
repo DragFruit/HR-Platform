@@ -1,17 +1,19 @@
 <template>
   <div class="vacation-calendar-wrap">
-    <div
-      ref="nameMeasureRef"
-      class="vac-team-name-measure"
-      aria-hidden="true"
-    >
-      <span class="vac-team-name-measure__head">Сотрудник</span>
-      <span
-        v-for="emp in flatEmployees"
-        :key="`measure-${emp.id}`"
-        class="vac-team-name-measure__name"
-      >{{ emp.name }}</span>
-    </div>
+    <Teleport to="body">
+      <div
+        ref="nameMeasureRef"
+        class="vac-team-name-measure"
+        aria-hidden="true"
+      >
+        <span class="vac-team-name-measure__head">Сотрудник</span>
+        <span
+          v-for="emp in flatEmployees"
+          :key="`measure-${emp.id}`"
+          class="vac-team-name-measure__name"
+        >{{ emp.name }}</span>
+      </div>
+    </Teleport>
 
     <div class="timeline-scroll-x vac-table-scroll">
       <table
@@ -184,34 +186,31 @@ const remeasureNameCol = () => {
   if (!import.meta.client) return;
 
   const root = nameMeasureRef.value;
-  const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
-  const nameEl = root?.querySelector('.vac-team-name-measure__name') as HTMLElement | null;
-
-  const headStyle = headEl ? getComputedStyle(headEl) : null;
-  const nameStyle = nameEl ? getComputedStyle(nameEl) : null;
-
-  const headFont = buildFontFromStyle(
-    headStyle,
-    '600 10.4px Unbounded, system-ui, sans-serif'
-  );
-  const nameFont = buildFontFromStyle(
-    nameStyle,
-    '600 11.5px Golos Text, system-ui, sans-serif'
-  );
-
-  const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
-
-  // Как в UI: uppercase + letter-spacing у заголовка
-  let max = measureCssText('СОТРУДНИК', headFont, headSpacing);
-
-  for (const emp of flatEmployees.value) {
-    max = Math.max(max, measureCssText(emp.name, nameFont, 0));
-  }
-
-  if (root && max < 40) {
+  let max = 0;
+  if (root) {
     for (const child of root.children) {
       const el = child as HTMLElement;
       max = Math.max(max, el.scrollWidth, el.offsetWidth);
+    }
+  }
+
+  if (max < 40) {
+    const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
+    const nameEl = root?.querySelector('.vac-team-name-measure__name') as HTMLElement | null;
+    const headStyle = headEl ? getComputedStyle(headEl) : null;
+    const nameStyle = nameEl ? getComputedStyle(nameEl) : null;
+    const headFont = buildFontFromStyle(
+      headStyle,
+      '600 10.4px Unbounded, system-ui, sans-serif'
+    );
+    const nameFont = buildFontFromStyle(
+      nameStyle,
+      '600 11.5px Golos Text, system-ui, sans-serif'
+    );
+    const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
+    max = measureCssText('СОТРУДНИК', headFont, headSpacing);
+    for (const emp of flatEmployees.value) {
+      max = Math.max(max, measureCssText(emp.name, nameFont, 0));
     }
   }
 

@@ -1,17 +1,19 @@
 <template>
   <div ref="scrollWrapRef" class="vacation-calendar-wrap vac-detailed-wrap">
-    <div
-      ref="nameMeasureRef"
-      class="vac-team-name-measure vac-team-name-measure--detailed"
-      aria-hidden="true"
-    >
-      <span class="vac-team-name-measure__head">Сотрудник</span>
-      <span
-        v-for="emp in visibleEmployees"
-        :key="`measure-${emp.id}`"
-        class="vac-team-name-measure__name"
-      >{{ emp.name }}</span>
-    </div>
+    <Teleport to="body">
+      <div
+        ref="nameMeasureRef"
+        class="vac-team-name-measure vac-team-name-measure--detailed"
+        aria-hidden="true"
+      >
+        <span class="vac-team-name-measure__head">Сотрудник</span>
+        <span
+          v-for="emp in visibleEmployees"
+          :key="`measure-${emp.id}`"
+          class="vac-team-name-measure__name"
+        >{{ emp.name }}</span>
+      </div>
+    </Teleport>
 
     <div class="timeline-scroll-x vac-detailed-scroll vac-table-scroll">
       <table
@@ -257,35 +259,49 @@ const measureStickyHeaderHeights = () => {
   }
 };
 
+const maxDomTextWidth = (root: HTMLElement | null | undefined) => {
+  if (!root) return 0;
+  let max = 0;
+  for (const child of root.children) {
+    const el = child as HTMLElement;
+    max = Math.max(max, el.scrollWidth, el.offsetWidth);
+  }
+  return max;
+};
+
 const remeasureNameCol = () => {
   if (!import.meta.client) return;
 
   const root = nameMeasureRef.value;
-  const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
-  const nameEl = root?.querySelector('.vac-team-name-measure__name') as HTMLElement | null;
+  // DOM-зонд в том же шрифте, что UI — canvas часто занижает Golos Text до загрузки/фолбэка.
+  let max = maxDomTextWidth(root);
 
-  const headStyle = headEl ? getComputedStyle(headEl) : null;
-  const nameStyle = nameEl ? getComputedStyle(nameEl) : null;
-
-  const headFont = buildFontFromStyle(
-    headStyle,
-    '600 9.6px Unbounded, system-ui, sans-serif'
+  // Уже отрисованные ФИО: scrollWidth даёт полную ширину даже при ellipsis.
+  const rendered = tableRef.value?.querySelectorAll(
+    '.vac-detailed-emp-row .emp-name--inline'
   );
-  const nameFont = buildFontFromStyle(
-    nameStyle,
-    '600 11.2px Golos Text, system-ui, sans-serif'
-  );
-  const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
+  rendered?.forEach((node) => {
+    const el = node as HTMLElement;
+    max = Math.max(max, el.scrollWidth);
+  });
 
-  let max = measureCssText('СОТРУДНИК', headFont, headSpacing);
-  for (const emp of visibleEmployees.value) {
-    max = Math.max(max, measureCssText(emp.name, nameFont, 0));
-  }
-
-  if (root && max < 40) {
-    for (const child of root.children) {
-      const el = child as HTMLElement;
-      max = Math.max(max, el.scrollWidth, el.offsetWidth);
+  if (max < 40) {
+    const headEl = root?.querySelector('.vac-team-name-measure__head') as HTMLElement | null;
+    const nameEl = root?.querySelector('.vac-team-name-measure__name') as HTMLElement | null;
+    const headStyle = headEl ? getComputedStyle(headEl) : null;
+    const nameStyle = nameEl ? getComputedStyle(nameEl) : null;
+    const headFont = buildFontFromStyle(
+      headStyle,
+      '600 9.6px Unbounded, system-ui, sans-serif'
+    );
+    const nameFont = buildFontFromStyle(
+      nameStyle,
+      '600 11.2px Golos Text, system-ui, sans-serif'
+    );
+    const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
+    max = measureCssText('СОТРУДНИК', headFont, headSpacing);
+    for (const emp of visibleEmployees.value) {
+      max = Math.max(max, measureCssText(emp.name, nameFont, 0));
     }
   }
 
@@ -298,6 +314,10 @@ const remeasureNameCol = () => {
 
 const scheduleRemeasureNameCol = async () => {
   await nextTick();
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+  // Второй кадр — после раскладки таблицы и подгрузки сотрудников.
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());
   });
@@ -570,5 +590,12 @@ watch(
     void scheduleRemeasureNameCol();
   },
   { deep: true }
+);
+
+watch(
+  () => visibleEmployees.value.map((emp) => emp.name).join('\n'),
+  () => {
+    void scheduleRemeasureNameCol();
+  }
 );
 </script>
