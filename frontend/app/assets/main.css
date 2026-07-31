@@ -8314,14 +8314,29 @@ a {
   background: var(--vac-row-hover-weekend);
 }
 
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim {
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .vac-detailed-track,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .vac-detailed-track-inner {
   opacity: 0.28;
+}
+
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .sticky-col-name,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .sticky-col-title,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .sticky-col-balance {
+  /* Не opacity на tr — иначе отпуска просвечивают сквозь sticky */
+  background: var(--vac-grid-fill);
+  color: color-mix(in srgb, var(--text) 32%, var(--vac-grid-fill));
+}
+
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .emp-name--inline,
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-dim .emp-title--col {
+  color: inherit;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-name,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .sticky-col-balance {
-  background: rgba(116, 81, 244, 0.12);
+  /* Непрозрачный лайловый вместо rgba(…, 0.12) */
+  background: #ebe6fc;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row.is-vacation-focus .emp-name--inline {
@@ -8329,13 +8344,19 @@ a {
   font-weight: 800;
 }
 
-.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-dim {
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-dim .vac-cell {
   opacity: 0.28;
+}
+
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-dim .sticky-col-name,
+.vacation-timeline tbody tr.vac-team-emp-row.is-vacation-dim .sticky-col-title {
+  background: var(--bg-surface, #ffffff);
+  color: color-mix(in srgb, var(--text) 32%, #ffffff);
 }
 
 .vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .sticky-col-name,
 .vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .sticky-col-title {
-  background: rgba(116, 81, 244, 0.12);
+  background: #ebe6fc;
 }
 
 .vacation-timeline tbody tr.vac-team-emp-row.is-vacation-focus .emp-name--inline {

@@ -23,6 +23,13 @@
 - Файлы: `VacationDetailedCalendar.vue`, `VacationMonthlyCalendar.vue`, `main.css`.
 - Проверка: бой `/admin/how-it-looks` → hard refresh → колонка по длинному ФИО, даты на месте.
 
+### Календарь: sticky ФИО непрозрачны при метрике «Сейчас в отпуске»
+
+- Убраны `opacity` на всю строку и `rgba` фон у focus — отпуска больше не просвечивают сквозь ФИО/должность/остаток.
+- Dim только у трека дат; sticky — сплошной фон (`#ebe6fc` / `#ffffff`).
+- Файлы: `main.css`.
+- Проверка: `/admin/how-it-looks` → клик «Сейчас в отпуске» → горизонтальный скролл — колонки слева глухие.
+
 ### Bitrix: отпуск и в календаре, и пальмой
 
 - После согласования: `lists.element.add` (пальма) **и** `calendar.event.add` с `accessibility: absent` (отметка на сетке календаря Bitrix).
