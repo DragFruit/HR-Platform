@@ -21,6 +21,8 @@ export type ServerEmployee = {
   department: string;
   manager: string;
   hired_at: string;
+  /** День рождения: `YYYY-MM-DD` или `MM-DD`. */
+  birthday?: string | null;
   platform_user_id: number | null;
   bitrix_user_id?: number | null;
   email?: string;

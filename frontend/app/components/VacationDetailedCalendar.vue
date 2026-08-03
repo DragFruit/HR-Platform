@@ -123,7 +123,14 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline" :title="emp.name">{{ emp.name }}</span>
+              <button
+                type="button"
+                class="emp-name emp-name--inline emp-name--card"
+                :title="emp.name"
+                @click.stop="openEmployeeVisitingCard(emp)"
+              >
+                {{ emp.name }}
+              </button>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -178,6 +185,7 @@ import {
 } from '~/utils/vacationReservations';
 
 const { state: vacationState } = useVacations();
+const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
 
 type YearDayCell = {
   month: number;

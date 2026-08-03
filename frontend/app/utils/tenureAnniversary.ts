@@ -131,3 +131,32 @@ export const yearsOfServiceLabel = (hiredAt: string, asOf: Date = new Date()): s
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${years} года`;
   return `${years} лет`;
 };
+
+/** Стаж для визитки: «2 г. 8 мес.» / «8 мес.» / «меньше месяца». */
+export const tenureYmLabel = (hiredAt: string, asOf: Date = new Date()): string => {
+  const hire = parseHire(hiredAt);
+  if (!hire) return '—';
+  let months =
+    (asOf.getFullYear() - hire.getFullYear()) * 12 + (asOf.getMonth() - hire.getMonth());
+  if (asOf.getDate() < hire.getDate()) months -= 1;
+  months = Math.max(0, months);
+  if (months === 0) return 'меньше месяца';
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  if (y === 0) return `${m} мес.`;
+  if (m === 0) return yearsOfServiceLabel(hiredAt, asOf);
+  return `${y} г. ${m} мес.`;
+};
+
+/** День рождения: ISO `YYYY-MM-DD` или `MM-DD` → «14 марта». */
+export const formatBirthdayRu = (birthday: string): string => {
+  const raw = birthday.trim();
+  const full = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const short = raw.match(/^(\d{2})-(\d{2})$/);
+  const mm = full?.[2] ?? short?.[1];
+  const dd = full?.[3] ?? short?.[2];
+  if (!mm || !dd) return raw;
+  const d = new Date(2000, Number(mm) - 1, Number(dd), 12);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+};

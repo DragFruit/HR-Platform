@@ -69,7 +69,14 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+              <button
+                type="button"
+                class="emp-name emp-name--inline emp-name--card"
+                :title="emp.name"
+                @click.stop="openEmployeeVisitingCard(emp)"
+              >
+                {{ emp.name }}
+              </button>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -111,6 +118,8 @@
 <script setup lang="ts">
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationMonthEntry } from '~/utils/vacationReservations';
+
+const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
 
 const NAME_COL_PAD_X = 16;
 const NAME_COL_CHEVRON = 24;

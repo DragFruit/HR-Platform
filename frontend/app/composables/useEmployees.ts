@@ -12,6 +12,8 @@ export type Employee = {
   department: string;
   manager: string;
   hired_at: string;
+  /** День рождения: `YYYY-MM-DD` или `MM-DD` (год опционален). */
+  birthday?: string | null;
   platform_user_id: number | null;
   bitrix_user_id?: number | null;
   email: string;
@@ -96,6 +98,7 @@ export function useEmployees() {
     department: emp.department,
     manager: emp.manager,
     hired_at: emp.hired_at,
+    birthday: emp.birthday || undefined,
     platform_user_id: emp.platform_user_id,
     bitrix_user_id:
       emp.bitrix_user_id ??
@@ -112,6 +115,7 @@ export function useEmployees() {
     department: string;
     manager: string;
     hired_at: string;
+    birthday?: string | null;
     platform_user_id: number | null;
     bitrix_user_id?: number | null;
     email?: string;
@@ -125,6 +129,7 @@ export function useEmployees() {
       department: row.department,
       manager: row.manager,
       hired_at: row.hired_at,
+      birthday: row.birthday ?? null,
       platform_user_id: row.platform_user_id,
       bitrix_user_id:
         row.bitrix_user_id ??
@@ -334,6 +339,7 @@ export function useEmployees() {
   };
 
   const findByName = (name: string) => employees.value.find((emp) => emp.name === name) ?? null;
+  const findById = (id: number) => employees.value.find((emp) => emp.id === id) ?? null;
 
   /** Руководитель сотрудника — из поля manager справочника (актуальная версия на платформе). */
   const managerForEmployee = (emp: Employee | null | undefined): Employee | null => {
@@ -510,6 +516,7 @@ export function useEmployees() {
     findByUserId,
     findByUserForAuth,
     findByName,
+    findById,
     managerForEmployee,
     directReports,
     allReports,
