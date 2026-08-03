@@ -241,27 +241,6 @@ const createViaAbsenceIblock = async (params: {
   return { absenceId: result, auth };
 };
 
-const createViaCalendarAbsent = async (params: {
-  bitrixUserId: number;
-  start: string;
-  end: string;
-  comment: string;
-  employeeName: string;
-}): Promise<{ eventId: number; auth: AuthMode }> => {
-  const { result, auth } = await bitrixVacationRest<number>('calendar.event.add', {
-    type: 'user',
-    ownerId: params.bitrixUserId,
-    name: `Отпуск: ${params.employeeName} (VBI HR)`,
-    description: params.comment?.trim() || `Согласовано в VBI HR · ${params.employeeName}`,
-    from: params.start,
-    to: params.end,
-    skip_time: 'Y',
-    accessibility: 'absent',
-    auto_detect_section: 'Y'
-  });
-  return { eventId: result, auth };
-};
-
 export const pushVacationToBitrixAbsence = async (request: VacationRequest): Promise<{
   absenceId: number;
   method: string;
@@ -292,7 +271,6 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
 
   let absenceId: number;
   let method: string;
-  let iblockErrorMessage = '';
 
   const existing = await findExistingAbsenceElement({
     bitrixUserId,
@@ -309,46 +287,18 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
       absenceId = iblock.absenceId;
       method = `lists.element.add:${iblock.auth}`;
     } catch (iblockError) {
-      iblockErrorMessage = errorMessage(iblockError);
-      console.warn('[bitrix-vacation] iblock sync failed, trying calendar.event.add:', iblockErrorMessage);
-      try {
-        const cal = await createViaCalendarAbsent(payload);
-        // OAuth-токен = HR, который вошёл; Bitrix часто игнорирует ownerId и пишет в календарь HR.
-        if (cal.auth === 'oauth') {
-          throw new Error(
-            `calendar.event.add через OAuth запрещён (риск чужого календаря у владельца токена). ` +
-              `iblock: ${iblockErrorMessage || 'unknown'}. Нужен рабочий BITRIX_WEBHOOK_URL с lists/calendar.`
-          );
-        }
-        absenceId = cal.eventId;
-        method = `calendar.event.add:${cal.auth}`;
-        return { absenceId, method };
-      } catch (calendarError) {
-        const calendarMessage = errorMessage(calendarError);
-        throw new Error(
-          `iblock: ${iblockErrorMessage || 'unknown'}; calendar: ${calendarMessage}`
-        );
-      }
+      // Не падаем в calendar.event.add: вебхук/OAuth = CREATED_BY HR (Драго),
+      // и Bitrix показывает такие absence-события в «Отсутствиях» у автора, даже при верном ownerId.
+      throw new Error(
+        `lists.element.add не удался: ${errorMessage(iblockError)}. ` +
+          `calendar.event.add отключён (чужие отпуска в профиле владельца вебхука/токена).`
+      );
     }
   }
 
-  // Доп. отметка в календаре — только через вебхук (не OAuth), иначе снова риск календаря HR.
-  try {
-    const cal = await createViaCalendarAbsent(payload);
-    if (cal.auth === 'webhook') {
-      method = `${method}+calendar.event.add:${cal.eventId}`;
-    } else {
-      console.warn(
-        `[bitrix-vacation] skip calendar.event.add via OAuth for request #${request.id} (ownerId unsafe)`
-      );
-    }
-  } catch (calendarError) {
-    const message = errorMessage(calendarError);
-    console.warn(
-      `[bitrix-vacation] calendar.event.add failed for request #${request.id}:`,
-      message
-    );
-  }
+  // Календарную отметку не пишем: CREATED_BY всегда = владелец вебхука (Драго),
+  // из‑за этого чужие отпуска появляются в блоке «Отсутствия» у HR.
+  // Пальма/график отсутствий — через lists (PROPERTY_USER = сотрудник).
 
   return { absenceId, method };
 };
