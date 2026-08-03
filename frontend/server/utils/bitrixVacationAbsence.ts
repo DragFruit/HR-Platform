@@ -137,6 +137,80 @@ export async function resolveAbsenceIblockId(): Promise<number | null> {
   return cachedAbsenceIblockId;
 }
 
+type AbsenceListElement = {
+  ID?: string | number;
+  CODE?: string;
+  ACTIVE_FROM?: string;
+  ACTIVE_TO?: string;
+  PROPERTY_1?: Record<string, string>;
+  PROPERTY_USER?: Record<string, string> | string | number;
+};
+
+const absenceElementUserId = (el: AbsenceListElement): number | null => {
+  const raw = el.PROPERTY_1 || el.PROPERTY_USER;
+  if (raw == null) return null;
+  if (typeof raw === 'object') {
+    const first = Object.values(raw)[0];
+    const n = Number(first);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** ДД.ММ.ГГГГ → ГГГГ-ММ-ДД */
+const bitrixDateToIso = (value: string | undefined): string => {
+  const m = String(value || '')
+    .trim()
+    .match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!m) return '';
+  return `${m[3]}-${m[2]}-${m[1]}`;
+};
+
+/**
+ * Уже есть в графике отсутствий (ручной ввод или прошлый синк) —
+ * не плодим дубликат, а привязываем заявку к существующему ID.
+ */
+const findExistingAbsenceElement = async (params: {
+  bitrixUserId: number;
+  start: string;
+  end: string;
+  requestId: number;
+}): Promise<{ absenceId: number; auth: AuthMode } | null> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) return null;
+
+  const code = `vbi-hr-vac-${params.requestId}`;
+  try {
+    const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      FILTER: { CODE: code }
+    });
+    const hit = (result || []).find((el) => Number(el.ID) > 0);
+    if (hit) return { absenceId: Number(hit.ID), auth };
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by CODE failed:', errorMessage(err));
+  }
+
+  try {
+    const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      FILTER: { [absenceUserProperty()]: params.bitrixUserId }
+    });
+    const hit = (result || []).find((el) => {
+      if (absenceElementUserId(el) !== params.bitrixUserId) return false;
+      return bitrixDateToIso(el.ACTIVE_FROM) === params.start && bitrixDateToIso(el.ACTIVE_TO) === params.end;
+    });
+    if (hit) return { absenceId: Number(hit.ID), auth };
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by user/dates failed:', errorMessage(err));
+  }
+
+  return null;
+};
+
 const createViaAbsenceIblock = async (params: {
   bitrixUserId: number;
   start: string;
@@ -220,30 +294,41 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   let method: string;
   let iblockErrorMessage = '';
 
-  try {
-    const iblock = await createViaAbsenceIblock(payload);
-    absenceId = iblock.absenceId;
-    method = `lists.element.add:${iblock.auth}`;
-  } catch (iblockError) {
-    iblockErrorMessage = errorMessage(iblockError);
-    console.warn('[bitrix-vacation] iblock sync failed, trying calendar.event.add:', iblockErrorMessage);
+  const existing = await findExistingAbsenceElement({
+    bitrixUserId,
+    start: request.start,
+    end: request.end,
+    requestId: request.id
+  });
+  if (existing) {
+    absenceId = existing.absenceId;
+    method = `lists.element.existing:${existing.auth}`;
+  } else {
     try {
-      const cal = await createViaCalendarAbsent(payload);
-      // OAuth-токен = HR, который вошёл; Bitrix часто игнорирует ownerId и пишет в календарь HR.
-      if (cal.auth === 'oauth') {
+      const iblock = await createViaAbsenceIblock(payload);
+      absenceId = iblock.absenceId;
+      method = `lists.element.add:${iblock.auth}`;
+    } catch (iblockError) {
+      iblockErrorMessage = errorMessage(iblockError);
+      console.warn('[bitrix-vacation] iblock sync failed, trying calendar.event.add:', iblockErrorMessage);
+      try {
+        const cal = await createViaCalendarAbsent(payload);
+        // OAuth-токен = HR, который вошёл; Bitrix часто игнорирует ownerId и пишет в календарь HR.
+        if (cal.auth === 'oauth') {
+          throw new Error(
+            `calendar.event.add через OAuth запрещён (риск чужого календаря у владельца токена). ` +
+              `iblock: ${iblockErrorMessage || 'unknown'}. Нужен рабочий BITRIX_WEBHOOK_URL с lists/calendar.`
+          );
+        }
+        absenceId = cal.eventId;
+        method = `calendar.event.add:${cal.auth}`;
+        return { absenceId, method };
+      } catch (calendarError) {
+        const calendarMessage = errorMessage(calendarError);
         throw new Error(
-          `calendar.event.add через OAuth запрещён (риск чужого календаря у владельца токена). ` +
-            `iblock: ${iblockErrorMessage || 'unknown'}. Нужен рабочий BITRIX_WEBHOOK_URL с lists/calendar.`
+          `iblock: ${iblockErrorMessage || 'unknown'}; calendar: ${calendarMessage}`
         );
       }
-      absenceId = cal.eventId;
-      method = `calendar.event.add:${cal.auth}`;
-      return { absenceId, method };
-    } catch (calendarError) {
-      const calendarMessage = errorMessage(calendarError);
-      throw new Error(
-        `iblock: ${iblockErrorMessage || 'unknown'}; calendar: ${calendarMessage}`
-      );
     }
   }
 
@@ -251,7 +336,7 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   try {
     const cal = await createViaCalendarAbsent(payload);
     if (cal.auth === 'webhook') {
-      method = `lists.element.add+calendar.event.add:${cal.eventId}`;
+      method = `${method}+calendar.event.add:${cal.eventId}`;
     } else {
       console.warn(
         `[bitrix-vacation] skip calendar.event.add via OAuth for request #${request.id} (ownerId unsafe)`
@@ -273,6 +358,47 @@ const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): 
   if (request.bitrix_sync_status === 'synced' && request.bitrix_absence_id) return false;
   if (!previous) return true;
   return previous.status !== 'approved';
+};
+
+/** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */
+export const retryFailedBitrixVacationSyncs = async (
+  state: VacationStoreState
+): Promise<VacationStoreState> => {
+  const hasWebhook = isBitrixWebhookConfigured();
+  const hasOAuth = await hasBitrixOAuthServiceToken();
+  if (!hasWebhook && !hasOAuth) return state;
+
+  await readEmployees();
+  let next = state;
+
+  for (const request of flattenRequests(state)) {
+    if (request.status !== 'approved') continue;
+    if (request.bitrix_sync_status !== 'failed' && request.bitrix_sync_status !== 'skipped') {
+      continue;
+    }
+
+    const employee = await findEmployeeByName(request.employee);
+    try {
+      const { absenceId, method } = await pushVacationToBitrixAbsence(request);
+      next = updateRequestInState(next, request.id, {
+        bitrix_absence_id: absenceId,
+        bitrix_sync_status: 'synced',
+        bitrix_sync_method: method,
+        bitrix_synced_at: new Date().toISOString(),
+        bitrix_sync_error: undefined
+      });
+    } catch (error) {
+      const message = errorMessage(error);
+      console.error(`[bitrix-vacation] retry failed for request #${request.id}:`, message);
+      next = updateRequestInState(next, request.id, {
+        bitrix_sync_status: message.includes('не настроен') ? 'skipped' : 'failed',
+        bitrix_sync_error: message,
+        bitrix_synced_at: new Date().toISOString()
+      });
+    }
+  }
+
+  return next;
 };
 
 export const syncApprovedVacationsToBitrix = async (

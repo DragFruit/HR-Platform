@@ -4,6 +4,13 @@
 
 ## 2026-08-03
 
+### Bitrix-отпуска: повторный синк failed без дублей
+
+- Если отпуск уже в графике отсутствий Bitrix (вручную или прошлый синк) — привязываем заявку к существующему ID, не создаём второй.
+- `POST /api/bitrix/sync-vacations` (admin/hr) — повтор failed/skipped → галочка «Битрикс» системно.
+- Файлы: `bitrixVacationAbsence.ts`, `api/bitrix/sync-vacations.post.ts`.
+- Проверка: у failed-заявки с уже существующим отсутствием в Bitrix → sync-vacations → статус `synced`.
+
 ### Bitrix-отпуска: админ-уведомление + защита от чужого календаря
 
 - При fail синка отпуска → уведомление в `/admin/notifications` («Отпуск не ушёл в Bitrix»).
