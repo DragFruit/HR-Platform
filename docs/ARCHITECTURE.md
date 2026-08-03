@@ -154,7 +154,7 @@ review (На рассмотрении)
 
 Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
 
-Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json`.
+Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json`. На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
 
 Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` остаются, но создание/статус шлют уведомления из server mutations.
 
