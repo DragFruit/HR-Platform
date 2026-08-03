@@ -10,13 +10,14 @@
         :aria-label="`Визитка: ${employee.name}`"
         :style="cardStyle"
       >
-        <div class="emp-card__frame" aria-hidden="true">
-          <span class="emp-card__sq emp-card__sq--tl-a" />
-          <span class="emp-card__sq emp-card__sq--tl-b" />
-          <span class="emp-card__sq emp-card__sq--tl-c" />
-          <span class="emp-card__sq emp-card__sq--bl" />
-          <span class="emp-card__sq emp-card__sq--br-a" />
-          <span class="emp-card__sq emp-card__sq--br-b" />
+        <!-- Декор рамки как в LOCKED-etalon (квадратики сидят в чёрной полосе) -->
+        <div class="emp-card__chrome" aria-hidden="true">
+          <span class="emp-card__dot emp-card__dot--tl1" />
+          <span class="emp-card__dot emp-card__dot--tl2" />
+          <span class="emp-card__dot emp-card__dot--tl3" />
+          <span class="emp-card__dot emp-card__dot--bl" />
+          <span class="emp-card__dot emp-card__dot--br1" />
+          <span class="emp-card__dot emp-card__dot--br2" />
         </div>
 
         <button
@@ -28,13 +29,13 @@
           <span aria-hidden="true">×</span>
         </button>
 
-        <div class="emp-card__inner">
-          <div class="emp-card__body">
+        <div class="emp-card__face">
+          <div class="emp-card__top">
             <div class="emp-card__photo">
-              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="148" />
+              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="168" />
             </div>
 
-            <div class="emp-card__main">
+            <div class="emp-card__info">
               <p class="emp-card__badge">VBI · Сотрудник</p>
               <h2 class="emp-card__name">{{ displayName }}</h2>
 
@@ -63,12 +64,12 @@
             </div>
           </div>
 
-          <div class="emp-card__footer">
-            <div class="emp-card__achs-block">
-              <span class="emp-card__achs-label">Достижения</span>
-              <ul v-if="achievements.length" class="emp-card__achs" aria-label="Достижения">
+          <div class="emp-card__rail">
+            <div class="emp-card__rail-achs">
+              <span class="emp-card__rail-label">Достижения</span>
+              <ul class="emp-card__achs" aria-label="Достижения">
                 <li
-                  v-for="(a, index) in achievements"
+                  v-for="(a, index) in displayAchievements"
                   :key="a.id"
                   class="emp-card__ach"
                   :class="{
@@ -81,39 +82,46 @@
                     v-if="a.imageSrc"
                     :src="a.imageSrc"
                     :alt="a.title"
-                    width="22"
-                    height="22"
+                    width="20"
+                    height="20"
                   />
-                  <span v-else class="emp-card__ach-emoji" aria-hidden="true">{{
-                    a.emoji ?? '★'
-                  }}</span>
+                  <span v-else aria-hidden="true">{{ a.emoji ?? '★' }}</span>
                 </li>
               </ul>
-              <span v-else class="emp-card__achs-empty">—</span>
             </div>
 
-            <span class="emp-card__divider" aria-hidden="true" />
-            <span class="emp-card__ideas">Идеи: {{ ideasCount }}</span>
-            <span class="emp-card__divider" aria-hidden="true" />
-
-            <div class="emp-card__links">
-              <button type="button" class="emp-card__link" title="Скоро" disabled>Вишлист</button>
-              <a
-                v-if="bitrixUrl"
-                class="emp-card__link"
-                :href="bitrixUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Bitrix
-              </a>
-              <span v-else class="emp-card__link emp-card__link--muted">Bitrix</span>
-            </div>
+            <span class="emp-card__rail-sep" aria-hidden="true" />
+            <span class="emp-card__rail-ideas">Идеи: {{ ideasCount }}</span>
+            <span class="emp-card__rail-sep" aria-hidden="true" />
+            <button
+              type="button"
+              class="emp-card__rail-link"
+              title="Скоро"
+              disabled
+            >
+              Вишлист
+            </button>
+            <span class="emp-card__rail-sep" aria-hidden="true" />
+            <a
+              v-if="bitrixUrl"
+              class="emp-card__rail-link"
+              :href="bitrixUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Bitrix
+            </a>
+            <span v-else class="emp-card__rail-link emp-card__rail-link--off">Bitrix</span>
           </div>
 
-          <div class="emp-card__barcode" aria-hidden="true">
-            <span v-for="(bar, i) in barcodeBars" :key="i" :class="bar" />
-          </div>
+          <img
+            class="emp-card__barcode"
+            src="/employee-card/barcode-strip.png"
+            alt=""
+            width="1129"
+            height="44"
+            draggable="false"
+          />
         </div>
       </article>
     </template>
@@ -134,34 +142,6 @@ const { ideas } = useIdeasBank();
 
 const cardRef = ref<HTMLElement | null>(null);
 const position = ref({ left: 0, top: 0 });
-
-const barcodeBars = [
-  'emp-card__bar emp-card__bar--wide',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--mid',
-  'emp-card__bar emp-card__bar--dot',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--wide emp-card__bar--purple',
-  'emp-card__bar emp-card__bar--mid',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--gap',
-  'emp-card__bar emp-card__bar--mid',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--wide',
-  'emp-card__bar emp-card__bar--dot emp-card__bar--purple',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--mid',
-  'emp-card__bar emp-card__bar--wide',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--mid emp-card__bar--lime',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--wide',
-  'emp-card__bar emp-card__bar--dot',
-  'emp-card__bar emp-card__bar--thin',
-  'emp-card__bar emp-card__bar--mid',
-  'emp-card__bar emp-card__bar--wide emp-card__bar--purple',
-  'emp-card__bar emp-card__bar--thin'
-] as const;
 
 const upper = (value?: string | null) => (value || '').trim().toLocaleUpperCase('ru-RU');
 
@@ -219,6 +199,26 @@ const achievements = computed(() => {
   return publicAchievementsForEmployee(emp, ideasDone.value).slice(0, 5);
 });
 
+/** Плитки как на эскизе (ровно 5 слотов). */
+const displayAchievements = computed(() => {
+  const real = achievements.value.slice(0, 5);
+  const slots: Array<{
+    id: string;
+    title: string;
+    imageSrc?: string;
+    emoji?: string;
+  }> = real.map((a) => ({
+    id: a.id,
+    title: a.title,
+    imageSrc: a.imageSrc,
+    emoji: a.emoji
+  }));
+  while (slots.length < 5) {
+    slots.push({ id: `empty-${slots.length}`, title: '' });
+  }
+  return slots;
+});
+
 const bitrixUrl = computed(() => {
   const id = employee.value?.bitrix_user_id;
   if (!id) return null;
@@ -237,8 +237,8 @@ const placeCard = async () => {
   const pad = 12;
   const gap = 10;
   const rect = el.getBoundingClientRect();
-  const aw = rect.width || 640;
-  const ah = rect.height || 320;
+  const aw = rect.width || 680;
+  const ah = rect.height || 360;
   const ax = anchor.value?.x ?? window.innerWidth / 2;
   const ay = anchor.value?.y ?? window.innerHeight / 2;
 
@@ -283,75 +283,78 @@ onMounted(() => {
 }
 
 .emp-card {
-  --emp-lime: #ddf365;
-  --emp-purple: #7451f4;
-  --emp-ink: #111;
-  --emp-bg: #eeeee8;
+  --lime: #ddf365;
+  --purple: #7451f4;
+  --ink: #111;
+  --face: #eeeee8;
+  --frame: 14px;
+  --dot: 9px;
   position: fixed;
   z-index: 80;
-  width: min(640px, calc(100vw - 24px));
-  background: var(--emp-bg);
-  border: 10px solid var(--emp-ink);
-  border-radius: 10px;
-  padding: 0;
-  box-shadow: none;
-  overflow: hidden;
+  width: min(680px, calc(100vw - 24px));
+  background: var(--face);
+  border: var(--frame) solid var(--ink);
+  border-radius: 14px;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
-.emp-card__frame {
+.emp-card__chrome {
   pointer-events: none;
 }
 
-.emp-card__sq {
+.emp-card__dot {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: var(--dot);
+  height: var(--dot);
   z-index: 2;
 }
 
-.emp-card__sq--tl-a {
-  top: -10px;
-  left: 14px;
-  background: var(--emp-lime);
+/* Квадратики внутри верхней чёрной полосы рамки (как эталон) */
+.emp-card__dot--tl1 {
+  top: calc(var(--frame) / 2 - var(--dot) / 2);
+  left: 18px;
+  background: var(--lime);
 }
-.emp-card__sq--tl-b {
-  top: -10px;
-  left: 28px;
-  background: var(--emp-lime);
+.emp-card__dot--tl2 {
+  top: calc(var(--frame) / 2 - var(--dot) / 2);
+  left: 30px;
+  background: var(--lime);
 }
-.emp-card__sq--tl-c {
-  top: -10px;
+.emp-card__dot--tl3 {
+  top: calc(var(--frame) / 2 - var(--dot) / 2);
   left: 42px;
-  background: var(--emp-purple);
+  background: var(--purple);
 }
-.emp-card__sq--bl {
-  bottom: -10px;
-  left: 14px;
-  background: var(--emp-purple);
+.emp-card__dot--bl {
+  bottom: calc(var(--frame) / 2 - var(--dot) / 2);
+  left: 18px;
+  background: var(--purple);
 }
-.emp-card__sq--br-a {
-  bottom: -10px;
-  right: 28px;
-  background: var(--emp-lime);
+.emp-card__dot--br1 {
+  bottom: calc(var(--frame) / 2 - var(--dot) / 2);
+  right: 30px;
+  background: var(--lime);
 }
-.emp-card__sq--br-b {
-  bottom: -10px;
-  right: 14px;
-  background: var(--emp-purple);
+.emp-card__dot--br2 {
+  bottom: calc(var(--frame) / 2 - var(--dot) / 2);
+  right: 18px;
+  background: var(--purple);
 }
 
+/* Лаймовый × в правом верхнем углу рамки (LOCKED-etalon-v1-close-avatar) */
 .emp-card__close {
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: calc(var(--frame) / 2 - 11px);
+  right: 10px;
   z-index: 3;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
-  border: 2px solid var(--emp-ink);
-  background: var(--emp-lime);
-  color: var(--emp-ink);
+  border: 0;
+  background: var(--lime);
+  color: var(--ink);
   font-size: 18px;
   font-weight: 800;
   line-height: 1;
@@ -363,35 +366,30 @@ onMounted(() => {
   filter: brightness(0.97);
 }
 
-.emp-card__inner {
-  padding: 18px 18px 10px;
+.emp-card__face {
+  padding: 16px 18px 12px;
 }
 
-.emp-card__body {
+.emp-card__top {
   display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
-  gap: 16px 18px;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 14px 18px;
   align-items: start;
 }
 
 .emp-card__photo {
-  border: 2px solid var(--emp-ink);
+  width: 168px;
+  height: 168px;
+  border: 2px solid var(--ink);
   background: #fff;
   display: grid;
   place-items: center;
-  width: 148px;
-  height: 148px;
   overflow: hidden;
-}
-
-.emp-card__photo :deep(.user-avatar) {
-  max-width: 100%;
-  max-height: 100%;
 }
 
 .emp-card__photo :deep(.user-avatar__img) {
   max-width: 100%;
-  max-height: 148px;
+  max-height: 168px;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -400,49 +398,47 @@ onMounted(() => {
 .emp-card__badge {
   display: inline-block;
   margin: 0 0 8px;
-  padding: 4px 8px;
-  background: var(--emp-ink);
+  padding: 5px 9px;
+  background: var(--ink);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .emp-card__name {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-family: var(--font-display, 'Unbounded', system-ui, sans-serif);
-  font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--emp-ink);
+  color: var(--ink);
 }
 
 .emp-card__fields {
   margin: 0;
-  display: grid;
-  gap: 0;
 }
 
 .emp-card__field {
   display: grid;
-  grid-template-columns: 8.2rem minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 7.8rem minmax(0, 1fr);
+  gap: 8px;
   align-items: baseline;
-  border-bottom: 1px solid rgba(17, 17, 17, 0.22);
-  padding: 5px 0 4px;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.28);
+  padding: 4px 0 3px;
 }
 
 .emp-card__field dt {
   margin: 0;
   font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6a6a6a;
+  color: #5c5c5c;
 }
 
 .emp-card__field dd {
@@ -452,35 +448,35 @@ onMounted(() => {
   text-align: right;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: var(--emp-ink);
+  color: var(--ink);
   word-break: break-word;
 }
 
-.emp-card__footer {
-  margin-top: 14px;
+.emp-card__rail {
+  margin-top: 12px;
   padding-top: 10px;
-  border-top: 2px solid var(--emp-ink);
+  border-top: 1.5px solid var(--ink);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px 12px;
+  gap: 0 10px;
+  overflow-x: auto;
 }
 
-.emp-card__achs-block {
+.emp-card__rail-achs {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
-.emp-card__achs-label {
+.emp-card__rail-label {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--emp-ink);
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .emp-card__achs {
@@ -488,154 +484,100 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 }
 
 .emp-card__ach {
-  width: 28px;
-  height: 28px;
-  border: 1.5px solid var(--emp-ink);
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--ink);
   background: #fff;
   display: grid;
   place-items: center;
   overflow: hidden;
-}
-
-.emp-card__ach--lime {
-  background: var(--emp-lime);
-}
-
-.emp-card__ach--purple {
-  background: var(--emp-purple);
-}
-
-.emp-card__ach img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-}
-
-.emp-card__ach-emoji {
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
-  color: var(--emp-ink);
-}
-
-.emp-card__achs-empty {
-  font-size: 12px;
-  font-weight: 700;
-  color: #888;
-}
-
-.emp-card__divider {
-  width: 1px;
-  height: 18px;
-  background: var(--emp-ink);
   flex: 0 0 auto;
 }
 
-.emp-card__ideas {
+.emp-card__ach--lime {
+  background: var(--lime);
+}
+
+.emp-card__ach--purple {
+  background: var(--purple);
+  color: #fff;
+}
+
+.emp-card__ach img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.emp-card__rail-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--ink);
+  flex: 0 0 auto;
+}
+
+.emp-card__rail-ideas {
   font-size: 12px;
   font-weight: 700;
-  color: var(--emp-ink);
+  color: var(--ink);
   white-space: nowrap;
 }
 
-.emp-card__links {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-.emp-card__link {
+.emp-card__rail-link {
   font-size: 12px;
   font-weight: 700;
-  color: var(--emp-purple);
+  color: var(--purple);
   text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
   background: none;
-  border: none;
+  border: 0;
   padding: 0;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.emp-card__link:disabled,
-.emp-card__link--muted {
-  opacity: 0.45;
-  cursor: not-allowed;
+button.emp-card__rail-link:disabled {
+  color: var(--purple);
+  opacity: 1;
+  cursor: default;
+  text-decoration: underline;
+}
+
+.emp-card__rail-link--off {
+  opacity: 0.4;
   text-decoration: none;
-  color: #888;
-}
-
-a.emp-card__link {
-  color: var(--emp-purple);
+  cursor: default;
 }
 
 .emp-card__barcode {
-  margin-top: 12px;
-  height: 18px;
-  display: flex;
-  align-items: stretch;
-  gap: 3px;
-  padding: 2px 0 0;
-  border-top: 1px solid rgba(17, 17, 17, 0.15);
-}
-
-.emp-card__bar {
   display: block;
-  background: var(--emp-ink);
-  align-self: stretch;
-}
-
-.emp-card__bar--wide {
-  width: 14px;
-}
-.emp-card__bar--mid {
-  width: 8px;
-}
-.emp-card__bar--thin {
-  width: 3px;
-}
-.emp-card__bar--dot {
-  width: 5px;
-  align-self: center;
-  height: 5px;
-  border-radius: 0;
-}
-.emp-card__bar--gap {
-  width: 10px;
-  background: transparent;
-}
-.emp-card__bar--purple {
-  background: var(--emp-purple);
-}
-.emp-card__bar--lime {
-  background: var(--emp-lime);
+  width: 100%;
+  height: 28px;
+  margin-top: 12px;
+  object-fit: cover;
+  object-position: left center;
+  user-select: none;
+  pointer-events: none;
 }
 
 @media (max-width: 560px) {
-  .emp-card__body {
+  .emp-card__top {
     grid-template-columns: 1fr;
   }
 
   .emp-card__photo {
-    width: 112px;
-    height: 112px;
+    width: 120px;
+    height: 120px;
   }
 
   .emp-card__field {
-    grid-template-columns: 6.5rem minmax(0, 1fr);
-  }
-
-  .emp-card__links {
-    margin-left: 0;
-  }
-
-  .emp-card__divider {
-    display: none;
+    grid-template-columns: 6.2rem minmax(0, 1fr);
   }
 }
 </style>
