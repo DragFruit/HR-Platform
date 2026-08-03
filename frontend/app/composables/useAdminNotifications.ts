@@ -1,6 +1,7 @@
 export type AdminNotificationKind =
   | 'bitrix_employee_name'
   | 'bitrix_employee_title'
+  | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
   | 'idea_submitted';
 
@@ -20,6 +21,10 @@ export type AdminNotification = {
   order_id?: string;
   idea_id?: string;
   idea_title?: string;
+  vacation_request_id?: number;
+  vacation_start?: string;
+  vacation_end?: string;
+  error_message?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -71,6 +76,9 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') {
       return 'Новая идея в банке';
     }
+    if (item.kind === 'bitrix_vacation_sync_failed') {
+      return 'Отпуск не ушёл в Bitrix';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
@@ -81,6 +89,13 @@ export function useAdminNotifications() {
     }
     if (item.kind === 'idea_submitted') {
       return `${item.employee_name} предложил(а): «${item.idea_title || 'идея'}». Рассмотрите заявку в банке идей.`;
+    }
+    if (item.kind === 'bitrix_vacation_sync_failed') {
+      const period =
+        item.vacation_start && item.vacation_end
+          ? `${item.vacation_start} — ${item.vacation_end}`
+          : 'даты неизвестны';
+      return `${item.employee_name}: ${period}. ${item.error_message || 'Ошибка синка'}. Проверьте вебхук / добавьте отсутствие вручную.`;
     }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
@@ -103,12 +118,14 @@ export function useAdminNotifications() {
   const notificationActionLabel = (item: AdminNotification) => {
     if (item.kind === 'tenure_gift_order') return 'К уведомлению';
     if (item.kind === 'idea_submitted') return 'Банк идей';
+    if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
     return 'Справочник';
   };
 
   const notificationActionTo = (item: AdminNotification) => {
     if (item.kind === 'tenure_gift_order') return '/admin/notifications';
     if (item.kind === 'idea_submitted') return '/admin/ideas';
+    if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
     return '/admin/employees';
   };
 

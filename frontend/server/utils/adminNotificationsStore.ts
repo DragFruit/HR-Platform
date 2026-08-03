@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 export type AdminNotificationKind =
   | 'bitrix_employee_name'
   | 'bitrix_employee_title'
+  | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
   | 'idea_submitted';
 
@@ -27,6 +28,11 @@ export type AdminNotification = {
   /** Банк идей */
   idea_id?: string;
   idea_title?: string;
+  /** Синк отпуска в Bitrix */
+  vacation_request_id?: number;
+  vacation_start?: string;
+  vacation_end?: string;
+  error_message?: string;
 };
 
 type NotificationsState = {
@@ -220,6 +226,50 @@ export async function createIdeaSubmittedNotification(input: {
     employee_name: input.employee_name,
     idea_id: input.idea_id,
     idea_title: input.idea_title,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createBitrixVacationSyncFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  bitrix_user_id?: number;
+  request_id: number;
+  start: string;
+  end: string;
+  error: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+
+  const existing = state.items.find(
+    (item) =>
+      !item.admin_seen &&
+      item.kind === 'bitrix_vacation_sync_failed' &&
+      item.vacation_request_id === input.request_id
+  );
+  if (existing) {
+    existing.error_message = input.error;
+    existing.vacation_start = input.start;
+    existing.vacation_end = input.end;
+    existing.created_at = new Date().toISOString();
+    await writeState(state);
+    return existing;
+  }
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'bitrix_vacation_sync_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    bitrix_user_id: input.bitrix_user_id,
+    vacation_request_id: input.request_id,
+    vacation_start: input.start,
+    vacation_end: input.end,
+    error_message: input.error,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

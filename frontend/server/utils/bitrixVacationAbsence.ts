@@ -3,6 +3,7 @@ import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
 import { isBitrixWebhookConfigured } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
 import { getBitrixServiceAccessToken, hasBitrixOAuthServiceToken } from './bitrixOAuthServiceToken';
+import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
 
 export type BitrixVacationSyncStatus = 'synced' | 'failed' | 'skipped';
 
@@ -11,6 +12,8 @@ type BitrixListRow = {
   NAME?: string;
   IBLOCK_TYPE_ID?: string;
 };
+
+type AuthMode = 'webhook' | 'oauth';
 
 const errorMessage = (err: unknown): string => {
   if (err && typeof err === 'object' && 'statusMessage' in err) {
@@ -32,16 +35,18 @@ const isCredentialsError = (message: string): boolean => {
 };
 
 /**
- * Сначала входящий вебхук; при ошибке credentials — OAuth service token
- * (тот же, что для im.notify). Иначе отпуск «согласован», а в Bitrix пусто.
+ * Сначала входящий вебхук; при ошибке credentials — OAuth service token.
+ * Возвращает режим auth: OAuth-токен часто принадлежит HR, который вошёл в платформу —
+ * calendar.event.add с таким токеном может писать в календарь HR, а не сотрудника.
  */
 const bitrixVacationRest = async <T>(
   method: string,
   params: Record<string, unknown>
-): Promise<T> => {
+): Promise<{ result: T; auth: AuthMode }> => {
   if (isBitrixWebhookConfigured()) {
     try {
-      return await bitrixWebhookRest<T>(method, params);
+      const result = await bitrixWebhookRest<T>(method, params);
+      return { result, auth: 'webhook' };
     } catch (err) {
       const message = errorMessage(err);
       if (!isCredentialsError(message)) throw err;
@@ -59,7 +64,8 @@ const bitrixVacationRest = async <T>(
     );
   }
 
-  return bitrixRest<T>(method, params, accessToken);
+  const result = await bitrixRest<T>(method, params, accessToken);
+  return { result, auth: 'oauth' };
 };
 
 const flattenRequests = (state: VacationStoreState): VacationRequest[] =>
@@ -117,13 +123,8 @@ export async function resolveAbsenceIblockId(): Promise<number | null> {
     return fromEnv;
   }
 
-  if (!isBitrixWebhookConfigured()) {
-    cachedAbsenceIblockId = null;
-    return null;
-  }
-
   try {
-    const lists = await bitrixVacationRest<BitrixListRow[]>('lists.get', {
+    const { result: lists } = await bitrixVacationRest<BitrixListRow[]>('lists.get', {
       IBLOCK_TYPE_ID: absenceIblockTypeId()
     });
     const found = lists.find((row) => /график.*отсутств/i.test(String(row.NAME || '')));
@@ -142,26 +143,28 @@ const createViaAbsenceIblock = async (params: {
   end: string;
   comment: string;
   requestId: number;
-}): Promise<number> => {
+  employeeName: string;
+}): Promise<{ absenceId: number; auth: AuthMode }> => {
   const iblockId = await resolveAbsenceIblockId();
   if (!iblockId) {
     throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
   }
 
   const fields: Record<string, unknown> = {
-    NAME: params.comment?.trim() || 'Отпуск ежегодный (VBI HR)',
+    NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
     ACTIVE_FROM: toBitrixDateTime(params.start, false),
     ACTIVE_TO: toBitrixDateTime(params.end, true),
     [absenceUserProperty()]: params.bitrixUserId,
     [absenceTypeProperty()]: absenceTypeEnum()
   };
 
-  return bitrixVacationRest<number>('lists.element.add', {
+  const { result, auth } = await bitrixVacationRest<number>('lists.element.add', {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
     ELEMENT_CODE: `vbi-hr-vac-${params.requestId}`,
     FIELDS: fields
   });
+  return { absenceId: result, auth };
 };
 
 const createViaCalendarAbsent = async (params: {
@@ -169,25 +172,27 @@ const createViaCalendarAbsent = async (params: {
   start: string;
   end: string;
   comment: string;
-}): Promise<number> =>
-  bitrixVacationRest<number>('calendar.event.add', {
+  employeeName: string;
+}): Promise<{ eventId: number; auth: AuthMode }> => {
+  const { result, auth } = await bitrixVacationRest<number>('calendar.event.add', {
     type: 'user',
     ownerId: params.bitrixUserId,
-    name: 'Отпуск ежегодный (VBI HR)',
-    description: params.comment?.trim() || 'Согласовано в VBI HR',
+    name: `Отпуск: ${params.employeeName} (VBI HR)`,
+    description: params.comment?.trim() || `Согласовано в VBI HR · ${params.employeeName}`,
     from: params.start,
     to: params.end,
     skip_time: 'Y',
     accessibility: 'absent',
     auto_detect_section: 'Y'
   });
+  return { eventId: result, auth };
+};
 
 export const pushVacationToBitrixAbsence = async (request: VacationRequest): Promise<{
   absenceId: number;
   method: string;
 }> => {
   if (!isBitrixWebhookConfigured()) {
-    // Вебхука нет — всё равно пробуем OAuth (админский service token).
     const token = await getBitrixServiceAccessToken();
     if (!token) {
       throw new Error('BITRIX_WEBHOOK_URL не настроен и нет OAuth service token');
@@ -195,9 +200,11 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   }
 
   const employee = await findEmployeeByName(request.employee);
-  const bitrixUserId = employee?.bitrix_user_id ?? employee?.platform_user_id ?? employee?.id;
+  const bitrixUserId = employee?.bitrix_user_id ?? null;
   if (!bitrixUserId) {
-    throw new Error(`У сотрудника «${request.employee}» нет bitrix_user_id`);
+    throw new Error(
+      `У сотрудника «${request.employee}» нет bitrix_user_id — не создаём отсутствие (риск чужого календаря)`
+    );
   }
 
   const payload = {
@@ -205,7 +212,8 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
     start: request.start,
     end: request.end,
     comment: request.comment,
-    requestId: request.id
+    requestId: request.id,
+    employeeName: request.employee
   };
 
   let absenceId: number;
@@ -213,28 +221,42 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   let iblockErrorMessage = '';
 
   try {
-    absenceId = await createViaAbsenceIblock(payload);
-    method = 'lists.element.add';
+    const iblock = await createViaAbsenceIblock(payload);
+    absenceId = iblock.absenceId;
+    method = `lists.element.add:${iblock.auth}`;
   } catch (iblockError) {
     iblockErrorMessage = errorMessage(iblockError);
     console.warn('[bitrix-vacation] iblock sync failed, trying calendar.event.add:', iblockErrorMessage);
     try {
-      absenceId = await createViaCalendarAbsent(payload);
-      method = 'calendar.event.add';
+      const cal = await createViaCalendarAbsent(payload);
+      // OAuth-токен = HR, который вошёл; Bitrix часто игнорирует ownerId и пишет в календарь HR.
+      if (cal.auth === 'oauth') {
+        throw new Error(
+          `calendar.event.add через OAuth запрещён (риск чужого календаря у владельца токена). ` +
+            `iblock: ${iblockErrorMessage || 'unknown'}. Нужен рабочий BITRIX_WEBHOOK_URL с lists/calendar.`
+        );
+      }
+      absenceId = cal.eventId;
+      method = `calendar.event.add:${cal.auth}`;
       return { absenceId, method };
     } catch (calendarError) {
       const calendarMessage = errorMessage(calendarError);
       throw new Error(
-        `iblock: ${iblockErrorMessage || 'unknown'}; calendar.event.add: ${calendarMessage}`
+        `iblock: ${iblockErrorMessage || 'unknown'}; calendar: ${calendarMessage}`
       );
     }
   }
 
-  // Пальма в графике отсутствий + событие в календаре Bitrix (как раньше визуально на сетке).
-  // Ошибка календаря не откатывает lists — предупреждение во встречах уже даёт iblock.
+  // Доп. отметка в календаре — только через вебхук (не OAuth), иначе снова риск календаря HR.
   try {
-    const calendarEventId = await createViaCalendarAbsent(payload);
-    method = `lists.element.add+calendar.event.add:${calendarEventId}`;
+    const cal = await createViaCalendarAbsent(payload);
+    if (cal.auth === 'webhook') {
+      method = `lists.element.add+calendar.event.add:${cal.eventId}`;
+    } else {
+      console.warn(
+        `[bitrix-vacation] skip calendar.event.add via OAuth for request #${request.id} (ownerId unsafe)`
+      );
+    }
   } catch (calendarError) {
     const message = errorMessage(calendarError);
     console.warn(
@@ -270,6 +292,8 @@ export const syncApprovedVacationsToBitrix = async (
     const prev = prevMap.get(request.id);
     if (!needsBitrixSync(request, prev)) continue;
 
+    const employee = await findEmployeeByName(request.employee);
+
     try {
       const { absenceId, method } = await pushVacationToBitrixAbsence(request);
       state = updateRequestInState(state, request.id, {
@@ -283,11 +307,26 @@ export const syncApprovedVacationsToBitrix = async (
       const message = errorMessage(error);
       console.error(`[bitrix-vacation] sync failed for request #${request.id}:`, message);
       state = updateRequestInState(state, request.id, {
-        bitrix_sync_status:
-          message.includes('не настроен') && message.includes('нет OAuth') ? 'skipped' : 'failed',
+        bitrix_sync_status: message.includes('не настроен') ? 'skipped' : 'failed',
         bitrix_sync_error: message,
         bitrix_synced_at: new Date().toISOString()
       });
+
+      if (!message.includes('не настроен')) {
+        try {
+          await createBitrixVacationSyncFailedNotification({
+            employee_id: employee?.id ?? 0,
+            employee_name: request.employee,
+            bitrix_user_id: employee?.bitrix_user_id ?? undefined,
+            request_id: request.id,
+            start: request.start,
+            end: request.end,
+            error: message
+          });
+        } catch (notifyError) {
+          console.error('[bitrix-vacation] admin notify failed:', notifyError);
+        }
+      }
     }
   }
 
