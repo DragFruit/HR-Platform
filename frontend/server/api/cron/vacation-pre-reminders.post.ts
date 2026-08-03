@@ -1,7 +1,7 @@
 import { runVacationPreReminders } from '../../utils/vacationPreReminder';
 
 /**
- * Ежедневный cron: напоминание отпускнику за ~3 недели.
+ * Ежедневный cron: напоминание отпускнику ровно за 21 день (3 недели).
  * Защита: заголовок X-Cron-Token или ?token= = CRON_SECRET / VACATION_PRE_REMINDER_CRON_SECRET.
  */
 export default defineEventHandler(async (event) => {

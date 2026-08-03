@@ -6,7 +6,7 @@
 
 ### Напоминание за 3 недели до отпуска (чат-бот Bitrix)
 
-- Ежедневный cron: approved-отпуск со стартом через 18–21 день → сообщение сотруднику от чат-бота (`imbot.message.add`): заявление + передача дел по шаблону.
+- Ежедневный cron: approved-отпуск со стартом **ровно через 21 день** → «До отпуска осталось 3 недели» от чат-бота (`imbot.message.add`): заявление + передача дел по шаблону.
 - Env: `BITRIX_IMBOT_ID`, `VACATION_HANDOVER_TEMPLATE_URL` (ссылку добавим позже), `VACATION_PRE_REMINDER_CRON_SECRET`.
 - `POST /api/cron/vacation-pre-reminders` (+ `dry_run=1`), журнал `vacation-pre-reminders.json`.
 - Timer: `deploy/systemd/vbi-hr-vacation-pre-reminders.timer`.

@@ -9,9 +9,8 @@ import {
 } from './vacationPreReminderStore';
 import { readVacations } from './vacationsStore';
 
-/** Ровно 3 недели; узкое окно 18–21 — если cron пропустил день. */
-const PRE_3W_DAYS_MAX = 21;
-const PRE_3W_DAYS_MIN = 18;
+/** Ровно 3 недели = 21 календарный день до даты начала (03.08 → старт 24.08). */
+const PRE_3W_DAYS = 21;
 
 const KIND: VacationPreReminderKind = 'pre_3w';
 
@@ -40,7 +39,7 @@ export const buildPreVacationReminderMessage = (request: VacationRequest): strin
     : 'Шаблон передачи дел — ссылку пришлёт HR (скоро в этом сообщении).';
 
   return [
-    `До отпуска осталось около 3 недель (${dates}).`,
+    `До отпуска осталось 3 недели (${dates}).`,
     '',
     'Пожалуйста, заранее:',
     '1. Напишите заявление на отпуск.',
@@ -62,12 +61,10 @@ export type PreReminderRunResult = {
 };
 
 const isDuePre3w = (daysUntil: number): boolean =>
-  Number.isFinite(daysUntil) &&
-  daysUntil >= PRE_3W_DAYS_MIN &&
-  daysUntil <= PRE_3W_DAYS_MAX;
+  Number.isFinite(daysUntil) && daysUntil === PRE_3W_DAYS;
 
 /**
- * Ежедневный прогон: approved-отпуска с стартом через ~3 недели → сообщение от чат-бота.
+ * Ежедневный прогон: approved-отпуска со стартом ровно через 21 день → сообщение от чат-бота.
  */
 export async function runVacationPreReminders(options?: {
   dryRun?: boolean;
