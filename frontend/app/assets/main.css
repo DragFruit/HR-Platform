@@ -10436,10 +10436,30 @@ a {
   flex: 1;
   min-height: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Общий календарь сотрудника: flex-высота до scroll-контейнера, иначе таблица клипается без scrollbar */
+.vac-team-calendar--employee-team .vac-team-calendar__main,
+.vac-team-calendar--employee-team .vac-team-calendar__pane,
+.vac-team-calendar--employee-team .vac-team-calendar__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.vac-team-calendar--employee-team .vac-team-calendar__body {
+  flex-direction: row;
 }
 
 .vac-team-calendar--employee-team .vac-team-calendar__frame {
   --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 108px);
+  flex: 1 1 auto;
+  min-height: 0;
   height: 100%;
   max-height: 100%;
 }
@@ -10455,17 +10475,23 @@ a {
 }
 
 .vac-team-calendar--employee-team .vacation-calendar-wrap {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vac-team-calendar--employee-team .vac-table-scroll {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: none;
   height: 100%;
   border: 1px solid var(--border);
   border-radius: var(--vac-card-radius);
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   /* Разрешаем wheel-прокрутке передаваться странице за пределами таблицы. */
   overscroll-behavior: auto;
   background: var(--bg-surface);
