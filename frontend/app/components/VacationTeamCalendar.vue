@@ -100,6 +100,8 @@ import type { VacationReservation } from '~/utils/vacationReservations';
 
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 8;
+/** Растягивать рамку до низа экрана только при большой команде (скролл внутри). */
+const FILL_VIEWPORT_MIN_ROWS = 12;
 
 const props = withDefaults(
   defineProps<{
@@ -164,7 +166,12 @@ const empRowCount = computed(() =>
   props.departments.reduce((sum, dep) => sum + dep.employees.length, 0)
 );
 
-const fillViewport = computed(() => props.variant === 'manager' && props.hideChrome);
+const fillViewport = computed(
+  () =>
+    props.variant === 'manager' &&
+    props.hideChrome &&
+    empRowCount.value >= FILL_VIEWPORT_MIN_ROWS
+);
 
 const updateViewportMax = () => {
   if (props.variant !== 'manager' || !import.meta.client) return;
