@@ -111,6 +111,45 @@ export const formatHiredAtRu = (hiredAt: string): string => {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
+/** Визитка: `12.04.2022`. */
+export const formatHiredAtDot = (hiredAt: string): string => {
+  const d = parseHire(hiredAt);
+  if (!d) return hiredAt || '—';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+};
+
+/** Визитка: `2 ГОДА 1 МЕСЯЦ` / `8 МЕС.` / `МЕНЬШЕ МЕСЯЦА`. */
+export const tenureCardLabel = (hiredAt: string, asOf: Date = new Date()): string => {
+  const hire = parseHire(hiredAt);
+  if (!hire) return '—';
+  let months =
+    (asOf.getFullYear() - hire.getFullYear()) * 12 + (asOf.getMonth() - hire.getMonth());
+  if (asOf.getDate() < hire.getDate()) months -= 1;
+  months = Math.max(0, months);
+  if (months === 0) return 'МЕНЬШЕ МЕСЯЦА';
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const yearWord = (n: number) => {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'ГОД';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'ГОДА';
+    return 'ЛЕТ';
+  };
+  const monthWord = (n: number) => {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'МЕСЯЦ';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'МЕСЯЦА';
+    return 'МЕСЯЦЕВ';
+  };
+  if (y === 0) return `${m} ${monthWord(m)}`;
+  if (m === 0) return `${y} ${yearWord(y)}`;
+  return `${y} ${yearWord(y)} ${m} ${monthWord(m)}`;
+};
+
 /** Полных лет стажа от hired_at (0, если меньше года). */
 export const yearsOfService = (hiredAt: string, asOf: Date = new Date()): number => {
   const hire = parseHire(hiredAt);
@@ -159,4 +198,14 @@ export const formatBirthdayRu = (birthday: string): string => {
   const d = new Date(2000, Number(mm) - 1, Number(dd), 12);
   if (Number.isNaN(d.getTime())) return raw;
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+};
+
+/** Визитка: `17.08.1995` или `17.08` без года. */
+export const formatBirthdayDot = (birthday: string): string => {
+  const raw = birthday.trim();
+  const full = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (full) return `${full[3]}.${full[2]}.${full[1]}`;
+  const short = raw.match(/^(\d{2})-(\d{2})$/);
+  if (short) return `${short[2]}.${short[1]}`;
+  return raw || '—';
 };
