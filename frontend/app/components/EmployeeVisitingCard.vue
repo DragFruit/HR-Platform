@@ -32,7 +32,7 @@
         <div class="emp-card__face">
           <div class="emp-card__top">
             <div class="emp-card__photo">
-              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="168" />
+              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="128" />
             </div>
 
             <div class="emp-card__info">
@@ -287,14 +287,14 @@ onMounted(() => {
   --purple: #7451f4;
   --ink: #111;
   --face: #eeeee8;
-  --frame: 14px;
-  --dot: 9px;
+  --frame: 7px;
+  --dot: 7px;
   position: fixed;
   z-index: 80;
-  width: min(680px, calc(100vw - 24px));
+  width: min(540px, calc(100vw - 24px));
   background: var(--face);
   border: var(--frame) solid var(--ink);
-  border-radius: 14px;
+  border-radius: 10px;
   box-sizing: border-box;
   overflow: visible;
 }
@@ -313,49 +313,49 @@ onMounted(() => {
 /* Квадратики внутри верхней чёрной полосы рамки (как эталон) */
 .emp-card__dot--tl1 {
   top: calc(var(--frame) / 2 - var(--dot) / 2);
-  left: 18px;
+  left: 12px;
   background: var(--lime);
 }
 .emp-card__dot--tl2 {
   top: calc(var(--frame) / 2 - var(--dot) / 2);
-  left: 30px;
+  left: 22px;
   background: var(--lime);
 }
 .emp-card__dot--tl3 {
   top: calc(var(--frame) / 2 - var(--dot) / 2);
-  left: 42px;
+  left: 32px;
   background: var(--purple);
 }
 .emp-card__dot--bl {
   bottom: calc(var(--frame) / 2 - var(--dot) / 2);
-  left: 18px;
+  left: 12px;
   background: var(--purple);
 }
 .emp-card__dot--br1 {
   bottom: calc(var(--frame) / 2 - var(--dot) / 2);
-  right: 30px;
+  right: 22px;
   background: var(--lime);
 }
 .emp-card__dot--br2 {
   bottom: calc(var(--frame) / 2 - var(--dot) / 2);
-  right: 18px;
+  right: 12px;
   background: var(--purple);
 }
 
 /* Лаймовый × в правом верхнем углу рамки (LOCKED-etalon-v1-close-avatar) */
 .emp-card__close {
   position: absolute;
-  top: calc(var(--frame) / 2 - 11px);
-  right: 10px;
+  top: calc(var(--frame) / 2 - 9px);
+  right: 8px;
   z-index: 3;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: grid;
   place-items: center;
   border: 0;
   background: var(--lime);
   color: var(--ink);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -367,20 +367,20 @@ onMounted(() => {
 }
 
 .emp-card__face {
-  padding: 16px 18px 12px;
+  padding: 12px 14px 10px;
 }
 
 .emp-card__top {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
-  gap: 14px 18px;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 10px 14px;
   align-items: start;
 }
 
 .emp-card__photo {
-  width: 168px;
-  height: 168px;
-  border: 2px solid var(--ink);
+  width: 128px;
+  height: 128px;
+  border: 1.5px solid var(--ink);
   background: #fff;
   display: grid;
   place-items: center;
@@ -389,7 +389,7 @@ onMounted(() => {
 
 .emp-card__photo :deep(.user-avatar__img) {
   max-width: 100%;
-  max-height: 168px;
+  max-height: 128px;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -397,11 +397,11 @@ onMounted(() => {
 
 .emp-card__badge {
   display: inline-block;
-  margin: 0 0 8px;
-  padding: 5px 9px;
+  margin: 0 0 6px;
+  padding: 4px 7px;
   background: var(--ink);
   color: #fff;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -409,9 +409,9 @@ onMounted(() => {
 }
 
 .emp-card__name {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-family: var(--font-display, 'Unbounded', system-ui, sans-serif);
-  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: 0.01em;
@@ -425,16 +425,16 @@ onMounted(() => {
 
 .emp-card__field {
   display: grid;
-  grid-template-columns: 7.8rem minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 6px;
   align-items: baseline;
   border-bottom: 1px solid rgba(17, 17, 17, 0.28);
-  padding: 4px 0 3px;
+  padding: 3px 0 2px;
 }
 
 .emp-card__field dt {
   margin: 0;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -443,7 +443,7 @@ onMounted(() => {
 
 .emp-card__field dd {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-align: right;
   text-transform: uppercase;
@@ -453,13 +453,13 @@ onMounted(() => {
 }
 
 .emp-card__rail {
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1.5px solid var(--ink);
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0 10px;
+  gap: 0 8px;
   overflow-x: auto;
 }
 
@@ -488,14 +488,14 @@ onMounted(() => {
 }
 
 .emp-card__ach {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border: 1.5px solid var(--ink);
   background: #fff;
   display: grid;
   place-items: center;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
   flex: 0 0 auto;
 }
@@ -510,8 +510,8 @@ onMounted(() => {
 }
 
 .emp-card__ach img {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
 }
 
@@ -523,14 +523,14 @@ onMounted(() => {
 }
 
 .emp-card__rail-ideas {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--ink);
   white-space: nowrap;
 }
 
 .emp-card__rail-link {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--purple);
   text-decoration: underline;
@@ -558,8 +558,8 @@ button.emp-card__rail-link:disabled {
 .emp-card__barcode {
   display: block;
   width: 100%;
-  height: 28px;
-  margin-top: 12px;
+  height: 22px;
+  margin-top: 10px;
   object-fit: cover;
   object-position: left center;
   user-select: none;
@@ -572,12 +572,12 @@ button.emp-card__rail-link:disabled {
   }
 
   .emp-card__photo {
-    width: 120px;
-    height: 120px;
+    width: 96px;
+    height: 96px;
   }
 
   .emp-card__field {
-    grid-template-columns: 6.2rem minmax(0, 1fr);
+    grid-template-columns: 5.8rem minmax(0, 1fr);
   }
 }
 </style>
