@@ -375,24 +375,17 @@
           class="profile-team__member"
           :class="{ 'profile-team__member--manager': member.isManager }"
         >
-          <NuxtLink
-            v-if="memberProfilePath(member)"
-            :to="memberProfilePath(member)!"
+          <button
+            type="button"
             class="profile-team__member-link"
+            @click="openEmployeeVisitingCard(member, $event)"
           >
             <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
               <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
               <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
             </div>
             <span class="profile-team__name">{{ member.name }}</span>
-          </NuxtLink>
-          <template v-else>
-            <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
-              <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
-              <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
-            </div>
-            <span class="profile-team__name">{{ member.name }}</span>
-          </template>
+          </button>
         </li>
       </ul>
 
@@ -554,6 +547,7 @@ const route = useRoute();
 const runtimeConfig = useRuntimeConfig();
 const { user } = useAuth();
 const { profileTeamForUser, findByUserId, managerForEmployee, employees } = useEmployees();
+const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { AVATAR_CHARACTER_IDS, avatarImageUrl, getAvatarId, setAvatarId } = useAvatars();
 const { ideas, hydrate: hydrateIdeasBank } = useIdeasBank();
 const { isProduction } = useAppEnv();
@@ -780,9 +774,6 @@ const isCompactTeamLayout = computed(
 );
 
 const teamTitle = computed(() => profileTeamHeading(profileTeam.value.department));
-
-/** Чужие профили временно отключены — только свой `/profile`. */
-const memberProfilePath = (_member: Employee) => null;
 
 const ideasProfileCount = computed(() => {
   const uid =

@@ -1,17 +1,15 @@
 <template>
   <Teleport to="body">
-    <div
-      v-if="employee"
-      class="emp-card-overlay"
-      role="presentation"
-      @click.self="closeEmployeeVisitingCard"
-    >
+    <template v-if="employee">
+      <!-- Невидимый слой только для клика снаружи, без затемнения -->
+      <div class="emp-card-catcher" aria-hidden="true" @click="closeEmployeeVisitingCard" />
       <article
+        ref="cardRef"
         class="emp-card"
         role="dialog"
         aria-modal="true"
         :aria-label="`Визитка: ${employee.name}`"
-        @keydown.esc="closeEmployeeVisitingCard"
+        :style="cardStyle"
       >
         <button
           type="button"
@@ -24,11 +22,7 @@
 
         <div class="emp-card__body">
           <div class="emp-card__photo">
-            <UserAvatar
-              :user-id="avatarUserId"
-              :name="employee.name"
-              :size="120"
-            />
+            <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="120" />
           </div>
 
           <div class="emp-card__main">
@@ -85,14 +79,7 @@
           <div class="emp-card__meta">
             <span class="emp-card__ideas">Идеи: {{ ideasDone }}</span>
             <div class="emp-card__links">
-              <button
-                type="button"
-                class="emp-card__link"
-                title="Скоро"
-                disabled
-              >
-                Вишлист
-              </button>
+              <button type="button" class="emp-card__link" title="Скоро" disabled>Вишлист</button>
               <a
                 v-if="bitrixUrl"
                 class="emp-card__link"
@@ -106,7 +93,7 @@
           </div>
         </div>
       </article>
-    </div>
+    </template>
   </Teleport>
 </template>
 
@@ -118,9 +105,12 @@ import {
 } from '~/utils/tenureAnniversary';
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
 
-const { openEmployeeId, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
+const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
 const { ideas } = useIdeasBank();
+
+const cardRef = ref<HTMLElement | null>(null);
+const position = ref({ left: 0, top: 0 });
 
 const employee = computed(() => {
   const id = openEmployeeId.value;
@@ -169,6 +159,44 @@ const bitrixUrl = computed(() => {
   return `https://crm.vbi.ru/company/personal/user/${id}/`;
 });
 
+const cardStyle = computed(() => ({
+  left: `${position.value.left}px`,
+  top: `${position.value.top}px`
+}));
+
+const placeCard = async () => {
+  await nextTick();
+  const el = cardRef.value;
+  if (!el) return;
+  const pad = 12;
+  const gap = 10;
+  const rect = el.getBoundingClientRect();
+  const aw = rect.width || 560;
+  const ah = rect.height || 280;
+  const ax = anchor.value?.x ?? window.innerWidth / 2;
+  const ay = anchor.value?.y ?? window.innerHeight / 2;
+
+  let left = ax + gap;
+  let top = ay + gap;
+  if (left + aw > window.innerWidth - pad) left = ax - aw - gap;
+  if (top + ah > window.innerHeight - pad) top = ay - ah - gap;
+  left = Math.max(pad, Math.min(left, window.innerWidth - aw - pad));
+  top = Math.max(pad, Math.min(top, window.innerHeight - ah - pad));
+  position.value = { left, top };
+};
+
+watch(
+  () => [openEmployeeId.value, anchor.value?.x, anchor.value?.y] as const,
+  async ([id]) => {
+    if (id == null) return;
+    position.value = {
+      left: (anchor.value?.x ?? 24) + 10,
+      top: (anchor.value?.y ?? 24) + 10
+    };
+    await placeCard();
+  }
+);
+
 onMounted(() => {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && openEmployeeId.value != null) {
@@ -181,19 +209,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.emp-card-overlay {
+.emp-card-catcher {
   position: fixed;
   inset: 0;
-  z-index: 80;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(32, 32, 32, 0.35);
+  z-index: 79;
+  background: transparent;
 }
 
 .emp-card {
-  position: relative;
-  width: min(560px, 100%);
+  position: fixed;
+  z-index: 80;
+  width: min(560px, calc(100vw - 24px));
   background: var(--page-bg, #eeeee8);
   border: 3px solid var(--border-brutal, #202020);
   box-shadow: 6px 6px 0 #ddf365;

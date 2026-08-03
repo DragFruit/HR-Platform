@@ -73,7 +73,7 @@
                 type="button"
                 class="emp-name emp-name--inline emp-name--card"
                 :title="emp.name"
-                @click.stop="openEmployeeVisitingCard(emp)"
+                @click.stop="openEmployeeVisitingCard(emp, $event)"
               >
                 {{ emp.name }}
               </button>

@@ -53,6 +53,7 @@
               placeholder="Должность"
               class-name="org-exec-title"
             />
+            <!-- TODO: readonly-клик по ФИО → openEmployeeVisitingCard(person, $event) -->
             <InlineField
               v-model="exec.person"
               :readonly="readonly"

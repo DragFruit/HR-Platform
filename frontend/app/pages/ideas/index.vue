@@ -157,11 +157,17 @@
         <ol v-if="topAuthors.length" class="ideas-bank-authors__list">
           <li v-for="(author, index) in topAuthors" :key="author.userId" class="ideas-bank-authors__item">
             <span class="ideas-bank-authors__rank">{{ index + 1 }}</span>
-            <UserAvatar :user-id="author.userId" :name="author.name" :size="32" />
-            <div class="ideas-bank-authors__meta">
-              <span class="ideas-bank-authors__name">{{ author.name }}</span>
-              <span class="soft">{{ author.count }} {{ authorDoneLabel(author.count) }}</span>
-            </div>
+            <button
+              type="button"
+              class="ideas-bank-authors__open"
+              @click="openAuthorCard(author.name, author.userId, $event)"
+            >
+              <UserAvatar :user-id="author.userId" :name="author.name" :size="32" />
+              <div class="ideas-bank-authors__meta">
+                <span class="ideas-bank-authors__name">{{ author.name }}</span>
+                <span class="soft">{{ author.count }} {{ authorDoneLabel(author.count) }}</span>
+              </div>
+            </button>
           </li>
         </ol>
         <p v-else class="muted ideas-bank-authors__empty">Пока нет реализованных идей.</p>
@@ -182,8 +188,14 @@
             <h3 class="ideas-bank-card__title">{{ idea.title }}</h3>
             <p class="ideas-bank-card__text muted">{{ idea.description }}</p>
             <div class="ideas-bank-card__meta">
-              <UserAvatar :user-id="idea.authorUserId" :name="idea.authorName" :size="28" />
-              <span>{{ idea.authorName }}</span>
+              <button
+                type="button"
+                class="ideas-bank-card__author"
+                @click="openAuthorCard(idea.authorName, idea.authorUserId, $event)"
+              >
+                <UserAvatar :user-id="idea.authorUserId" :name="idea.authorName" :size="28" />
+                <span>{{ idea.authorName }}</span>
+              </button>
               <span class="ideas-bank-card__status" :data-status="idea.status">
                 {{ statusLabel(idea.status) }}
               </span>
@@ -411,6 +423,20 @@ const {
   canDeleteIdea,
   deleteIdea
 } = useIdeasBank();
+
+const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
+const { findByName, employees } = useEmployees();
+
+const openAuthorCard = (name: string, userId: number, event: MouseEvent) => {
+  const byUser =
+    employees.value.find((e) => e.platform_user_id === userId) ??
+    findByName(name);
+  if (byUser) {
+    openEmployeeVisitingCard(byUser, event);
+    return;
+  }
+  openEmployeeVisitingCard(name, event);
+};
 
 type ScopeFilter = 'all' | 'mine';
 type SortMode = 'new' | 'old' | 'popular' | 'unpopular';
