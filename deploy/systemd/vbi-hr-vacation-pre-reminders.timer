@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily VBI HR pre-vacation reminders (Bitrix bot)
+
+[Timer]
+OnCalendar=*-*-* 10:15:00
+Persistent=true
+Unit=vbi-hr-vacation-pre-reminders.service
+
+[Install]
+WantedBy=timers.target

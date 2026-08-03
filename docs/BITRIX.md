@@ -233,6 +233,46 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 Проверка вебхука в генераторе: методы `user.get`, `department.get`, `lists.get`, `lists.element.add`, `calendar.event.add`, `im.notify`.
 
+### Напоминание отпускнику за 3 недели (чат-бот)
+
+Ежедневно (~10:15) платформа находит **approved** отпуска со стартом через **18–21** день и пишет сотруднику в Bitrix **от чат-бота** (`imbot.message.add`):
+
+1. Напишите заявление на отпуск.
+2. Поставьте задачи на передачу проектов по шаблону (ссылка из env).
+
+| Переменная | Назначение |
+|------------|------------|
+| `BITRIX_IMBOT_ID` | ID чат-бота (после `imbot.register`) |
+| `VACATION_HANDOVER_TEMPLATE_URL` | Ссылка на шаблон передачи дел |
+| `VACATION_PRE_REMINDER_CRON_SECRET` или `CRON_SECRET` | Токен для `POST /api/cron/vacation-pre-reminders` |
+
+**Разово в Битриксе (админ портала):**
+
+1. В локальном приложении «VBI HR Platform» включить право **Чат-боты (imbot)** (и при необходимости перелогиниться на платформе, чтобы обновить OAuth-токен).
+2. Зарегистрировать бота (один раз), например через REST:
+
+```http
+POST /rest/imbot.register
+CODE=vbi_hr_vacation
+TYPE=B
+EVENT_MESSAGE_ADD=https://example.invalid/noop
+EVENT_WELCOME_MESSAGE=https://example.invalid/noop
+EVENT_BOT_DELETE=https://example.invalid/noop
+PROPERTIES[NAME]=VBI HR
+PROPERTIES[WORK_POSITION]=Напоминания об отпусках
+```
+
+3. В `/etc/vbi-hr/bitrix-production.env` прописать `BITRIX_IMBOT_ID=<id из ответа>`, секрет cron и (когда будет) URL шаблона.
+4. На VPS: установить timer `deploy/systemd/vbi-hr-vacation-pre-reminders.timer` и скрипт `deploy/scripts/run-vacation-pre-reminders.sh`.
+
+Журнал отправок: `server/data/vacation-pre-reminders.json` (без повторной отправки).
+
+Проверка: `curl -X POST -H "X-Cron-Token: …" 'http://127.0.0.1:3300/api/cron/vacation-pre-reminders?dry_run=1'`.
+
+Код: `vacationPreReminder.ts`, `bitrixImbot.ts`.
+
+> Согласование заявок по-прежнему только через колокольчик (`im.notify`) — не путать с этим напоминанием от бота.
+
 ---
 
 ## 3. Переменные окружения на VPS

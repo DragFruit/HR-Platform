@@ -4,6 +4,15 @@
 
 ## 2026-08-03
 
+### Напоминание за 3 недели до отпуска (чат-бот Bitrix)
+
+- Ежедневный cron: approved-отпуск со стартом через 18–21 день → сообщение сотруднику от чат-бота (`imbot.message.add`): заявление + передача дел по шаблону.
+- Env: `BITRIX_IMBOT_ID`, `VACATION_HANDOVER_TEMPLATE_URL` (ссылку добавим позже), `VACATION_PRE_REMINDER_CRON_SECRET`.
+- `POST /api/cron/vacation-pre-reminders` (+ `dry_run=1`), журнал `vacation-pre-reminders.json`.
+- Timer: `deploy/systemd/vbi-hr-vacation-pre-reminders.timer`.
+- Файлы: `vacationPreReminder.ts`, `bitrixImbot.ts`, `docs/BITRIX.md`.
+- Проверка: dry_run на сервере; после регистрации бота — тестовая отправка себе.
+
 ### Bitrix-отпуска: без calendar.event.add (профиль HR)
 
 - Вебхук от Драго → у `calendar.event.add` всегда `CREATED_BY=Драго`, и Bitrix показывает absence в **её** «Отсутствиях», даже при верном `ownerId` сотрудника.
