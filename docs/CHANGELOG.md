@@ -4,6 +4,13 @@
 
 ## 2026-08-03
 
+### Визитка: UI как в эскизе (рамка / бейдж / barcode)
+
+- Подтянули локал к `docs/design-refs/employee-visiting-card/`: толстая рамка + квадратики, чёрный бейдж, капс-ФИО Unbounded, поля value справа, футер в ряд, штрих-полоса.
+- Убрали lime drop-shadow «карточки ради карточки». Даты `ДД.ММ.ГГГГ`, стаж «N ГОДА M МЕСЯЦ». «Идеи» — всего у автора (не только done).
+- Файлы: `EmployeeVisitingCard.vue`, `tenureAnniversary.ts` (`formatHiredAtDot`, `tenureCardLabel`, `formatBirthdayDot`).
+- Проверка: клик по ФИО → визитка как эскиз, без затемнения.
+
 ### Банк идей: локал больше не глотает идеи Даши/Васи
 
 - Причина: `getDeployAppEnv()` принимал `BITRIX_REDIRECT_URI=http://localhost:3000/...` за production; `GET /api/ideas` резал записи с «тест» в ФИО (`Даша Тестова`).
