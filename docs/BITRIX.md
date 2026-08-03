@@ -242,7 +242,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 | Переменная | Назначение |
 |------------|------------|
-| `BITRIX_IMBOT_ID` | ID чат-бота (после `imbot.register`) |
+| `BITRIX_IMBOT_ID` | ID чат-бота (на бою: **2830**, код `vbi_hr_vacation`, имя «VBI HR») |
 | `VACATION_HANDOVER_TEMPLATE_URL` | Ссылка на шаблон передачи дел |
 | `VACATION_PRE_REMINDER_CRON_SECRET` или `CRON_SECRET` | Токен для `POST /api/cron/vacation-pre-reminders` |
 
