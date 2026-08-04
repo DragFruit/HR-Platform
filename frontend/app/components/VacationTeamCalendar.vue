@@ -100,7 +100,7 @@ import type { VacationReservation } from '~/utils/vacationReservations';
 
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 8;
-/** Растягивать рамку до низа экрана только при большой команде (скролл внутри). */
+/** Потолок высоты по viewport (класс --fill-viewport); белый фон не растягиваем. */
 const FILL_VIEWPORT_MIN_ROWS = 12;
 
 const props = withDefaults(

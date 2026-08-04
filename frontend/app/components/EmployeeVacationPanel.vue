@@ -76,10 +76,11 @@
     </p>
 
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
-      <div
-        class="vac-emp-calendar-slot"
-        :class="{ 'vac-emp-calendar-slot--with-tabs': hasTeamCalendar }"
-      >
+        <div
+          ref="calendarSlotRef"
+          class="vac-emp-calendar-slot"
+          :class="{ 'vac-emp-calendar-slot--with-tabs': hasTeamCalendar }"
+        >
         <div class="vac-emp-calendar-main">
           <VacationYearTab
             class="vac-emp-calendar-yeartab"
@@ -88,11 +89,13 @@
             @update:model-value="emit('update:viewYear', $event)"
           />
           <section
+            ref="calendarPaneRef"
             class="vac-emp-calendar-pane"
             :class="{
               'vac-emp-calendar-pane--embedded': embedded,
               'vac-emp-calendar-pane--team': showTeamCalendar
             }"
+            :style="teamPaneFitStyle"
             data-tour="vac-calendar"
           >
             <VacationTeamCalendar
@@ -266,6 +269,10 @@ const isHistoricalYear = computed(() => props.viewYear < state.value.primaryYear
 const createBtnWrapRef = ref<HTMLElement | null>(null);
 const createBtnTipVisible = ref(false);
 const createBtnTipStyle = ref<Record<string, string>>({});
+const calendarSlotRef = ref<HTMLElement | null>(null);
+const calendarPaneRef = ref<HTMLElement | null>(null);
+/** Белая рамка «Общего» ≥ вкладок; строки остаются обычной высоты. */
+const teamPaneMinHeightPx = ref<number | null>(null);
 
 const onCreateBtnEnter = () => {
   if (!isHistoricalYear.value) return;
@@ -414,6 +421,35 @@ const reservationCapBlockedMonths = computed(() => {
 const showTeamCalendar = computed(
   () => hasTeamCalendar.value && calendarScope.value === 'team' && Boolean(employeeName.value)
 );
+
+const teamPaneFitStyle = computed(() => {
+  if (!showTeamCalendar.value || teamPaneMinHeightPx.value == null) return undefined;
+  return { '--vac-team-pane-min-h': `${teamPaneMinHeightPx.value}px` };
+});
+
+const fitTeamTableToSideTabs = async () => {
+  if (!import.meta.client || !showTeamCalendar.value) {
+    teamPaneMinHeightPx.value = null;
+    return;
+  }
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+  const slot = calendarSlotRef.value;
+  const tabs = slot?.querySelector('.vac-cal-side-tabs') as HTMLElement | null;
+  if (!tabs) {
+    teamPaneMinHeightPx.value = null;
+    return;
+  }
+
+  teamPaneMinHeightPx.value = null;
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+  // Белое поле только до низа вкладок (не до края экрана), строки не трогаем.
+  teamPaneMinHeightPx.value = Math.ceil(tabs.offsetHeight);
+};
+
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
 const formAssessment = computed(() =>
@@ -672,5 +708,20 @@ watch(
 
 onMounted(() => {
   refreshData();
+  void fitTeamTableToSideTabs();
+  if (!import.meta.client) return;
+  window.addEventListener('resize', fitTeamTableToSideTabs);
 });
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return;
+  window.removeEventListener('resize', fitTeamTableToSideTabs);
+});
+
+watch(
+  [showTeamCalendar, () => teamDepartments.value.map((d) => d.employees.length).join(',')],
+  () => {
+    void fitTeamTableToSideTabs();
+  }
+);
 </script>

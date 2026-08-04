@@ -28,26 +28,50 @@ export const calendarDaysUntil = (startIso: string, today = new Date()): number 
   return Math.round((start.getTime() - from.getTime()) / 86_400_000);
 };
 
-const handoverTemplateUrl = (): string =>
-  String(process.env.VACATION_HANDOVER_TEMPLATE_URL || '').trim();
+/** Памятки по отделам (Bitrix Disk). Остальным отделам блок не добавляем. */
+const VACATION_MEMO_BY_DEPARTMENT: Array<{ match: (department: string) => boolean; url: string }> = [
+  {
+    // SEO / SERM / ORM (в справочнике: «SEO / ORM»)
+    match: (d) => {
+      const n = d.toLowerCase();
+      return n.includes('seo') || n.includes('serm') || n.includes('orm');
+    },
+    url: 'https://crm.vbi.ru/devs/24611/'
+  },
+  {
+    match: (d) => d.trim().toLowerCase() === 'digital' || d.toLowerCase().startsWith('digital '),
+    url: 'https://crm.vbi.ru/devs/21301/'
+  }
+];
 
-export const buildPreVacationReminderMessage = (request: VacationRequest): string => {
+export const vacationMemoUrlForDepartment = (department: string | null | undefined): string | null => {
+  const raw = String(department || '').trim();
+  if (!raw) return null;
+  for (const rule of VACATION_MEMO_BY_DEPARTMENT) {
+    if (rule.match(raw)) return rule.url;
+  }
+  return null;
+};
+
+export const buildPreVacationReminderMessage = (
+  request: VacationRequest,
+  options?: { department?: string | null }
+): string => {
   const dates = `${formatDateRu(request.start)} — ${formatDateRu(request.end)}`;
-  const templateUrl = handoverTemplateUrl();
-  const templateLine = templateUrl
-    ? `[URL=${templateUrl}]Шаблон передачи дел[/URL]`
-    : 'Шаблон передачи дел — ссылку пришлёт HR (скоро в этом сообщении).';
-
-  return [
+  const lines = [
     `До отпуска осталось 3 недели (${dates}).`,
     '',
     'Пожалуйста, заранее:',
     '1. Напишите заявление на отпуск.',
-    '2. Поставьте задачи на передачу проектов на время отпуска по шаблону:',
-    templateLine,
-    '',
-    'Если вопросы — напишите HR.'
-  ].join('\n');
+    '2. Поставьте задачи на передачу проектов на время отпуска.'
+  ];
+
+  const memoUrl = vacationMemoUrlForDepartment(options?.department);
+  if (memoUrl) {
+    lines.push('', 'Памятка, как правильно уйти в отпуск:', `[URL=${memoUrl}]${memoUrl}[/URL]`);
+  }
+
+  return lines.join('\n');
 };
 
 export type PreReminderRunResult = {
@@ -128,7 +152,9 @@ export async function runVacationPreReminders(options?: {
     }
 
     try {
-      const message = buildPreVacationReminderMessage(request);
+      const message = buildPreVacationReminderMessage(request, {
+        department: employee?.department
+      });
       const { messageId, channel } = await sendBitrixImbotMessage({
         bitrixUserId,
         message

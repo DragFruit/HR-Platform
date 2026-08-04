@@ -168,10 +168,16 @@ export function buildQaTestEmployees(): Employee[] {
     ...QA_BULK_REPORT_IDS.map((id, index) => {
       const n = index + 1;
       const pad = String(n).padStart(2, '0');
+      const title =
+        n === 1
+          ? 'Специалист по контекстной рекламе'
+          : n === 2
+            ? 'Fullstack-разработчик'
+            : 'Тестировщик';
       return {
         id,
         name: `Тестовый Сотрудник ${pad}`,
-        title: 'Тестировщик',
+        title,
         department: QA_TEST_DEPARTMENT_NAME,
         manager: QA_TEAM_LEAD_NAME,
         hired_at: `2025-${String(((n - 1) % 12) + 1).padStart(2, '0')}-15`,

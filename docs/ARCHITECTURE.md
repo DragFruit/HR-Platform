@@ -93,7 +93,7 @@ flowchart TB
 | `useLaunchScope` | `useLaunchScope.ts` | Поэтапный запуск (`vacations` / `full`) |
 | `usePermissions` | `usePermissions.ts` | Подписи ролей, `roleLabel` |
 | `useEmployees` | `useEmployees.ts` | Справочник ФИО, руководители, связь с аккаунтами |
-| `useEmployeeVisitingCard` | `useEmployeeVisitingCard.ts` | Публичная визитка у клика (календарь, команда, идеи; структура — позже) |
+| `useEmployeeVisitingCard` | `useEmployeeVisitingCard.ts` | Публичная визитка у клика (команда в профиле, идеи; не календарь отпусков; структура — позже) |
 | `useVacations` | `useVacations.ts` | Заявки, календарь, двухэтапное согласование Digital (`vacationApproval.ts`) |
 | `useOrgStructure` | `useOrgStructure.ts` | Директора, отделы, группы, сетка |
 | `useTasks` | `useTasks.ts` | Задачи геймификации |

@@ -12,6 +12,8 @@
           :key="`measure-${emp.id}`"
           class="vac-team-name-measure__name"
         >{{ emp.name }}</span>
+        <!-- Эталон ширины колонки «Должность»: всё длиннее → 2-я строка -->
+        <span class="vac-team-name-measure__title-ref">{{ TITLE_COL_WRAP_REF }}</span>
       </div>
     </Teleport>
 
@@ -123,14 +125,7 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <button
-                type="button"
-                class="emp-name emp-name--inline emp-name--card"
-                :title="emp.name"
-                @click.stop="openEmployeeVisitingCard(emp, $event)"
-              >
-                {{ emp.name }}
-              </button>
+              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -144,6 +139,7 @@
                   class="vac-detailed-day-bg"
                   :class="{
                     'is-weekend': cell.weekend,
+                    'is-today': cell.today,
                     'is-month-start': cell.monthStart
                   }"
                 />
@@ -176,7 +172,7 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
-import { MONTHS_RU, WEEKDAYS_SHORT, isWeekendDay } from '~/utils/vacationCalendar';
+import { MONTHS_RU, WEEKDAYS_SHORT, isRuHoliday, isWeekendDay } from '~/utils/vacationCalendar';
 import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
 import {
@@ -185,7 +181,6 @@ import {
 } from '~/utils/vacationReservations';
 
 const { state: vacationState } = useVacations();
-const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
 
 type YearDayCell = {
   month: number;
@@ -245,6 +240,10 @@ const NAME_COL_PAD_X = 16;
 const NAME_COL_CHEVRON = 24;
 /** Потолок — иначе ошибка замера раздувает таблицу на весь экран. */
 const NAME_COL_MAX_PX = 280;
+/** Ширина «Должность» = эта фраза; длиннее — перенос на 2-ю строку. */
+const TITLE_COL_WRAP_REF = 'Специалист по контекстной';
+const TITLE_COL_PAD_X = 12;
+const TITLE_COL_FALLBACK_PX = 148;
 /** Сколько дневных колонок оставить слева от текущей даты при автопрокрутке */
 const TODAY_SCROLL_OFFSET_COLS = 3;
 
@@ -253,6 +252,8 @@ const tableRef = ref<HTMLTableElement | null>(null);
 const nameMeasureRef = ref<HTMLElement | null>(null);
 /** Подвижная ширина колонки ФИО (max в видимом списке). */
 const nameColPx = ref(120);
+/** Ширина колонки «Должность» по эталону переноса. */
+const titleColPx = ref(TITLE_COL_FALLBACK_PX);
 
 const measureStickyHeaderHeights = () => {
   const rowMonth = tableRef.value?.querySelector('.vac-detailed-head-month') as HTMLElement | null;
@@ -306,15 +307,30 @@ const remeasureNameCol = () => {
     }
   }
 
-  if (max <= 0) return;
+  if (max > 0) {
+    // Место под шеврон всегда, если колонку должности можно прятать —
+    // иначе при toggle сначала уезжает «Должность», потом прыгает ФИО (+24px).
+    const chevron = props.titleColumnToggleable ? NAME_COL_CHEVRON : 0;
+    nameColPx.value = Math.min(
+      NAME_COL_MAX_PX,
+      Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
+    );
+  }
 
-  // Место под шеврон всегда, если колонку должности можно прятать —
-  // иначе при toggle сначала уезжает «Должность», потом прыгает ФИО (+24px).
-  const chevron = props.titleColumnToggleable ? NAME_COL_CHEVRON : 0;
-  nameColPx.value = Math.min(
-    NAME_COL_MAX_PX,
-    Math.max(96, Math.ceil(max + NAME_COL_PAD_X + chevron))
-  );
+  const titleRefEl = root?.querySelector(
+    '.vac-team-name-measure__title-ref'
+  ) as HTMLElement | null;
+  let titleW = titleRefEl ? titleRefEl.scrollWidth : 0;
+  if (titleW < 40) {
+    titleW = measureCssText(
+      TITLE_COL_WRAP_REF,
+      '500 9.76px Golos Text, system-ui, sans-serif',
+      0
+    );
+  }
+  if (titleW > 0) {
+    titleColPx.value = Math.ceil(titleW + TITLE_COL_PAD_X);
+  }
 };
 
 const scheduleRemeasureNameCol = async () => {
@@ -361,7 +377,9 @@ const buildYearDays = (year: number): YearDayCell[] => {
         index,
         iso,
         weekday: weekdayShort(date),
-        weekend: isWeekendDay(date),
+        // Праздничные нерабочие (и переносы) — тот же бледно-синий, что у сб/вс.
+        // В 2026 рабочих суббот нет; при появлении — вычесть их из weekend-стиля.
+        weekend: isWeekendDay(date) || isRuHoliday(iso),
         today: iso === todayIso,
         monthStart: day === 1
       });
@@ -379,7 +397,10 @@ const totalDays = computed(() => yearDays.value.length);
 const timelineStyle = computed(() => ({
   '--vac-days': totalDays.value,
   '--days': totalDays.value,
-  '--vac-name-col-w': `${nameColPx.value}px`
+  '--vac-name-col-w': `${nameColPx.value}px`,
+  ...(props.showTitleColumn
+    ? { '--vac-title-col-w': `${titleColPx.value}px` }
+    : {})
 }));
 
 const monthSpans = computed(() => {

@@ -5879,7 +5879,16 @@ a {
   box-sizing: border-box;
 }
 
-.vac-manager-main > .vac-team-calendar,
+.vac-manager-main > .vac-team-calendar {
+  /* Высота по контенту; не растягивать белую таблицу до низа большого экрана */
+  flex: 0 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .vac-manager-main > .vac-approval-panel {
   flex: 1 1 auto;
   min-height: 0;
@@ -7208,12 +7217,13 @@ a {
   overflow: hidden;
 }
 
-/* Руководитель: рамка на всю высоту колонки (без вычета тулбара) */
+/* Руководитель: потолок по viewport, высота — по строкам (без белой дыры внизу) */
 .vac-team-calendar--fill-viewport {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
 }
 
 .vac-team-calendar--fill-viewport .vac-team-calendar__main,
@@ -7221,10 +7231,11 @@ a {
 .vac-team-calendar--fill-viewport .vac-team-calendar__body {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   min-width: 0;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
 }
 
 .vac-team-calendar--fill-viewport .vac-team-calendar__body {
@@ -7232,10 +7243,10 @@ a {
 }
 
 .vac-team-calendar--fill-viewport .vac-team-calendar__frame {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  height: 100%;
-  max-height: none;
+  height: auto;
+  max-height: var(--vac-team-viewport-max);
 }
 
 .vac-team-calendar__toolbar {
@@ -7281,18 +7292,19 @@ a {
   isolation: isolate;
 }
 
-/* После общих правил — иначе flex/max-height снова дают белую дыру */
+/* После общих правил — потолок viewport, без растягивания белого фона */
 .vac-team-calendar--fill-viewport .vacation-calendar-wrap,
 .vac-team-calendar--fill-viewport .vac-detailed-wrap {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
 }
 
 .vac-team-calendar--fill-viewport .vac-table-scroll {
-  flex: 1 1 auto;
-  height: 100%;
-  max-height: none;
+  flex: 0 1 auto;
+  height: auto;
+  max-height: var(--vac-team-viewport-max);
 }
 
 .vac-team-calendar .vacation-calendar-wrap .timeline-scroll-x {
@@ -7313,7 +7325,8 @@ a {
 }
 .vac-team-calendar .vacation-timeline--with-title {
   --vac-team-name-col-w: 120px;
-  --vac-team-title-col-w: 112px;
+  /* Fallback; фактическая ширина — замер «Специалист по контекстной» */
+  --vac-team-title-col-w: 148px;
   --vac-team-sticky-left-w: calc(var(--vac-team-name-col-w) + var(--vac-team-title-col-w));
 }
 
@@ -7422,13 +7435,27 @@ a {
   line-height: 1.2;
 }
 
-/* Замер под компактный детальный вид рук-а (0.7rem в строке 21.5px) */
+/* Замер под компактный детальный вид рук-а (0.7rem в строке 21px) */
 .vac-team-name-measure--detailed .vac-team-name-measure__head {
   font-size: 0.6rem;
 }
 
 .vac-team-name-measure--detailed .vac-team-name-measure__name {
   font-size: 0.7rem;
+}
+
+.vac-team-name-measure__title-ref {
+  display: inline-block;
+  width: max-content;
+  font-family: var(--font-body);
+  font-size: 0.61rem;
+  font-weight: 500;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.vac-team-name-measure--detailed .vac-team-name-measure__title-ref {
+  font-size: 0.61rem;
 }
 
 .vac-team-calendar .vacation-timeline .emp-title {
@@ -7443,11 +7470,15 @@ a {
 }
 
 .vac-team-calendar .vacation-timeline .emp-title--col {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
   text-overflow: ellipsis;
-  line-height: 1.15;
+  line-height: 1.2;
   font-size: 0.61rem;
   margin: 0;
   color: var(--text-soft);
@@ -7846,7 +7877,8 @@ a {
   --vac-day-col-w: 18px;
   --vac-days: 365;
   --vac-name-col-w: 120px; /* fallback до замера */
-  --vac-title-col-span: 7;
+  /* Fallback до замера JS («Специалист по контекстной») */
+  --vac-title-col-span: 9;
   --vac-balance-col-span: 3;
   --vac-title-col-w: 0px;
   --vac-balance-col-w: calc(var(--vac-day-col-w) * var(--vac-balance-col-span));
@@ -8127,11 +8159,11 @@ a {
 }
 
 .vac-title-head-label {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
+  flex: 0 1 auto;
+  min-width: max-content;
+  overflow: visible;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .vac-title-col-chevron {
@@ -8238,10 +8270,15 @@ a {
 }
 
 /* Менеджер: фиксированная высота строк (и с боковыми вкладками, и с hide-chrome / fill-viewport) */
+.vac-team-calendar .vac-detailed-timeline {
+  --vac-team-emp-row-h: 21px;
+}
+
 .vac-team-calendar--with-side-tabs .vac-detailed-track-inner,
-.vac-team-calendar--fill-viewport .vac-detailed-track-inner {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  min-height: var(--vac-team-emp-row-h, 21.5px);
+.vac-team-calendar--fill-viewport .vac-detailed-track-inner,
+.vac-team-calendar .vac-detailed-timeline .vac-detailed-track-inner {
+  height: var(--vac-team-emp-row-h, 21px);
+  min-height: var(--vac-team-emp-row-h, 21px);
 }
 
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-name,
@@ -8249,9 +8286,12 @@ a {
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .sticky-col-balance,
 .vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-name,
 .vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-title,
-.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-balance {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  max-height: var(--vac-team-emp-row-h, 21.5px);
+.vac-team-calendar--fill-viewport .vac-detailed-emp-row .sticky-col-balance,
+.vac-team-calendar .vac-detailed-timeline .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar .vac-detailed-timeline .vac-detailed-emp-row .sticky-col-title,
+.vac-team-calendar .vac-detailed-timeline .vac-detailed-emp-row .sticky-col-balance {
+  height: var(--vac-team-emp-row-h, 21px);
+  max-height: var(--vac-team-emp-row-h, 21px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
@@ -8278,22 +8318,72 @@ a {
 
 .vac-team-calendar--with-side-tabs .vac-detailed-emp-row .emp-title--col,
 .vac-team-calendar--fill-viewport .vac-detailed-emp-row .emp-title--col {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
   font-size: 0.61rem;
   line-height: 1.15;
-  -webkit-line-clamp: 1;
+  max-height: none;
+}
+
+/*
+ * Колонка «Должность» открыта: ФИО/остаток остаются 21px.
+ * Растёт только ячейка должности (и строка таблицы вместе с ней), если текст в 2 линии.
+ */
+.vac-team-calendar--with-side-tabs .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-title,
+.vac-team-calendar--fill-viewport .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-title,
+.vac-team-calendar .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-title {
+  height: auto;
+  max-height: none;
+  min-height: var(--vac-team-emp-row-h, 21px);
+}
+
+.vac-team-calendar--with-side-tabs .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--with-side-tabs .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-balance,
+.vac-team-calendar--fill-viewport .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar--fill-viewport .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-balance,
+.vac-team-calendar .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-name,
+.vac-team-calendar .vac-detailed-timeline--with-title .vac-detailed-emp-row .sticky-col-balance {
+  height: var(--vac-team-emp-row-h, 21px);
+  max-height: none;
+  min-height: var(--vac-team-emp-row-h, 21px);
+}
+
+.vac-team-calendar--with-side-tabs .vac-detailed-timeline--with-title .vac-detailed-track-inner,
+.vac-team-calendar--fill-viewport .vac-detailed-timeline--with-title .vac-detailed-track-inner,
+.vac-team-calendar .vac-detailed-timeline--with-title .vac-detailed-track-inner {
+  height: 100%;
+  min-height: var(--vac-team-emp-row-h, 21px);
 }
 
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-title,
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
-  height: var(--vac-team-emp-row-h, 21.5px);
-  max-height: var(--vac-team-emp-row-h, 21.5px);
-  min-height: var(--vac-team-emp-row-h, 21.5px);
+  height: var(--vac-team-emp-row-h, 21px);
+  max-height: var(--vac-team-emp-row-h, 21px);
+  min-height: var(--vac-team-emp-row-h, 21px);
   padding: 3px 6px 3px 8px;
   font-size: 0.7rem;
   line-height: 1.2;
   box-sizing: border-box;
   vertical-align: middle;
+}
+
+.vac-team-calendar--with-side-tabs .vacation-timeline--with-title tbody tr.vac-team-emp-row .sticky-col-title {
+  height: auto;
+  max-height: none;
+  min-height: var(--vac-team-emp-row-h, 21px);
+}
+
+.vac-team-calendar--with-side-tabs .vacation-timeline--with-title tbody tr.vac-team-emp-row .sticky-col-name,
+.vac-team-calendar--with-side-tabs .vacation-timeline--with-title tbody tr.vac-team-emp-row .vac-cell {
+  height: var(--vac-team-emp-row-h, 21px);
+  max-height: none;
+  min-height: var(--vac-team-emp-row-h, 21px);
 }
 
 .vac-team-calendar--with-side-tabs .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
@@ -8368,8 +8458,12 @@ a {
   background: var(--vac-grid-weekend);
 }
 
+.vac-detailed-day-bg.is-today {
+  background: #ebe6fc;
+}
+
 .vac-detailed-timeline th.is-today {
-  background: #cfe4f5;
+  background: #ebe6fc;
   color: var(--text);
   font-weight: 700;
 }
@@ -8553,7 +8647,8 @@ button.emp-name--card:hover {
   display: grid;
   grid-template-columns: repeat(var(--days), var(--vac-day-col-w));
   align-items: stretch;
-  min-height: 44px;
+  /* Компактный ряд менеджера — 21px; не раздувать при свёрнутой «Должности» */
+  min-height: var(--vac-team-emp-row-h, 21px);
   background: var(--vac-grid-fill);
 }
 
@@ -9942,9 +10037,9 @@ button.emp-name--card:hover {
   grid-row: 3;
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-start;
   min-height: 0;
-  height: 100%;
+  height: auto;
   max-height: 100%;
   min-width: 0;
   margin-left: var(--vac-cal-gutter-x);
@@ -10132,7 +10227,7 @@ button.emp-name--card:hover {
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-main {
-  height: 100%;
+  height: auto;
   max-height: 100%;
   overflow: visible;
 }
@@ -10141,9 +10236,10 @@ button.emp-name--card:hover {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   min-height: 0;
+  height: auto;
   margin: 0;
   width: auto;
   max-width: none;
@@ -10151,6 +10247,14 @@ button.emp-name--card:hover {
   align-items: stretch;
   overflow: hidden;
   flex-shrink: 1;
+}
+
+.vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane--team {
+  /* Высота: max(контент, вкладки); без растягивания до низа экрана */
+  flex: 0 0 auto;
+  height: auto;
+  min-height: var(--vac-team-pane-min-h, auto);
+  max-height: none;
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid {
@@ -10188,6 +10292,7 @@ button.emp-name--card:hover {
 
 .vac-emp-calendar-slot--with-tabs {
   overflow: visible;
+  align-items: flex-start;
 }
 
 .vac-cal-side-tabs {
@@ -10501,14 +10606,14 @@ button.emp-name--card:hover {
 }
 
 .vac-emp-calendar-pane--team .vac-team-calendar {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* Общий календарь сотрудника: flex-высота до scroll-контейнера, иначе таблица клипается без scrollbar */
+/* Общий календарь сотрудника: заполняет белую рамку; рамка ≥ вкладок */
 .vac-team-calendar--employee-team .vac-team-calendar__main,
 .vac-team-calendar--employee-team .vac-team-calendar__pane,
 .vac-team-calendar--employee-team .vac-team-calendar__body {
@@ -10564,6 +10669,14 @@ button.emp-name--card:hover {
   overscroll-behavior: auto;
   background: var(--bg-surface);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.vac-team-calendar--employee-team .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
+.vac-team-calendar--employee-team .vacation-timeline tbody tr.vac-team-emp-row .vac-cell {
+  height: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  vertical-align: middle;
 }
 
 .vac-team-calendar--employee-team .vac-cell--compact {
