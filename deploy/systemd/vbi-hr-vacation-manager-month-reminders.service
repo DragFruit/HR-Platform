@@ -1,0 +1,9 @@
+[Unit]
+Description=VBI HR: manager next-month vacation list (Bitrix bot)
+After=network.target vbi-hr.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/bin/bash /var/www/vbi-hr/deploy-scripts/run-vacation-manager-month-reminders.sh /etc/vbi-hr/bitrix-production.env
