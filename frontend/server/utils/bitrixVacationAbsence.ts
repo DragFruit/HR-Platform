@@ -328,12 +328,15 @@ const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): 
   if (request.status !== 'approved') return false;
   if (!previous) return true;
 
-  // Перенос дат у уже согласованной заявки должен перезаписать «пальму» в Bitrix.
-  const datesChanged = previous.start !== request.start || previous.end !== request.end;
-  if (datesChanged) return true;
+  // Когда заявка уже согласована, при любом повторном сохранении (в т.ч. без смены дат)
+  // мы делаем проверку Bitrix-сущности: `pushVacationToBitrixAbsence()` сам пересоздаст
+  // «пальму», если `ACTIVE_FROM/ACTIVE_TO` не совпали.
+  // Это нужно, чтобы исправлять расхождения после прошлых багов синка.
+  if (previous.status === 'approved' && request.bitrix_absence_id) return true;
 
-  if (request.bitrix_sync_status === 'synced' && request.bitrix_absence_id) return false;
-  return previous.status !== 'approved';
+  // Перенос дат у уже согласованной заявки тоже должен перезаписать «пальму» в Bitrix.
+  const datesChanged = previous.start !== request.start || previous.end !== request.end;
+  return previous.status !== 'approved' || datesChanged;
 };
 
 /** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */
