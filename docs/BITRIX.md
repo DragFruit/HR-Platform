@@ -239,7 +239,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 ### Напоминание отпускнику за 3 недели (чат-бот)
 
-Ежедневно (**11:15 МСК**) платформа находит **approved** отпуска со стартом **ровно через 21 день** (3 недели; напр. 03.08 → старт 24.08) и пишет сотруднику в Bitrix **от чат-бота** (`imbot.message.add`):
+Ежедневно (**12:00 МСК**) платформа находит **approved** отпуска со стартом **ровно через 21 день** (3 недели; напр. 03.08 → старт 24.08) и пишет сотруднику в Bitrix **от чат-бота** (`imbot.message.add`):
 
 1. Напишите заявление на отпуск.
 2. Поставьте задачи на передачу проектов на время отпуска.
@@ -283,9 +283,14 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 
 Код: `vacationPreReminder.ts`, `bitrixImbot.ts`.
 
-### Напоминание руководителю 15-го (чат-бот)
+### Напоминание руководителю (чат-бот)
 
-Каждое **15-е** (**11:15 МСК**) бот пишет руководителю список **approved** отпусков команды со **стартом в следующем месяце** (даты), чтобы заранее планировать передачу дел.
+Одинаковые зоны получателей; **Юдин Вадим** не получает.
+
+| Когда | О чём | Текст-заголовок |
+|-------|--------|-----------------|
+| **1-е**, 11:15 МСК | `approved`, старт **в текущем** месяце | «В этом месяце в отпуск из вашей команды идут:» |
+| **15-е**, 11:15 МСК | `approved`, старт **в следующем** месяце | «В следующем месяце в отпуск из вашей команды идут:» |
 
 | Получатель | Состав списка |
 |------------|---------------|
@@ -296,8 +301,8 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 
 Тот же `BITRIX_IMBOT_ID` и cron-секрет, что у напоминания за 3 недели.
 
-- API: `POST /api/cron/vacation-manager-month-reminders` (`dry_run=1`, `force=1`, `as_of=YYYY-MM-DD`)
-- Timer: `deploy/systemd/vbi-hr-vacation-manager-month-reminders.timer`
+- API: `POST /api/cron/vacation-manager-month-reminders?outlook=current\|next` (`dry_run=1`, `force=1`, `as_of=YYYY-MM-DD`)
+- Timers: `vbi-hr-vacation-manager-current-month-reminders.timer` (1-е), `vbi-hr-vacation-manager-month-reminders.timer` (15-е)
 - Журнал: `server/data/vacation-manager-month-reminders.json`
 - Код: `vacationManagerMonthReminder.ts`
 

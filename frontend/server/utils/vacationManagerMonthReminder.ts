@@ -5,7 +5,8 @@ import { readEmployees, type ServerEmployee } from './employeesStore';
 import {
   hasManagerMonthReminder,
   managerMonthReminderKey,
-  recordManagerMonthReminder
+  recordManagerMonthReminder,
+  type ManagerMonthReminderKind
 } from './vacationManagerMonthReminderStore';
 import { readVacations } from './vacationsStore';
 
@@ -25,9 +26,18 @@ export const DEPARTMENT_SCOPE_BY_MANAGER: Record<string, string> = {
   'Лашин Владислав': 'Отдел продаж'
 };
 
+export type ManagerMonthOutlook = 'next' | 'current';
+
 const formatDateRu = (iso: string): string => {
   const [y, m, d] = iso.split('-');
   return y && m && d ? `${d}.${m}.${y}` : iso;
+};
+
+/** YYYY-MM текущего месяца. */
+export const currentMonthKey = (today = new Date()): string => {
+  const y = today.getFullYear();
+  const m = today.getMonth() + 1;
+  return `${y}-${String(m).padStart(2, '0')}`;
 };
 
 /** YYYY-MM следующего календарного месяца относительно today. */
@@ -89,10 +99,41 @@ export type ManagerMonthVacationLine = {
   end: string;
 };
 
+const outlookConfig = (
+  outlook: ManagerMonthOutlook
+): {
+  kind: ManagerMonthReminderKind;
+  runDay: number;
+  notDayReason: string;
+  targetMonth: (today: Date) => string;
+  headline: string;
+  footer: string;
+} => {
+  if (outlook === 'current') {
+    return {
+      kind: 'mgr_current_month',
+      runDay: 1,
+      notDayReason: 'not_the_1st',
+      targetMonth: currentMonthKey,
+      headline: 'В этом месяце в отпуск из вашей команды идут:',
+      footer: 'Не забудьте учесть их отсутствие.'
+    };
+  }
+  return {
+    kind: 'mgr_next_month',
+    runDay: 15,
+    notDayReason: 'not_the_15th',
+    targetMonth: nextMonthKey,
+    headline: 'В следующем месяце в отпуск из вашей команды идут:',
+    footer: 'Имеет смысл заранее спланировать передачу дел.'
+  };
+};
+
 export const buildManagerMonthReminderMessage = (
-  targetMonth: string,
+  outlook: ManagerMonthOutlook,
   lines: ManagerMonthVacationLine[]
 ): string => {
+  const { headline, footer } = outlookConfig(outlook);
   const sorted = [...lines].sort((a, b) => {
     const byStart = a.start.localeCompare(b.start);
     if (byStart !== 0) return byStart;
@@ -103,18 +144,13 @@ export const buildManagerMonthReminderMessage = (
     (row) => `• ${row.employee} — ${formatDateRu(row.start)} — ${formatDateRu(row.end)}`
   );
 
-  return [
-    'В следующем месяце в отпуск из вашей команды идут:',
-    '',
-    ...body,
-    '',
-    'Имеет смысл заранее спланировать передачу дел.'
-  ].join('\n');
+  return [headline, '', ...body, '', footer].join('\n');
 };
 
 export type ManagerMonthReminderRunResult = {
   ran: boolean;
   reason?: string;
+  outlook: ManagerMonthOutlook;
   target_month: string;
   recipients: number;
   sent: number;
@@ -123,29 +159,31 @@ export type ManagerMonthReminderRunResult = {
   errors: Array<{ manager: string; error: string }>;
   dry_run: boolean;
   bot_configured: boolean;
-  /** В dry_run — превью по руководителям с отпусками. */
   preview?: Array<{ manager: string; count: number; sample: string }>;
 };
 
-const isRunDay = (today: Date): boolean => today.getDate() === 15;
-
 /**
- * 15-го числа: руководителям — approved-отпуска команды со стартом в следующем месяце.
+ * Руководителям: approved-отпуска команды со стартом в целевом месяце.
+ * next — 15-го про следующий месяц; current — 1-го про текущий.
  */
 export async function runVacationManagerMonthReminders(options?: {
+  outlook?: ManagerMonthOutlook;
   dryRun?: boolean;
   today?: Date;
-  /** Игнорировать проверку «только 15-е» (ручной прогон / тест). */
+  /** Игнорировать проверку дня месяца (ручной прогон / тест). */
   force?: boolean;
 }): Promise<ManagerMonthReminderRunResult> {
+  const outlook: ManagerMonthOutlook = options?.outlook ?? 'next';
+  const cfg = outlookConfig(outlook);
   const dryRun = Boolean(options?.dryRun);
   const force = Boolean(options?.force);
   const today = options?.today ?? new Date();
-  const targetMonth = nextMonthKey(today);
+  const targetMonth = cfg.targetMonth(today);
   const botConfigured = isBitrixImbotConfigured();
 
   const result: ManagerMonthReminderRunResult = {
     ran: false,
+    outlook,
     target_month: targetMonth,
     recipients: 0,
     sent: 0,
@@ -157,8 +195,8 @@ export async function runVacationManagerMonthReminders(options?: {
     preview: dryRun ? [] : undefined
   };
 
-  if (!force && !isRunDay(today)) {
-    result.reason = 'not_the_15th';
+  if (!force && today.getDate() !== cfg.runDay) {
+    result.reason = cfg.notDayReason;
     return result;
   }
 
@@ -201,14 +239,14 @@ export async function runVacationManagerMonthReminders(options?: {
 
     result.recipients += 1;
     const bitrixUserId = Number(manager.bitrix_user_id);
-    const key = managerMonthReminderKey(bitrixUserId, targetMonth);
+    const key = managerMonthReminderKey(cfg.kind, bitrixUserId, targetMonth);
 
     if (await hasManagerMonthReminder(key)) {
       result.skipped += 1;
       continue;
     }
 
-    const message = buildManagerMonthReminderMessage(targetMonth, lines);
+    const message = buildManagerMonthReminderMessage(outlook, lines);
 
     if (dryRun) {
       result.sent += 1;
@@ -235,7 +273,7 @@ export async function runVacationManagerMonthReminders(options?: {
       });
       await recordManagerMonthReminder({
         key,
-        kind: 'mgr_next_month',
+        kind: cfg.kind,
         target_month: targetMonth,
         manager: manager.name,
         bitrix_user_id: bitrixUserId,

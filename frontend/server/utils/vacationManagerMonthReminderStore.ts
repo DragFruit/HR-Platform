@@ -2,9 +2,11 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+export type ManagerMonthReminderKind = 'mgr_next_month' | 'mgr_current_month';
+
 export type ManagerMonthReminderRecord = {
   key: string;
-  kind: 'mgr_next_month';
+  kind: ManagerMonthReminderKind;
   /** Месяц, о котором сообщили (YYYY-MM), не месяц отправки. */
   target_month: string;
   manager: string;
@@ -46,8 +48,11 @@ const writeStore = async (state: StoreState): Promise<void> => {
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
 };
 
-export const managerMonthReminderKey = (bitrixUserId: number, targetMonth: string): string =>
-  `mgr_next_month:${bitrixUserId}:${targetMonth}`;
+export const managerMonthReminderKey = (
+  kind: ManagerMonthReminderKind,
+  bitrixUserId: number,
+  targetMonth: string
+): string => `${kind}:${bitrixUserId}:${targetMonth}`;
 
 export const hasManagerMonthReminder = async (key: string): Promise<boolean> => {
   const state = await readStore();

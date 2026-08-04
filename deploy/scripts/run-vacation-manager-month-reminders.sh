@@ -25,5 +25,5 @@ fi
 PORT="${NITRO_PORT:-3300}"
 curl -fsS -X POST \
   -H "X-Cron-Token: ${TOKEN}" \
-  "http://127.0.0.1:${PORT}/api/cron/vacation-manager-month-reminders"
+  "http://127.0.0.1:${PORT}/api/cron/vacation-manager-month-reminders?outlook=next"
 echo

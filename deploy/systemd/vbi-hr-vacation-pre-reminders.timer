@@ -2,8 +2,8 @@
 Description=Daily VBI HR pre-vacation reminders (Bitrix bot)
 
 [Timer]
-# 11:15 МСК = 08:15 UTC
-OnCalendar=*-*-* 08:15:00
+# 12:00 МСК = 09:00 UTC
+OnCalendar=*-*-* 09:00:00
 Persistent=true
 Unit=vbi-hr-vacation-pre-reminders.service
 

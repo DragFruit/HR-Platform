@@ -145,6 +145,14 @@ if [[ -f "${MANAGER_MONTH_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-month-reminders.sh'"
 fi
 
+MANAGER_CURRENT_SCRIPT="${ROOT}/deploy/scripts/run-vacation-manager-current-month-reminders.sh"
+if [[ -f "${MANAGER_CURRENT_SCRIPT}" ]]; then
+  echo "→ установка run-vacation-manager-current-month-reminders.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${MANAGER_CURRENT_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-current-month-reminders.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-current-month-reminders.sh'"
+fi
+
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
 

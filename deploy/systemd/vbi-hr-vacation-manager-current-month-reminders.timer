@@ -1,0 +1,11 @@
+[Unit]
+Description=Monthly VBI HR manager vacation outlook (1st, current month, Bitrix bot)
+
+[Timer]
+# 11:15 МСК = 08:15 UTC (1-е число)
+OnCalendar=*-*-01 08:15:00
+Persistent=true
+Unit=vbi-hr-vacation-manager-current-month-reminders.service
+
+[Install]
+WantedBy=timers.target

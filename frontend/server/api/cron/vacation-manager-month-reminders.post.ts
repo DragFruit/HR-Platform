@@ -1,9 +1,14 @@
-import { runVacationManagerMonthReminders } from '../../utils/vacationManagerMonthReminder';
+import {
+  runVacationManagerMonthReminders,
+  type ManagerMonthOutlook
+} from '../../utils/vacationManagerMonthReminder';
 
 /**
- * Cron 15-го числа: руководителям — кто из команды в отпуске в следующем месяце (approved, старт в том месяце).
+ * Cron руководителям:
+ * - outlook=next (по умолчанию) — 15-го, отпуска со стартом в следующем месяце
+ * - outlook=current — 1-го, отпуска со стартом в текущем месяце
  * Токен: X-Cron-Token / ?token= = VACATION_PRE_REMINDER_CRON_SECRET / CRON_SECRET.
- * Тест не 15-го: ?force=1&dry_run=1
+ * Тест: ?force=1&dry_run=1&as_of=YYYY-MM-DD&outlook=current
  */
 export default defineEventHandler(async (event) => {
   const expected = String(
@@ -24,6 +29,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Неверный cron token' });
   }
 
+  const outlookRaw = String(query.outlook || 'next').trim().toLowerCase();
+  const outlook: ManagerMonthOutlook =
+    outlookRaw === 'current' || outlookRaw === 'this' ? 'current' : 'next';
+
   const dryRun =
     String(query.dry_run || '').trim() === '1' ||
     String(query.dryRun || '').trim() === '1';
@@ -41,7 +50,12 @@ export default defineEventHandler(async (event) => {
     today = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   }
 
-  const result = await runVacationManagerMonthReminders({ dryRun, force, today });
+  const result = await runVacationManagerMonthReminders({
+    outlook,
+    dryRun,
+    force,
+    today
+  });
   console.info('[vacation-manager-month-reminder]', JSON.stringify(result));
   return { ok: true, ...result };
 });
