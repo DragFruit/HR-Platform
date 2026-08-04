@@ -176,7 +176,7 @@ const findExistingAbsenceElement = async (params: {
   start: string;
   end: string;
   requestId: number;
-}): Promise<{ absenceId: number; auth: AuthMode } | null> => {
+}): Promise<{ absenceId: number; auth: AuthMode; upToDate: boolean } | null> => {
   const iblockId = await resolveAbsenceIblockId();
   if (!iblockId) return null;
 
@@ -188,7 +188,11 @@ const findExistingAbsenceElement = async (params: {
       FILTER: { CODE: code }
     });
     const hit = (result || []).find((el) => Number(el.ID) > 0);
-    if (hit) return { absenceId: Number(hit.ID), auth };
+    if (hit) {
+      const upToDate =
+        bitrixDateToIso(hit.ACTIVE_FROM) === params.start && bitrixDateToIso(hit.ACTIVE_TO) === params.end;
+      return { absenceId: Number(hit.ID), auth, upToDate };
+    }
   } catch (err) {
     console.warn('[bitrix-vacation] lists.element.get by CODE failed:', errorMessage(err));
   }
@@ -203,7 +207,7 @@ const findExistingAbsenceElement = async (params: {
       if (absenceElementUserId(el) !== params.bitrixUserId) return false;
       return bitrixDateToIso(el.ACTIVE_FROM) === params.start && bitrixDateToIso(el.ACTIVE_TO) === params.end;
     });
-    if (hit) return { absenceId: Number(hit.ID), auth };
+    if (hit) return { absenceId: Number(hit.ID), auth, upToDate: true };
   } catch (err) {
     console.warn('[bitrix-vacation] lists.element.get by user/dates failed:', errorMessage(err));
   }
@@ -279,8 +283,25 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
     requestId: request.id
   });
   if (existing) {
-    absenceId = existing.absenceId;
-    method = `lists.element.existing:${existing.auth}`;
+    // Если даты изменены (перенос после согласования), а элемент по CODE уже есть —
+    // пересоздаём, чтобы ACTIVE_FROM/ACTIVE_TO совпали с новыми start/end.
+    if (existing.upToDate) {
+      absenceId = existing.absenceId;
+      method = `lists.element.existing:${existing.auth}`;
+    } else {
+      const iblockId = await resolveAbsenceIblockId();
+      if (!iblockId) throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
+
+      await bitrixVacationRest<boolean>('lists.element.delete', {
+        IBLOCK_TYPE_ID: absenceIblockTypeId(),
+        IBLOCK_ID: iblockId,
+        ELEMENT_ID: existing.absenceId
+      });
+
+      const iblock = await createViaAbsenceIblock(payload);
+      absenceId = iblock.absenceId;
+      method = `lists.element.recreate:${iblock.auth}`;
+    }
   } else {
     try {
       const iblock = await createViaAbsenceIblock(payload);
@@ -305,8 +326,13 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
 
 const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {
   if (request.status !== 'approved') return false;
-  if (request.bitrix_sync_status === 'synced' && request.bitrix_absence_id) return false;
   if (!previous) return true;
+
+  // Перенос дат у уже согласованной заявки должен перезаписать «пальму» в Bitrix.
+  const datesChanged = previous.start !== request.start || previous.end !== request.end;
+  if (datesChanged) return true;
+
+  if (request.bitrix_sync_status === 'synced' && request.bitrix_absence_id) return false;
   return previous.status !== 'approved';
 };
 
