@@ -130,7 +130,8 @@ VBI HR платформа/
 
 ## График отпусков
 
-Бизнес-правила (дни, остаток, согласование, бронь): **[docs/PRODUCT.md](docs/PRODUCT.md)** §1.
+Бизнес-правила (дни, остаток, согласование, бронь, напоминания бота): **[docs/PRODUCT.md](docs/PRODUCT.md)** §1.  
+Bitrix-бот и systemd timers: **[docs/BITRIX.md](docs/BITRIX.md)**.
 
 Логика UI перенесена с референса в `_vacation_source/График отпусков/`. Сид: `frontend/app/data/vacation-seed.json`.
 

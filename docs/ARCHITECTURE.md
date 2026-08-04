@@ -265,6 +265,24 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
 
+### Напоминания отпусков от чат-бота (cron)
+
+Не путать с колокольчиком согласования. Бизнес-правила: **[PRODUCT.md §1.3.1](./PRODUCT.md)**; установка: **[BITRIX.md](./BITRIX.md)**.
+
+| API | Назначение |
+|-----|------------|
+| `POST /api/cron/vacation-pre-reminders` | Сотруднику за 21 день до старта (`dry_run=1`) |
+| `POST /api/cron/vacation-manager-month-reminders?outlook=current\|next` | Руководителю 1-го / 15-го (`force=1`, `as_of=YYYY-MM-DD`) |
+
+| Файл | Роль |
+|------|------|
+| `vacationPreReminder.ts` / `vacationPreReminderStore.ts` | Текст + журнал `vacation-pre-reminders.json` |
+| `vacationManagerMonthReminder.ts` / `…Store.ts` | Зоны руководителей + журнал `vacation-manager-month-reminders.json` |
+| `bitrixImbot.ts` | `imbot.message.add` (OAuth → webhook fallback) |
+| `deploy/systemd/vbi-hr-vacation-*.timer` | 12:00 МСК (сотрудник), 11:15 МСК 1-е/15-е (руководитель) |
+
+Защита: заголовок `X-Cron-Token` = `VACATION_PRE_REMINDER_CRON_SECRET` / `CRON_SECRET`.
+
 Идеи: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id` (очередь в `ideas.json`; notify встроен в mutations). Legacy: `POST /api/ideas/notify`, `POST /api/ideas/status-notify`.
 
 ### Аватары сотрудников (API)
