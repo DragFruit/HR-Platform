@@ -889,10 +889,10 @@
     "department": "Дирекция",
     "manager": "",
     "hired_at": "2012-10-10",
-    "platform_user_id": null,
+    "platform_user_id": 1,
     "account_role": "manager",
     "vacation_opening_balance": 27.96,
-    "bitrix_user_id": null
+    "bitrix_user_id": 1
   },
   {
     "id": 2826,
@@ -901,8 +901,8 @@
     "department": "Отдел продаж",
     "manager": "Лашин Владислав",
     "hired_at": "2026-07-01",
-    "platform_user_id": null,
+    "platform_user_id": 2825,
     "account_role": "employee",
-    "bitrix_user_id": null
+    "bitrix_user_id": 2825
   }
 ]

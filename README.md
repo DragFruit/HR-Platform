@@ -173,10 +173,10 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 
 ## Git: тест и бой
 
-| Ветка | Стенд | Env при сборке |
-|-------|-------|----------------|
-| `staging` | Тест | `NUXT_PUBLIC_APP_ENV=staging` |
-| `main` | Бой | `NUXT_PUBLIC_APP_ENV=production` |
+| Ветка | Стенд | Модули | `NUXT_PUBLIC_LAUNCH_SCOPE` |
+|-------|-------|--------|----------------------------|
+| `staging` | Тест | Вся платформа | `full` |
+| `main` | Бой | Только график отпусков | `vacations` |
 
 **Публикация (2 задачи):** [docs/CI-CD.md](docs/CI-CD.md) — `scripts/push-to-gitlab.sh` (Mac→Git), GitLab CI (Git→сервер).
 

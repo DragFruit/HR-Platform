@@ -1,0 +1,32 @@
+---
+description: Деплой на production только с явного согласия пользователя
+globs:
+alwaysApply: true
+---
+
+# Production deploy
+
+**Никогда** не деплоить на бой (`45.12.74.25`, порт 80, `deploy-remote.sh production`, `deploy:production` в CI вручную) без **явного согласия** пользователя в чате.
+
+## Порядок выкладки
+
+1. Локально / ветка `staging` — разработка и коммит
+2. **Тест** — `45.12.74.25:8080` (CI `staging` или `deploy-remote.sh staging`); пользователь проверяет
+3. **Прод** — только после фразы вроде «ок на прод», «выкатывай на прод», «деплой production»
+
+## Запрещено без согласия
+
+- `deploy-remote.sh production`
+- `systemctl restart vbi-hr` ради выкладки нового кода
+- rsync/scp в `/var/www/vbi-hr/` (кроме явно запрошенных hotfix данных по отдельной просьбе)
+- Запуск production job в GitLab CI от имени агента
+
+## Разрешено без отдельного согласия на прод
+
+- Push в GitLab на ветку `staging` (это тест, не бой)
+- `deploy-remote.sh staging` / CI staging
+- Локальный `npm run dev` и `npm run build` для проверки
+
+## Если пользователь не просил прод
+
+После задачи написать: что на тесте (`:8080`), что для прода нужно его «ок».

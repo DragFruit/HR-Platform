@@ -9,7 +9,7 @@
       "end": "2026-12-13",
       "id": "f63f0ab7-8055-45ca-81ca-73d4ed80c52a",
       "created_at": "2026-07-13T11:33:42.503Z",
-      "seen": false
+      "seen": true
     },
     {
       "kind": "vacation_deleted",
@@ -20,7 +20,8 @@
       "end": "2026-12-13",
       "id": "41b39781-c775-4c43-b9c8-fb84d5b94d02",
       "created_at": "2026-07-13T11:33:42.507Z",
-      "seen": false
+      "seen": true,
+      "hidden_from_bell": true
     },
     {
       "kind": "vacation_deleted",
@@ -31,7 +32,7 @@
       "end": "2026-12-13",
       "id": "3049cb91-67fe-4ba3-9ac1-926081a19aa6",
       "created_at": "2026-07-13T11:33:49.843Z",
-      "seen": false
+      "seen": true
     },
     {
       "kind": "vacation_deleted",
@@ -42,7 +43,8 @@
       "end": "2026-12-13",
       "id": "95ec529d-ee64-44fc-8720-571903d0c6f6",
       "created_at": "2026-07-13T11:33:49.849Z",
-      "seen": false
+      "seen": true,
+      "hidden_from_bell": true
     },
     {
       "kind": "vacation_submitted",
@@ -53,7 +55,7 @@
       "end": "2026-10-11",
       "id": "e8a2f545-c0af-4eb3-b3f1-57d788aa2a61",
       "created_at": "2026-07-13T13:05:58.102Z",
-      "seen": false
+      "seen": true
     },
     {
       "kind": "idea_status_changed",
@@ -65,7 +67,7 @@
       "status_comment": "ты молодец, это действительно удобнее!",
       "id": "87efc352-293c-47bc-bcb8-77681ed79cfc",
       "created_at": "2026-07-27T15:58:52.845Z",
-      "seen": false
+      "seen": true
     },
     {
       "kind": "idea_status_changed",
@@ -88,8 +90,8 @@
       "stage_label": "Реализовано",
       "id": "8a18a850-819c-46b3-b86e-ae98b12c857f",
       "created_at": "2026-07-27T17:50:58.721Z",
-      "seen": false,
-      "hidden_from_bell": false
+      "seen": true,
+      "hidden_from_bell": true
     },
     {
       "kind": "idea_status_changed",
@@ -148,6 +150,162 @@
       "stage_label": "Реализовано",
       "id": "264ecb9b-7180-4bcd-9a8e-3d16e77befc2",
       "created_at": "2026-07-27T17:51:53.503Z",
+      "seen": true,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 9105,
+      "employee_name": "Даша Тестова",
+      "start": "2026-11-16",
+      "end": "2026-11-22",
+      "id": "cfe3562d-533d-4f69-bb06-a9fc07a0a538",
+      "created_at": "2026-07-30T12:38:37.200Z",
+      "seen": true,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 9105,
+      "employee_name": "Даша Тестова",
+      "start": "2026-11-16",
+      "end": "2026-11-22",
+      "id": "9f9b1911-6b3d-4b9a-ad87-e1722d203937",
+      "created_at": "2026-07-30T12:38:37.204Z",
+      "seen": true,
+      "hidden_from_bell": true
+    },
+    {
+      "kind": "vacation_deleted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 1101,
+      "employee_name": "Мария Тестова",
+      "start": "2026-08-24",
+      "end": "2026-09-06",
+      "id": "3f2a9bd2-816a-4fbb-8bad-dfb4d90167c4",
+      "created_at": "2026-07-30T14:46:58.742Z",
+      "seen": true,
+      "hidden_from_bell": true
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 1103,
+      "employee_name": "Константин Тестов",
+      "start": "2026-07-31",
+      "end": "2026-08-01",
+      "id": "489972f9-2b11-4019-b5cc-077fa312c684",
+      "created_at": "2026-07-31T13:46:10.222Z",
+      "seen": true,
+      "hidden_from_bell": true
+    },
+    {
+      "kind": "vacation_approved",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1103,
+      "employee_name": "Константин Тестов",
+      "start": "2026-07-31",
+      "end": "2026-08-01",
+      "id": "0334eb98-c85c-4925-9ca6-8ba142bb14e0",
+      "created_at": "2026-07-31T13:46:27.693Z",
+      "seen": true,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 5,
+      "vacation_request_id": 1104,
+      "employee_name": "Константин Тестов",
+      "start": "2026-08-24",
+      "end": "2026-08-30",
+      "id": "f2c02313-4edd-4a7e-a3d3-fe9ddef9c591",
+      "created_at": "2026-07-31T13:57:48.956Z",
+      "seen": true,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1105,
+      "employee_name": "Даша Тестова",
+      "start": "2026-11-09",
+      "end": "2026-11-15",
+      "id": "887dab9a-f72f-4664-b2da-0c0abb7702d6",
+      "created_at": "2026-08-05T12:10:00.608Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1106,
+      "employee_name": "Даша Тестова",
+      "start": "2026-11-23",
+      "end": "2026-11-29",
+      "id": "f686b612-866a-4c3e-998a-a27fb6bf8a77",
+      "created_at": "2026-08-05T12:10:04.135Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1107,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-07",
+      "end": "2026-12-13",
+      "id": "f0827085-44da-47d0-a349-9204cfc0fc1d",
+      "created_at": "2026-08-05T12:10:06.925Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1108,
+      "employee_name": "Даша Тестова",
+      "start": "2026-12-14",
+      "end": "2026-12-20",
+      "id": "fdbaa650-1e1e-45cd-849c-98f1a888c2ff",
+      "created_at": "2026-08-05T12:10:11.234Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1109,
+      "employee_name": "Василий Тестов",
+      "start": "2026-10-05",
+      "end": "2026-10-11",
+      "id": "c74c745b-35ef-414f-ba88-6832f6d961a5",
+      "created_at": "2026-08-05T12:10:19.512Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1110,
+      "employee_name": "Василий Тестов",
+      "start": "2026-10-19",
+      "end": "2026-10-25",
+      "id": "3b9e2af2-b2e9-4750-8e04-dd903bd82abf",
+      "created_at": "2026-08-05T12:10:21.954Z",
+      "seen": false,
+      "hidden_from_bell": false
+    },
+    {
+      "kind": "vacation_submitted",
+      "recipient_user_id": 2,
+      "vacation_request_id": 1111,
+      "employee_name": "Василий Тестов",
+      "start": "2026-11-09",
+      "end": "2026-11-15",
+      "id": "36f45c1a-16d8-4d66-9d14-0e84a837f2b8",
+      "created_at": "2026-08-05T12:10:24.580Z",
       "seen": false,
       "hidden_from_bell": false
     }

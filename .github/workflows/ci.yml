@@ -22,14 +22,16 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Resolve app env
-        id: env
+      - name: Resolve build vars
+        id: vars
         shell: bash
         run: |
           if [ "${{ github.ref }}" = "refs/heads/staging" ] || [ "${{ github.base_ref }}" = "staging" ]; then
             echo "app_env=staging" >> "$GITHUB_OUTPUT"
+            echo "launch_scope=full" >> "$GITHUB_OUTPUT"
           else
             echo "app_env=production" >> "$GITHUB_OUTPUT"
+            echo "launch_scope=vacations" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install dependencies
@@ -38,5 +40,5 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NUXT_PUBLIC_APP_ENV: ${{ steps.env.outputs.app_env }}
-          NUXT_PUBLIC_LAUNCH_SCOPE: full
+          NUXT_PUBLIC_APP_ENV: ${{ steps.vars.outputs.app_env }}
+          NUXT_PUBLIC_LAUNCH_SCOPE: ${{ steps.vars.outputs.launch_scope }}

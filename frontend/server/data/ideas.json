@@ -1,5 +1,19 @@
 {
-  "ideas": [],
-  "nextIdeaId": 1,
+  "ideas": [
+    {
+      "id": "idea-1",
+      "authorUserId": 3,
+      "authorName": "Даша Тестова",
+      "title": "Мяя",
+      "description": "пупу пу пу пу мстыаялоышвомтч",
+      "category": "Офисная среда",
+      "city": "Москва",
+      "status": "review",
+      "createdAt": "2026-08-03",
+      "votesUp": 0,
+      "votesDown": 0
+    }
+  ],
+  "nextIdeaId": 2,
   "votesByUserId": {}
 }
