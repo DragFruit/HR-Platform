@@ -1,5 +1,6 @@
 import { existsSync, accessSync, constants } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { BitrixTokenResponse } from './bitrixClient';
 import { refreshBitrixToken } from './bitrixClient';
@@ -104,7 +105,7 @@ async function readState(): Promise<BitrixOAuthServiceState | null> {
 async function writeState(state: BitrixOAuthServiceState) {
   const path = resolveWritableDataFile();
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(path, state);
   resolvedDataFile = path;
 }
 

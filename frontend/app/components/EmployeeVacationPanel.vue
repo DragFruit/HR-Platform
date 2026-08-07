@@ -183,6 +183,7 @@
 <script setup lang="ts">
 import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
+import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 import {
   canAddReservationForMonth,
@@ -452,18 +453,25 @@ const fitTeamTableToSideTabs = async () => {
 
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
-const formAssessment = computed(() =>
-  assessVacationBalance(
+const formAssessment = computed(() => {
+  const y = state.value.primaryYear;
+  const byId = new Map<number, VacationRequest>();
+  for (const yr of [y - 1, y, y + 1]) {
+    for (const req of requestsForYear(yr)) {
+      byId.set(req.id, req);
+    }
+  }
+  return assessVacationBalance(
     employeeName.value,
     hireIso.value,
     form.start,
     form.end,
-    requestsForYear(state.value.primaryYear),
-    state.value.primaryYear,
+    [...byId.values()],
+    y,
     undefined,
     currentEmployee.value?.vacation_opening_balance
-  )
-);
+  );
+});
 
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);

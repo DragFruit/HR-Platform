@@ -134,16 +134,6 @@
             <td :colspan="totalDays" class="vac-detailed-track">
               <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
                 <span
-                  v-for="cell in yearDays"
-                  :key="`bg-${emp.id}-${cell.iso}`"
-                  class="vac-detailed-day-bg"
-                  :class="{
-                    'is-weekend': cell.weekend,
-                    'is-today': cell.today,
-                    'is-month-start': cell.monthStart
-                  }"
-                />
-                <span
                   v-for="(bar, idx) in barsFor(emp.name)"
                   :key="`${emp.id}-bar-${idx}`"
                   class="vac-detailed-bar"
@@ -394,10 +384,25 @@ const yearDays = computed(() => buildYearDays(props.year));
 
 const totalDays = computed(() => yearDays.value.length);
 
+/** Фон сетки дней один раз на таблицу — вместо ~70×365 DOM-узлов `.vac-detailed-day-bg`. */
+const dayPaintGradient = computed(() => {
+  const days = yearDays.value;
+  if (!days.length) return 'none';
+  const stops: string[] = [];
+  days.forEach((cell, i) => {
+    const from = i * DAY_COL_PX;
+    const to = (i + 1) * DAY_COL_PX;
+    const color = cell.today ? '#ebe6fc' : cell.weekend ? '#e3f0fa' : '#ffffff';
+    stops.push(`${color} ${from}px ${to}px`);
+  });
+  return `linear-gradient(to right, ${stops.join(',')})`;
+});
+
 const timelineStyle = computed(() => ({
   '--vac-days': totalDays.value,
   '--days': totalDays.value,
   '--vac-name-col-w': `${nameColPx.value}px`,
+  '--vac-day-paint': dayPaintGradient.value,
   ...(props.showTitleColumn
     ? { '--vac-title-col-w': `${titleColPx.value}px` }
     : {})
@@ -497,17 +502,32 @@ const dayHeaderClass = (cell: YearDayCell) => {
   return classes;
 };
 
-const balanceFor = (emp: Employee) => {
-  const b = calcEmployeeBalance(
-    emp.name,
-    emp.hired_at || undefined,
-    props.requests,
-    new Date(),
-    vacationState.value.primaryYear,
-    emp.vacation_opening_balance
-  );
-  return b.remain;
-};
+const balanceByEmployee = computed(() => {
+  const y = vacationState.value.primaryYear;
+  const byId = new Map<number, (typeof props.requests)[number]>();
+  for (const yr of [y - 1, y, y + 1]) {
+    for (const req of vacationState.value.requestsByYear[String(yr)] ?? []) {
+      byId.set(req.id, req);
+    }
+  }
+  const requests = [...byId.values()];
+  const asOf = new Date();
+  const map = new Map<string, string>();
+  for (const emp of visibleEmployees.value) {
+    const b = calcEmployeeBalance(
+      emp.name,
+      emp.hired_at || undefined,
+      requests,
+      asOf,
+      y,
+      emp.vacation_opening_balance
+    );
+    map.set(emp.name, b.remain);
+  }
+  return map;
+});
+
+const balanceFor = (emp: Employee) => balanceByEmployee.value.get(emp.name) ?? '—';
 
 const barsFor = (employeeName: string): GanttBar[] => {
   const fmt = (iso: string) =>

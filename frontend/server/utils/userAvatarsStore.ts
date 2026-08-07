@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 
 const DATA_FILE = join(process.cwd(), 'server/data/user-avatars.json');
@@ -16,7 +17,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({}, null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, {});
   }
 }
 
@@ -46,7 +47,7 @@ export async function writeUserAvatars(store: UserAvatarsStore): Promise<UserAva
       clean[userId] = characterId;
     }
   }
-  await writeFile(DATA_FILE, JSON.stringify(clean, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, clean);
   return clean;
 }
 

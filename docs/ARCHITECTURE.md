@@ -266,7 +266,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Хранение: до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
 
-Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём; чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true` (для отпусков; для идей чат не используется).
+Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): только `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём. Личный чат (`im.message.add`) для согласования **не используется** (см. правило `bitrix-vacation-notify-no-chat`).
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
 
@@ -381,7 +381,7 @@ OrgLink        // from/to ports + optional mid
 **Переход на новый год:** остаток на 31.12.N (`calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
 
 - Код: `server/utils/vacationYearRollover.ts`
-- CLI: `node scripts/rollover-vacation-year.mjs 2026 2027` (cwd: `frontend/`)
+- CLI (из корня репозитория): `node scripts/rollover-vacation-year.mjs 2026 2027`
 - API: `POST /api/admin/vacations/rollover` `{ fromYear, toYear }` (admin/hr)
 
 ---
@@ -414,9 +414,8 @@ OrgLink        // from/to ports + optional mid
 
 ## Стили
 
-- Единый файл: `app/assets/main.css` (~5700 строк).
+- Единый файл: `app/assets/main.css` (~15 000 строк).
 - Токены: neo-brutalist light UI (`--page-bg`, `--border-brutal`), фиолетовый topbar (`--hero-purple`), лайм (`--accent-lime`), vacation-pill (см. раздел «Отпуска»).
-- `platform-base.css` — **не используется** в сборке (остаток эксперимента Miro); можно удалить при уборке.
 
 Подключение: `nuxt.config.ts` → `css: ['~/assets/main.css']`.
 
@@ -429,20 +428,19 @@ npm run build  →  frontend/.output/server/index.mjs
 NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 ```
 
-`Open Frontend.command` освобождает порты 3000/3300, собирает и открывает браузер.
+`Open Frontend.command` (macOS) освобождает порты 3000/3300, собирает и открывает браузер. На Windows — `cd frontend && npm run dev`.
 
 ---
 
 ## Backend
 
-- **Адаптация и сессия** — реализованы в Nitro (`frontend/server/`).
-- Папка `backend/` зарезервирована для выноса wallet/tasks/store при необходимости.
+Вся серверная логика (сессия, Bitrix, отпуска, идеи, адаптация) — в Nitro (`frontend/server/`). Отдельной папки `backend/` в репозитории нет.
 
 ---
 
-## Известные ограничения демо
+## Известные ограничения
 
-- Нет реальной аутентификации (пароли в коде).
-- Данные локальны браузеру.
-- Роли `hr` в auth есть, но UI в основном `employee` / `admin` + manager для отпусков.
+- На **production** вход только через Bitrix OAuth для людей из справочника; демо-логин API отключён. Локально/staging — Bitrix + демо-аккаунты.
+- Cookie-сессия подписана HMAC (`VBI_SESSION_SECRET`), TTL 8ч со sliding.
+- Роль `hr` в auth есть; UI в основном `employee` / `admin` + manager для отпусков.
 - `useMockData` и `useTasks` частично дублируют типы с `useWallet` (warning Nuxt duplicated imports — не критично).

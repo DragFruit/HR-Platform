@@ -228,11 +228,41 @@ export type BitrixSyncResult = {
 export type BitrixSyncOptions = {
   /** Добавлять новых людей из Bitrix, которых нет в справочнике (ручной импорт). */
   importNew?: boolean;
+  /** Игнорировать debounce (ручной синк из админки). */
+  force?: boolean;
 };
+
+const SYNC_DEBOUNCE_MS = 5 * 60 * 1000;
+let lastSyncAt = 0;
+let lastSyncResult: BitrixSyncResult | null = null;
+let inFlightSync: Promise<BitrixSyncResult> | null = null;
 
 export async function syncEmployeesFromBitrix(
   accessToken?: string,
   options: BitrixSyncOptions = {}
+): Promise<BitrixSyncResult> {
+  const force = options.force === true;
+  if (!force && inFlightSync) return inFlightSync;
+  if (!force && lastSyncResult && Date.now() - lastSyncAt < SYNC_DEBOUNCE_MS) {
+    return lastSyncResult;
+  }
+
+  const run = (async (): Promise<BitrixSyncResult> => {
+    const result = await syncEmployeesFromBitrixUncached(accessToken, options);
+    lastSyncAt = Date.now();
+    lastSyncResult = result;
+    return result;
+  })().finally(() => {
+    inFlightSync = null;
+  });
+
+  inFlightSync = run;
+  return run;
+}
+
+async function syncEmployeesFromBitrixUncached(
+  accessToken: string | undefined,
+  options: BitrixSyncOptions
 ): Promise<BitrixSyncResult> {
   const [users, departments, existing] = await Promise.all([
     bitrixFetchAll<BitrixUserRow>(

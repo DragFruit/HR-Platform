@@ -58,6 +58,20 @@ echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo chown -R '${DEPLOY_USER}:www-data' '${DEPLOY_PATH}'"
 "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output' '${DEPLOY_PATH}/.output/public/_nuxt' '${DEPLOY_PATH}/server/data'"
 
+# Снимок предыдущего артефакта для отката (один уровень назад).
+echo "→ backup ${DEPLOY_PATH}/.output → .output.prev"
+"${SSH_CMD[@]}" "${REMOTE}" bash -s -- "${DEPLOY_PATH}" <<'REMOTE_BACKUP'
+set -euo pipefail
+DEPLOY_PATH="$1"
+if [[ -f "${DEPLOY_PATH}/.output/server/index.mjs" ]]; then
+  rm -rf "${DEPLOY_PATH}/.output.prev"
+  cp -a "${DEPLOY_PATH}/.output" "${DEPLOY_PATH}/.output.prev"
+  echo "  saved previous build"
+else
+  echo "  skip backup (no previous .output)"
+fi
+REMOTE_BACKUP
+
 # Вебвизор Яндекс.Метрики при воспроизведении тянет CSS/JS с live-сайта по URL из момента визита.
 # Если rsync --delete сносит старые хеши в public/_nuxt, записи выглядят «сломанными»
 # (дефолтные кнопки, UI в углу, гигантские артефакты) — хотя пользователи видели нормальный сайт.

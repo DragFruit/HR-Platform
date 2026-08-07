@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { AdaptationAttempt, AdaptationStoreState, StepCompletion } from './adaptationTypes';
 
@@ -14,7 +15,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(emptyState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, emptyState());
   }
 }
 
@@ -26,7 +27,7 @@ export async function readAdaptationState(): Promise<AdaptationStoreState> {
 
 async function writeAdaptationState(state: AdaptationStoreState) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 export async function addAttempt(attempt: AdaptationAttempt): Promise<AdaptationAttempt> {

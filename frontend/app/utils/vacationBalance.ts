@@ -1,5 +1,11 @@
 import type { VacationRequest } from '~/composables/useVacations';
-import { countVacationBillableDays, isRuHoliday, toIso } from '~/utils/vacationCalendar';
+import {
+  clipIsoRangeToYear,
+  countVacationBillableDays,
+  countVacationBillableDaysInYear,
+  isRuHoliday,
+  toIso
+} from '~/utils/vacationCalendar';
 
 export type VacationBalanceAssessment = {
   status: 'ok' | 'advance' | 'unknown' | 'incomplete';
@@ -94,21 +100,30 @@ const accruedVacationZupFromHire = (hireIso: string, asOfDate: Date) => {
   return Math.floor(((n * ANNUAL_NORM) / 12) * 10) / 10;
 };
 
+/**
+ * Списанные billable-дни в рамках учётного года.
+ * Заявка через НГ лежит в папке года начала — январский хвост всё равно
+ * списывается из баланса года, в который попали дни.
+ */
 const countBookedDays = (
   empName: string,
   hireIso: string,
   requests: VacationRequest[],
-  statuses: VacationRequest['status'][]
+  statuses: VacationRequest['status'][],
+  accountYear: number
 ) => {
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   const want = new Set(statuses);
   let n = 0;
   requests.forEach((r) => {
     if (r.employee !== empName || !want.has(r.status)) return;
-    const start = normalizeCalendarDate(new Date(`${r.start}T00:00:00`));
-    const end = normalizeCalendarDate(new Date(`${r.end}T00:00:00`));
+    const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
+    if (!clipped) return;
+    const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
+    const end = normalizeCalendarDate(new Date(`${clipped[1]}T00:00:00`));
     if (start > end) return;
     const from = start > hireDay ? start : hireDay;
+    if (from > end) return;
     const cursor = new Date(from);
     while (cursor <= end) {
       const iso = toIso(cursor);
@@ -124,14 +139,17 @@ const countBookedDaysUpTo = (
   hireIso: string,
   requests: VacationRequest[],
   status: VacationRequest['status'],
-  asOfDay: Date
+  asOfDay: Date,
+  accountYear: number
 ) => {
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   let n = 0;
   requests.forEach((r) => {
     if (r.employee !== empName || r.status !== status) return;
-    const start = normalizeCalendarDate(new Date(`${r.start}T00:00:00`));
-    const end = normalizeCalendarDate(new Date(`${r.end}T00:00:00`));
+    const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
+    if (!clipped) return;
+    const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
+    const end = normalizeCalendarDate(new Date(`${clipped[1]}T00:00:00`));
     if (start > end) return;
     const from = start > hireDay ? start : hireDay;
     const to = end < asOfDay ? end : asOfDay;
@@ -174,7 +192,9 @@ export const assessVacationBalance = (
     return { ...empty, status: 'unknown' };
   }
 
-  const neededDays = countVacationBillableDays(start, end);
+  // Для проверки «хватит ли» считаем дни в учётном году начала отпуска.
+  const accountYear = Number(String(start).slice(0, 4)) || primaryYear;
+  const neededDays = countVacationBillableDaysInYear(start, end, accountYear);
   const startLabel = formatStartLabel(start);
   if (neededDays === 0) {
     return { status: 'ok', neededDays: 0, availableAtStart: 0, deficit: 0, startLabel };
@@ -188,7 +208,7 @@ export const assessVacationBalance = (
     hireIso,
     start,
     filtered,
-    primaryYear,
+    accountYear,
     openingBalance
   );
   if (available === null) {
@@ -247,35 +267,43 @@ export const calcEmployeeBalance = (
   const yearRequests = requests.filter((r) => r.employee === employeeName);
   const today = normalizeCalendarDate(asOf);
   const todayIso = toIso(today);
+  const yearStartIso = `${primaryYear}-01-01`;
+  const yearEndIso = `${primaryYear}-12-31`;
   let taken = 0;
   let planned = 0;
   yearRequests.forEach((r) => {
+    const clipped = clipIsoRangeToYear(r.start, r.end, primaryYear);
+    if (!clipped) return;
+    const [clipStart, clipEnd] = clipped;
+
     if (r.status === 'pending') {
-      planned += countVacationBillableDays(r.start, r.end);
+      planned += countVacationBillableDays(clipStart, clipEnd);
       return;
     }
     if (r.status !== 'approved') return;
 
-    const start = normalizeCalendarDate(new Date(`${r.start}T00:00:00`));
-    const end = normalizeCalendarDate(new Date(`${r.end}T00:00:00`));
+    const start = normalizeCalendarDate(new Date(`${clipStart}T00:00:00`));
+    const end = normalizeCalendarDate(new Date(`${clipEnd}T00:00:00`));
     if (end < today) {
-      taken += countVacationBillableDays(r.start, r.end);
+      taken += countVacationBillableDays(clipStart, clipEnd);
     } else if (start > today) {
-      planned += countVacationBillableDays(r.start, r.end);
+      planned += countVacationBillableDays(clipStart, clipEnd);
     } else {
-      taken += countVacationBillableDays(r.start, todayIso);
+      const takenTo =
+        todayIso < yearStartIso ? yearStartIso : todayIso > yearEndIso ? yearEndIso : todayIso;
+      taken += countVacationBillableDays(clipStart, takenTo);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowIso = toIso(tomorrow);
-      if (tomorrowIso <= r.end) {
-        planned += countVacationBillableDays(tomorrowIso, r.end);
+      if (tomorrowIso <= clipEnd && tomorrowIso >= yearStartIso) {
+        planned += countVacationBillableDays(tomorrowIso, clipEnd);
       }
     }
   });
 
   const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
-  const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved']);
-  const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending']);
+  const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved'], primaryYear);
+  const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending'], primaryYear);
   const remain = Math.max(
     0,
     Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10
@@ -298,7 +326,21 @@ export const calcAvailableOnDate = (
   if (targetDay < hireDay) return null;
 
   const accrued = entitledVacationDays(hireIso, target, primaryYear, openingBalance);
-  const takenThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'approved', targetDay);
-  const pendingThru = countBookedDaysUpTo(employeeName, hireIso, requests, 'pending', targetDay);
+  const takenThru = countBookedDaysUpTo(
+    employeeName,
+    hireIso,
+    requests,
+    'approved',
+    targetDay,
+    primaryYear
+  );
+  const pendingThru = countBookedDaysUpTo(
+    employeeName,
+    hireIso,
+    requests,
+    'pending',
+    targetDay,
+    primaryYear
+  );
   return Math.max(0, Math.floor((accrued - takenThru - pendingThru) * 10) / 10);
 };

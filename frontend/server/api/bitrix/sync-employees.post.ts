@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   try {
     // Только обновление уже заведённых в справочнике. Новых из Bitrix не импортируем
     // (экстранет / практиканты ACTIVE на портале не должны попадать в Vibe).
-    const result = await syncEmployeesFromBitrix(undefined, { importNew: false });
+    const result = await syncEmployeesFromBitrix(undefined, { importNew: false, force: true });
     return { ok: true, ...result };
   } catch (err) {
     const message = errorStatusMessage(err);

@@ -95,7 +95,10 @@ export function usePlatformContext() {
     if (ready) syncRoleFromAuth();
   });
 
-  watch([role, () => route.path], guardRoute, { immediate: true });
+  // authReady в зависимостях: иначе после восстановления сессии роль
+  // может остаться той же ('employee') и watcher на role не сработает —
+  // замок меню не сработает на прямой ссылке.
+  watch([role, () => route.path, authReady], guardRoute, { immediate: true });
 
   const profilePageTitles: Record<string, string> = {
     '/profile': 'Профиль',

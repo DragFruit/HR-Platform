@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -50,7 +51,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(emptyState(), null, 2) + '\n', 'utf8');
+    await writeJsonAtomic(DATA_FILE, emptyState());
   }
 }
 
@@ -67,7 +68,7 @@ async function readState(): Promise<NotificationsState> {
 
 async function writeState(state: NotificationsState): Promise<void> {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 const trimRecipientToMax = (state: NotificationsState, recipientUserId: number) => {

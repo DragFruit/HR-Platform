@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import seed from '../data/profile-activity.json';
@@ -79,7 +80,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({ items: seedItems() }, null, 2) + '\n', 'utf8');
+    await writeJsonAtomic(DATA_FILE, { items: seedItems() });
   }
 }
 
@@ -101,7 +102,7 @@ async function readState(): Promise<ActivityState> {
 
 async function writeState(state: ActivityState) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 export async function listProfileActivity(filters?: {

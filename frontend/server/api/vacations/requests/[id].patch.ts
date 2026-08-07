@@ -5,7 +5,7 @@ import {
 } from '../../../utils/vacationRequestMutations';
 
 export default defineEventHandler(async (event) => {
-  await requireVbiSession(event);
+  const session = await requireVbiSession(event);
   const id = Number(getRouterParam(event, 'id'));
   if (!Number.isFinite(id) || id <= 0) {
     throw createError({ statusCode: 400, statusMessage: 'Некорректный id заявки' });
@@ -19,5 +19,5 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Дата окончания раньше начала' });
   }
 
-  return patchVacationRequest(id, body);
+  return patchVacationRequest(session, id, body);
 });

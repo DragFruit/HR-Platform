@@ -254,6 +254,12 @@ a {
 
 .sidebar {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 20px 12px;
   border-right: 1px solid var(--border-brutal);
   background-color: var(--page-bg);
@@ -9307,23 +9313,25 @@ button.emp-name--card:hover {
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-name,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row .sticky-col-balance,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track-inner,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-day-bg {
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row .vac-detailed-track {
   transition: background-color 0.14s ease;
 }
 
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-name,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-title,
 .vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .sticky-col-balance,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track-inner,
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-day-bg:not(.is-weekend) {
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track {
   background: var(--vac-row-hover);
 }
 
-.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-day-bg.is-weekend {
-  background: var(--vac-row-hover-weekend);
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row:hover .vac-detailed-track-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--vac-row-hover);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Один уровень opacity — иначе track × inner ≈ 0.08 и сетка пропадает */
@@ -9395,26 +9403,30 @@ button.emp-name--card:hover {
   height: 100%;
   width: var(--vac-days-total-w);
   min-width: var(--vac-days-total-w);
-  display: grid;
-  grid-template-columns: repeat(var(--days), var(--vac-day-col-w));
-  align-items: stretch;
+  display: block;
   /* Компактный ряд менеджера — 21px; не раздувать при свёрнутой «Должности» */
   min-height: var(--vac-team-emp-row-h, 21px);
-  background: var(--vac-grid-fill);
+  background-color: var(--vac-grid-fill);
+  background-image:
+    var(--vac-day-paint, none),
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--vac-day-col-w) - 1px),
+      var(--vac-grid-line) calc(var(--vac-day-col-w) - 1px),
+      var(--vac-grid-line) var(--vac-day-col-w)
+    );
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, auto;
+}
+
+.vac-detailed-timeline tbody tr.vac-detailed-emp-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 21px;
 }
 
 .vac-detailed-day-bg {
-  display: block;
-  width: var(--vac-day-col-w);
-  min-width: var(--vac-day-col-w);
-  max-width: var(--vac-day-col-w);
-  min-height: 100%;
-  box-sizing: border-box;
-  box-shadow: inset -1px 0 0 var(--vac-grid-line);
-}
-
-.vac-detailed-day-bg:last-child {
-  box-shadow: none;
+  display: none;
 }
 
 .vac-detailed-bar {
@@ -10077,7 +10089,8 @@ button.emp-name--card:hover {
 }
 
 .hr-month-grid td.weekend:not(.emp-day-range-preview) {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--vac-weekend-bg, #e3f0fa);
+  color: #1e3a5f;
 }
 
 .hr-month-grid td.holiday:not(.emp-day-range-preview) {

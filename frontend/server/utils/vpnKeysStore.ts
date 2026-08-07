@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { VpnKeyKind } from './wgEasyClient';
 import { vpnLimitForKind } from './wgEasyClient';
@@ -23,7 +24,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({ keys: [] } satisfies VpnKeysFile, null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, { keys: [] } satisfies VpnKeysFile);
   }
 }
 
@@ -48,7 +49,7 @@ export async function readVpnKeys(): Promise<StoredVpnKey[]> {
 
 async function writeVpnKeys(keys: StoredVpnKey[]) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify({ keys } satisfies VpnKeysFile, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, { keys } satisfies VpnKeysFile);
 }
 
 export async function listUserVpnKeys(userId: number, kind?: VpnKeyKind): Promise<StoredVpnKey[]> {

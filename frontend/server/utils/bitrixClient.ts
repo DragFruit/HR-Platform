@@ -1,6 +1,12 @@
 import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { redactSensitiveText } from './redactSensitive';
 
+/** Таймаут внешних вызовов Bitrix — без него зависший портал держит mutateVacations. */
+const BITRIX_FETCH_TIMEOUT_MS = 20_000;
+
+const bitrixFetch = (url: string, init?: RequestInit): Promise<Response> =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(BITRIX_FETCH_TIMEOUT_MS) });
+
 export type BitrixTokenResponse = {
   access_token: string;
   refresh_token?: string;
@@ -49,7 +55,7 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
     redirect_uri: redirectUri
   });
 
-  const response = await fetch(`${bitrixPortalUrl}/oauth/token/`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
@@ -81,7 +87,7 @@ export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTo
     refresh_token: refreshToken
   });
 
-  const response = await fetch(`${bitrixPortalUrl}/oauth/token/`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
@@ -104,7 +110,7 @@ export async function bitrixOAuthRequest<T>(
   accessToken: string
 ): Promise<BitrixRestResponse<T>> {
   const { bitrixPortalUrl } = getBitrixConfig();
-  const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...params, auth: accessToken })
@@ -118,7 +124,7 @@ export async function bitrixRest<T>(
   accessToken: string
 ): Promise<T> {
   const { bitrixPortalUrl } = getBitrixConfig();
-  const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...params, auth: accessToken })
@@ -145,7 +151,7 @@ export async function bitrixRestAll<T extends Record<string, unknown>>(
 
   for (;;) {
     const { bitrixPortalUrl } = getBitrixConfig();
-    const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+    const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...params, auth: accessToken, start })
@@ -188,7 +194,7 @@ export async function bitrixWebhookRest<T>(
 
 async function bitrixWebhookRequest<T>(method: string, params: Record<string, unknown>): Promise<BitrixRestResponse<T>> {
   const base = getBitrixWebhookUrl();
-  const response = await fetch(`${base}/${method}.json`, {
+  const response = await bitrixFetch(`${base}/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)

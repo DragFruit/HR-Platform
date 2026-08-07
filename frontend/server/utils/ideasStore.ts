@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { Idea } from '../../app/composables/useIdeasBank';
 
@@ -80,7 +81,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultIdeasState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultIdeasState());
   }
 }
 
@@ -93,7 +94,7 @@ export async function readIdeas(): Promise<IdeasStoreState> {
 export async function writeIdeas(state: IdeasStoreState): Promise<IdeasStoreState> {
   await ensureFile();
   const normalized = normalizeIdeasStoreState(state);
-  await writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, normalized);
   return normalized;
 }
 

@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type {
   AdaptationPhaseId,
@@ -57,11 +58,7 @@ async function ensureScenariosFile() {
   try {
     await readFile(SCENARIOS_FILE, 'utf8');
   } catch {
-    await writeFile(
-      SCENARIOS_FILE,
-      JSON.stringify({ scenarios: seedScenarios() }, null, 2) + '\n',
-      'utf8'
-    );
+    await writeJsonAtomic(SCENARIOS_FILE, { scenarios: seedScenarios() });
   }
 }
 
@@ -70,11 +67,7 @@ async function ensureAssignmentsFile() {
   try {
     await readFile(ASSIGNMENTS_FILE, 'utf8');
   } catch {
-    await writeFile(
-      ASSIGNMENTS_FILE,
-      JSON.stringify(emptyAssignments(), null, 2) + '\n',
-      'utf8'
-    );
+    await writeJsonAtomic(ASSIGNMENTS_FILE, emptyAssignments());
   }
 }
 
@@ -92,7 +85,7 @@ async function readScenariosState(): Promise<ScenariosState> {
 
 async function writeScenariosState(state: ScenariosState) {
   await ensureScenariosFile();
-  await writeFile(SCENARIOS_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(SCENARIOS_FILE, state);
 }
 
 async function readAssignmentsState(): Promise<AssignmentsState> {
@@ -108,7 +101,7 @@ async function readAssignmentsState(): Promise<AssignmentsState> {
 
 async function writeAssignmentsState(state: AssignmentsState) {
   await ensureAssignmentsFile();
-  await writeFile(ASSIGNMENTS_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(ASSIGNMENTS_FILE, state);
 }
 
 export function slugifyScenarioId(input: string): string {

@@ -529,6 +529,7 @@
 <script setup lang="ts">
 import type { AvatarCharacterId } from '~/composables/useAvatars';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import type { VacationRequest } from '~/composables/useVacations';
 import { profileTeamHeading } from '~/utils/profileTeamTitle';
 import {
   findUpcomingVacationWithinDays,
@@ -873,7 +874,13 @@ const vacationStat = computed(() => {
     return { value: '—', planned: 0 };
   }
   const year = new Date().getFullYear();
-  const requests = employeeRequests(name, year);
+  const byId = new Map<number, VacationRequest>();
+  for (const yr of [year - 1, year, year + 1]) {
+    for (const req of employeeRequests(name, yr)) {
+      byId.set(req.id, req);
+    }
+  }
+  const requests = [...byId.values()];
   const result = calcEmployeeBalance(
     name,
     emp.hired_at,

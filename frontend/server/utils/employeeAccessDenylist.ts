@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { ServerEmployee } from './employeesStore';
 import {
@@ -49,7 +50,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({ entries: [] } satisfies DenylistFile, null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, { entries: [] } satisfies DenylistFile);
   }
 }
 
@@ -66,7 +67,7 @@ export async function readAccessDenylist(): Promise<AccessDenylistEntry[]> {
 
 async function writeAccessDenylist(entries: AccessDenylistEntry[]) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify({ entries }, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, { entries });
 }
 
 function normEmail(email: string | undefined | null) {

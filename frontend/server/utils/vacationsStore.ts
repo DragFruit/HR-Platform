@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
@@ -8,6 +8,7 @@ import {
   stripQaTestVacationReservations,
   type QaDemoVacationSuppressed
 } from '../../app/data/qaTestVacationSeed';
+import { writeJsonAtomic } from './atomicJson';
 
 export type { VacationRequest, VacationReservation };
 
@@ -52,7 +53,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultVacationState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultVacationState());
   }
 }
 
@@ -81,7 +82,7 @@ function stripQaFromVacationState(state: VacationStoreState): VacationStoreState
 export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {
   await ensureFile();
   const persisted = stripQaFromVacationState(state);
-  await writeFile(DATA_FILE, JSON.stringify(persisted, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, persisted);
   return state;
 }
 

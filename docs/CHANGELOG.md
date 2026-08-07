@@ -4,6 +4,33 @@
 
 ## 2026-08-07
 
+### Мелочи аудита: доки, мёртвый код, oauth-debug
+
+- Удалены неиспользуемые `platform-base.css` и `digitalVacationGroups.ts`.
+- `oauth-debug`: без захардкоженного prod `client_id` — только маска + эвристика redirect.
+- Доки: нет `CHAT_FALLBACK`; BITRIX env для боя; TTL сессии 8ч; CLI rollover из корня; README без `.bat`/`backend/`.
+- Гендиректор: пустой `manager` — норма; согласует admin/HR (`PRODUCT.md`).
+
+### Аудит: производительность, atomic JSON, debounce Bitrix, откат деплоя
+
+- Детальный календарь: убраны ~25k DOM `.vac-detailed-day-bg` — фон дней одним CSS-градиентом (`--vac-day-paint`) + `content-visibility` на строках.
+- Иконки ленты: PNG 1024→80px, ~6.4 МБ → ~56 КБ (`public/activity/icons/`, cache `?v=4`).
+- Синк Bitrix на логин: debounce 5 мин + coalesce in-flight; админский POST с `force: true`.
+- Все JSON-сторы сервера пишут через `writeJsonAtomic` (temp+rename).
+- Деплой: перед rsync копия `.output` → `.output.prev`; откат `deploy/scripts/rollback-remote.sh staging|production`.
+- Сводка: `docs/AUDIT-2026-08-07.md`.
+
+### Ремонт по аудиту системы (P0 / часть P1)
+
+Сводка аудита: `docs/AUDIT-2026-08-07.md` (четыре агента, затем закрыты).
+
+- **Права на заявки отпуска:** `POST/PATCH/DELETE /api/vacations/requests` передают `session`; согласование считает сервер (`canApproverReviewRequest` / `nextStateAfterApproval`); чужие заявки и self-approve закрыты; свою согласованную можно править/удалять, пока отпуск не полностью прошёл (`isPastApprovedVacationRequest`, как в UI).
+- **Bitrix:** при отклонении ранее `approved` — `removeVacationAbsenceFromBitrix` (как при удалении).
+- **Календарь:** праздники **2027**; баланс режет дни по учётном году (`clipIsoRangeToYear`) + заявки соседних папок (хвост через НГ).
+- **Надёжность:** `atomicJson.ts` (rename) для `employees.json` / `vacations.json`; очередь записи сотрудников; таймаут 20с на Bitrix fetch.
+- **UI/замки:** scroll у `.sidebar`; контраст выходных в emp-календаре; `guardRoute` ждёт `authReady`; балансы детального календаря — один `computed`.
+- Проверка: сотрудник не может `PATCH {"status":"approved"}` чужую/свою заявку (403); отпуск 28.12–10.01 списывает дни из обоих годов; reject approved снимает пальму.
+
 ### Скиллы vbi-copy и vbi-image
 
 - Проектные Agent Skills: `.cursor/skills/vbi-copy/` (тексты), `.cursor/skills/vbi-image/` (арт/GenerateImage).

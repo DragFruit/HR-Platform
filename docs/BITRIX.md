@@ -335,6 +335,8 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 
 ## 3. Переменные окружения на VPS
 
+### Staging (`:8080`)
+
 Файл `/etc/vbi-hr/bitrix.env` (systemd уже подключает его):
 
 ```bash
@@ -359,12 +361,35 @@ BITRIX_HR_GROUP_IDS=
 BITRIX_MANAGER_GROUP_IDS=
 ```
 
-Локально на Mac: `frontend/.env` (в gitignore), шаблон — `frontend/.env.example`.
+Сервис: `systemctl restart vbi-hr-staging`.
 
-После изменений:
+### Production (бой, порт 80)
+
+Файл `/etc/vbi-hr/bitrix-production.env` → копируется в `/var/www/vbi-hr/.env` при деплое.
 
 ```bash
-sudo systemctl restart vbi-hr-staging
+BITRIX_PORTAL_URL=https://crm.vbi.ru
+BITRIX_CLIENT_ID=local.XXXXXXXX
+BITRIX_CLIENT_SECRET=XXXXXXXX
+VBI_SESSION_SECRET=XXXXXXXX
+BITRIX_REDIRECT_URI=http://45.12.74.25/api/auth/bitrix/callback
+APP_PUBLIC_URL=http://45.12.74.25
+BITRIX_WEBHOOK_URL=https://crm.vbi.ru/rest/ID/СЕКРЕТ/
+BITRIX_ADMIN_GROUP_IDS=1
+```
+
+Образец: `deploy/env/bitrix-production.env.example`. Сервис: `systemctl restart vbi-hr`.
+
+Согласование отпусков — только **`im.notify.system.add`** (колокольчик). Fallback в личный чат не используем.
+
+Локально на Mac: `frontend/.env` (в gitignore), шаблон — `frontend/.env.example`.
+
+После изменений env:
+
+```bash
+sudo systemctl restart vbi-hr-staging   # staging
+# или
+sudo systemctl restart vbi-hr           # production
 ```
 
 ---
@@ -381,7 +406,7 @@ sudo systemctl restart vbi-hr-staging
 4. Клиент дожидается cookie (`restoreSession`), загружает данные (`bootstrapAppData`) и убирает query из URL.
 5. Редирект на домашнюю страницу: `/` или `/admin` (режим `full`), `/vacations` или `/admin/vacations` (режим `vacations`).
 
-Сессия в cookie — **14 дней**, без разлогина при неактивности.
+Сессия в cookie — **8 часов** TTL со sliding-обновлением; cookie подписана HMAC (`VBI_SESSION_SECRET`).
 
 **Nginx:** в `proxy_set_header` используйте `Host $http_host` и `X-Forwarded-Port`, чтобы callback возвращал на тот же стенд (тест `:8080`, бой `:80`), без перекрёстных редиректов.
 
