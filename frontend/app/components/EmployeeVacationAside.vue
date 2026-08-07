@@ -41,7 +41,13 @@
           />
         </label>
         <button type="button" class="vac-btn emp-projection-btn" @click="showProjection">Показать</button>
-        <div v-if="projectionText" class="emp-projection-result" v-html="projectionText" />
+        <div v-if="projectionText" class="emp-projection-result">
+          <template v-if="projectionDays != null">
+            К {{ projectionLabel }} доступно
+            <span class="emp-projection-days-accent">{{ projectionDays }}</span> дней.
+          </template>
+          <template v-else>{{ projectionText }}</template>
+        </div>
       </div>
     </details>
 
@@ -267,6 +273,8 @@ const canManageRequest = (req: VacationRequest) =>
 
 const projectionDate = ref('');
 const projectionText = ref('');
+const projectionDays = ref<number | null>(null);
+const projectionLabel = ref('');
 /** Расчёт к дате — только будущие дни (не сегодня и не прошлое). */
 const projectionMinDate = computed(() => {
   const tomorrow = new Date();
@@ -449,6 +457,8 @@ const removeRequest = async (req: VacationRequest) => {
 };
 
 const showProjection = () => {
+  projectionDays.value = null;
+  projectionLabel.value = '';
   if (!employeeName.value || !hireIso.value) {
     projectionText.value = 'Нет даты приёма.';
     return;
@@ -474,7 +484,9 @@ const showProjection = () => {
     return;
   }
   const [, m, d] = projectionDate.value.split('-');
-  projectionText.value = `К ${d}.${m} доступно <span class="emp-projection-days-accent">${available}</span> дней.`;
+  projectionLabel.value = `${d}.${m}`;
+  projectionDays.value = available;
+  projectionText.value = 'ok';
 };
 
 const onDocumentClick = (event: MouseEvent) => {

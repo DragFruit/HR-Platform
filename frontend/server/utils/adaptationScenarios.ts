@@ -320,6 +320,16 @@ export async function getAssignmentForEmployee(
   return state.assignments.find((row) => row.employee_id === employeeId) ?? null;
 }
 
+export async function removeAdaptationAssignmentForEmployee(employeeId: number): Promise<boolean> {
+  if (!Number.isFinite(employeeId) || employeeId <= 0) return false;
+  const state = await readAssignmentsState();
+  const next = state.assignments.filter((row) => row.employee_id !== employeeId);
+  if (next.length === state.assignments.length) return false;
+  state.assignments = next;
+  await writeAssignmentsState(state);
+  return true;
+}
+
 export async function assignAdaptationScenario(input: {
   employee_id: number;
   employee_name: string;

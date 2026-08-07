@@ -1,6 +1,6 @@
 import type { VacationRequest, VacationStoreState } from './vacationsStore';
 import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
-import { isBitrixWebhookConfigured } from './bitrixConfig';
+import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
 import { getBitrixServiceAccessToken, hasBitrixOAuthServiceToken } from './bitrixOAuthServiceToken';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
@@ -487,6 +487,54 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   // Пальма/график отсутствий — через lists (PROPERTY_1 = сотрудник).
 
   return { absenceId, method };
+};
+
+const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    throw new Error(
+      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.'
+    );
+  }
+
+  await bitrixVacationRest<boolean>('lists.element.delete', {
+    IBLOCK_TYPE_ID: absenceIblockTypeId(),
+    IBLOCK_ID: iblockId,
+    ELEMENT_ID: absenceId
+  });
+};
+
+/** Владелец входящего вебхука: /rest/<userId>/<secret>/ */
+const webhookOwnerUserId = (): number | null => {
+  const match = getBitrixWebhookUrl().match(/\/rest\/(\d+)\//);
+  const id = Number(match?.[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
+/** Legacy-записи, созданные когда пальму писали через calendar.event.add. */
+const deleteViaCalendarEvent = async (eventId: number): Promise<void> => {
+  const ownerUserId = webhookOwnerUserId();
+  if (!ownerUserId) {
+    throw new Error('Не удалось определить владельца вебхука для calendar.event.delete');
+  }
+  await bitrixVacationRest<boolean>('calendar.event.delete', {
+    type: 'user',
+    ownerId: ownerUserId,
+    id: eventId
+  });
+};
+
+/** Снять отметку об отпуске в Bitrix при удалении/отмене заявки. */
+export const removeVacationAbsenceFromBitrix = async (request: VacationRequest): Promise<void> => {
+  const absenceId = Number(request.bitrix_absence_id);
+  if (!Number.isFinite(absenceId) || absenceId <= 0) return;
+
+  if (String(request.bitrix_sync_method || '').startsWith('calendar.event.add')) {
+    await deleteViaCalendarEvent(absenceId);
+    return;
+  }
+
+  await deleteViaAbsenceIblock(absenceId);
 };
 
 const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {

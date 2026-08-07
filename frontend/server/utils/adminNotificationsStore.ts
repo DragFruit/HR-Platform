@@ -7,7 +7,8 @@ export type AdminNotificationKind =
   | 'bitrix_employee_title'
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'vpn_peer_delete_failed';
 
 export type AdminNotification = {
   id: string;
@@ -33,6 +34,9 @@ export type AdminNotification = {
   vacation_start?: string;
   vacation_end?: string;
   error_message?: string;
+  /** VPN офбординг */
+  vpn_peer_names?: string[];
+  vpn_panel?: string;
 };
 
 type NotificationsState = {
@@ -269,6 +273,31 @@ export async function createBitrixVacationSyncFailedNotification(input: {
     vacation_request_id: input.request_id,
     vacation_start: input.start,
     vacation_end: input.end,
+    error_message: input.error,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createVpnPeerDeleteFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  peer_names: string[];
+  panel?: string;
+  error: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const peers = input.peer_names.map((n) => n.trim()).filter(Boolean);
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'vpn_peer_delete_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    vpn_peer_names: peers,
+    vpn_panel: input.panel,
     error_message: input.error,
     created_at: new Date().toISOString(),
     admin_seen: false

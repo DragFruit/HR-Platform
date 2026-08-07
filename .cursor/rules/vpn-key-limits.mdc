@@ -20,8 +20,10 @@
 
 ## Операции в панелях
 
-- **Можно:** только **добавлять** новых клиентов (в лимитах выше).
-- **Нельзя:** удалять или отключать чужие/старые конфиги без явной просьбы заказчика.
+- **Можно:** добавлять новых клиентов (в лимитах выше).
+- **Можно при офбординге:** удалять пиры сотрудника, которого убрали из справочника Vibe (`deleteWgClient` в каскаде `employeeAccessDenylist`).
+- **Нельзя:** удалять или отключать чужие/старые конфиги «на всякий случай» / ради уборки без явной просьбы заказчика.
+- Если удаление с панели не удалось — админу уходит уведомление `vpn_peer_delete_failed`.
 - При выдаче из платформы — проверять лимит до создания пира.
 
 ## Имена пиров в админке
@@ -37,7 +39,7 @@ Bitrix «Фамилия Имя» → первое слово; демо «Имя 
 ## Код
 
 Лимиты: `frontend/app/data/vpnLimits.ts`. UI: `frontend/app/pages/vpn/index.vue`.
-API: `POST/GET /api/vpn/keys`. Клиент панелей: `frontend/server/utils/wgEasyClient.ts` (только create + read).
+API: `POST/GET /api/vpn/keys`. Клиент панелей: `frontend/server/utils/wgEasyClient.ts` (create, read, delete при офбординге).
 Учёт выдачи: `frontend/server/data/vpn-keys.json` (gitignore).
 
 Env (не в git): `WG_EASY_URL`, `WG_EASY_PASSWORD`, `AWG_EASY_URL`, `AWG_EASY_PASSWORD`.

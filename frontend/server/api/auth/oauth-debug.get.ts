@@ -22,7 +22,6 @@ export default defineEventHandler((event) => {
     bitrixRedirectUriFromEnv: bitrixRedirectUri || null,
     clientId: bitrixClientId,
     secretConfigured: Boolean(bitrixClientSecret),
-    secretLength: bitrixClientSecret.length,
     usesProdClientId: bitrixClientId === PROD_CLIENT_ID,
     bitrixAuthEnabled: isBitrixAuthConfigured(),
     hint:

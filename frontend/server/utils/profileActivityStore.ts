@@ -172,3 +172,27 @@ export async function deleteProfileActivity(id: string): Promise<boolean> {
   await writeState(state);
   return true;
 }
+
+/** Удалить всю ленту профиля сотрудника (офбординг). */
+export async function deleteProfileActivityForEmployee(ids: {
+  employee_id?: number;
+  platform_user_ids?: number[];
+}): Promise<number> {
+  const employeeId = ids.employee_id;
+  const platformIds = new Set(
+    (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
+  );
+  if (employeeId && employeeId > 0) platformIds.add(employeeId);
+
+  const state = await readState();
+  const before = state.items.length;
+  state.items = state.items.filter((row) => {
+    if (employeeId && row.employee_id === employeeId) return false;
+    if (row.platform_user_id && platformIds.has(row.platform_user_id)) return false;
+    if (platformIds.has(row.employee_id)) return false;
+    return true;
+  });
+  const removed = before - state.items.length;
+  if (removed) await writeState(state);
+  return removed;
+}

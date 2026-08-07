@@ -1,4 +1,5 @@
 import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
+import { redactSensitiveText } from './redactSensitive';
 
 export type BitrixTokenResponse = {
   access_token: string;
@@ -63,7 +64,10 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
         'Откройте dev-приложение в Битриксе, скопируйте ключи заново в frontend/.env (без кавычек и пробелов). ' +
         `Client ID в запросе: ${bitrixClientId}`;
     }
-    throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth: ${message}` });
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth: ${message}`)
+    });
   }
   return data;
 }
@@ -86,7 +90,10 @@ export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTo
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
     const message = data.error_description || data.error || `HTTP ${response.status}`;
-    throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth refresh: ${message}` });
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth refresh: ${message}`)
+    });
   }
   return data;
 }

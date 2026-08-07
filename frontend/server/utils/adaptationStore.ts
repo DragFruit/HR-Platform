@@ -91,3 +91,36 @@ export async function countUnseenAttempts(): Promise<number> {
   const state = await readAdaptationState();
   return state.attempts.filter((a) => !a.admin_seen).length;
 }
+
+/** Удалить прогресс адаптации сотрудника (назначение снимается отдельно). */
+export async function purgeAdaptationProgressForEmployee(ids: {
+  employee_id?: number;
+  platform_user_ids?: number[];
+}): Promise<number> {
+  const employeeId = ids.employee_id;
+  const platformIds = new Set(
+    (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
+  );
+  if (employeeId && employeeId > 0) platformIds.add(employeeId);
+
+  const state = await readAdaptationState();
+  const beforeAttempts = state.attempts.length;
+  const beforeSteps = state.step_completions.length;
+
+  state.attempts = state.attempts.filter((a) => {
+    if (employeeId && a.employee_id === employeeId) return false;
+    if (a.platform_user_id && platformIds.has(a.platform_user_id)) return false;
+    if (platformIds.has(a.employee_id)) return false;
+    return true;
+  });
+  state.step_completions = state.step_completions.filter((c) => {
+    if (employeeId && c.employee_id === employeeId) return false;
+    if (platformIds.has(c.employee_id)) return false;
+    return true;
+  });
+
+  const removed =
+    beforeAttempts - state.attempts.length + (beforeSteps - state.step_completions.length);
+  if (removed) await writeAdaptationState(state);
+  return removed;
+}

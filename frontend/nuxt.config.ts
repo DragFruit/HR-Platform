@@ -1,8 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { buildYandexMetrikaHead, resolveYandexMetrikaId, YANDEX_METRIKA_FRAME_ANCESTORS_CSP } from './app/utils/yandexMetrika';
+import { buildAppContentSecurityPolicy, buildYandexMetrikaHead, resolveYandexMetrikaId } from './app/utils/yandexMetrika';
 
 const yandexMetrikaId = resolveYandexMetrikaId(process.env.NUXT_PUBLIC_YANDEX_METRIKA_ID);
 const metrikaHead = buildYandexMetrikaHead(yandexMetrikaId);
+const appEnv = process.env.NUXT_PUBLIC_APP_ENV || 'development';
+const csp = buildAppContentSecurityPolicy({
+  upgradeInsecure: appEnv === 'production' || appEnv === 'staging'
+});
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -11,7 +15,10 @@ export default defineNuxtConfig({
   routeRules: {
     '/**': {
       headers: {
-        'Content-Security-Policy': YANDEX_METRIKA_FRAME_ANCESTORS_CSP
+        'Content-Security-Policy': csp,
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
       }
     }
   },

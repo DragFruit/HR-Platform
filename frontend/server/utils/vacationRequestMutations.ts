@@ -6,7 +6,7 @@ import {
 } from '../../app/utils/vacationGroupLeadOverlap';
 import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix, removeVacationAbsenceFromBitrix } from './bitrixVacationAbsence';
-import { createBitrixVacationAbsenceFailedNotification } from './adminNotificationsStore';
+import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
 import { findEmployeeByName } from './employeesStore';
 import {
   notifyVacationRequestCreated,
@@ -226,14 +226,14 @@ export async function deleteVacationRequest(id: number): Promise<VacationStoreSt
         console.error(`[bitrix-vacation] remove on delete failed for request #${id}:`, message);
         try {
           const employee = await findEmployeeByName(removed.employee);
-          await createBitrixVacationAbsenceFailedNotification({
+          await createBitrixVacationSyncFailedNotification({
             employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
             employee_name: removed.employee,
-            vacation_request_id: removed.id,
-            vacation_start: removed.start,
-            vacation_end: removed.end,
-            absence_action: 'remove',
-            error_message: message
+            bitrix_user_id: employee?.bitrix_user_id ?? undefined,
+            request_id: removed.id,
+            start: removed.start,
+            end: removed.end,
+            error: `Не удалось снять отметку об отпуске в Bitrix при удалении заявки: ${message}`
           });
         } catch (notifyError) {
           console.error(

@@ -1,6 +1,7 @@
 import { getBitrixConfig, getBitrixRedirectUri, isBitrixAuthConfigured, assertBitrixOAuthOrigin, assertStagingBitrixAppConfigured } from '../../utils/bitrixConfig';
 import { bitrixOAuthStateCookieName } from '../../utils/appEnv';
 import { createOAuthState } from '../../utils/oauthState';
+import { sessionCookieSecure } from '../../utils/sessionToken';
 
 export default defineEventHandler((event) => {
   if (!isBitrixAuthConfigured()) {
@@ -18,7 +19,8 @@ export default defineEventHandler((event) => {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: 600
+    maxAge: 600,
+    secure: sessionCookieSecure()
   });
 
   const portal = bitrixPortalUrl.replace(/\/+$/, '');

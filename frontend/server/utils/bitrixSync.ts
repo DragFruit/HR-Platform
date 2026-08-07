@@ -11,6 +11,7 @@ import {
   type BitrixUser
 } from './bitrixClient';
 import { getBitrixConfig, isBitrixWebhookConfigured, parseGroupIds } from './bitrixConfig';
+import { isBitrixUserAccessRevoked } from './employeeAccessDenylist';
 
 type BitrixUserRow = BitrixUser & { ID: string };
 
@@ -26,19 +27,38 @@ export function authRoleFromAccountRole(accountRole?: string): AuthRole | null {
 }
 
 export async function resolveAuthRoleFromEmployees(userId: number): Promise<AuthRole | null> {
-  const list = await readEmployees();
-  const employee = list.find(
-    (row) => row.bitrix_user_id === userId || row.platform_user_id === userId || row.id === userId
-  );
+  const employee = await findEmployeeByBitrixUserId(userId);
   return authRoleFromAccountRole(employee?.account_role);
 }
 
+/** Сотрудник есть в справочнике Vibe (не экстранет / не «просто ACTIVE в Bitrix»). */
+export async function findEmployeeByBitrixUserId(userId: number): Promise<ServerEmployee | null> {
+  if (!Number.isFinite(userId) || userId <= 0) return null;
+  const list = await readEmployees();
+  return (
+    list.find(
+      (row) => row.bitrix_user_id === userId || row.platform_user_id === userId || row.id === userId
+    ) ?? null
+  );
+}
+
+export async function isBitrixUserInRoster(userId: number): Promise<boolean> {
+  return Boolean(await findEmployeeByBitrixUserId(userId));
+}
+
+/**
+ * Роль для входа: только если пользователь уже в справочнике.
+ * Без записи в employees.json — null (экстранет / практиканты / гости Bitrix).
+ */
 export async function resolveLoginAuthRole(
   userId: number,
   accessToken: string,
   departmentHeads: Set<number>
-): Promise<AuthRole> {
-  const fromEmployees = await resolveAuthRoleFromEmployees(userId);
+): Promise<AuthRole | null> {
+  const employee = await findEmployeeByBitrixUserId(userId);
+  if (!employee) return null;
+
+  const fromEmployees = authRoleFromAccountRole(employee.account_role);
   if (fromEmployees) return fromEmployees;
   return resolveBitrixUserRole(userId, accessToken, departmentHeads);
 }
@@ -245,7 +265,7 @@ export async function syncEmployeesFromBitrix(
     if (bitrixId) existingByBitrixId.set(bitrixId, row);
   });
 
-  const importNew = options.importNew ?? existing.length === 0;
+  const importNew = options.importNew === true;
 
   let created = 0;
   let updated = 0;
@@ -254,6 +274,7 @@ export async function syncEmployeesFromBitrix(
   for (const user of users) {
     const bitrixId = toNumberId(user.ID);
     if (!bitrixId) continue;
+    if (await isBitrixUserAccessRevoked(bitrixId)) continue;
 
     const prev = existingByBitrixId.get(bitrixId);
     if (!prev && !importNew) continue;

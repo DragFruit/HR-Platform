@@ -342,9 +342,11 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 BITRIX_PORTAL_URL=https://crm.vbi.ru
 BITRIX_CLIENT_ID=local.XXXXXXXX
 BITRIX_CLIENT_SECRET=XXXXXXXX
+# HMAC cookie-сессий Vibe (свой длинный секрет на сервере)
+VBI_SESSION_SECRET=XXXXXXXX
 BITRIX_REDIRECT_URI=http://45.12.74.25:8080/api/auth/bitrix/callback
 
-# Вебхук — синк (база без profile.json / user.get)
+# Вебхук — синк (база без profile.json / user.get). URL = секрет, не светить в логах.
 BITRIX_WEBHOOK_URL=https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 # График отсутствий (пальма после согласования отпуска в VBI HR)
 # BITRIX_ABSENCE_IBLOCK_ID=12

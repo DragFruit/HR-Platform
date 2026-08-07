@@ -58,3 +58,19 @@ export async function setUserAvatar(userId: number, characterId: string): Promis
   store[String(userId)] = characterId;
   return writeUserAvatars(store);
 }
+
+/** Удалить аватары по id пользователей (отложенный офбординг). */
+export async function removeUserAvatars(userIds: number[]): Promise<number> {
+  const ids = new Set(userIds.filter((id) => Number.isFinite(id) && id > 0).map(String));
+  if (!ids.size) return 0;
+  const store = await readUserAvatars();
+  let removed = 0;
+  for (const key of ids) {
+    if (store[key]) {
+      delete store[key];
+      removed += 1;
+    }
+  }
+  if (removed) await writeUserAvatars(store);
+  return removed;
+}

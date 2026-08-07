@@ -3,7 +3,8 @@ export type AdminNotificationKind =
   | 'bitrix_employee_title'
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'vpn_peer_delete_failed';
 
 export type AdminNotification = {
   id: string;
@@ -25,6 +26,8 @@ export type AdminNotification = {
   vacation_start?: string;
   vacation_end?: string;
   error_message?: string;
+  vpn_peer_names?: string[];
+  vpn_panel?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -79,6 +82,9 @@ export function useAdminNotifications() {
     if (item.kind === 'bitrix_vacation_sync_failed') {
       return 'Отпуск не ушёл в Bitrix';
     }
+    if (item.kind === 'vpn_peer_delete_failed') {
+      return 'Не удалось удалить VPN-ключи';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
@@ -96,6 +102,11 @@ export function useAdminNotifications() {
           ? `${item.vacation_start} — ${item.vacation_end}`
           : 'даты неизвестны';
       return `${item.employee_name}: ${period}. ${item.error_message || 'Ошибка синка'}. Проверьте вебхук / добавьте отсутствие вручную.`;
+    }
+    if (item.kind === 'vpn_peer_delete_failed') {
+      const peers = (item.vpn_peer_names || []).join(', ') || 'пиры';
+      const panel = item.vpn_panel ? ` (${item.vpn_panel})` : '';
+      return `${item.employee_name}: удалите вручную в админке VPN${panel}: ${peers}. ${item.error_message || ''}`.trim();
     }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
@@ -119,6 +130,7 @@ export function useAdminNotifications() {
     if (item.kind === 'tenure_gift_order') return 'К уведомлению';
     if (item.kind === 'idea_submitted') return 'Банк идей';
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
+    if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
     return 'Справочник';
   };
 
@@ -126,6 +138,7 @@ export function useAdminNotifications() {
     if (item.kind === 'tenure_gift_order') return '/admin/notifications';
     if (item.kind === 'idea_submitted') return '/admin/ideas';
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
+    if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
     return '/admin/employees';
   };
 

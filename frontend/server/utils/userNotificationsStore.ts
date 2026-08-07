@@ -187,3 +187,15 @@ export async function createUserNotification(
   await writeState(state);
   return notification;
 }
+
+/** Полная очистка колокольчика/истории для получателей (офбординг). */
+export async function deleteUserNotificationsForRecipients(recipientUserIds: number[]): Promise<number> {
+  const ids = new Set(recipientUserIds.filter((id) => Number.isFinite(id) && id > 0));
+  if (!ids.size) return 0;
+  const state = await readState();
+  const before = state.items.length;
+  state.items = state.items.filter((item) => !ids.has(item.recipient_user_id));
+  const removed = before - state.items.length;
+  if (removed) await writeState(state);
+  return removed;
+}

@@ -12,6 +12,15 @@ import {
 const cloneState = (state: IdeasStoreState): IdeasStoreState =>
   JSON.parse(JSON.stringify(state)) as IdeasStoreState;
 
+/** Убрать HTML из пользовательского текста (идеи рендерятся как текст, но не храним разметку). */
+function stripUserHtml(value: string): string {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const isAdminOrHr = (session: SessionUser) =>
   session.role === 'admin' || session.role === 'hr';
 
@@ -37,8 +46,8 @@ export async function createIdeaForUser(
   session: SessionUser,
   input: CreateIdeaInput
 ): Promise<IdeasClientPayload> {
-  const title = String(input.title || '').trim();
-  const description = String(input.description || '').trim();
+  const title = stripUserHtml(String(input.title || ''));
+  const description = stripUserHtml(String(input.description || ''));
   if (title.length < 3 || description.length < 10) {
     throw createError({
       statusCode: 400,

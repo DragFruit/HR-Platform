@@ -13,6 +13,11 @@ import {
   readManagerAssignments,
   writeManagerAssignments
 } from './employeeManagersStore';
+import {
+  clearAccessRevocationForEmployee,
+  purgeExpiredRevocationArtifacts,
+  revokeEmployeeAccess
+} from './employeeAccessDenylist';
 
 export type ServerEmployee = {
   id: number;
@@ -79,7 +84,22 @@ export async function writeEmployees(
   options: WriteEmployeesOptions = {}
 ): Promise<ServerEmployee[]> {
   await ensureFile();
+  const previous = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
   const normalized = dedupeEmployees(stripQaTestEmployees(list));
+
+  const nextIds = new Set(normalized.map((row) => row.id));
+  for (const prev of previous) {
+    if (nextIds.has(prev.id)) continue;
+    await revokeEmployeeAccess(prev, 'removed-from-roster');
+  }
+  const previousIds = new Set(previous.map((row) => row.id));
+  for (const row of normalized) {
+    if (previousIds.has(row.id)) continue;
+    await clearAccessRevocationForEmployee(row);
+  }
+
+  void purgeExpiredRevocationArtifacts().catch(() => {});
+
   const currentAssignments = await readManagerAssignments();
   let mergedAssignments = currentAssignments;
   if (!options.preserveManagers) {
@@ -90,6 +110,16 @@ export async function writeEmployees(
   const withManagers = applyManagerAssignments(normalized, mergedAssignments);
   await writeFile(DATA_FILE, JSON.stringify(withManagers, null, 2), 'utf8');
   return withManagers;
+}
+
+/** Сырой список без QA-слияния — для сравнения удалений. */
+async function readEmployeesRawWithoutQaMerge(): Promise<ServerEmployee[]> {
+  await ensureFile();
+  const raw = await readFile(DATA_FILE, 'utf8');
+  const parsed = JSON.parse(raw) as ServerEmployee[];
+  const deduped = dedupeEmployees(parsed);
+  const assignments = await readManagerAssignments();
+  return applyManagerAssignments(deduped, assignments);
 }
 
 export async function findEmployeeByPlatformUserId(userId: number): Promise<ServerEmployee | null> {

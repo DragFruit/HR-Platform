@@ -5,6 +5,7 @@ import {
   resolveLoginAuthRole,
   syncEmployeesFromBitrix
 } from './bitrixSync';
+import { isAccessRevokedForIdentity } from './employeeAccessDenylist';
 
 function primaryDepartmentName(user: BitrixUser, departments: BitrixDepartment[]): string {
   const raw = user.UF_DEPARTMENT;
@@ -29,12 +30,33 @@ export async function loginSessionFromBitrix(accessToken: string): Promise<Sessi
     throw createError({ statusCode: 502, statusMessage: 'Bitrix: не удалось определить пользователя' });
   }
 
+  const email = String(current.EMAIL || '').trim().toLowerCase();
+  if (
+    await isAccessRevokedForIdentity({
+      id: userId,
+      bitrix_user_id: userId,
+      email
+    })
+  ) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Доступ закрыт: сотрудник удалён из справочника Vibe'
+    });
+  }
+
   const heads = departmentHeadIds(departments);
 
+  // Только обновляет уже заведённых в справочнике — новых из Bitrix не добавляет.
   await syncEmployeesFromBitrix(accessToken);
   const role = await resolveLoginAuthRole(userId, accessToken, heads);
+  if (!role) {
+    throw createError({
+      statusCode: 403,
+      statusMessage:
+        'Нет доступа к Vibe: вас нет в справочнике сотрудников. Экстранет и внешние пользователи Bitrix не допускаются — обратитесь к HR.'
+    });
+  }
 
-  const email = String(current.EMAIL || '').trim().toLowerCase();
   if (!email) {
     throw createError({ statusCode: 403, statusMessage: 'В профиле Битрикс не указан email' });
   }
