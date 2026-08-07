@@ -50,7 +50,7 @@ build:production:
   variables:
     NUXT_PUBLIC_APP_ENV: production
     NUXT_PUBLIC_LAUNCH_SCOPE: vacations
-    NUXT_PUBLIC_ORG_LINKS_ENABLED: "false"
+    NUXT_PUBLIC_ORG_LINKS_ENABLED: "true"
 
 # --- Деплой на VPS (только из CI, не с локальной машины в обычном потоке) ---
 

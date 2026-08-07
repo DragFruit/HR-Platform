@@ -8,9 +8,9 @@ export const ORG_GRID_GAP_PX = 10;
 export const ORG_CANVAS_EXEC_OFFSET = 76;
 export const ORG_COL_WIDTH_PX = 122;
 export const ORG_ROW_STEP_PX = 70;
-export const ORG_GROUP_MIN_WIDTH = 168;
-export const ORG_GROUP_MIN_HEIGHT = 120;
-export const ORG_GROUP_DEFAULT_WIDTH = 200;
+export const ORG_GROUP_MIN_WIDTH = 160;
+export const ORG_GROUP_MIN_HEIGHT = 100;
+export const ORG_GROUP_DEFAULT_WIDTH = 440;
 export const ORG_GROUP_DEFAULT_HEIGHT = 0;
 
 export type OrgExecutive = {
@@ -36,6 +36,9 @@ export type OrgUnit = {
   gridRow?: number;
   x?: number;
   y?: number;
+  /** Явный размер карточки; без него — по тексту. */
+  width?: number;
+  height?: number;
   employees: number;
   members: OrgMember[];
 };
@@ -43,7 +46,11 @@ export type OrgUnit = {
 export type OrgUnitGroup = {
   id: string;
   executiveId: string;
+  /** ФИО руководителя блока — плашка внутри рамки. */
   label: string;
+  /** Локальная позиция плашки ФИО внутри .org-group-units. */
+  labelX?: number;
+  labelY?: number;
   order: number;
   gridCol?: number;
   gridRow?: number;
@@ -67,6 +74,8 @@ export type OrgLink = {
   id: string;
   from: OrgLinkAnchor;
   to: OrgLinkAnchor;
+  /** Смещение средней ортогональной секции (midY / midX), px. */
+  mid?: number;
 };
 
 export type OrgPlacedItem =
@@ -74,6 +83,16 @@ export type OrgPlacedItem =
   | { kind: 'group'; group: OrgUnitGroup; units: OrgUnit[] };
 
 const STORAGE_KEY = 'vbi-org-structure-v1';
+
+export type OrgStructurePayload = {
+  executives: OrgExecutive[];
+  units: OrgUnit[];
+  groups: OrgUnitGroup[];
+  links: OrgLink[];
+};
+
+const isOrgPayloadEmpty = (data: OrgStructurePayload) =>
+  data.executives.length === 0 && data.units.length === 0 && data.groups.length === 0;
 
 const defaultExecutives: OrgExecutive[] = [];
 const defaultUnits: OrgUnit[] = [];
@@ -157,6 +176,7 @@ const nextId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.ra
 
 let persistWatchRegistered = false;
 let persistSuspended = false;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 function collectOccupied(
   executives: OrgExecutive[],
@@ -263,6 +283,42 @@ function ensureCanvasLayout(
       mark(slot.x, slot.y);
     }
   }
+
+  // Локальные координаты отделов внутри групп (свободный layout)
+  for (const group of groups) {
+    const gUnits = units
+      .filter((u) => u.groupId === group.id)
+      .sort((a, b) => a.order - b.order);
+    if (gUnits.length) {
+      const allAtOrigin = gUnits.every((u) => (u.x ?? 0) === 0 && (u.y ?? 0) === 0);
+      if (!allAtOrigin) {
+        gUnits.forEach((unit) => {
+          if (unit.x == null) unit.x = 12;
+          if (unit.y == null) unit.y = 12;
+        });
+      } else {
+        gUnits.forEach((unit, index) => {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          unit.x = 12 + col * 200;
+          unit.y = 12 + row * 88;
+        });
+      }
+    }
+    // Плашка ФИО руководителя — свободная позиция внутри рамки
+    if (group.labelX == null || group.labelY == null) {
+      const maxUnitBottom = gUnits.reduce((max, u) => Math.max(max, (u.y ?? 0) + 88), 12);
+      if (group.labelX == null) group.labelX = 24;
+      if (group.labelY == null) group.labelY = maxUnitBottom + 8;
+    }
+  }
+
+  // Высота без ФИО руководителя — только по тексту (сброс артефакта ресайза)
+  for (const unit of units) {
+    if (unit.height != null && !String(unit.head ?? '').trim()) {
+      delete unit.height;
+    }
+  }
 }
 
 function findFreeSlot(
@@ -328,67 +384,119 @@ export function useOrgStructure() {
     return map;
   });
 
-  const persist = () => {
-    if (!import.meta.client || persistSuspended) return;
+  const snapshot = (): OrgStructurePayload => ({
+    executives: orgExecutives.value,
+    units: orgUnits.value,
+    groups: orgGroups.value,
+    links: orgLinks.value
+  });
+
+  const applyPayload = (data: OrgStructurePayload) => {
+    persistSuspended = true;
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          executives: orgExecutives.value,
-          units: orgUnits.value,
-          groups: orgGroups.value,
-          links: orgLinks.value
-        })
-      );
-    } catch {
-      /* quota / private mode */
-    }
-  };
-
-  const hydrate = () => {
-    if (!import.meta.client || orgHydrated.value) return;
-    orgHydrated.value = true;
-
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
+      orgExecutives.value = data.executives;
+      orgUnits.value = data.units;
+      orgGroups.value = data.groups;
+      orgLinks.value = sanitizeLinks(data.links);
       ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
-      return;
-    }
-
-    try {
-      const data = JSON.parse(raw) as {
-        executives?: OrgExecutive[];
-        units?: OrgUnit[];
-        groups?: OrgUnitGroup[];
-        links?: OrgLink[];
-      };
-      persistSuspended = true;
-      if (data.executives?.length) orgExecutives.value = data.executives;
-      if (data.units?.length) orgUnits.value = data.units;
-      if (data.groups) orgGroups.value = data.groups;
-      orgLinks.value = sanitizeLinks(data.links ?? []);
-      ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
-    } catch {
-      /* keep defaults */
     } finally {
       persistSuspended = false;
     }
   };
 
-  const syncLinksFromStorage = () => {
+  const cacheLocal = (data: OrgStructurePayload) => {
     if (!import.meta.client) return;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw) as { links?: OrgLink[] };
-      if (!Array.isArray(data.links)) return;
-      const stored = sanitizeLinks(data.links);
-      if (stored.length > orgLinks.value.length) {
-        orgLinks.value = stored;
-      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
-      /* ignore */
+      /* quota / private mode */
     }
+  };
+
+  const readLocalCache = (): OrgStructurePayload | null => {
+    if (!import.meta.client) return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw) as Partial<OrgStructurePayload>;
+      return {
+        executives: Array.isArray(data.executives) ? data.executives : [],
+        units: Array.isArray(data.units) ? data.units : [],
+        groups: Array.isArray(data.groups) ? data.groups : [],
+        links: sanitizeLinks(data.links ?? [])
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const canWriteServer = () => {
+    const { user } = useAuth();
+    return user.value?.role === 'admin' || user.value?.role === 'hr';
+  };
+
+  const syncToServer = async (data: OrgStructurePayload) => {
+    if (!import.meta.client || !canWriteServer()) return;
+    try {
+      const saved = await $fetch<OrgStructurePayload>('/api/org-structure', {
+        method: 'PUT',
+        body: data
+      });
+      cacheLocal(saved);
+    } catch {
+      /* нет прав / сеть — локальный кэш уже есть */
+    }
+  };
+
+  const persist = () => {
+    if (!import.meta.client || persistSuspended) return;
+    const data = snapshot();
+    cacheLocal(data);
+    if (!canWriteServer()) return;
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+      persistTimer = null;
+      void syncToServer(snapshot());
+    }, 400);
+  };
+
+  const hydrate = async () => {
+    if (!import.meta.client || orgHydrated.value) return;
+    orgHydrated.value = true;
+
+    let fromServer: OrgStructurePayload | null = null;
+    try {
+      fromServer = await $fetch<OrgStructurePayload>('/api/org-structure');
+    } catch {
+      fromServer = null;
+    }
+
+    const local = readLocalCache();
+
+    if (fromServer && !isOrgPayloadEmpty(fromServer)) {
+      applyPayload(fromServer);
+      cacheLocal(fromServer);
+      return;
+    }
+
+    if (local && !isOrgPayloadEmpty(local)) {
+      applyPayload(local);
+      // Одноразовая миграция: ноут → сервер
+      await syncToServer(local);
+      return;
+    }
+
+    if (fromServer) {
+      applyPayload(fromServer);
+      cacheLocal(fromServer);
+      return;
+    }
+
+    ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
+  };
+
+  const syncLinksFromStorage = () => {
+    /* legacy no-op: схема на сервере */
   };
 
   const setExecutivePosition = (executiveId: string, x: number, y: number) => {
@@ -409,6 +517,19 @@ export function useOrgStructure() {
     if (!unit) return;
     unit.x = Math.max(0, Math.round(x));
     unit.y = Math.max(0, Math.round(y));
+    persist();
+  };
+
+  /** Размер карточки отдела; оси независимо. height: null — снова по тексту. */
+  const setUnitSize = (
+    unitId: string,
+    size: { width?: number; height?: number | null }
+  ) => {
+    const unit = orgUnits.value.find((u) => u.id === unitId);
+    if (!unit) return;
+    if (size.width != null) unit.width = Math.max(72, Math.round(size.width));
+    if (size.height === null) delete unit.height;
+    else if (size.height != null) unit.height = Math.max(36, Math.round(size.height));
     persist();
   };
 
@@ -448,7 +569,13 @@ export function useOrgStructure() {
 
     const inGroup = groupId ?? null;
     const order = Math.max(...orgUnits.value.filter((u) => u.executiveId === execId).map((u) => u.order), 0) + 10;
-    const pos = inGroup ? { x: 0, y: 0 } : findFreePosition(execId);
+    let pos = inGroup ? { x: 0, y: 0 } : findFreePosition(execId);
+    if (inGroup) {
+      const siblings = orgUnits.value.filter((u) => u.groupId === inGroup);
+      const col = siblings.length % 2;
+      const row = Math.floor(siblings.length / 2);
+      pos = { x: 12 + col * 200, y: 12 + row * 88 };
+    }
     orgUnits.value.push({
       id: nextId('u'),
       executiveId: execId,
@@ -474,7 +601,9 @@ export function useOrgStructure() {
     orgGroups.value.push({
       id: groupId,
       executiveId: execId,
-      label: 'Руководитель блока',
+      label: 'ФИО руководителя',
+      labelX: 24,
+      labelY: 100,
       order,
       x,
       y,
@@ -533,6 +662,66 @@ export function useOrgStructure() {
     persist();
   };
 
+  /** Позиция отдела внутри группы (локальные x/y относительно .org-group-units). */
+  const setUnitLocalPosition = (unitId: string, x: number, y: number) => {
+    const unit = orgUnits.value.find((u) => u.id === unitId);
+    if (!unit || !unit.groupId) return;
+    unit.x = Math.max(0, Math.round(x));
+    unit.y = Math.max(0, Math.round(y));
+    persist();
+  };
+
+  /** Позиция плашки ФИО руководителя внутри группы. */
+  const setGroupLabelPosition = (groupId: string, x: number, y: number) => {
+    const group = orgGroups.value.find((g) => g.id === groupId);
+    if (!group) return;
+    group.labelX = Math.max(0, Math.round(x));
+    group.labelY = Math.max(0, Math.round(y));
+    persist();
+  };
+
+  /** Переставить отдел внутри группы: beforeUnitId = null → в конец. */
+  const reorderUnitInGroup = (
+    groupId: string,
+    draggedUnitId: string,
+    beforeUnitId: string | null
+  ) => {
+    const list = orgUnits.value
+      .filter((u) => u.groupId === groupId)
+      .sort((a, b) => a.order - b.order);
+    const dragged = list.find((u) => u.id === draggedUnitId);
+    if (!dragged) return;
+    if (beforeUnitId === draggedUnitId) return;
+
+    const rest = list.filter((u) => u.id !== draggedUnitId);
+    let idx = rest.length;
+    if (beforeUnitId) {
+      const i = rest.findIndex((u) => u.id === beforeUnitId);
+      if (i >= 0) idx = i;
+    }
+    const next = [...rest.slice(0, idx), dragged, ...rest.slice(idx)];
+    let changed = false;
+    next.forEach((u, i) => {
+      const order = (i + 1) * 10;
+      if (u.order !== order) {
+        u.order = order;
+        changed = true;
+      }
+    });
+    if (changed) persist();
+  };
+
+  const setLinkMid = (linkId: string, mid: number) => {
+    const link = orgLinks.value.find((l) => l.id === linkId);
+    if (!link) return;
+    link.mid = Math.round(mid);
+    persist();
+  };
+
+  const ensureLayout = () => {
+    ensureCanvasLayout(orgExecutives.value, orgUnits.value, orgGroups.value);
+  };
+
   if (import.meta.client && !persistWatchRegistered) {
     persistWatchRegistered = true;
     watch([orgExecutives, orgUnits, orgGroups, orgLinks], persist, { deep: true });
@@ -546,19 +735,25 @@ export function useOrgStructure() {
     executivesSorted,
     placedByExecutive,
     hydrate,
+    ensureLayout,
     syncLinksFromStorage,
     addExecutive,
     addUnit,
     addGroup,
     setUnitPosition,
+    setUnitSize,
+    setUnitLocalPosition,
+    setGroupLabelPosition,
     setGroupPosition,
     setGroupSize,
     setExecutivePosition,
     removeExecutive,
     removeUnit,
     removeGroup,
+    reorderUnitInGroup,
     addLink,
     removeLink,
+    setLinkMid,
     buildPlacedItems,
     canvasMinHeight,
     globalCanvasMinHeight

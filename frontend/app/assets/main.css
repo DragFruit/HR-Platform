@@ -490,6 +490,86 @@ a {
   gap: 10px;
 }
 
+/* VPN-чат: диалог строго в пределах экрана, скролл только внутри ленты */
+.app-viewport:has(.vpn-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.app-viewport:has(.vpn-page) > .app-shell {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.app-viewport:has(.vpn-page) > .app-site-footer {
+  display: none;
+}
+
+.app-shell:has(.vpn-page) {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.app-shell:has(.vpn-page) > .sidebar,
+.app-shell:has(.vpn-page) > .shell-main {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.shell-main:has(.vpn-page) {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.shell-main:has(.vpn-page) .content {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  padding: 12px 16px 16px;
+}
+
+.shell-main:has(.vpn-page) .content > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-main:has(.vpn-page) .content .page-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  gap: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shell-main:has(.vpn-page) .content .page-root > .vpn-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  max-width: none;
+  width: 100%;
+  overflow: hidden;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
@@ -1029,31 +1109,435 @@ a {
 }
 
 .org-page {
-  overflow-x: auto;
+  overflow: visible;
+}
+
+.org-page--employee,
+.org-page--preview {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Явная высота — иначе при roster flex-basis:0 схлопывает всё в 0 */
+  height: calc(100dvh - 128px);
+  max-height: calc(100dvh - 128px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* С панелью сотрудников — та же высота, список скроллится в aside */
+.org-page--employee.org-page--with-roster,
+.org-page--preview.org-page--with-roster {
+  height: calc(100dvh - 128px);
+  max-height: calc(100dvh - 128px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.org-page__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.org-page--with-roster .org-page__body {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.org-page__chart {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.org-page--with-roster .org-page__chart {
+  flex: 1 1 0;
+  align-self: stretch;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.org-roster-aside {
+  --org-roster-width: 280px;
+  flex: 0 0 var(--org-roster-width);
+  width: var(--org-roster-width);
+  max-width: min(var(--org-roster-width), 42vw);
+  align-self: stretch;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  background: #eeeee8;
+  border: 2px solid #111;
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 #ddf365;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.org-roster-aside__head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border-bottom: 2px solid #111;
+  background: #fff;
+}
+
+.org-roster-aside__title {
+  margin: 0;
+  font-family: Unbounded, Golos Text, system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #111;
+}
+
+.org-roster-aside__close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #111;
+  border-radius: 8px;
+  background: #eeeee8;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #111;
+}
+
+.org-roster-aside__close:hover {
+  background: #ddf365;
+}
+
+.org-roster-aside__empty {
+  margin: 0;
+  padding: 14px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.org-roster-aside__scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.org-roster-aside__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.org-roster-aside__section-title {
+  margin: 0;
+  padding: 2px 4px 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7451f4;
+}
+
+.org-roster-aside__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.org-roster-aside__person {
+  width: 100%;
+  text-align: left;
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 2px 2px 0 transparent;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.org-roster-aside__person:hover {
+  box-shadow: 2px 2px 0 #7451f4;
+  transform: translate(-1px, -1px);
+}
+
+.org-roster-aside__person--static {
+  cursor: default;
+  background: #f4f4f0;
+  box-shadow: none;
+}
+
+.org-roster-aside__person--static:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.org-roster-aside__name {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.org-roster-aside__role {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.65;
+}
+
+.org-chart-canvas--view .org-node-unit.is-roster-selectable {
+  cursor: pointer;
+}
+
+.org-chart-canvas--view .org-node-unit.is-roster-selected {
+  outline: 3px solid #7451f4;
+  outline-offset: 2px;
+  box-shadow: 3px 3px 0 #ddf365;
+}
+
+.org-page--employee.card::before,
+.org-page--preview.card::before {
+  display: none;
+}
+
+.org-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 4px 10px;
+  flex-shrink: 0;
+}
+
+.org-page--employee .org-page__chart .org-chart,
+.org-page--preview .org-page__chart .org-chart {
+  padding: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .org-admin-actions {
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.org-preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.org-preview-toggle__icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.org-preview-toggle.is-on {
+  border-color: #202020;
+  background: #ddf365;
+  color: #202020;
+  box-shadow: 3px 3px 0 #7451f4;
 }
 
 .org-chart {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
   padding: 12px 8px 24px;
   min-width: min(100%, 1100px);
-  --org-card-border: #d8d8d2;
-  --org-card-radius: 20px;
-  --org-card-bg: var(--bg-surface);
-  --org-card-hover-bg: var(--bg-surface-raised);
+  --org-card-border: #d0d0ca;
+  --org-card-radius: 18px;
+  --org-card-bg: #fff;
+  --org-card-hover-bg: #f7f7f3;
 }
 
 .org-chart-vbi {
   align-items: stretch;
   gap: 0;
-  min-width: min(100%, 1280px);
+  min-width: 0;
+}
+
+.org-chart--readonly {
+  min-width: 0;
+  padding: 0;
+}
+
+/* Серое рабочее поле — сюда вписываем масштаб и центрируем */
+.org-chart-viewport {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: min(68dvh, 760px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 8px;
+  background: transparent;
+}
+
+.org-page--employee .org-chart-viewport,
+.org-page--preview .org-chart-viewport {
+  min-height: 0;
+  flex: 1 1 auto;
+  /* Белое поле по центру серой зоны — одинаковый зазор сверху и снизу */
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  /* Схема всегда целиком в кадре — без внутреннего скролла */
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* С открытой панелью — только влево по X; сверху (не center), иначе схема «уезжает» вниз */
+.org-page--with-roster .org-chart-viewport {
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.org-page--with-roster .org-chart-board {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Roster: слегка уже окошки; основной эффект — сжатие зазоров по X */
+.org-chart--compress-x {
+  --org-compress-x: 1;
+}
+
+.org-chart--compress-x .org-node-executive {
+  min-width: calc(200px * var(--org-compress-x));
+  max-width: calc(260px * var(--org-compress-x));
+}
+
+.org-chart--compress-x .org-exec-face {
+  padding-left: calc(16px * var(--org-compress-x));
+  padding-right: calc(16px * var(--org-compress-x));
+}
+
+.org-chart--compress-x .org-node-unit {
+  padding-left: calc(14px * var(--org-compress-x));
+  padding-right: calc(14px * var(--org-compress-x));
+}
+
+/* Длинные названия справа (внутренние проекты) — в одну строку при сжатии */
+.org-chart--compress-x .org-node-unit--solo .org-unit-title {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* ФИО руководителя: 1 строка, чуть меньший кегль если длинное */
+.org-chart--compress-x .org-node-unit--solo .org-unit-head {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.org-page--with-roster .org-chart--readonly .org-chart-board {
+  padding: 18px 16px;
+}
+
+/* Белая подложка — только вокруг схемы */
+.org-chart-board {
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #e2e2dc;
+  border-radius: 22px;
+}
+
+.org-chart--readonly .org-chart-board {
+  /* Не режем увеличенную схему: max-width:100% оставлял кольцо пустоты */
+  max-width: none;
+  /* Внутренний воздух до директоров / юристов */
+  padding: 18px 20px;
+}
+
+.org-chart--edit .org-chart-viewport {
+  min-height: min(70dvh, 780px);
+  padding: 12px;
+  /* Редактор: большой холст можно листать */
+  overflow: auto;
+  touch-action: auto;
+  overscroll-behavior: auto;
+}
+
+.org-chart--edit .org-chart-board {
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  max-width: none;
+}
+
+.org-chart-scale-slot {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.org-chart-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  will-change: transform;
 }
 
 .org-chart-canvas {
@@ -1063,6 +1547,12 @@ a {
   min-height: 280px;
   padding: 12px 8px 24px;
   overflow: visible;
+  box-sizing: border-box;
+}
+
+.org-chart-canvas--view {
+  padding: 0 2px 4px;
+  background: transparent;
 }
 
 .org-chart-canvas--edit {
@@ -1072,6 +1562,30 @@ a {
   background-size: var(--org-canvas-grid) var(--org-canvas-grid);
   border-radius: var(--org-card-radius);
   background-color: rgba(255, 255, 255, 0.35);
+}
+
+.shell-main:has(.org-page--preview) .content,
+.shell-main:has(.org-page--employee) .content {
+  display: flex;
+  flex-direction: column;
+  /* Равный зазор от шапки и от низа экрана вокруг белого поля */
+  padding: 14px 28px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.shell-main:has(.org-page--preview) .content .page-root,
+.shell-main:has(.org-page--employee) .content .page-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-main:has(.org-page--preview) .content .page-root > .org-page,
+.shell-main:has(.org-page--employee) .content .page-root > .org-page {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .org-placed--exec {
@@ -1145,10 +1659,16 @@ a {
 
 .org-link-path {
   fill: none;
-  stroke: #b8b8b2;
-  stroke-width: 2;
+  stroke: #a9a9a3;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.org-link-path--draft {
+  stroke: #7451f4;
+  stroke-dasharray: 6 4;
+  opacity: 0.85;
 }
 
 .org-link-path--editable {
@@ -1160,10 +1680,45 @@ a {
   stroke: #8a8a84;
 }
 
-.org-link-path--draft {
-  stroke: #7451f4;
-  stroke-dasharray: 6 4;
-  opacity: 0.85;
+.org-link-path-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  cursor: move;
+}
+
+.org-link-mid-handle {
+  fill: #eeeee8;
+  stroke: #202020;
+  stroke-width: 1.25;
+  pointer-events: all;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.org-chart-canvas--edit .org-links-svg:hover .org-link-mid-handle,
+.org-link-mid-handle.is-active {
+  opacity: 1;
+}
+
+.org-link-mid-handle.is-active {
+  cursor: grabbing;
+  fill: #ddf365;
+}
+
+.org-link-junction {
+  fill: #c8c8c2;
+  stroke: #202020;
+  stroke-width: 1.25;
+  pointer-events: none;
+}
+
+.org-link-junction--draft {
+  fill: #7451f4;
+  stroke: #202020;
+  opacity: 0.9;
 }
 
 .org-ports {
@@ -1254,9 +1809,41 @@ a {
 }
 
 .org-unit-head-row .editable-line,
-.org-unit-head-row .inline-edit-input {
+.org-unit-head-row .inline-edit-input,
+.org-unit-head-row .org-unit-head-select {
   flex: 1;
   min-width: 0;
+}
+
+.org-unit-head-select {
+  appearance: auto;
+  height: 28px;
+  border: 1.5px solid #202020;
+  border-radius: 8px;
+  background: #fff;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #121212;
+  cursor: pointer;
+  touch-action: auto;
+}
+
+button.org-unit-head--link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+button.org-unit-head--link:hover {
+  color: #7451f4;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .org-field-clear {
@@ -1279,9 +1866,13 @@ a {
 }
 
 .org-add-head {
-  align-self: flex-start;
-  margin-top: 4px;
-  padding: 0;
+  position: absolute;
+  left: 14px;
+  top: calc(100% + 2px);
+  z-index: 4;
+  align-self: auto;
+  margin: 0;
+  padding: 2px 0;
   border: none;
   background: none;
   color: var(--text-soft);
@@ -1289,6 +1880,16 @@ a {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.org-chart-canvas--edit .org-node-unit:hover .org-add-head,
+.org-chart-canvas--edit .org-node-unit:focus-within .org-add-head {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .org-add-head:hover {
@@ -1297,18 +1898,18 @@ a {
 
 .org-group-frame {
   position: relative;
-  border: 1px solid var(--org-card-border);
-  border-radius: calc(var(--org-card-radius) + 4px);
-  background: var(--bg-surface-raised);
+  border: 1px solid #deded8;
+  border-radius: calc(var(--org-card-radius) + 6px);
+  background: #f6f6f2;
   padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  min-width: 188px;
-  min-height: 120px;
+  min-width: 160px;
+  min-height: 100px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: visible;
   transition: var(--transition-brutal);
 }
 
@@ -1317,42 +1918,149 @@ a {
   background: var(--org-card-bg);
 }
 
+.org-group-units {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 72px;
+}
+
+.org-group-units > .org-node.org-node-unit.org-node-unit--in-group {
+  position: absolute;
+  width: fit-content;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--org-card-border);
+  background: var(--org-card-bg);
+  padding: 12px 14px;
+  z-index: 1;
+}
+
+.org-group-person {
+  position: absolute;
+  z-index: 2;
+  width: fit-content;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  touch-action: auto;
+}
+
+.org-chart-canvas--edit .org-group-person {
+  cursor: grab;
+  touch-action: none;
+}
+
+.org-chart-canvas--view .org-group-person {
+  cursor: pointer;
+}
+
+.org-chart-canvas--edit .org-group-person:active,
+.org-group-person.is-dragging {
+  cursor: grabbing;
+  z-index: 4;
+}
+
+.org-group-person-name {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.org-group-person .editable-line,
+.org-group-person .inline-edit-input {
+  text-align: left;
+  width: auto;
+  min-width: 4ch;
+}
+
+.org-group-person-select {
+  appearance: auto;
+  min-width: 220px;
+  max-width: 100%;
+  height: 30px;
+  border: 1.5px solid #202020;
+  border-radius: 8px;
+  background: #fff;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #121212;
+  cursor: pointer;
+  touch-action: auto;
+}
+
+.org-chart-canvas--edit .org-group-units > .org-node-unit--in-group {
+  cursor: grab;
+  touch-action: none;
+}
+
+.org-chart-canvas--edit .org-group-units > .org-node-unit--in-group:active,
+.org-group-units > .org-node-unit--in-group.is-reorder-source {
+  cursor: grabbing;
+  z-index: 3;
+}
+
+.org-node-unit--in-group.is-reorder-source {
+  opacity: 0.92;
+  box-shadow: 4px 4px 0 #ddf365;
+}
+
+.org-group-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #ecece6;
+  flex-shrink: 0;
+}
+
 .org-resize-handle {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 14px;
-  height: 14px;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
   cursor: nwse-resize;
-  border-right: 2px solid #838383;
-  border-bottom: 2px solid #838383;
-  border-radius: 0 0 4px 0;
-  opacity: 0.45;
+  border: none;
+  border-radius: 0;
+  opacity: 0.55;
   touch-action: none;
   transition: opacity 0.15s ease;
+  z-index: 5;
+}
+
+.org-resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid #838383;
+  border-bottom: 2px solid #838383;
+  pointer-events: none;
 }
 
 .org-resize-handle:hover {
-  opacity: 0.9;
-}
-
-.org-group-label {
-  margin: 2px 0 0;
-  text-align: left;
-  padding-top: 10px;
-  border-top: 1px solid #ecece6;
-}
-
-.org-group-label-text {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-soft);
-  letter-spacing: 0.01em;
+  opacity: 1;
 }
 
 .org-group-add-unit {
-  align-self: flex-start;
-  margin-top: 2px;
+  align-self: center;
+  margin-top: 0;
   padding: 5px 10px;
   border: 1px solid var(--org-card-border, #d8d8d2);
   border-radius: 999px;
@@ -1380,18 +2088,27 @@ a {
   max-width: 300px;
   width: auto;
   border: none;
-  background: var(--org-exec-accent);
+  background: transparent;
   border-radius: var(--org-card-radius);
-  padding: 16px 20px 15px;
+  padding: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   color: #fff;
   transition: var(--transition-brutal);
   isolation: isolate;
 }
 
-.org-chart-canvas--edit .org-node.org-node-executive {
-  overflow: visible;
+/* Фон + ITMO-геометрия внутри; порты остаются снаружи и не клипаются */
+.org-exec-face {
+  position: relative;
+  width: 100%;
+  border: none;
+  background: var(--org-exec-accent);
+  border-radius: var(--org-card-radius);
+  padding: 16px 20px 15px;
+  box-sizing: border-box;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .org-chart-canvas--edit .org-exec-content {
@@ -1403,7 +2120,7 @@ a {
   z-index: 1;
 }
 
-/* Геометрия как на abit.itmo.ru — фигуры обрезаются краем карточки */
+/* Геометрия как на abit.itmo.ru — фигуры обрезаются краем .org-exec-face */
 .org-node-executive--geo-0::before,
 .org-node-executive--geo-0::after,
 .org-node-executive--geo-1::before,
@@ -1528,12 +2245,15 @@ a {
 
 .org-node-unit {
   position: relative;
-  width: 100%;
+  width: fit-content;
   min-width: 0;
-  padding: 15px 18px 14px;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 12px 16px 11px;
   border-radius: var(--org-card-radius);
   text-align: left;
   box-shadow: none;
+  overflow: visible;
   transition: var(--transition-brutal);
 }
 
@@ -1542,20 +2262,30 @@ a {
   background: var(--org-card-bg);
 }
 
+.org-chart-canvas--view .org-node-unit--solo,
+.org-chart-canvas--view .org-group-units > .org-node-unit--in-group {
+  box-shadow: 0 1px 0 rgba(32, 32, 32, 0.04);
+}
+
+.org-chart-canvas--view .org-placed--unit:hover .org-node-unit--solo {
+  border-color: var(--org-card-border);
+  background: var(--org-card-bg);
+}
+
+.org-node-unit.is-resizing {
+  box-shadow: 3px 3px 0 #ddf365;
+}
+
+.org-unit-fields {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
 .org-chart-canvas .org-placed--unit:hover .org-node-unit--solo,
 .org-chart-canvas .org-placed--unit:not(.is-dragging):hover .org-node-unit--solo {
   border-color: #c8c8c2;
   background: var(--org-card-hover-bg);
-}
-
-.org-node-unit--in-group {
-  border: 1px solid var(--org-card-border);
-  background: var(--org-card-bg);
-  padding: 12px 14px;
-}
-
-.org-node-unit--in-group + .org-node-unit--in-group {
-  margin-top: 0;
 }
 
 .org-unit-title {
@@ -1564,6 +2294,7 @@ a {
   line-height: 1.35;
   margin: 0;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .org-unit-head {
@@ -1572,11 +2303,7 @@ a {
   font-weight: 500;
   color: var(--text-soft);
   line-height: 1.35;
-}
-
-.org-unit-fields {
-  display: grid;
-  gap: 2px;
+  overflow-wrap: anywhere;
 }
 
 .org-chart .editable-line:not(.readonly):hover {
@@ -1608,8 +2335,9 @@ a {
 }
 
 .org-remove-btn--group {
-  top: 10px;
-  right: 10px;
+  top: -10px;
+  right: -10px;
+  z-index: 6;
 }
 
 .org-confirm-overlay {
@@ -5716,6 +6444,7 @@ a {
   height: 100dvh;
   max-height: 100dvh;
   align-self: stretch;
+  overflow: hidden;
 }
 
 .app-viewport:has(.vac-manager-layout--with-aside:not(.vac-manager-layout--employee)) > .app-site-footer {
@@ -5871,6 +6600,7 @@ a {
   min-width: 0;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5890,11 +6620,14 @@ a {
 }
 
 .vac-manager-main > .vac-approval-panel {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  margin-top: 0;
 }
 
 .vac-manager-aside-panel {
@@ -6541,11 +7274,11 @@ a {
   border: 1px solid var(--border-brutal);
   background: var(--bg-surface);
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .vac-manager-main:has(.vac-approval-panel) {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .vac-approval-panel.card:hover {
@@ -6558,6 +7291,7 @@ a {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  flex-shrink: 0;
 }
 
 .vac-approval-panel__title {
@@ -6588,14 +7322,31 @@ a {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .vac-approval-list {
   display: grid;
   gap: 0;
-  overflow: visible;
   border: 1px solid var(--border-brutal);
   border-radius: var(--brutal-list-radius);
+  /* По умолчанию растёт с контентом (админка); в окне руководителя — скролл внутри */
+  overflow: visible;
+}
+
+/*
+ * Важно: глобально `.card > .list-reset { overflow: hidden }` идёт позже в файле
+ * и перебивало overflow-y:auto — очередь обрезалась без скролла.
+ * Специфичность выше + flex-basis 0, чтобы список получил ограниченную высоту.
+ */
+.vac-manager-main > .vac-approval-panel.card > .list-reset.vac-approval-list {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .vac-approval-item {
@@ -10227,7 +10978,7 @@ button.emp-name--card:hover {
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-main {
-  height: auto;
+  height: 100%;
   max-height: 100%;
   overflow: visible;
 }
@@ -10236,25 +10987,37 @@ button.emp-name--card:hover {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1;
   min-width: 0;
   min-height: 0;
-  height: auto;
   margin: 0;
   width: auto;
   max-width: none;
   padding: 14px 16px;
   align-items: stretch;
   overflow: hidden;
-  flex-shrink: 1;
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane--team {
   /* Высота: max(контент, вкладки); без растягивания до низа экрана */
   flex: 0 0 auto;
+  align-self: flex-start;
   height: auto;
   min-height: var(--vac-team-pane-min-h, auto);
   max-height: none;
+}
+
+/* «Общий»: левые углы скруглены, правый край ровный под ярлыки */
+.vacations-employee-shell .vac-emp-calendar-slot--with-tabs .vac-emp-calendar-pane--team {
+  border-radius: var(--vac-frame-radius) 0 0 var(--vac-frame-radius);
+  border-right: none;
+}
+
+/* «Мой календарь»: полная рамка со всеми скруглёнными углами */
+.vacations-employee-shell .vac-emp-calendar-slot--with-tabs .vac-emp-calendar-pane:not(.vac-emp-calendar-pane--team) {
+  border-radius: var(--vac-frame-radius);
+  overflow: hidden;
+  background-clip: padding-box;
 }
 
 .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid {
@@ -10606,23 +11369,24 @@ button.emp-name--card:hover {
 }
 
 .vac-emp-calendar-pane--team .vac-team-calendar {
-  flex: 1 1 auto;
+  /* Не растягиваем таблицу на всю белую рамку — иначе двойной скруглённый угол */
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
 }
 
-/* Общий календарь сотрудника: заполняет белую рамку; рамка ≥ вкладок */
+/* Общий календарь сотрудника: белая рамка ≥ вкладок; таблица по контенту (без «дыры» скругления) */
 .vac-team-calendar--employee-team .vac-team-calendar__main,
 .vac-team-calendar--employee-team .vac-team-calendar__pane,
 .vac-team-calendar--employee-team .vac-team-calendar__body {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   min-width: 0;
-  height: 100%;
+  height: auto;
 }
 
 .vac-team-calendar--employee-team .vac-team-calendar__body {
@@ -10631,10 +11395,10 @@ button.emp-name--card:hover {
 
 .vac-team-calendar--employee-team .vac-team-calendar__frame {
   --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 108px);
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: var(--vac-team-viewport-max);
 }
 
 .vac-team-calendar--employee-team .vacation-timeline {
@@ -10648,27 +11412,32 @@ button.emp-name--card:hover {
 }
 
 .vac-team-calendar--employee-team .vacation-calendar-wrap {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
+  /* Рамку и скругление даёт внешний .vac-emp-calendar-pane — без «двойного» угла */
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
 .vac-team-calendar--employee-team .vac-table-scroll {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  max-height: none;
-  height: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--vac-card-radius);
+  max-height: var(--vac-team-viewport-max);
+  height: auto;
+  /* Рамку даёт внешний .vac-emp-calendar-pane — без второго скругления внутри */
+  border: none;
+  border-radius: 0;
   overflow-x: auto;
   overflow-y: auto;
-  /* Разрешаем wheel-прокрутке передаваться странице за пределами таблицы. */
   overscroll-behavior: auto;
-  background: var(--bg-surface);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  background: transparent;
+  box-shadow: none;
 }
 
 .vac-team-calendar--employee-team .vacation-timeline tbody tr.vac-team-emp-row .sticky-col-name,
@@ -11575,6 +12344,12 @@ button.emp-name--card:hover {
   border: 1px solid var(--border-brutal);
   border-radius: var(--brutal-list-radius);
   overflow: hidden;
+}
+
+/* Очередь согласования руководителя: скролл внутри панели (перебивает overflow:hidden выше) */
+.vac-manager-main > .vac-approval-panel.card > .list-reset.vac-approval-list {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .card > .list-reset > .task-item {
@@ -13508,6 +14283,65 @@ button.button {
 .store-page__catalog-lead {
   margin: 0;
   font-size: 0.9rem;
+}
+
+.store-wallet-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 2px solid #111;
+  border-radius: 12px;
+  background: #eeeee8;
+  box-shadow: 3px 3px 0 #111;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.store-wallet-entry:hover {
+  background: #ddf365;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #111;
+}
+
+.store-wallet-entry:focus-visible {
+  outline: 3px solid #7451f4;
+  outline-offset: 2px;
+}
+
+.store-wallet-entry__badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1.5px solid #111;
+  background: #fff;
+}
+
+.store-wallet-entry__body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.store-wallet-entry__title {
+  font-family: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.store-wallet-entry__text {
+  font-size: 0.85rem;
+  color: #4a4a4a;
+}
+
+.store-wallet-entry__arrow {
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .store-page__filters {

@@ -1,0 +1,27 @@
+{
+  "source": "LOCKED-cat-etalon.png",
+  "sizes_px": {
+    "start": [
+      308,
+      234
+    ],
+    "middle": [
+      270,
+      176
+    ],
+    "end": [
+      223,
+      231
+    ]
+  },
+  "seam_top_y": {
+    "start": 28,
+    "middle": 1,
+    "end": 10
+  },
+  "seam_height_px": {
+    "start": 167,
+    "middle": 173,
+    "end": 170
+  }
+}

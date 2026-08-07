@@ -3,8 +3,10 @@ export async function bootstrapAppData() {
   if (!import.meta.client) return;
 
   useState<boolean>('vbi-employees-hydrated').value = false;
+  useState<boolean>('vbi-org-hydrated').value = false;
   await useEmployees().hydrate();
   await useVacations().hydrate();
+  await useOrgStructure().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
   await useIdeasBank().hydrate();

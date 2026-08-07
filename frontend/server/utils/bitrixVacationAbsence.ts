@@ -106,11 +106,28 @@ const absenceIblockTypeId = () =>
 
 const absenceTypeEnum = () => String(process.env.BITRIX_ABSENCE_TYPE_ENUM || '1').trim();
 
+/**
+ * На crm.vbi.ru поле «Пользователь» — PROPERTY_1 (CODE=USER).
+ * Ключ PROPERTY_USER в FIELDS не принимается → «Пользователь is required».
+ */
 const absenceUserProperty = () =>
-  String(process.env.BITRIX_ABSENCE_PROPERTY_USER || 'PROPERTY_USER').trim();
+  String(process.env.BITRIX_ABSENCE_PROPERTY_USER || 'PROPERTY_1').trim();
 
 const absenceTypeProperty = () =>
-  String(process.env.BITRIX_ABSENCE_PROPERTY_TYPE || 'PROPERTY_ABSENCE_TYPE').trim();
+  String(process.env.BITRIX_ABSENCE_PROPERTY_TYPE || 'PROPERTY_7').trim();
+
+/** ДД.ММ.ГГГГ для FILTER ACTIVE_FROM (без времени — иначе lists может не найти). */
+const toBitrixDate = (isoDate: string): string => {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d)}.${pad(m)}.${y}`;
+};
+
+const isElementAlreadyExistsError = (message: string): boolean =>
+  /element already exists/i.test(message);
+
+const isCodeFilterNotAllowed = (message: string): boolean =>
+  /filter field not allowed:\s*code/i.test(message);
 
 let cachedAbsenceIblockId: number | null | undefined;
 
@@ -167,53 +184,149 @@ const bitrixDateToIso = (value: string | undefined): string => {
   return `${m[3]}-${m[2]}-${m[1]}`;
 };
 
+const elementMatchesDates = (
+  el: AbsenceListElement,
+  start: string,
+  end: string
+): boolean =>
+  bitrixDateToIso(el.ACTIVE_FROM) === start && bitrixDateToIso(el.ACTIVE_TO) === end;
+
+const pickAbsenceHit = (
+  rows: AbsenceListElement[] | undefined,
+  params: { bitrixUserId: number; start: string; end: string; requestId: number }
+): AbsenceListElement | undefined => {
+  const code = `vbi-hr-vac-${params.requestId}`;
+  const list = rows || [];
+  const withCode = list.find((el) => String(el.CODE || '') === code && Number(el.ID) > 0);
+  if (withCode) return withCode;
+
+  return list.find((el) => {
+    if (!(Number(el.ID) > 0)) return false;
+    if (absenceElementUserId(el) !== params.bitrixUserId) return false;
+    return elementMatchesDates(el, params.start, params.end);
+  });
+};
+
 /**
  * Уже есть в графике отсутствий (ручной ввод или прошлый синк) —
  * не плодим дубликат, а привязываем заявку к существующему ID.
+ *
+ * Важно (crm.vbi.ru):
+ * - FILTER по CODE запрещён («Filter field not allowed: CODE»);
+ * - FILTER только по пользователю отдаёт ≤50 строк и может не найти свежие отпуска
+ *   → тогда lists.element.add падает с «Element already exists».
  */
 const findExistingAbsenceElement = async (params: {
   bitrixUserId: number;
   start: string;
   end: string;
   requestId: number;
+  knownAbsenceId?: number | null;
 }): Promise<{ absenceId: number; auth: AuthMode; upToDate: boolean } | null> => {
   const iblockId = await resolveAbsenceIblockId();
   if (!iblockId) return null;
 
   const code = `vbi-hr-vac-${params.requestId}`;
+
+  if (params.knownAbsenceId && params.knownAbsenceId > 0) {
+    try {
+      const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+        IBLOCK_TYPE_ID: absenceIblockTypeId(),
+        IBLOCK_ID: iblockId,
+        FILTER: { ID: params.knownAbsenceId }
+      });
+      const hit = (result || []).find((el) => Number(el.ID) === params.knownAbsenceId);
+      if (hit) {
+        return {
+          absenceId: Number(hit.ID),
+          auth,
+          upToDate: elementMatchesDates(hit, params.start, params.end)
+        };
+      }
+    } catch (err) {
+      console.warn('[bitrix-vacation] lists.element.get by ID failed:', errorMessage(err));
+    }
+  }
+
+  // FILTER по CODE на crm.vbi.ru запрещён, но ELEMENT_CODE (без FILTER) работает —
+  // нужен при переносе дат: старый ACTIVE_FROM уже не совпадает с заявкой.
+  try {
+    const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      ELEMENT_CODE: code
+    });
+    const hit = (result || []).find((el) => Number(el.ID) > 0);
+    if (hit) {
+      return {
+        absenceId: Number(hit.ID),
+        auth,
+        upToDate: elementMatchesDates(hit, params.start, params.end)
+      };
+    }
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by ELEMENT_CODE failed:', errorMessage(err));
+  }
+
   try {
     const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
       IBLOCK_TYPE_ID: absenceIblockTypeId(),
       IBLOCK_ID: iblockId,
       FILTER: { CODE: code }
     });
-    const hit = (result || []).find((el) => Number(el.ID) > 0);
+    const hit = pickAbsenceHit(result, params);
     if (hit) {
-      const upToDate =
-        bitrixDateToIso(hit.ACTIVE_FROM) === params.start && bitrixDateToIso(hit.ACTIVE_TO) === params.end;
-      return { absenceId: Number(hit.ID), auth, upToDate };
+      return {
+        absenceId: Number(hit.ID),
+        auth,
+        upToDate: elementMatchesDates(hit, params.start, params.end)
+      };
     }
   } catch (err) {
-    console.warn('[bitrix-vacation] lists.element.get by CODE failed:', errorMessage(err));
+    const message = errorMessage(err);
+    if (!isCodeFilterNotAllowed(message)) {
+      console.warn('[bitrix-vacation] lists.element.get by CODE failed:', message);
+    }
   }
 
+  // С датой старта — не упираемся в лимит 50 «всех отсутствий пользователя».
   try {
     const { result, auth } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
       IBLOCK_TYPE_ID: absenceIblockTypeId(),
       IBLOCK_ID: iblockId,
-      FILTER: { [absenceUserProperty()]: params.bitrixUserId }
+      FILTER: {
+        [absenceUserProperty()]: params.bitrixUserId,
+        ACTIVE_FROM: toBitrixDate(params.start)
+      }
     });
-    const hit = (result || []).find((el) => {
-      if (absenceElementUserId(el) !== params.bitrixUserId) return false;
-      return bitrixDateToIso(el.ACTIVE_FROM) === params.start && bitrixDateToIso(el.ACTIVE_TO) === params.end;
-    });
-    if (hit) return { absenceId: Number(hit.ID), auth, upToDate: true };
+    const hit = pickAbsenceHit(result, params);
+    if (hit) {
+      return {
+        absenceId: Number(hit.ID),
+        auth,
+        upToDate: elementMatchesDates(hit, params.start, params.end)
+      };
+    }
   } catch (err) {
     console.warn('[bitrix-vacation] lists.element.get by user/dates failed:', errorMessage(err));
   }
 
   return null;
 };
+
+const absenceFields = (params: {
+  bitrixUserId: number;
+  start: string;
+  end: string;
+  comment: string;
+  employeeName: string;
+}): Record<string, unknown> => ({
+  NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
+  ACTIVE_FROM: toBitrixDateTime(params.start, false),
+  ACTIVE_TO: toBitrixDateTime(params.end, true),
+  [absenceUserProperty()]: params.bitrixUserId,
+  [absenceTypeProperty()]: absenceTypeEnum()
+});
 
 const createViaAbsenceIblock = async (params: {
   bitrixUserId: number;
@@ -228,21 +341,41 @@ const createViaAbsenceIblock = async (params: {
     throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
   }
 
-  const fields: Record<string, unknown> = {
-    NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
-    ACTIVE_FROM: toBitrixDateTime(params.start, false),
-    ACTIVE_TO: toBitrixDateTime(params.end, true),
-    [absenceUserProperty()]: params.bitrixUserId,
-    [absenceTypeProperty()]: absenceTypeEnum()
-  };
-
   const { result, auth } = await bitrixVacationRest<number>('lists.element.add', {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
     ELEMENT_CODE: `vbi-hr-vac-${params.requestId}`,
-    FIELDS: fields
+    FIELDS: absenceFields(params)
   });
   return { absenceId: result, auth };
+};
+
+/** Перенос дат / правка пальмы без delete+add (иначе Element already exists). */
+const updateViaAbsenceIblock = async (params: {
+  absenceId: number;
+  bitrixUserId: number;
+  start: string;
+  end: string;
+  comment: string;
+  requestId: number;
+  employeeName: string;
+}): Promise<{ absenceId: number; auth: AuthMode }> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
+  }
+
+  const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
+    IBLOCK_TYPE_ID: absenceIblockTypeId(),
+    IBLOCK_ID: iblockId,
+    ELEMENT_ID: params.absenceId,
+    // CODE иначе стирается после update — следующий перенос не найдёт элемент по ELEMENT_CODE.
+    FIELDS: {
+      ...absenceFields(params),
+      CODE: `vbi-hr-vac-${params.requestId}`
+    }
+  });
+  return { absenceId: params.absenceId, auth };
 };
 
 export const pushVacationToBitrixAbsence = async (request: VacationRequest): Promise<{
@@ -280,27 +413,22 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
     bitrixUserId,
     start: request.start,
     end: request.end,
-    requestId: request.id
+    requestId: request.id,
+    knownAbsenceId: request.bitrix_absence_id ?? null
   });
   if (existing) {
-    // Если даты изменены (перенос после согласования), а элемент по CODE уже есть —
-    // пересоздаём, чтобы ACTIVE_FROM/ACTIVE_TO совпали с новыми start/end.
+    // Даты сменились после согласования — обновляем тот же элемент (пальма переезжает).
+    // Не delete+add: CODE уже занят → Element already exists.
     if (existing.upToDate) {
       absenceId = existing.absenceId;
       method = `lists.element.existing:${existing.auth}`;
     } else {
-      const iblockId = await resolveAbsenceIblockId();
-      if (!iblockId) throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
-
-      await bitrixVacationRest<boolean>('lists.element.delete', {
-        IBLOCK_TYPE_ID: absenceIblockTypeId(),
-        IBLOCK_ID: iblockId,
-        ELEMENT_ID: existing.absenceId
+      const updated = await updateViaAbsenceIblock({
+        absenceId: existing.absenceId,
+        ...payload
       });
-
-      const iblock = await createViaAbsenceIblock(payload);
-      absenceId = iblock.absenceId;
-      method = `lists.element.recreate:${iblock.auth}`;
+      absenceId = updated.absenceId;
+      method = `lists.element.update:${updated.auth}`;
     }
   } else {
     try {
@@ -308,18 +436,55 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
       absenceId = iblock.absenceId;
       method = `lists.element.add:${iblock.auth}`;
     } catch (iblockError) {
-      // Не падаем в calendar.event.add: вебхук/OAuth = CREATED_BY HR (Драго),
-      // и Bitrix показывает такие absence-события в «Отсутствиях» у автора, даже при верном ownerId.
-      throw new Error(
-        `lists.element.add не удался: ${errorMessage(iblockError)}. ` +
-          `calendar.event.add отключён (чужие отпуска в профиле владельца вебхука/токена).`
-      );
+      const message = errorMessage(iblockError);
+      // CODE уже занят, а FILTER по CODE на портале запрещён — достаём элемент и при необходимости update.
+      if (isElementAlreadyExistsError(message)) {
+        const recovered = await findExistingAbsenceElement({
+          bitrixUserId,
+          start: request.start,
+          end: request.end,
+          requestId: request.id,
+          knownAbsenceId: request.bitrix_absence_id ?? null
+        });
+        if (recovered) {
+          if (recovered.upToDate) {
+            absenceId = recovered.absenceId;
+            method = `lists.element.existing-after-add-conflict:${recovered.auth}`;
+          } else {
+            const updated = await updateViaAbsenceIblock({
+              absenceId: recovered.absenceId,
+              ...payload
+            });
+            absenceId = updated.absenceId;
+            method = `lists.element.update-after-add-conflict:${updated.auth}`;
+          }
+        } else if (request.bitrix_absence_id && request.bitrix_absence_id > 0) {
+          const updated = await updateViaAbsenceIblock({
+            absenceId: request.bitrix_absence_id,
+            ...payload
+          });
+          absenceId = updated.absenceId;
+          method = `lists.element.update-known-id:${updated.auth}`;
+        } else {
+          throw new Error(
+            `lists.element.add не удался: ${message}. ` +
+              `calendar.event.add отключён (чужие отпуска в профиле владельца вебхука/токена).`
+          );
+        }
+      } else {
+        // Не падаем в calendar.event.add: вебхук/OAuth = CREATED_BY HR (Драго),
+        // и Bitrix показывает такие absence-события в «Отсутствиях» у автора, даже при верном ownerId.
+        throw new Error(
+          `lists.element.add не удался: ${message}. ` +
+            `calendar.event.add отключён (чужие отпуска в профиле владельца вебхука/токена).`
+        );
+      }
     }
   }
 
   // Календарную отметку не пишем: CREATED_BY всегда = владелец вебхука (Драго),
   // из‑за этого чужие отпуска появляются в блоке «Отсутствия» у HR.
-  // Пальма/график отсутствий — через lists (PROPERTY_USER = сотрудник).
+  // Пальма/график отсутствий — через lists (PROPERTY_1 = сотрудник).
 
   return { absenceId, method };
 };
@@ -328,15 +493,20 @@ const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): 
   if (request.status !== 'approved') return false;
   if (!previous) return true;
 
-  // Когда заявка уже согласована, при любом повторном сохранении (в т.ч. без смены дат)
-  // мы делаем проверку Bitrix-сущности: `pushVacationToBitrixAbsence()` сам пересоздаст
-  // «пальму», если `ACTIVE_FROM/ACTIVE_TO` не совпали.
-  // Это нужно, чтобы исправлять расхождения после прошлых багов синка.
-  if (previous.status === 'approved' && request.bitrix_absence_id) return true;
-
-  // Перенос дат у уже согласованной заявки тоже должен перезаписать «пальму» в Bitrix.
   const datesChanged = previous.start !== request.start || previous.end !== request.end;
-  return previous.status !== 'approved' || datesChanged;
+  const newlyApproved = previous.status !== 'approved';
+  if (newlyApproved || datesChanged) return true;
+
+  // Уже согласовано и даты те же: синкаем только если прошлый раз failed/skipped
+  // или ещё ни разу не синкнули. Не гоняем всю базу при каждом чужом approve.
+  if (request.bitrix_sync_status === 'failed' || request.bitrix_sync_status === 'skipped') {
+    return true;
+  }
+  if (!request.bitrix_absence_id || request.bitrix_sync_status !== 'synced') {
+    return true;
+  }
+
+  return false;
 };
 
 /** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */

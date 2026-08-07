@@ -14,7 +14,6 @@
         }
       ]"
       :title="portTitle(side)"
-      @mousedown.stop.prevent="(e) => emitPortDown(side, e)"
       @pointerdown.stop.prevent="(e) => emitPortDown(side, e)"
     />
   </div>

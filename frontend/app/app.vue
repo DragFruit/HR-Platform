@@ -12,17 +12,6 @@
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-title">{{ platformName }}</span>
-        <span class="brand-subtitle">
-          {{
-            isVacationsOnly
-              ? isAdmin
-                ? 'Администрирование отпусков'
-                : 'График отпусков'
-              : isAdmin
-                ? 'Панель администратора'
-                : 'Рабочее пространство сотрудника'
-          }}
-        </span>
       </div>
 
       <div v-if="canSwitchRole" class="role-switch" role="group" aria-label="Режим платформы">
@@ -153,6 +142,15 @@ const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
 const isNavItemActive = (to: string) => {
   if (to === '/') return route.path === '/';
   if (to === '/profile') return route.path === '/profile' || route.path.startsWith('/profile/');
+  // Кошелёк открывается из Магазина — подсвечиваем «Магазин»
+  if (to === '/store') {
+    return (
+      route.path === '/store' ||
+      route.path.startsWith('/store/') ||
+      route.path === '/wallet' ||
+      route.path.startsWith('/wallet/')
+    );
+  }
   return route.path === to || route.path.startsWith(`${to}/`);
 };
 

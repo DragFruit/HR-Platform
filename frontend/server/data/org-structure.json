@@ -1,0 +1,491 @@
+{
+  "executives": [
+    {
+      "id": "exe-1785927813562-638",
+      "title": "Финансовый директор",
+      "person": "Сергей",
+      "order": 0,
+      "x": 72,
+      "y": 0
+    },
+    {
+      "id": "exe-1785927814045-97",
+      "title": "Генеральный директор",
+      "person": "Вадим",
+      "order": 1,
+      "x": 409,
+      "y": 0
+    },
+    {
+      "id": "exe-1785927814512-349",
+      "title": "Коммерческий директор",
+      "person": "Владислав",
+      "order": 2,
+      "x": 745,
+      "y": 0
+    }
+  ],
+  "units": [
+    {
+      "id": "u-1785929118588-190",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Бухгалтерия",
+      "head": "",
+      "order": 10,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 140,
+      "y": 92
+    },
+    {
+      "id": "u-1785929237603-867",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел контекстной и медийной рекламы",
+      "head": "",
+      "order": 20,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 25,
+      "y": 272
+    },
+    {
+      "id": "u-1785929259705-734",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел продаж",
+      "head": "",
+      "order": 30,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 816,
+      "y": 91
+    },
+    {
+      "id": "u-1785929540332-107",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Digital отдел",
+      "head": "Ревзина Ксения",
+      "order": 40,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 26,
+      "y": 176
+    },
+    {
+      "id": "u-1785929622400-968",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел разработки",
+      "head": "Музыка Сергей",
+      "order": 50,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 306,
+      "y": 174
+    },
+    {
+      "id": "u-1785930115190-181",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел маркетинга",
+      "head": "Волдайский Кирилл",
+      "order": 60,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 913,
+      "y": 176
+    },
+    {
+      "id": "u-1785930169459-808",
+      "executiveId": "exe-1785927813562-638",
+      "name": "HR-специалист",
+      "head": "Драго Станислава",
+      "order": 70,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 913,
+      "y": 272
+    },
+    {
+      "id": "u-1785930186624-509",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Офис-менеджер",
+      "head": "Желялетдинова Анастасия",
+      "order": 80,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 913,
+      "y": 368
+    },
+    {
+      "id": "u-1785930224541-338",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Юристы",
+      "head": "",
+      "order": 90,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 913,
+      "y": 554
+    },
+    {
+      "id": "u-1785930248076-244",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел SMM & Influence & Таргета",
+      "head": "Носков Никита",
+      "order": 100,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 24,
+      "y": 343
+    },
+    {
+      "id": "u-1785930253408-871",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел аналитики",
+      "head": "",
+      "order": 110,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 25,
+      "y": 440
+    },
+    {
+      "id": "u-1785930967820-726",
+      "executiveId": "exe-1785927813562-638",
+      "name": "ORM отдел",
+      "head": "Новоторцева Екатерина",
+      "order": 10,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 578,
+      "y": 345,
+      "width": 222,
+      "height": 77
+    },
+    {
+      "id": "u-1785931011417-738",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел аккаунтинга",
+      "head": "",
+      "order": 30,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 577,
+      "y": 440
+    },
+    {
+      "id": "u-1785943129320-395",
+      "executiveId": "exe-1785927813562-638",
+      "name": "SEO&SERM",
+      "head": "Трубицына Анна",
+      "order": 120,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 581,
+      "y": 176
+    },
+    {
+      "id": "u-1785943154343-565",
+      "executiveId": "exe-1785927813562-638",
+      "name": "SEO отдел",
+      "head": "",
+      "order": 130,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 578,
+      "y": 273
+    },
+    {
+      "id": "u-1786024103513-631",
+      "executiveId": "exe-1785927813562-638",
+      "name": "Отдел внутренних проектов",
+      "head": "Грошева Дарья",
+      "order": 140,
+      "stackId": null,
+      "groupId": null,
+      "employees": 0,
+      "members": [],
+      "x": 913,
+      "y": 460
+    }
+  ],
+  "groups": [],
+  "links": [
+    {
+      "id": "lnk-1785929816047-965",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814512-349",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785929259705-734",
+        "side": "top"
+      }
+    },
+    {
+      "id": "lnk-1785929843812-607",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927813562-638",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785929118588-190",
+        "side": "top"
+      }
+    },
+    {
+      "id": "lnk-1785930132874-409",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785929622400-968",
+        "side": "top"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785930140973-691",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785929540332-107",
+        "side": "top"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785930239459-87",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "right"
+      },
+      "to": {
+        "kind": "executive",
+        "id": "exe-1785927814512-349",
+        "side": "left"
+      }
+    },
+    {
+      "id": "lnk-1785930241575-945",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "left"
+      },
+      "to": {
+        "kind": "executive",
+        "id": "exe-1785927813562-638",
+        "side": "right"
+      }
+    },
+    {
+      "id": "lnk-1785931168875-177",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930115190-181",
+        "side": "left"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785931174692-144",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930169459-808",
+        "side": "left"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785931177739-665",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930186624-509",
+        "side": "left"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785931181391-330",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930224541-338",
+        "side": "left"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785931211506-957",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785929540332-107",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785929237603-867",
+        "side": "left"
+      },
+      "mid": 6
+    },
+    {
+      "id": "lnk-1785931213675-706",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785929540332-107",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930248076-244",
+        "side": "left"
+      },
+      "mid": 6
+    },
+    {
+      "id": "lnk-1785931216040-55",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785929540332-107",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930253408-871",
+        "side": "left"
+      },
+      "mid": 6
+    },
+    {
+      "id": "lnk-1785943228631-543",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785943129320-395",
+        "side": "top"
+      },
+      "mid": 153
+    },
+    {
+      "id": "lnk-1785943254407-365",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785943129320-395",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785943154343-565",
+        "side": "left"
+      },
+      "mid": 559
+    },
+    {
+      "id": "lnk-1785943256391-941",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785943129320-395",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785930967820-726",
+        "side": "left"
+      },
+      "mid": 560
+    },
+    {
+      "id": "lnk-1785943258959-606",
+      "from": {
+        "kind": "unit",
+        "id": "u-1785943129320-395",
+        "side": "left"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1785931011417-738",
+        "side": "left"
+      },
+      "mid": 560
+    },
+    {
+      "id": "lnk-1786024166886-269",
+      "from": {
+        "kind": "executive",
+        "id": "exe-1785927814045-97",
+        "side": "bottom"
+      },
+      "to": {
+        "kind": "unit",
+        "id": "u-1786024103513-631",
+        "side": "left"
+      },
+      "mid": 153
+    }
+  ]
+}

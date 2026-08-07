@@ -6,11 +6,14 @@ export const LAUNCH_VACATIONS_EMPLOYEE_PATH = '/vacations';
 export const LAUNCH_VACATIONS_NOTIFICATIONS_PATH = '/notifications';
 export const LAUNCH_VACATIONS_PROFILE_PATH = '/profile';
 export const LAUNCH_VACATIONS_IDEAS_PATH = '/ideas';
+export const LAUNCH_VACATIONS_VPN_PATH = '/vpn';
 export const LAUNCH_VACATIONS_ADMIN_PATH = '/admin/vacations';
 export const LAUNCH_VACATIONS_ADMIN_HOW_IT_LOOKS_PATH = '/admin/how-it-looks';
 export const LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH = '/admin/employees';
 export const LAUNCH_VACATIONS_ADMIN_NOTIFICATIONS_PATH = '/admin/notifications';
 export const LAUNCH_VACATIONS_ADMIN_IDEAS_PATH = '/admin/ideas';
+export const LAUNCH_VACATIONS_ADMIN_ORGANIZATION_PATH = '/admin/organization';
+export const LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH = '/organization';
 
 export function useLaunchScope() {
   const config = useRuntimeConfig();
@@ -48,6 +51,9 @@ export function useLaunchScope() {
     if (path === LAUNCH_VACATIONS_IDEAS_PATH || path.startsWith(`${LAUNCH_VACATIONS_IDEAS_PATH}/`)) {
       return true;
     }
+    if (path === LAUNCH_VACATIONS_VPN_PATH || path.startsWith(`${LAUNCH_VACATIONS_VPN_PATH}/`)) {
+      return true;
+    }
     if (path === LAUNCH_VACATIONS_ADMIN_PATH || path.startsWith(`${LAUNCH_VACATIONS_ADMIN_PATH}/`)) {
       return true;
     }
@@ -67,6 +73,18 @@ export function useLaunchScope() {
     if (
       path === LAUNCH_VACATIONS_ADMIN_IDEAS_PATH ||
       path.startsWith(`${LAUNCH_VACATIONS_ADMIN_IDEAS_PATH}/`)
+    ) {
+      return true;
+    }
+    if (
+      path === LAUNCH_VACATIONS_ADMIN_ORGANIZATION_PATH ||
+      path.startsWith(`${LAUNCH_VACATIONS_ADMIN_ORGANIZATION_PATH}/`)
+    ) {
+      return true;
+    }
+    if (
+      path === LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH ||
+      path.startsWith(`${LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH}/`)
     ) {
       return true;
     }

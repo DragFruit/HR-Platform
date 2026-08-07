@@ -1,3 +1,5 @@
+import { findKnowledgeCard } from '~/data/knowledgeBaseCatalog';
+
 export type PlatformRole = 'employee' | 'admin';
 
 export type NavItem = {
@@ -13,10 +15,11 @@ const employeeNav: NavItem[] = [
   { to: '/adaptation', label: 'Адаптация' },
   { to: '/organization', label: 'Структура' },
   { to: '/vacations', label: 'График отпусков' },
+  { to: '/vpn', label: 'VPN' },
+  { to: '/knowledge', label: 'База знаний' },
   { to: '/notifications', label: 'Уведомления' },
   { to: '/tasks', label: 'Задачи' },
-  { to: '/store', label: 'Магазин' },
-  { to: '/wallet', label: 'Кошелёк' },
+  { to: '/store', label: 'Магазин · кошелёк' },
   { to: '/ideas', label: 'Банк идей' },
   profileNavItem
 ];
@@ -110,8 +113,21 @@ export function usePlatformContext() {
     if (route.path.startsWith('/notifications')) {
       return 'Уведомления';
     }
+    if (route.path.startsWith('/vpn')) {
+      return 'VPN';
+    }
+    if (route.path.startsWith('/wallet')) {
+      return 'Кошелёк';
+    }
     if (route.path.startsWith('/ideas') || route.path.startsWith('/admin/ideas')) {
       return 'Банк идей';
+    }
+    if (route.path.startsWith('/knowledge/')) {
+      const id = route.path.slice('/knowledge/'.length).split('/')[0] ?? '';
+      return findKnowledgeCard(id)?.title ?? 'База знаний';
+    }
+    if (route.path.startsWith('/knowledge')) {
+      return 'База знаний';
     }
     if (route.path === '/admin/how-it-looks') {
       return 'Как выглядит';

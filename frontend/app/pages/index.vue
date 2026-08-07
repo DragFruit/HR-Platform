@@ -36,7 +36,7 @@
         <div class="hero-actions">
           <NuxtLink to="/adaptation" class="button primary">Адаптация</NuxtLink>
           <NuxtLink to="/tasks" class="button ghost">Задачи</NuxtLink>
-          <NuxtLink to="/wallet" class="button ghost">Кошелёк</NuxtLink>
+          <NuxtLink to="/store" class="button ghost">Магазин</NuxtLink>
         </div>
       </div>
     </div>

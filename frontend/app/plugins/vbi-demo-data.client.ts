@@ -30,7 +30,7 @@ export default defineNuxtPlugin(() => {
 
   useEmployees().hydrate();
   useVacations().hydrate();
-  useOrgStructure().hydrate();
+  void useOrgStructure().hydrate();
   useTasks().hydrate();
   useWallet().hydrateWallets();
   useHrKnowledgeTest().hydrate();

@@ -44,7 +44,7 @@ const DIGITAL_VACATION_GROUP_DEFS: readonly VacationGroupDef[] = [
     type: 'explicit',
     memberNames: ['Левина Анастасия', 'Мощев Максим']
   },
-  { id: 'digital-tskhai', label: 'Digital / Группа 3', type: 'lead', leadName: 'Цхай Виталий' },
+  { id: 'digital-tskhai', label: 'Digital / Группа Цхай', type: 'lead', leadName: 'Цхай Виталий' },
   { id: 'digital-popov', label: 'Digital / Группа · Попов', type: 'lead', leadName: 'Попов Виктор' },
   { id: 'digital-lunin', label: 'Digital / Группа · Лунин', type: 'lead', leadName: 'Лунин Дмитрий' },
   { id: 'digital-noskov', label: 'Digital / SMM · Носков', type: 'lead', leadName: 'Носков Никита' }

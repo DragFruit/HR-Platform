@@ -41,7 +41,7 @@ export default defineNuxtConfig({
     public: {
       /** development | staging | production — для плашки стенда и логики окружения */
       appEnv: process.env.NUXT_PUBLIC_APP_ENV || 'development',
-      /** Связи между блоками оргструктуры (рисование линий) — на бое пока выключено */
+      /** Связи между блоками оргструктуры (порты + линии). Production: включается через NUXT_PUBLIC_ORG_LINKS_ENABLED=true в build. */
       orgLinksEnabled:
         process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED === 'true' ||
         (process.env.NUXT_PUBLIC_ORG_LINKS_ENABLED !== 'false' &&

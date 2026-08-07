@@ -79,7 +79,7 @@ REMOTE_MANAGERS="${REMOTE_DATA}/employee-managers.json"
 
 "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_MANAGERS}' || printf '%s\\n' '{\"byId\":{},\"byName\":{}}' > '${REMOTE_MANAGERS}'"
 
-for seed in adaptation-track.json employees.json vacations.json ideas.json; do
+for seed in adaptation-track.json employees.json vacations.json ideas.json org-structure.json; do
   if [[ ! -f "${SEED_DATA_DIR}/${seed}" ]]; then
     continue
   fi
@@ -100,6 +100,11 @@ for seed in adaptation-track.json employees.json vacations.json ideas.json; do
 
   if [[ "${seed}" == "ideas.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
     echo "→ skip ${seed} (очередь идей остаётся с сервера)"
+    continue
+  fi
+
+  if [[ "${seed}" == "org-structure.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
+    echo "→ skip ${seed} (оргструктура остаётся с сервера)"
     continue
   fi
 

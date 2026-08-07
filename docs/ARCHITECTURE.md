@@ -54,7 +54,7 @@ flowchart TB
 ### Поэтапный запуск (`useLaunchScope.ts`)
 
 - Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — `full` (по умолчанию) или `vacations`.
-- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков», «Как выглядит» (превью UI руководителя), «Сотрудники», уведомления, идеи, профиль.
+- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков», «Как выглядит» (превью UI руководителя), «Сотрудники», уведомления, идеи, профиль, **VPN** (`/vpn`).
 - **Хардлок боя:** хост `45.12.74.25` без порта `:8080` всегда `vacations` (`utils/productionHost.ts`), даже если в бандле ошибочно `full` / `appEnv=development`.
 
 ### Окружения и деплой
@@ -115,7 +115,7 @@ flowchart TB
 
 - `index.vue` — главная
 - `adaptation.vue`
-- `organization.vue` → `OrgChart` readonly
+- `organization.vue` → `OrgChart` readonly + панель сотрудников; продуктовые правила **[PRODUCT.md](./PRODUCT.md)** §8
 - `vacations.vue` — employee UI или `VacationsManagerExperience` (manager/hr)
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
@@ -123,7 +123,7 @@ flowchart TB
 ### Админ
 
 - `admin/index.vue` — хаб ссылок
-- `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа
+- `admin/organization.vue` — `OrgChart` + кнопки +директор / +отдел / +группа; данные `GET/PUT /api/org-structure` → `server/data/org-structure.json`
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue` (календарь + очередь согласования)
 - `admin/how-it-looks.vue` — превью как у руководителя; на бое с замком после выката рук-ам
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
@@ -164,8 +164,9 @@ Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` о�
 
 | Компонент | Назначение |
 |-----------|------------|
-| `OrgChart.vue` | Иерархическая оргсхема, drag на сетке 6 колонок |
-| `OrgUnitFields.vue` | Поля отдела (название, руководитель) |
+| `OrgChart.vue` | Оргсхема: readonly contain без скролла; при roster — `layoutCompressX` (только X); edit — drag/связи |
+| `OrgUnitRosterAside.vue` | Правая панель: заголовок + скролл списка сотрудников |
+| `OrgUnitFields.vue` | Поля отдела (название, руководитель из справочника) |
 | `OrgConfirmDialog.vue` | Подтверждение удаления |
 | `InlineField.vue` | Редактирование текста inline |
 | `EmployeeVacationPanel.vue` | Кабинет сотрудника: заявки + календарь; `vac-year-chip` справа над календарём; годы `< primaryYear` — только просмотр |
@@ -309,17 +310,31 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 ---
 
 
-## Оргструктура (данные)
+## Оргструктура (данные и UI)
+
+Продуктовые правила (панель, матчинг, без скролла схемы): **[PRODUCT.md](./PRODUCT.md)** §8.
 
 ```ts
-OrgExecutive   // id, title, person, order, gridCol, gridRow
-OrgUnit        // отдел: executiveId, groupId?, name, head, ...
-OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
+OrgExecutive   // id, title, person, order, x?, y?
+OrgUnit        // отдел: executiveId, groupId?, name, head, width?, ...
+OrgUnitGroup   // рамка: label, executiveId, x?, y?
+OrgLink        // from/to ports + optional mid
 ```
 
+| Слой | Файлы |
+|------|--------|
+| Данные | `server/data/org-structure.json`, API `GET/PUT /api/org-structure` (`orgStructureStore.ts`) |
+| Клиент | `useOrgStructure.ts` — hydrate с сервера (предпочтительнее non-empty), кэш `vbi-org-structure-v1` |
+| Readonly UI | `organization.vue` → `OrgChart` + `OrgUnitRosterAside` |
+| Матчинг списка | `utils/orgUnitEmployees.ts` (`rosterSectionsForOrgUnitName`, `orgUnitOpensRoster`) |
+| Секции Digital | те же defs, что отпуска: `DIGITAL_VACATION_GROUP_DEFS` (`vacationDepartmentGroups.ts`); ярлык **Группа Цхай** |
+| Сжатие при панели | `OrgChart` prop `rosterOpen` → `layoutCompressX` (позиции/ширины по X; Y и `fitScale` эталон до панели) |
+| Линии | `utils/orgLinkPath.ts` — почти вертикальные bottom→top без зигзага (`VERTICAL_X_SNAP_PX`) |
+| Деплой | если `org-structure.json` уже на сервере — **не перезаписывать** (`deploy-remote.sh`) |
+
 - `buildPlacedItems()` — порядок отрисовки: группы, затем solo-отделы.
-- `snapGridCell()` — привязка drag к ячейкам.
-- Storage: **`vbi-org-structure-v1`**.
+- Readonly: `fitScale` = contain в viewport, `overflow: hidden` у `.org-chart-viewport` (сотрудник/превью).
+- С панелью: viewport `align-items: flex-start`; aside `height: 100%`, список `.org-roster-aside__scroll` с `overflow-y: auto`.
 
 ---
 
@@ -379,11 +394,13 @@ OrgUnitGroup   // рамка: label, executiveId, gridCol, gridRow
 | `vbi-vacations-state-v6` | `useVacations` (заявки + предварительные брони; миграция с v5) |
 | `vbi-employee-vac-calendar-scope-v1` | `useEmployeeVacationTeamView` — «Мой календарь» / «Общий» |
 | `vbi-vac-show-title-col-v1` | `VacationTeamCalendar` — показать столбец «Должность» (`1`/`0`) |
-| `vbi-org-structure-v1` | `useOrgStructure` |
+| `vbi-org-structure-v1` | `useOrgStructure` — локальный кэш; источник правды `server/data/org-structure.json`, API `/api/org-structure` |
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |
 
 Идеи: сервер `server/data/ideas.json` (не localStorage). Устаревшие ключи `vbi-ideas-bank-v2` / `vbi-ideas-votes-v1-*` больше не используются.
+
+Оргструктура: сервер `server/data/org-structure.json` (`GET` — авторизованные, `PUT` — admin/hr). `localStorage` — кэш + одноразовая миграция, если сервер пуст.
 
 Устаревшие ключи сбрасываются при смене `DEMO_PLATFORM_VERSION` (см. `LEGACY_STORAGE_KEYS` в плагине).
 

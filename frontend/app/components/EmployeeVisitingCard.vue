@@ -104,12 +104,25 @@
             <span class="emp-card__rail-sep" aria-hidden="true" />
             <a
               v-if="bitrixUrl"
-              class="emp-card__rail-link"
+              class="emp-card__rail-bitrix"
               :href="bitrixUrl"
               target="_blank"
               rel="noopener noreferrer"
+              title="Профиль в Bitrix"
+              aria-label="Открыть профиль в Bitrix"
             >
-              Bitrix
+              <span class="emp-card__bitrix-arrow" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none">
+                  <path
+                    d="M5 3.5h7.5V11M12.5 3.5 3.5 12.5"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
+              <span class="emp-card__rail-link">Bitrix</span>
             </a>
             <span v-else class="emp-card__rail-link emp-card__rail-link--off">Bitrix</span>
           </div>
@@ -135,10 +148,12 @@ import {
   tenureCardLabel
 } from '~/utils/tenureAnniversary';
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
+import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 
 const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
 const { ideas } = useIdeasBank();
+const runtimeConfig = useRuntimeConfig();
 
 const cardRef = ref<HTMLElement | null>(null);
 const position = ref({ left: 0, top: 0 });
@@ -220,9 +235,12 @@ const displayAchievements = computed(() => {
 });
 
 const bitrixUrl = computed(() => {
-  const id = employee.value?.bitrix_user_id;
-  if (!id) return null;
-  return `https://crm.vbi.ru/company/personal/user/${id}/`;
+  const emp = employee.value;
+  const bitrixId = emp?.bitrix_user_id ?? emp?.platform_user_id ?? null;
+  return bitrixEmployeeProfileUrl(
+    String(runtimeConfig.public.bitrixPortalUrl || 'https://crm.vbi.ru'),
+    bitrixId
+  );
 });
 
 const cardStyle = computed(() => ({
@@ -460,7 +478,8 @@ onMounted(() => {
   flex-wrap: nowrap;
   align-items: center;
   gap: 0 8px;
-  overflow-x: auto;
+  /* иначе квадрат ↗ у правого края обрезался overflow-x */
+  overflow: visible;
 }
 
 .emp-card__rail-achs {
@@ -468,6 +487,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .emp-card__rail-label {
@@ -540,6 +560,46 @@ onMounted(() => {
   padding: 0;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.emp-card__rail-bitrix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  text-decoration: none;
+  color: inherit;
+}
+
+.emp-card__rail-bitrix:hover .emp-card__bitrix-arrow {
+  background: var(--lime);
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.emp-card__rail-bitrix:focus-visible {
+  outline: none;
+}
+
+.emp-card__rail-bitrix:focus-visible .emp-card__bitrix-arrow {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+/* Тот же квадрат со стрелкой ↗, что у ФИО на чужом профиле */
+.emp-card__bitrix-arrow {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 1.5px 1.5px 0 var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
 button.emp-card__rail-link:disabled {

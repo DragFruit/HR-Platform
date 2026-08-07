@@ -1,4 +1,5 @@
 import type { Employee } from '~/composables/useEmployees';
+import { normalizeEmployeeNameKey } from '~/utils/employeeName';
 
 export type VisitingCardAnchor = { x: number; y: number };
 
@@ -12,11 +13,23 @@ export function useEmployeeVisitingCard() {
 
   const isOpen = computed(() => openEmployeeId.value != null);
 
+  const matchEmployeeByString = (rawName: string): Employee | null => {
+    const { findByName, employees } = useEmployees();
+    const exact = findByName(rawName);
+    if (exact) return exact;
+
+    const normalized = normalizeEmployeeNameKey(rawName);
+    if (!normalized) return null;
+
+    return (
+      employees.value.find((emp) => normalizeEmployeeNameKey(emp.name) === normalized) ?? null
+    );
+  };
+
   const resolveId = (employee: Employee | number | string): number | null => {
     if (typeof employee === 'number') return employee;
     if (typeof employee === 'string') {
-      const { findByName } = useEmployees();
-      return findByName(employee)?.id ?? null;
+      return matchEmployeeByString(employee)?.id ?? null;
     }
     return employee.id;
   };

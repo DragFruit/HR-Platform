@@ -211,17 +211,25 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 После **согласования** заявки в VBI HR сервер создаёт отсутствие в Битриксе:
 
-1. `lists.element.add` в инфоблок **График отсутствий** (пальма + предупреждения во встречах) с `PROPERTY_USER` = сотрудник.
+1. `lists.element.add` в инфоблок **График отсутствий** (пальма + предупреждения во встречах) с **`PROPERTY_1`** (поле «Пользователь», CODE=`USER`) = сотрудник.  
+   На `crm.vbi.ru` ключ `PROPERTY_USER` в `FIELDS` **не принимается** → ошибка «Пользователь is required».
 2. **`calendar.event.add` не используем**: входящий вебхук / OAuth всегда пишут `CREATED_BY` = владелец токена (сейчас Драго). Bitrix тогда показывает absence в блоке «Отсутствия» у HR, даже если `ownerId` сотрудника верный.
 3. Вызов идёт через **входящий вебхук**; при `Invalid request credentials` — fallback на **OAuth** для `lists.element.add`.
 4. При полном fail синка — уведомление админу в `/admin/notifications`.
-5. Повтор failed/skipped: `POST /api/bitrix/sync-vacations` (роли admin/hr). Если отсутствие уже есть в графике (тот же сотрудник + даты или `CODE=vbi-hr-vac-{id}`) — привязываем без дубля.
+5. Повтор failed/skipped: `POST /api/bitrix/sync-vacations` (роли admin/hr). Если отсутствие уже есть в графике (тот же сотрудник + даты или уже известный `bitrix_absence_id`) — привязываем без дубля.
 
-Примечание по пересозданию при переносе:
-- если `approved` отпуск переносится (меняются `start/end`) и в Bitrix уже существует элемент по `CODE=vbi-hr-vac-{id}`, то платформа **пересоздаёт** элемент, чтобы `ACTIVE_FROM/ACTIVE_TO` совпали с новыми датами.
-- значит, любые ручные правки внутри этого элемента **кроме дат** могут быть перезаписаны/утрачены при следующем переносе той же заявки.
+**Ловушки портала (2026-08-04):**
+- `lists.element.get` с `FILTER.CODE` → `Filter field not allowed: CODE` — поиск по символьному коду недоступен.
+- `FILTER` по `CODE` запрещён; обход — **`ELEMENT_CODE`** в `lists.element.get` (без FILTER) или поиск по `ID` / пользователь+`ACTIVE_FROM`.
+- `FILTER` только по пользователю отдаёт ≤50 строк → свежий отпуск можно «не увидеть», затем `lists.element.add` падает с `Element already exists` (ложные алерты по Жуковой / Ревзиной при чужом approve).
+- Обход: искать по `ID` / `ELEMENT_CODE` / пользователю **+ `ACTIVE_FROM`**; не ресинкать всех `synced` при каждом согласовании.
 
-Тег **Битрикс ✗** в «Мои заявки» = статус последней **автоотправки** (`bitrix_sync_status: failed`), а не «сейчас нет в Bitrix». Исторический кейс (июль 2026): вебхук отдавал `Invalid request credentials` 1–13.07 — у Скворцова и ещё ~11 заявок; отпуск потом завели вручную, крестик остался.
+Примечание по переносу дат:
+- если `approved` отпуск переносится (меняются `start/end`) и в Bitrix уже есть элемент — платформа делает **`lists.element.update`** того же ID (новые `ACTIVE_FROM/ACTIVE_TO`), без delete+add.
+- delete+add давал `Element already exists` (CODE уже занят) и ложный алерт админу (Кобликова Юлия #1038, 05.08.2026).
+- ручные правки полей элемента (кроме дат) при следующем update заявки могут быть перезаписаны.
+
+Тег **Битрикс ✗** в «Мои заявки» = статус последней **автоотправки** (`bitrix_sync_status: failed`), а не «сейчас нет в Bitrix». Исторический кейс (июль 2026): вебхук отдавал `Invalid request credentials` 1–13.07 — у Скворцова и ещё ~11 заявок; отпуск потом завели вручную, крестик остался. Кейс 04.08.2026: Жукова / Ревзина — отсутствие **уже было** в графике, алерт из‑за ложного fail ресинка.
 
 Опционально в env:
 
@@ -230,6 +238,8 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 | `BITRIX_ABSENCE_IBLOCK_ID` | ID инфоблока графика отсутствий (если не задан — автопоиск по имени) |
 | `BITRIX_ABSENCE_IBLOCK_TYPE_ID` | Тип инфоблока, по умолчанию `structure` |
 | `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «отпуск ежегодный», по умолчанию `1` |
+| `BITRIX_ABSENCE_PROPERTY_USER` | Поле сотрудника в `FIELDS`/`FILTER`, по умолчанию **`PROPERTY_1`** (на crm.vbi.ru) |
+| `BITRIX_ABSENCE_PROPERTY_TYPE` | Поле типа отсутствия, по умолчанию **`PROPERTY_7`** |
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
 

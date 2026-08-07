@@ -26,6 +26,15 @@
         <p class="muted store-page__catalog-lead">Обмен валюты на бенефиты</p>
       </div>
 
+      <NuxtLink to="/wallet" class="store-wallet-entry">
+        <span class="store-wallet-entry__badge">Баланс</span>
+        <span class="store-wallet-entry__body">
+          <strong class="store-wallet-entry__title">Кошелёк</strong>
+          <span class="store-wallet-entry__text">Баланс, оборот и перевод валюты коллеге</span>
+        </span>
+        <span class="store-wallet-entry__arrow" aria-hidden="true">→</span>
+      </NuxtLink>
+
       <div class="store-page__filters" role="group" aria-label="Фильтр по стоимости">
         <span class="store-page__filters-label">Стоимость</span>
         <div class="filters">

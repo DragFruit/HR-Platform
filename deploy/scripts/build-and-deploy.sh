@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 case "$ENV" in
   staging) APP_ENV=staging; ORG_LINKS=true; LAUNCH_SCOPE=full ;;
-  production) APP_ENV=production; ORG_LINKS=false; LAUNCH_SCOPE=vacations ;;
+  production) APP_ENV=production; ORG_LINKS=true; LAUNCH_SCOPE=vacations ;;
   *) echo "Неизвестное окружение: $ENV" >&2; exit 1 ;;
 esac
 
