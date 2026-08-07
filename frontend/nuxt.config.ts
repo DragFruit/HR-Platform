@@ -4,8 +4,10 @@ import { buildAppContentSecurityPolicy, buildYandexMetrikaHead, resolveYandexMet
 const yandexMetrikaId = resolveYandexMetrikaId(process.env.NUXT_PUBLIC_YANDEX_METRIKA_ID);
 const metrikaHead = buildYandexMetrikaHead(yandexMetrikaId);
 const appEnv = process.env.NUXT_PUBLIC_APP_ENV || 'development';
+// Бой и staging пока на голом HTTP (IP :80 / :8080) — upgrade-insecure-requests
+// ломает сайт: браузер уходит на HTTPS, а сертификата нет.
 const csp = buildAppContentSecurityPolicy({
-  upgradeInsecure: appEnv === 'production' || appEnv === 'staging'
+  upgradeInsecure: false
 });
 
 export default defineNuxtConfig({

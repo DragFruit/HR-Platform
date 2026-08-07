@@ -4,6 +4,11 @@
 
 ## 2026-08-07
 
+### Hotfix: CSP не форсит HTTPS на HTTP-бою
+
+- Убран `upgrade-insecure-requests` из CSP: бой на `http://45.12.74.25` без TLS, директива ломала загрузку JS/CSS.
+- `frontend/nuxt.config.ts` — `upgradeInsecure: false` до появления HTTPS.
+
 ### Мелочи аудита: доки, мёртвый код, oauth-debug
 
 - Удалены неиспользуемые `platform-base.css` и `digitalVacationGroups.ts`.
