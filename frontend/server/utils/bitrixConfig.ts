@@ -134,9 +134,37 @@ export function getBitrixRedirectUri(event?: H3Event): string {
   return `${getRequestPublicOrigin(event)}/api/auth/bitrix/callback`;
 }
 
-/** После OAuth возвращаем на тот origin, куда пришёл callback (тест :8080 / бой :80). */
+/**
+ * Канонический origin приложения (APP_PUBLIC_URL / BITRIX_REDIRECT_URI).
+ * Нужен, когда Bitrix отдаёт callback на :8080, а бой — :80: form POST и редирект
+ * после ticket должны идти на канонический URL, иначе 301 :8080→:80 рвёт вход.
+ */
+export function getCanonicalAppOrigin(event?: H3Event): string {
+  const appUrl = String(process.env.APP_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  if (appUrl) {
+    try {
+      return new URL(appUrl).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const redirect = String(process.env.BITRIX_REDIRECT_URI || '').trim();
+  if (redirect) {
+    try {
+      return new URL(redirect).origin;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  if (event) return getRequestPublicOrigin(event);
+  throw createError({ statusCode: 500, statusMessage: 'Не удалось определить публичный URL приложения' });
+}
+
+/** После OAuth возвращаем на канонический origin (бой :80), не на :8080 callback. */
 export function getOAuthReturnOrigin(event: H3Event): string {
-  return getRequestPublicOrigin(event);
+  return getCanonicalAppOrigin(event);
 }
 
 /** Перед OAuth: callback должен быть на том же origin, что и текущий сайт. */

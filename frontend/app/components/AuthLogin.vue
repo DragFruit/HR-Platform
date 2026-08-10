@@ -27,11 +27,6 @@
           Войти через Битрикс24
         </button>
         <p v-if="error" class="gift-error">{{ error }}</p>
-        <p class="muted auth-bitrix-hint">
-          Войти могут только сотрудники из справочника Vibe (~штат компании). Экстранет и гости
-          Bitrix — нет. При входе обновляются данные уже заведённых людей, новые из портала не
-          добавляются.
-        </p>
       </div>
 
       <template v-if="showDemoLogin">
@@ -149,12 +144,6 @@ const submit = async () => {
 </script>
 
 <style scoped>
-.auth-bitrix-hint {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.45;
-}
-
 .auth-oauth-misconfig {
   margin: 0 0 12px;
   line-height: 1.45;

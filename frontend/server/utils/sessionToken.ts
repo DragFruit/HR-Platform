@@ -45,11 +45,15 @@ function safeEqual(a: string, b: string): boolean {
   }
 }
 
-export function encodeSignedSession(user: SessionUser, nowSec = Math.floor(Date.now() / 1000)): string {
+export function encodeSignedSession(
+  user: SessionUser,
+  nowSec = Math.floor(Date.now() / 1000),
+  ttlSec = SESSION_TTL_SEC
+): string {
   const payload: SignedSessionPayload = {
     ...user,
     iat: nowSec,
-    exp: nowSec + SESSION_TTL_SEC
+    exp: nowSec + ttlSec
   };
   const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   return `${body}.${signBody(body)}`;

@@ -2,7 +2,51 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-08-10
+
+### Стейдж `:8080` снова отдельный контур + Bitrix (staging)
+
+- Nginx `:8080` → `vbi-hr-staging` (3301), не редирект на бой.
+- Третье OAuth-приложение **VBI HR Platform (staging)**; ключи в `/etc/vbi-hr/bitrix.env` (локальная копия `deploy/env/bitrix.env`, в gitignore).
+- Бой — своё приложение и `bitrix-production.env`; `(dev)` — только localhost.
+- Документация: `docs/BITRIX.md` (три приложения).
+
+### Hotfix: OAuth handoff + CSP + гидрация auth
+
+- Handoff v9: callback 200 HTML → form POST `/api/auth/bitrix-ticket` → cookie → `/?auth=bitrix`.
+- Ticket/form: относительные URL (CSP `form-action 'self'`).
+- `authReady` всегда в `finally`; plugin на `app:mounted`; Bitrix return не блокирует экран на bootstrap.
+- `deploy-remote.sh`: `chown` `server/data` перед restart (EACCES у `deploy`).
+- Файлы: `callback.get.ts`, `bitrix-ticket.*.ts`, `oauthLoginTicket.ts`, `useAuth.ts`, `auth.client.ts`, `app.vue`.
+
+### Hotfix: вечная «Загрузка…» при живой session (гонка гидрации)
+
+- Session cookie уже ок, но `authReady` сбрасывался SSR payload (`$sauth-ready:false`) после раннего plugin restore; `onMounted` пропускал повторный restore → NuxtPage не монтировался.
+- `restoreSession`: `authReady=true` всегда в `finally`; plugin на `app:mounted`; `onMounted` всегда зовёт restore.
+- Bitrix return: сначала убрать «Завершаем вход…» и уйти на home, потом `bootstrapAppData` (не блокировать экран).
+- `useAuth.ts`, `auth.client.ts`, `app.vue`.
+
+### Hotfix: зависание входа — CSP `form-action 'self'`
+
+- Bitrix callback на `:8080`, form action на `:80` → разные origin, CSP блокирует submit → «Завершаем вход…» навсегда; повтор → `authorization token has expired`.
+- Form снова относительный `/api/auth/bitrix-ticket` (same-origin); после ticket — редирект на `http://45.12.74.25/?auth=bitrix`.
+- Ошибки OAuth тоже на абсолютный `APP_PUBLIC_URL`.
+- `callback.get.ts`, `bitrix-ticket.*.ts`, `getCanonicalAppOrigin`.
+
+### Hotfix: зависание «Загрузка…» после Bitrix (callback на :8080)
+
+- Bitrix отдаёт OAuth на `:8080`; относительный редирект + 301 `:8080`→`:80` рвали цепочку.
+- Ticket редиректит на канонический `APP_PUBLIC_URL`; cookie на бое.
+- `getCanonicalAppOrigin` в `bitrixConfig.ts`; `callback.get.ts`, `bitrix-ticket.post.ts` / `.get.ts`.
+
 ## 2026-08-07
+
+### Hotfix: вход через Bitrix — handoff v9 (form POST)
+
+- После security-коммита (HMAC-сессии) cookie с 302 после Bitrix HTTPS→HTTP не садилась; meta-refresh тоже в cross-site chain.
+- Callback: **200 HTML** → `form POST /api/auth/bitrix-ticket` (first-party) → Set-Cookie → `/?auth=bitrix`.
+- Staging (:8080) с тем же `CLIENT_ID` отдавал старый `bitrix_notify` на бой — сервис staging остановлен, пока не разведём OAuth-приложения.
+- `callback.get.ts`, `bitrix-ticket.post.ts` / `.get.ts`, `oauthLoginTicket.ts`.
 
 ### Hotfix: CSP не форсит HTTPS на HTTP-бою
 

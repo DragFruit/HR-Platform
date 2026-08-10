@@ -172,6 +172,9 @@ if [[ -f "${MANAGER_CURRENT_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-current-month-reminders.sh'"
 fi
 
+echo "→ права на server/data (процесс deploy пишет atomic tmp при логине/синке)"
+"${SSH_CMD[@]}" "${REMOTE}" "chown -R deploy:deploy '${DEPLOY_PATH}/server/data' && chmod -R u+rwX,g+rwX '${DEPLOY_PATH}/server/data'"
+
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
 

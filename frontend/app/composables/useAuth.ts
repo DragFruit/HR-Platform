@@ -107,9 +107,12 @@ export function useAuth() {
         const server = await $fetch<{ ok: boolean; user: AuthSessionUser | null }>('/api/auth/session');
         if (server.ok && server.user) {
           user.value = server.user;
-          localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
-          syncOnboardingState(server.user.id);
-          authReady.value = true;
+          try {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
+            syncOnboardingState(server.user.id);
+          } catch {
+            /* quota / private mode — сессия cookie всё равно валидна */
+          }
           return;
         }
       } catch {
@@ -118,7 +121,6 @@ export function useAuth() {
 
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) {
-        authReady.value = true;
         return;
       }
 
@@ -128,7 +130,6 @@ export function useAuth() {
         if (parsed.auth_source === 'bitrix') {
           user.value = null;
           localStorage.removeItem(SESSION_KEY);
-          authReady.value = true;
           return;
         }
 
@@ -147,7 +148,11 @@ export function useAuth() {
             method: 'POST',
             body: { email: match.email, password: match.password }
           }).catch(() => {});
-          syncOnboardingState(match.id);
+          try {
+            syncOnboardingState(match.id);
+          } catch {
+            /* ignore */
+          }
         } else {
           user.value = null;
           localStorage.removeItem(SESSION_KEY);
@@ -155,14 +160,15 @@ export function useAuth() {
       } catch {
         localStorage.removeItem(SESSION_KEY);
       }
-
-      authReady.value = true;
     })();
 
     try {
       await restoreSessionPromise;
     } finally {
       restoreSessionPromise = null;
+      // Всегда после гидрации/fetch — иначе SSR payload ($sauth-ready:false)
+      // может перетереть true от раннего plugin и оставить «Загрузка…» навсегда.
+      authReady.value = true;
     }
   };
 
