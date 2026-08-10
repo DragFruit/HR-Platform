@@ -208,7 +208,7 @@ export async function publishRevealedSalesBestActivities(
       id: activityId,
       employee_id: award.employee_id,
       kind: 'achievement',
-      text: `${award.employee_name} получил(а) ачивку «Лучший специалист продаж» (${label})`,
+      text: `${award.employee_name} стал(а) Лучшим специалистом отдела продаж за ${label}`,
       occurred_at: award.reveal_on
     });
 
