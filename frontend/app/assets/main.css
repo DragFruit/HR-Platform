@@ -9522,6 +9522,19 @@ button.emp-name--card:hover {
   padding-right: 2px;
 }
 
+.personnel-table .col-bitrix {
+  width: 4.75rem;
+  min-width: 4.25rem;
+}
+
+.personnel-table .table-input--bitrix {
+  width: 100%;
+  max-width: 4.5rem;
+  padding: 5px 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
 .personnel-table .col-name {
   width: 14%;
   min-width: 7.5rem;

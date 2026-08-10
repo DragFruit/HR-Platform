@@ -6,6 +6,7 @@
         <p class="muted">
           Даты трудоустройства и колонка «Руководитель» — путь подчинения и согласования отпусков.
           Руководителя выбирайте только из списка: от этого зависит, кому уйдёт заявка на согласование.
+          Bitrix ID — для входа, аватарки и синка; новых людей синк сам не добавляет.
         </p>
         <p v-if="saveStatus === 'saving'" class="save-hint muted">Сохранение…</p>
         <p v-else-if="saveStatus === 'saved'" class="save-hint muted">Сохранено</p>
@@ -34,6 +35,7 @@
         <thead>
           <tr>
             <th class="col-avatar" aria-label="Аватар" />
+            <th class="col-bitrix" title="ID пользователя в Bitrix24">Bitrix ID</th>
             <th class="col-name">ФИО</th>
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
@@ -50,6 +52,20 @@
                 :user-id="emp.platform_user_id ?? emp.bitrix_user_id"
                 :name="emp.name"
                 :size="28"
+              />
+            </td>
+            <td class="col-bitrix">
+              <input
+                :value="emp.bitrix_user_id ?? ''"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="table-input table-input--bitrix"
+                placeholder="ID"
+                autocomplete="off"
+                :aria-label="`Bitrix ID — ${emp.name || 'сотрудник'}`"
+                @input="onBitrixIdInput(emp.id, $event)"
+                @blur="onBitrixIdBlur(emp.id, $event)"
               />
             </td>
             <td class="col-name">
@@ -195,6 +211,25 @@ const updateField = (id: number, field: keyof Employee, value: string) => {
   updateEmployee(id, { [field]: value } as Partial<Employee>);
 };
 
+const parseBitrixUserId = (raw: string): number | null | 'invalid' => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (!/^\d+$/.test(trimmed)) return 'invalid';
+  const n = Number(trimmed);
+  if (!Number.isSafeInteger(n) || n <= 0) return 'invalid';
+  return n;
+};
+
+const updateBitrixUserId = (id: number, raw: string) => {
+  const parsed = parseBitrixUserId(raw);
+  if (parsed === 'invalid') {
+    saveStatus.value = 'error';
+    saveError.value = 'Bitrix ID — целое положительное число';
+    return;
+  }
+  updateEmployee(id, { bitrix_user_id: parsed });
+};
+
 const immediateUpdate = (id: number, field: keyof Employee, value: string) => {
   const key = fieldKey(id, field);
   const pending = debounceTimers.get(key);
@@ -224,6 +259,30 @@ const onFieldInput = (id: number, field: keyof Employee, event: Event) => {
 
 const onFieldBlur = (id: number, field: keyof Employee, event: Event) => {
   immediateUpdate(id, field, fieldValue(event));
+};
+
+const onBitrixIdInput = (id: number, event: Event) => {
+  const key = fieldKey(id, 'bitrix_user_id');
+  const pending = debounceTimers.get(key);
+  if (pending) clearTimeout(pending);
+  const raw = fieldValue(event);
+  debounceTimers.set(
+    key,
+    setTimeout(() => {
+      debounceTimers.delete(key);
+      updateBitrixUserId(id, raw);
+    }, DEBOUNCE_MS)
+  );
+};
+
+const onBitrixIdBlur = (id: number, event: Event) => {
+  const key = fieldKey(id, 'bitrix_user_id');
+  const pending = debounceTimers.get(key);
+  if (pending) {
+    clearTimeout(pending);
+    debounceTimers.delete(key);
+  }
+  updateBitrixUserId(id, fieldValue(event));
 };
 
 const onManagerPaste = (empId: number, event: ClipboardEvent) => {

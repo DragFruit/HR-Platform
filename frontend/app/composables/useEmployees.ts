@@ -100,9 +100,10 @@ export function useEmployees() {
     hired_at: emp.hired_at,
     birthday: emp.birthday || undefined,
     platform_user_id: emp.platform_user_id,
+    // Явно шлём null, чтобы админ мог очистить ID в UI.
     bitrix_user_id:
       emp.bitrix_user_id ??
-      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : undefined),
+      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : null),
     email: emp.email || undefined,
     account_role: emp.account_role || undefined,
     vacation_opening_balance: emp.vacation_opening_balance ?? undefined
