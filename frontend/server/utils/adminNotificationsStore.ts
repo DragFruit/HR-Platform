@@ -9,7 +9,8 @@ export type AdminNotificationKind =
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
   | 'idea_submitted'
-  | 'vpn_peer_delete_failed';
+  | 'vpn_peer_delete_failed'
+  | 'sales_best_pick_due';
 
 export type AdminNotification = {
   id: string;
@@ -38,6 +39,9 @@ export type AdminNotification = {
   /** VPN офбординг */
   vpn_peer_names?: string[];
   vpn_panel?: string;
+  /** Лучший специалист продаж — выбор за месяц */
+  sales_period?: string;
+  sales_period_label?: string;
 };
 
 type NotificationsState = {
@@ -300,6 +304,35 @@ export async function createVpnPeerDeleteFailedNotification(input: {
     vpn_peer_names: peers,
     vpn_panel: input.panel,
     error_message: input.error,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+/** Напоминание 29-го: выбрать лучшего специалиста продаж за месяц (идемпотентно по period). */
+export async function createSalesBestPickDueNotification(input: {
+  period: string;
+  period_label: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const existing = state.items.find(
+    (item) =>
+      !item.admin_seen &&
+      item.kind === 'sales_best_pick_due' &&
+      item.sales_period === input.period
+  );
+  if (existing) return existing;
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'sales_best_pick_due',
+    employee_id: 0,
+    employee_name: 'Отдел продаж',
+    sales_period: input.period,
+    sales_period_label: input.period_label,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

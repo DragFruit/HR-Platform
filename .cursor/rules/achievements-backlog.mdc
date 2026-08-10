@@ -22,6 +22,7 @@ alwaysApply: true
 | `mentor-*` | ручная активность `mentor` |
 | `practice-lead-*` | ручная активность `practice` |
 | `kalendar-otpuskov` | квест отпусков; первая среди полученных в превью, круглый PNG; не под ФИО |
+| `sales-best-1`…`5` | админ выбирает лучшего ОП за месяц (`sales-best-awards.json`); видимость с `reveal_on` = первый рабочий день след. месяца |
 
 ## Очередь
 

@@ -79,6 +79,27 @@ export const isRuHoliday = (iso: string) => {
   return Boolean(set?.has(iso));
 };
 
+/** Рабочий день: не сб/вс и не день из производственного календаря РФ. */
+export const isRuWorkingDay = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return false;
+  return !isWeekendDay(d) && !isRuHoliday(iso);
+};
+
+/**
+ * Первый рабочий день месяца (код, не «на глаз»).
+ * month — 1..12. Идём с 1-го числа вперёд (обычно 1 / 2 / 3).
+ */
+export const firstWorkingDayOfMonth = (year: number, month1to12: number): string => {
+  const cursor = new Date(year, month1to12 - 1, 1);
+  for (let i = 0; i < 14; i += 1) {
+    const iso = toIso(cursor);
+    if (isRuWorkingDay(iso)) return iso;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return toIso(new Date(year, month1to12 - 1, 1));
+};
+
 export const isInRangePreview = (
   iso: string,
   start: string,

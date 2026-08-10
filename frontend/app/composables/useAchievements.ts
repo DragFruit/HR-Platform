@@ -121,6 +121,12 @@ export function useAchievements() {
   const { ideas } = useIdeasBank();
   const { state: vacationState } = useVacations();
   const { serverItems } = useProfileActivity();
+  const { revealedCount: salesBestCount, hydrate: hydrateSalesBest, hydrated: salesBestHydrated } =
+    useSalesBest();
+
+  if (import.meta.client && !salesBestHydrated.value) {
+    void hydrateSalesBest();
+  }
 
   const earnedIds = computed(() => {
     const ids = new Set<string>();
@@ -202,6 +208,9 @@ export function useAchievements() {
     const giftOrders = emp ? readTenureOrdersCount(uid, emp.id) : 0;
     const storeTotal = catalogBuys + giftOrders;
     for (const id of tierAchievementIds('store', storeTotal)) ids.add(id);
+
+    // —— Лучший специалист продаж (после reveal_on) ——
+    for (const id of tierAchievementIds('sales-best', salesBestCount.value)) ids.add(id);
 
     return ids;
   });

@@ -4,7 +4,8 @@ export type AdminNotificationKind =
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
   | 'idea_submitted'
-  | 'vpn_peer_delete_failed';
+  | 'vpn_peer_delete_failed'
+  | 'sales_best_pick_due';
 
 export type AdminNotification = {
   id: string;
@@ -28,6 +29,8 @@ export type AdminNotification = {
   error_message?: string;
   vpn_peer_names?: string[];
   vpn_panel?: string;
+  sales_period?: string;
+  sales_period_label?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -73,6 +76,9 @@ export function useAdminNotifications() {
   };
 
   const formatNotificationTitle = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      return 'Выберите лучшего специалиста продаж';
+    }
     if (item.kind === 'tenure_gift_order') {
       return `Собрать юбилейный набор (${item.years ?? '—'} лет)`;
     }
@@ -90,6 +96,14 @@ export function useAdminNotifications() {
   };
 
   const formatNotificationBody = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      const period = item.sales_period_label || item.sales_period || 'текущий месяц';
+      return (
+        `Напоминание: выберите лучшего специалиста продаж за ${period}. ` +
+        'Лучший — тот, кто выше всех перевыполнил план. ' +
+        'Ачивка у победителя появится в первый рабочий день следующего месяца (интрига до reveal). Можно перевыбрать.'
+      );
+    }
     if (item.kind === 'tenure_gift_order') {
       return `${item.employee_name} использовал(а) купон на набор «${item.years} лет». Соберите подарок: медаль, вино ${item.years} лет выдержки и премию.`;
     }
@@ -127,6 +141,7 @@ export function useAdminNotifications() {
   };
 
   const notificationActionLabel = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') return 'Выбрать';
     if (item.kind === 'tenure_gift_order') return 'К уведомлению';
     if (item.kind === 'idea_submitted') return 'Банк идей';
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
@@ -135,6 +150,10 @@ export function useAdminNotifications() {
   };
 
   const notificationActionTo = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      const q = item.sales_period ? `?period=${encodeURIComponent(item.sales_period)}` : '';
+      return `/admin/sales-best${q}`;
+    }
     if (item.kind === 'tenure_gift_order') return '/admin/notifications';
     if (item.kind === 'idea_submitted') return '/admin/ideas';
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';

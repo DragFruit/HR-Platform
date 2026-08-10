@@ -172,6 +172,14 @@ if [[ -f "${MANAGER_CURRENT_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-current-month-reminders.sh'"
 fi
 
+SALES_BEST_SCRIPT="${ROOT}/deploy/scripts/run-sales-best-pick-due.sh"
+if [[ -f "${SALES_BEST_SCRIPT}" ]]; then
+  echo "→ установка run-sales-best-pick-due.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${SALES_BEST_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-sales-best-pick-due.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-sales-best-pick-due.sh'"
+fi
+
 echo "→ права на server/data (процесс deploy пишет atomic tmp при логине/синке)"
 "${SSH_CMD[@]}" "${REMOTE}" "chown -R deploy:deploy '${DEPLOY_PATH}/server/data' && chmod -R u+rwX,g+rwX '${DEPLOY_PATH}/server/data'"
 

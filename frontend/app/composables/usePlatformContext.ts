@@ -35,6 +35,7 @@ const adminNav: NavItem[] = [
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
   { to: '/admin/activity', label: 'Активность' },
+  { to: '/admin/sales-best', label: 'Лучший ОП' },
   { to: '/admin/ideas', label: 'Банк идей' },
   profileNavItem
 ];

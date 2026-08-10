@@ -4,6 +4,14 @@
 
 ## 2026-08-10
 
+### Ачивка «Лучший специалист продаж» (ОП, 1×–5×)
+
+- Каталог: `sales-best-1`…`sales-best-5`, иконка `/achievements/sales-best.png`, секция «Лидерство и инициатива».
+- Админ 29-го получает уведомление (`sales_best_pick_due`); выбор/перевыбор на `/admin/sales-best`.
+- Ачивка видна сотруднику только с `reveal_on` = первый рабочий день следующего месяца (`firstWorkingDayOfMonth` + производственный календарь).
+- Store: `server/data/sales-best-awards.json`; cron `POST /api/cron/sales-best-pick-due`; тест: `POST /api/admin/sales-best/notify-test`.
+- Правило проекта: `.cursor/rules/automate-not-handfix.mdc`.
+
 ### Стейдж `:8080` снова отдельный контур + Bitrix (staging)
 
 - Nginx `:8080` → `vbi-hr-staging` (3301), не редирект на бой.
