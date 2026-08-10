@@ -18,7 +18,7 @@ export type ProfileActivityKind =
   | 'welcome'
   | 'other';
 
-export type ProfileActivitySource = 'manual' | 'seed';
+export type ProfileActivitySource = 'manual' | 'seed' | 'auto';
 
 export type ProfileActivity = {
   id: string;
@@ -161,6 +161,46 @@ export async function createProfileActivity(input: {
 
   const state = await readState();
   state.items.push(item);
+  await writeState(state);
+  return item;
+}
+
+/** Идемпотентная авто-запись (например reveal ачивки) — по стабильному id. */
+export async function upsertAutoProfileActivity(input: {
+  id: string;
+  employee_id: number;
+  platform_user_id?: number | null;
+  kind: string;
+  text: string;
+  occurred_at: string;
+}): Promise<ProfileActivity> {
+  const text = String(input.text || '').trim();
+  if (text.length < 3) {
+    throw createError({ statusCode: 400, statusMessage: 'Текст — минимум 3 символа' });
+  }
+  let occurred = new Date(input.occurred_at.includes('T') ? input.occurred_at : `${input.occurred_at}T12:00:00`);
+  if (Number.isNaN(occurred.getTime())) occurred = new Date();
+
+  const state = await readState();
+  const existingIdx = state.items.findIndex((row) => row.id === input.id);
+  const item: ProfileActivity = {
+    id: input.id,
+    employee_id: input.employee_id,
+    platform_user_id: input.platform_user_id ?? null,
+    kind: normalizeProfileActivityKind(input.kind),
+    text,
+    occurred_at: occurred.toISOString(),
+    source: 'auto',
+    created_at:
+      existingIdx >= 0 ? state.items[existingIdx]!.created_at : new Date().toISOString(),
+    created_by_name: 'system'
+  };
+
+  if (existingIdx >= 0) {
+    state.items[existingIdx] = item;
+  } else {
+    state.items.push(item);
+  }
   await writeState(state);
   return item;
 }

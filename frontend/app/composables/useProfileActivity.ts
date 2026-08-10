@@ -344,6 +344,16 @@ export function useProfileActivity() {
     }
 
     return [...byId.values()]
+      .filter((row) => {
+        // Интрига: будущие dated-события (в т.ч. sales-best до reveal) не показываем
+        const day = String(row.occurred_at || '').slice(0, 10);
+        if (!day) return true;
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return day <= `${y}-${m}-${d}`;
+      })
       .sort((a, b) => {
         const diff = parseOccurredAtMs(b.occurred_at) - parseOccurredAtMs(a.occurred_at);
         if (diff !== 0) return diff;

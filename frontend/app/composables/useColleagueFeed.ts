@@ -1,4 +1,14 @@
-export type ColleagueFeedItemType = 'gift' | 'achievement' | 'task' | 'welcome' | 'vacation' | 'event';
+import { todayIso } from '~/utils/vacationCalendar';
+import type { ProfileActivityKind } from '~/composables/useProfileActivity';
+
+export type ColleagueFeedItemType =
+  | 'gift'
+  | 'achievement'
+  | 'task'
+  | 'welcome'
+  | 'vacation'
+  | 'event'
+  | 'recognition';
 
 export type ColleagueFeedItem = {
   id: string;
@@ -6,6 +16,7 @@ export type ColleagueFeedItem = {
   text: string;
   time: string;
   icon?: string;
+  occurred_at?: string;
 };
 
 const feedIconByType: Record<ColleagueFeedItemType, string> = {
@@ -14,67 +25,94 @@ const feedIconByType: Record<ColleagueFeedItemType, string> = {
   task: '✅',
   welcome: '👋',
   vacation: '🏖️',
-  event: '🎤'
+  event: '🎤',
+  recognition: '⭐'
 };
 
-const demoFeedItems: ColleagueFeedItem[] = [
-  {
-    id: 'feed-1',
-    type: 'gift',
-    text: 'Костя подарил 50 монет Маше — «Спасибо за помощь с релизом!»',
-    time: '12 мин назад'
-  },
-  {
-    id: 'feed-2',
-    type: 'event',
-    text: 'Алина выступила на внутреннем митапе «Как мы строим HR-продукт»',
-    time: '1 ч назад'
-  },
-  {
-    id: 'feed-3',
-    type: 'task',
-    text: 'Вася завершил задачу «Онбординг нового стажёра» — +120 монет',
-    time: '2 ч назад'
-  },
-  {
-    id: 'feed-4',
-    type: 'welcome',
-    text: 'Анастасия присоединилась к команде маркетинга — добро пожаловать!',
-    time: 'вчера'
-  },
-  {
-    id: 'feed-5',
-    type: 'vacation',
-    text: 'Отпуск Маши с 24 по 28 июня согласован — команда в курсе',
-    time: 'вчера'
-  },
-  {
-    id: 'feed-6',
-    type: 'achievement',
-    text: 'Костя получил бейдж «Наставник месяца» за поддержку новичков',
-    time: '2 дня назад'
-  },
-  {
-    id: 'feed-7',
-    type: 'gift',
-    text: 'Алина отправила 30 монет Васе — «За быстрый фикс в проде»',
-    time: '3 дня назад'
-  },
-  {
-    id: 'feed-8',
-    type: 'task',
-    text: 'Анастасия закрыла 5 задач адаптации за первую неделю',
-    time: 'на прошлой неделе'
+const kindToFeedType = (kind: ProfileActivityKind): ColleagueFeedItemType | null => {
+  if (kind === 'achievement' || kind === 'promotion') return 'achievement';
+  if (kind === 'recognition') return 'recognition';
+  if (kind === 'talk') return 'event';
+  if (kind === 'welcome') return 'welcome';
+  if (kind === 'learning' || kind === 'mentor' || kind === 'practice') return 'event';
+  if (kind === 'store') return 'gift';
+  return null;
+};
+
+const formatRelativeRu = (iso: string): string => {
+  try {
+    const then = new Date(iso.length <= 10 ? `${iso}T12:00:00` : iso).getTime();
+    const diffMin = Math.round((Date.now() - then) / 60000);
+    if (diffMin < 1) return 'только что';
+    if (diffMin < 60) return `${diffMin} мин назад`;
+    const diffH = Math.round(diffMin / 60);
+    if (diffH < 24) return `${diffH} ч назад`;
+    const diffD = Math.round(diffH / 24);
+    if (diffD === 1) return 'вчера';
+    if (diffD < 7) return `${diffD} дн. назад`;
+    return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(
+      new Date(iso.length <= 10 ? `${iso}T12:00:00` : iso)
+    );
+  } catch {
+    return iso;
   }
-];
+};
 
+/**
+ * Новости коллег: из серверной ленты активности (без демо на бою).
+ * Будущие даты (до reveal) не показываем.
+ */
 export function useColleagueFeed() {
-  const items = computed(() =>
-    demoFeedItems.map((item) => ({
-      ...item,
-      icon: item.icon ?? feedIconByType[item.type]
-    }))
-  );
+  const { serverItems, hydrate, loading } = useProfileActivity();
+  const { isProduction } = useAppEnv();
+  const hydrated = useState('colleague-feed-hydrated', () => false);
 
-  return { items };
+  const ensureHydrated = async () => {
+    if (hydrated.value) return;
+    await hydrate().catch(() => {});
+    hydrated.value = true;
+  };
+
+  if (import.meta.client) {
+    void ensureHydrated();
+  }
+
+  const items = computed<ColleagueFeedItem[]>(() => {
+    const today = todayIso();
+    const fromServer = serverItems.value
+      .filter((row) => {
+        const day = String(row.occurred_at || '').slice(0, 10);
+        return day && day <= today;
+      })
+      .map((row) => {
+        const type = kindToFeedType(row.kind);
+        if (!type) return null;
+        return {
+          id: row.id,
+          type,
+          text: row.text,
+          time: formatRelativeRu(row.occurred_at),
+          icon: feedIconByType[type],
+          occurred_at: row.occurred_at
+        } satisfies ColleagueFeedItem;
+      })
+      .filter((row): row is ColleagueFeedItem => Boolean(row))
+      .sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at)))
+      .slice(0, 12);
+
+    if (fromServer.length > 0 || isProduction.value) return fromServer;
+
+    // localhost / staging: пустой placeholder, пока нет реальных событий
+    return [
+      {
+        id: 'feed-empty',
+        type: 'achievement' as const,
+        text: 'Здесь появятся новости коллег — ачивки, выступления, велком.',
+        time: 'скоро',
+        icon: '✨'
+      }
+    ];
+  });
+
+  return { items, loading, refresh: ensureHydrated };
 }

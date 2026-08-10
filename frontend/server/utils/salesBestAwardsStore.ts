@@ -15,6 +15,8 @@ export type SalesBestAward = {
   selected_by?: number;
   /** Первый рабочий день следующего месяца — с этой даты ачивка видна */
   reveal_on: string;
+  /** Запись в ленте активности после reveal */
+  activity_id?: string;
 };
 
 type SalesBestState = {
@@ -154,15 +156,18 @@ export async function upsertSalesBestAward(input: {
   const reveal_on = revealOnForPeriod(period);
   const now = new Date().toISOString();
   const existingIdx = state.awards.findIndex((row) => row.period === period);
+  const previous = existingIdx >= 0 ? state.awards[existingIdx] : null;
 
   const award: SalesBestAward = {
-    id: existingIdx >= 0 ? state.awards[existingIdx]!.id : randomUUID(),
+    id: previous?.id || randomUUID(),
     period,
     employee_id: input.employee_id,
     employee_name: input.employee_name,
     selected_at: now,
     selected_by: input.selected_by,
-    reveal_on
+    reveal_on,
+    // если уже публиковали — обновим текст при следующем publish; до reveal id пустой
+    activity_id: previous?.reveal_on === reveal_on ? previous.activity_id : undefined
   };
 
   if (existingIdx >= 0) {
@@ -171,5 +176,48 @@ export async function upsertSalesBestAward(input: {
     state.awards.push(award);
   }
   await writeState(state);
+
+  // если reveal уже наступил (редкий перевыбор) — сразу обновить ленту
+  await publishRevealedSalesBestActivities();
+
   return award;
+}
+
+/**
+ * Ачивка + лента: в день reveal_on (и позже) публикуем событие в profile-activity.
+ * Идемпотентно. Не создаём раньше — интрига до первого рабочего дня.
+ */
+export async function publishRevealedSalesBestActivities(
+  todayIsoDate?: string
+): Promise<{ published: number }> {
+  const { upsertAutoProfileActivity } = await import('./profileActivityStore');
+  const { year, month, day } = moscowCalendarDate();
+  const today =
+    todayIsoDate ||
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const state = await readState();
+  let published = 0;
+
+  for (const award of state.awards) {
+    if (!isAwardRevealed(award, today)) continue;
+
+    const activityId = `sales-best-${award.period}`;
+    const label = periodLabelRu(award.period);
+    await upsertAutoProfileActivity({
+      id: activityId,
+      employee_id: award.employee_id,
+      kind: 'achievement',
+      text: `${award.employee_name} получил(а) ачивку «Лучший специалист продаж» (${label})`,
+      occurred_at: award.reveal_on
+    });
+
+    if (award.activity_id !== activityId) {
+      award.activity_id = activityId;
+      published += 1;
+    }
+  }
+
+  if (published) await writeState(state);
+  return { published };
 }

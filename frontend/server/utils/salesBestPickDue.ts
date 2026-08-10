@@ -1,5 +1,10 @@
 import { createSalesBestPickDueNotification } from './adminNotificationsStore';
-import { moscowCalendarDate, periodFromDate, periodLabelRu } from './salesBestAwardsStore';
+import {
+  moscowCalendarDate,
+  periodFromDate,
+  periodLabelRu,
+  publishRevealedSalesBestActivities
+} from './salesBestAwardsStore';
 
 export type SalesBestPickDueResult = {
   ran: boolean;
@@ -8,11 +13,13 @@ export type SalesBestPickDueResult = {
   created: boolean;
   notification_id?: string;
   forced?: boolean;
+  activity_published?: number;
 };
 
 /**
- * 29-го числа (МСК) создаёт админ-уведомление «выберите лучшего ОП».
- * force=true — для теста «как будто сегодня 29-е».
+ * Ежедневное обслуживание ОП:
+ * - 29-го (МСК) — уведомление админу выбрать лучшего;
+ * - всегда — публикация ачивок/ленты для наступивших reveal_on.
  */
 export async function runSalesBestPickDue(opts?: {
   force?: boolean;
@@ -21,8 +28,15 @@ export async function runSalesBestPickDue(opts?: {
 }): Promise<SalesBestPickDueResult> {
   const { day, date } = moscowCalendarDate();
   const forced = Boolean(opts?.force);
+  const { published } = await publishRevealedSalesBestActivities();
+
   if (!forced && day !== 29) {
-    return { ran: false, reason: `сегодня ${day}, ждём 29-е (МСК)`, created: false };
+    return {
+      ran: false,
+      reason: `сегодня ${day}, ждём 29-е (МСК)`,
+      created: false,
+      activity_published: published
+    };
   }
 
   const period = opts?.period || periodFromDate(date);
@@ -36,6 +50,7 @@ export async function runSalesBestPickDue(opts?: {
     period,
     created: true,
     notification_id: notification.id,
-    forced
+    forced,
+    activity_published: published
   };
 }
