@@ -15284,78 +15284,155 @@ button.button {
   background: #ddf365;
 }
 
-.kb-rate {
+.kb-rate-cat {
   position: absolute;
-  top: 10px;
   right: 0;
-  z-index: 5;
+  bottom: 4px;
+  z-index: 6;
+  width: min(360px, 92vw);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: min(420px, calc(100% - 8px));
-  padding: 12px 14px;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+  animation: kb-rate-cat-in 0.45s ease-out;
+}
+
+.kb-rate-cat.is-out {
+  animation: kb-rate-cat-out 0.4s ease-in forwards;
+}
+
+.kb-rate-cat__ask {
+  margin: 0 8px 0 0;
+  padding: 6px 10px;
   border: 1px solid #111;
-  border-radius: 18px;
+  border-radius: 999px;
   background: #fff;
-  box-shadow: 4px 4px 0 #111;
-  animation: kb-rate-in 0.35s ease-out;
-}
-
-.kb-rate.is-out {
-  animation: kb-rate-out 0.3s ease-in forwards;
-}
-
-.kb-rate__ask {
-  margin: 0;
-  font-size: 0.88rem;
+  box-shadow: 3px 3px 0 #111;
+  font-size: 0.78rem;
   font-weight: 800;
+  pointer-events: none;
 }
 
-.kb-rate__stars {
+.kb-rate-cat__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 848 / 720;
+}
+
+.kb-rate-cat__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* чёрный фон ролика → прозрачность на светлом холсте */
+  mix-blend-mode: screen;
+  pointer-events: none;
+  user-select: none;
+}
+
+.kb-rate-cat__paper {
+  position: absolute;
+  left: 24.4%;
+  top: 34%;
+  width: 72%;
+  height: 42%;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 1.2vw, 8px);
+  padding: 0 10% 0 9%;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
-.kb-rate__star {
+.kb-rate-cat__paper.is-live {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kb-rate-cat__star {
   appearance: none;
   margin: 0;
   padding: 0;
   border: 0;
   background: none;
-  color: rgba(17, 17, 17, 0.22);
-  font-size: 1.45rem;
-  line-height: 1;
+  width: clamp(22px, 7.2%, 34px);
+  height: clamp(22px, 7.2%, 34px);
   cursor: pointer;
+  line-height: 0;
 }
 
-.kb-rate__star.is-on {
-  color: #111;
+.kb-rate-cat__star svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.kb-rate__form {
+.kb-rate-cat__star path {
+  fill: rgba(255, 184, 51, 0.22);
+  stroke: #111;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  transition: fill 0.12s ease;
+}
+
+.kb-rate-cat__star.is-on path {
+  fill: #ffb833;
+}
+
+.kb-rate-cat__star:disabled {
+  cursor: default;
+}
+
+.kb-rate-cat__panel {
+  position: absolute;
+  left: 28%;
+  right: 4%;
+  top: 36%;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #111;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 3px 3px 0 #111;
+  pointer-events: auto;
+}
+
+.kb-rate-cat__thanks {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.kb-rate-cat__form {
   display: grid;
   gap: 8px;
 }
 
-.kb-rate__comment {
+.kb-rate-cat__comment {
   width: 100%;
   box-sizing: border-box;
-  min-height: 64px;
+  min-height: 56px;
   padding: 8px 10px;
   border: 1px solid #111;
   border-radius: 12px;
   background: #eeeee8;
   color: #111;
   font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   resize: vertical;
 }
 
-.kb-rate__comment::placeholder {
+.kb-rate-cat__comment::placeholder {
   color: rgba(17, 17, 17, 0.4);
 }
 
-.kb-rate__send {
+.kb-rate-cat__send {
   appearance: none;
   justify-self: end;
   margin: 0;
@@ -15371,21 +15448,21 @@ button.button {
   cursor: pointer;
 }
 
-@keyframes kb-rate-in {
+@keyframes kb-rate-cat-in {
   from {
     opacity: 0;
-    transform: translateX(28px);
+    transform: translate(28px, 36px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(0, 0);
   }
 }
 
-@keyframes kb-rate-out {
+@keyframes kb-rate-cat-out {
   to {
     opacity: 0;
-    transform: translateX(36px);
+    transform: translate(40px, 48px);
   }
 }
 

@@ -2,41 +2,62 @@
   <div class="kb-page kb-page--search" :data-mode="mode">
     <aside
       v-if="rateVisible"
-      class="kb-rate"
-      :class="{ 'is-out': rateLeaving }"
+      class="kb-rate-cat"
+      :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
       aria-label="Оценка страницы"
     >
-      <template v-if="rateStep === 'stars'">
-        <p class="kb-rate__ask">Оцените удобство этой страницы</p>
-        <div class="kb-rate__stars" role="group" aria-label="Оценка от 1 до 5">
+      <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
+
+      <div class="kb-rate-cat__stage">
+        <video
+          ref="rateVideoRef"
+          class="kb-rate-cat__video"
+          src="/knowledge/rating-cat.webm"
+          muted
+          playsinline
+          preload="auto"
+          @ended="onRateVideoEnded"
+        />
+        <div
+          class="kb-rate-cat__paper"
+          :class="{ 'is-live': rateReady && rateStep === 'stars' }"
+          role="group"
+          aria-label="Оценка от 1 до 5"
+        >
           <button
             v-for="n in 5"
             :key="n"
             type="button"
-            class="kb-rate__star"
+            class="kb-rate-cat__star"
             :class="{ 'is-on': n <= (rateHover || rateStars) }"
+            :disabled="!rateReady || rateStep !== 'stars'"
             :aria-label="`${n} из 5`"
             @mouseenter="rateHover = n"
             @mouseleave="rateHover = 0"
             @click="pickStars(n)"
           >
-            ★
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
+              />
+            </svg>
           </button>
         </div>
-      </template>
-      <template v-else>
-        <p class="kb-rate__ask">Спасибо!</p>
-        <form v-if="rateStep === 'comment'" class="kb-rate__form" @submit.prevent="sendFeedback">
-          <textarea
-            v-model="rateComment"
-            class="kb-rate__comment"
-            rows="2"
-            maxlength="2000"
-            placeholder="Как можно улучшить этот раздел?"
-          />
-          <button type="submit" class="kb-rate__send">Отправить</button>
-        </form>
-      </template>
+
+        <div v-if="rateStep === 'thanks' || rateStep === 'comment'" class="kb-rate-cat__panel">
+          <p class="kb-rate-cat__thanks">Спасибо!</p>
+          <form v-if="rateStep === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
+            <textarea
+              v-model="rateComment"
+              class="kb-rate-cat__comment"
+              rows="2"
+              maxlength="2000"
+              placeholder="Как можно улучшить этот раздел?"
+            />
+            <button type="submit" class="kb-rate-cat__send">Отправить</button>
+          </form>
+        </div>
+      </div>
     </aside>
 
     <section class="kb-console" aria-label="Поиск по базе знаний">
@@ -369,10 +390,12 @@ const toggleTopic = (topic: string) => {
 
 const rateVisible = ref(false);
 const rateLeaving = ref(false);
+const rateReady = ref(false);
 const rateStep = ref<RateStep>('stars');
 const rateStars = ref(0);
 const rateHover = ref(0);
 const rateComment = ref('');
+const rateVideoRef = ref<HTMLVideoElement | null>(null);
 let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
 let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -396,7 +419,24 @@ const hideRate = () => {
   rateLeaving.value = true;
   rateHideTimer = setTimeout(() => {
     rateVisible.value = false;
-  }, 320);
+  }, 420);
+};
+
+const onRateVideoEnded = () => {
+  rateReady.value = true;
+};
+
+const playRateVideo = async () => {
+  await nextTick();
+  const video = rateVideoRef.value;
+  if (!video) return;
+  try {
+    video.currentTime = 0;
+    await video.play();
+  } catch (err) {
+    console.warn('[knowledge] rating video play failed:', err);
+    rateReady.value = true;
+  }
 };
 
 const submitRating = async (comment: string) => {
@@ -412,6 +452,7 @@ const submitRating = async (comment: string) => {
 };
 
 const pickStars = async (n: number) => {
+  if (!rateReady.value || rateStep.value !== 'stars') return;
   rateStars.value = n;
   if (n >= 5) {
     rateStep.value = 'thanks';
@@ -477,7 +518,10 @@ onMounted(() => {
   if (!alreadyRated()) {
     rateShowTimer = setTimeout(() => {
       rateVisible.value = true;
-    }, 1200);
+      rateReady.value = false;
+      rateStep.value = 'stars';
+      playRateVideo();
+    }, 900);
   }
 });
 
