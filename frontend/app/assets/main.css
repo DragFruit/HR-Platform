@@ -14946,27 +14946,18 @@ button.button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: end;
+  align-items: center;
 }
 
 .kb-field {
-  display: grid;
-  gap: 4px;
+  position: relative;
   min-width: 0;
-}
-
-.kb-field > span {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(17, 17, 17, 0.62);
 }
 
 .kb-field__control {
   appearance: none;
   margin: 0;
-  padding: 7px 10px;
+  padding: 8px 12px;
   border: 2px solid #111;
   border-radius: 999px;
   background: #eeeee8;
@@ -14976,31 +14967,86 @@ button.button {
   font-weight: 700;
   line-height: 1.2;
   outline: none;
+  max-width: 220px;
 }
 
-.kb-field__control:focus {
+.kb-field__control--btn {
+  cursor: pointer;
+}
+
+.kb-field__control:focus,
+.kb-field.is-open .kb-field__control--btn {
   background: #fff;
   box-shadow: 2px 2px 0 #7451f4;
+}
+
+.kb-date-pop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+  padding: 10px;
+  border: 2px solid #111;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 3px 3px 0 #ddf365;
+}
+
+.kb-date-pop label {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.kb-date-pop input[type='date'] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #eeeee8;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.kb-date-pop__clear {
+  appearance: none;
+  margin: 0;
+  padding: 6px 8px;
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: #ddf365;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .kb-dock {
   position: relative;
   flex: 0 0 auto;
-  height: 86px;
-  margin-top: 2px;
+  height: 108px;
+  margin-top: 4px;
 }
 
 .kb-plate {
   position: absolute;
   left: 0;
   right: 0;
-  height: 52px;
+  height: 54px;
   border: 2px solid #111;
   border-radius: 999px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 18px;
   transform-origin: center bottom;
 }
 
@@ -15015,10 +15061,16 @@ button.button {
 .kb-plate--back {
   z-index: 1;
   bottom: 0;
-  background: #eeeee8;
-  box-shadow: 2px 2px 0 #7451f4;
-  transform: translateY(-28px) scale(0.94);
+  align-items: flex-start;
+  padding-top: 10px;
+  background: #ddf365;
+  box-shadow: 3px 3px 0 #7451f4;
+  transform: translateY(-40px) scale(0.98);
   cursor: pointer;
+}
+
+.kb-plate--back:hover {
+  transform: translateY(-44px) scale(0.98);
 }
 
 .kb-dock--swap .kb-plate--front {
@@ -15031,11 +15083,11 @@ button.button {
 
 @keyframes kb-plate-to-front {
   0% {
-    transform: translateY(-28px) scale(0.94);
+    transform: translateY(-40px) scale(0.98);
     z-index: 1;
   }
   42% {
-    transform: translateY(-58px) scale(0.98);
+    transform: translateY(-72px) scale(1);
     z-index: 3;
   }
   100% {
@@ -15054,7 +15106,7 @@ button.button {
     z-index: 1;
   }
   100% {
-    transform: translateY(-28px) scale(0.94);
+    transform: translateY(-40px) scale(0.98);
     z-index: 1;
   }
 }
@@ -15077,11 +15129,12 @@ button.button {
   color: rgba(17, 17, 17, 0.42);
 }
 
-.kb-plate__label {
+.kb-plate--back .kb-plate__label {
   width: 100%;
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  color: rgba(17, 17, 17, 0.62);
+  letter-spacing: 0.01em;
+  color: #111;
   pointer-events: none;
 }
 
@@ -15091,7 +15144,7 @@ button.button {
   }
 
   .kb-field__control {
-    max-width: 42vw;
+    max-width: 46vw;
   }
 
   .kb-hit__title {

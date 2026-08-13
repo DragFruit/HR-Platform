@@ -56,34 +56,45 @@
     </div>
 
     <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Фильтры поиска">
+      <div class="kb-field kb-field--date" :class="{ 'is-open': dateOpen }">
+        <button
+          type="button"
+          class="kb-field__control kb-field__control--btn"
+          :aria-expanded="dateOpen"
+          aria-haspopup="dialog"
+          @click="dateOpen = !dateOpen"
+        >
+          Дата · {{ dateLabel }}
+        </button>
+        <div v-if="dateOpen" class="kb-date-pop" role="dialog" aria-label="Период">
+          <label>
+            С
+            <input v-model="draftFilters.dateFrom" type="date" />
+          </label>
+          <label>
+            По
+            <input v-model="draftFilters.dateTo" type="date" />
+          </label>
+          <button type="button" class="kb-date-pop__clear" @click="clearDate">Сбросить</button>
+        </div>
+      </div>
       <label class="kb-field">
-        <span>С</span>
-        <input v-model="draftFilters.dateFrom" type="date" class="kb-field__control" />
-      </label>
-      <label class="kb-field">
-        <span>По</span>
-        <input v-model="draftFilters.dateTo" type="date" class="kb-field__control" />
-      </label>
-      <label class="kb-field">
-        <span>Автор</span>
-        <select v-model="draftFilters.author" class="kb-field__control">
-          <option value="">Все</option>
-          <option v-for="name in authors" :key="name" :value="name">{{ name }}</option>
+        <select v-model="draftFilters.author" class="kb-field__control" aria-label="Автор">
+          <option value="">Автор · все</option>
+          <option v-for="name in authors" :key="name" :value="name">Автор · {{ name }}</option>
         </select>
       </label>
       <label class="kb-field">
-        <span>Тематика</span>
-        <select v-model="draftFilters.topic" class="kb-field__control">
-          <option value="">Все</option>
-          <option v-for="topic in topics" :key="topic" :value="topic">{{ topic }}</option>
+        <select v-model="draftFilters.topic" class="kb-field__control" aria-label="Тематика">
+          <option value="">Тематика · все</option>
+          <option v-for="topic in topics" :key="topic" :value="topic">Тематика · {{ topic }}</option>
         </select>
       </label>
       <label class="kb-field">
-        <span>Тип</span>
-        <select v-model="draftFilters.type" class="kb-field__control">
-          <option value="">Все</option>
-          <option value="regulation">Регламент</option>
-          <option value="faq">FAQ</option>
+        <select v-model="draftFilters.type" class="kb-field__control" aria-label="Тип">
+          <option value="">Тип · все</option>
+          <option value="regulation">Тип · регламент</option>
+          <option value="faq">Тип · FAQ</option>
         </select>
       </label>
     </div>
@@ -104,7 +115,7 @@
             aria-label="Найти по базе"
           />
         </form>
-        <span v-else class="kb-plate__label">Найти по базе…</span>
+        <span v-else class="kb-plate__label">Найти по базе</span>
       </div>
 
       <div
@@ -148,6 +159,7 @@ const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
 
 const mode = ref<SearchMode>('classic');
 const swapping = ref(false);
+const dateOpen = ref(false);
 const aiDraft = ref('');
 const resultsRef = ref<HTMLElement | null>(null);
 const sentinelRef = ref<HTMLElement | null>(null);
@@ -156,6 +168,33 @@ const threadRef = ref<HTMLElement | null>(null);
 const authors = knowledgeAuthors();
 const topics = knowledgeCategories();
 
+const formatDateShort = (iso: string) => {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!d || !m) return iso;
+  return `${d}.${m}`;
+};
+
+const dateLabel = computed(() => {
+  const from = formatDateShort(draftFilters.value.dateFrom);
+  const to = formatDateShort(draftFilters.value.dateTo);
+  if (from && to) return `${from}–${to}`;
+  if (from) return `с ${from}`;
+  if (to) return `до ${to}`;
+  return 'все';
+});
+
+const clearDate = () => {
+  draftFilters.value.dateFrom = '';
+  draftFilters.value.dateTo = '';
+};
+
+const onDocPointer = (event: PointerEvent) => {
+  const target = event.target as Node | null;
+  const host = document.querySelector('.kb-field--date');
+  if (host && target && !host.contains(target)) dateOpen.value = false;
+};
+
 const plateClass = (plate: SearchMode) => ({
   'kb-plate--front': mode.value === plate,
   'kb-plate--back': mode.value !== plate
@@ -163,6 +202,7 @@ const plateClass = (plate: SearchMode) => ({
 
 const setMode = (next: SearchMode) => {
   if (next === mode.value || swapping.value) return;
+  dateOpen.value = false;
   swapping.value = true;
   mode.value = next;
   window.setTimeout(() => {
@@ -210,9 +250,11 @@ watch([hasMore, visibleHits, mode], async () => {
 
 onMounted(() => {
   hydrate();
+  document.addEventListener('pointerdown', onDocPointer);
 });
 
 onBeforeUnmount(() => {
   observer?.disconnect();
+  document.removeEventListener('pointerdown', onDocPointer);
 });
 </script>
