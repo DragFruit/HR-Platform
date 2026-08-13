@@ -9,15 +9,6 @@
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
 
       <div class="kb-rate-cat__stage">
-        <img
-          class="kb-rate-cat__banner"
-          :class="{ 'is-live': rateReady }"
-          src="/knowledge/rating-paper-full.png"
-          alt=""
-          width="424"
-          height="192"
-          draggable="false"
-        />
         <video
           ref="rateVideoRef"
           class="kb-rate-cat__video"
@@ -27,30 +18,41 @@
           preload="auto"
           @ended="onRateVideoEnded"
         />
-        <div
-          class="kb-rate-cat__paper"
-          :class="{ 'is-live': rateReady && rateStep === 'stars' }"
-          role="group"
-          aria-label="Оценка от 1 до 5"
-        >
-          <button
-            v-for="n in 5"
-            :key="n"
-            type="button"
-            class="kb-rate-cat__star"
-            :class="{ 'is-on': n <= (rateHover || rateStars) }"
-            :disabled="!rateReady || rateStep !== 'stars'"
-            :aria-label="`${n} из 5`"
-            @mouseenter="rateHover = n"
-            @mouseleave="rateHover = 0"
-            @click="pickStars(n)"
+        <!-- полная бумажка поверх ролика: swallowtail + звёзды на ней -->
+        <div class="kb-rate-cat__banner" :class="{ 'is-live': rateReady }" :aria-hidden="!rateReady">
+          <img
+            class="kb-rate-cat__banner-img"
+            src="/knowledge/rating-paper-full.png"
+            alt=""
+            width="409"
+            height="172"
+            draggable="false"
+          />
+          <div
+            v-show="rateStep === 'stars'"
+            class="kb-rate-cat__paper"
+            role="group"
+            aria-label="Оценка от 1 до 5"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
-              />
-            </svg>
-          </button>
+            <button
+              v-for="n in 5"
+              :key="n"
+              type="button"
+              class="kb-rate-cat__star"
+              :class="{ 'is-on': n <= (rateHover || rateStars) }"
+              :disabled="!rateReady || rateStep !== 'stars'"
+              :aria-label="`${n} из 5`"
+              @mouseenter="rateHover = n"
+              @mouseleave="rateHover = 0"
+              @click="pickStars(n)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div v-if="rateStep === 'thanks' || rateStep === 'comment'" class="kb-rate-cat__panel">
