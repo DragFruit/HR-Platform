@@ -55,7 +55,9 @@
       </div>
     </div>
 
-    <div class="kb-console">
+    <section class="kb-console" aria-label="Поиск по базе знаний">
+      <h2 class="kb-console__title">{{ mode === 'ai' ? 'Спросить ИИ' : 'Найти в базе' }}</h2>
+
       <div class="kb-modes" role="tablist" aria-label="Режим поиска">
         <button
           type="button"
@@ -84,7 +86,7 @@
           v-model="draftQuery"
           type="text"
           class="kb-seek__input"
-          placeholder="Найти по базе"
+          placeholder="Например: отпуск, аванс, адаптация"
           autocomplete="off"
           aria-label="Найти по базе"
         />
@@ -95,7 +97,7 @@
           v-model="aiDraft"
           type="text"
           class="kb-seek__input"
-          placeholder="Спросить ИИ"
+          placeholder="Например: сколько дней отпуска в аванс"
           autocomplete="off"
           aria-label="Спросить ИИ"
         />
@@ -103,6 +105,32 @@
       </form>
 
       <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Фильтры поиска">
+        <button
+          v-for="topic in topics"
+          :key="topic"
+          type="button"
+          class="kb-chip"
+          :class="{ 'is-on': draftFilters.topic === topic }"
+          @click="toggleTopic(topic)"
+        >
+          {{ topic }}
+        </button>
+        <button
+          type="button"
+          class="kb-chip"
+          :class="{ 'is-on': draftFilters.type === 'regulation' }"
+          @click="toggleType('regulation')"
+        >
+          Регламент
+        </button>
+        <button
+          type="button"
+          class="kb-chip"
+          :class="{ 'is-on': draftFilters.type === 'faq' }"
+          @click="toggleType('faq')"
+        >
+          FAQ
+        </button>
         <div class="kb-field kb-field--date" :class="{ 'is-open': dateOpen }">
           <button
             type="button"
@@ -112,7 +140,7 @@
             aria-haspopup="dialog"
             @click="dateOpen = !dateOpen"
           >
-            Дата · {{ dateLabel }}
+            {{ draftFilters.dateFrom || draftFilters.dateTo ? dateLabel : 'Дата' }}
           </button>
           <div v-if="dateOpen" class="kb-date-pop" role="dialog" aria-label="Период">
             <label>
@@ -133,39 +161,12 @@
             :class="{ 'is-on': Boolean(draftFilters.author) }"
             aria-label="Автор"
           >
-            <option value="">Автор · все</option>
+            <option value="">Автор</option>
             <option v-for="name in authors" :key="name" :value="name">{{ name }}</option>
           </select>
         </label>
-        <label class="kb-field">
-          <select
-            v-model="draftFilters.topic"
-            class="kb-chip kb-chip--select"
-            :class="{ 'is-on': Boolean(draftFilters.topic) }"
-            aria-label="Тематика"
-          >
-            <option value="">Тематика · все</option>
-            <option v-for="topic in topics" :key="topic" :value="topic">{{ topic }}</option>
-          </select>
-        </label>
-        <button
-          type="button"
-          class="kb-chip"
-          :class="{ 'is-on': draftFilters.type === 'regulation' }"
-          @click="toggleType('regulation')"
-        >
-          Регламент
-        </button>
-        <button
-          type="button"
-          class="kb-chip"
-          :class="{ 'is-on': draftFilters.type === 'faq' }"
-          @click="toggleType('faq')"
-        >
-          FAQ
-        </button>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -233,6 +234,10 @@ const setMode = (next: SearchMode) => {
 
 const toggleType = (value: 'regulation' | 'faq') => {
   draftFilters.value.type = draftFilters.value.type === value ? '' : value;
+};
+
+const toggleTopic = (topic: string) => {
+  draftFilters.value.topic = draftFilters.value.topic === topic ? '' : topic;
 };
 
 const onClassicSubmit = () => {
