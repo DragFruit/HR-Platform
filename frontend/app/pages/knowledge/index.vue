@@ -55,6 +55,7 @@
       </div>
     </div>
 
+    <div class="kb-console">
     <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Фильтры поиска">
       <div class="kb-field kb-field--date" :class="{ 'is-open': dateOpen }">
         <button
@@ -105,7 +106,16 @@
         :class="plateClass('classic')"
         @click="mode !== 'classic' && setMode('classic')"
       >
+        <span class="kb-sq kb-sq--lime kb-sq--top-l" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--top-r" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--right-t" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--right-b" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--bot-l" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--bot-r" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--left-t" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--left-b" aria-hidden="true" />
         <form v-if="mode === 'classic'" class="kb-plate__form" @submit.prevent="onClassicSubmit">
+          <span class="kb-plate__mark" aria-hidden="true" />
           <input
             v-model="draftQuery"
             type="text"
@@ -123,7 +133,16 @@
         :class="plateClass('ai')"
         @click="mode !== 'ai' && setMode('ai')"
       >
+        <span class="kb-sq kb-sq--lime kb-sq--top-l" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--top-r" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--right-t" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--right-b" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--bot-l" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--bot-r" aria-hidden="true" />
+        <span class="kb-sq kb-sq--purple kb-sq--left-t" aria-hidden="true" />
+        <span class="kb-sq kb-sq--lime kb-sq--left-b" aria-hidden="true" />
         <form v-if="mode === 'ai'" class="kb-plate__form" @submit.prevent="onAiSubmit">
+          <span class="kb-plate__mark kb-plate__mark--ai" aria-hidden="true" />
           <input
             v-model="aiDraft"
             type="text"
@@ -135,6 +154,7 @@
         </form>
         <span v-else class="kb-plate__label">Спросить ИИ</span>
       </div>
+    </div>
     </div>
   </div>
 </template>
