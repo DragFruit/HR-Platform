@@ -5,7 +5,8 @@ export type AdminNotificationKind =
   | 'tenure_gift_order'
   | 'idea_submitted'
   | 'vpn_peer_delete_failed'
-  | 'sales_best_pick_due';
+  | 'sales_best_pick_due'
+  | 'page_feedback';
 
 export type AdminNotification = {
   id: string;
@@ -31,6 +32,9 @@ export type AdminNotification = {
   vpn_panel?: string;
   sales_period?: string;
   sales_period_label?: string;
+  stars?: number;
+  comment?: string;
+  page?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -91,6 +95,9 @@ export function useAdminNotifications() {
     if (item.kind === 'vpn_peer_delete_failed') {
       return 'Не удалось удалить VPN-ключи';
     }
+    if (item.kind === 'page_feedback') {
+      return `Оценка базы знаний: ${item.stars ?? '—'}/5`;
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
@@ -122,6 +129,12 @@ export function useAdminNotifications() {
       const panel = item.vpn_panel ? ` (${item.vpn_panel})` : '';
       return `${item.employee_name}: удалите вручную в админке VPN${panel}: ${peers}. ${item.error_message || ''}`.trim();
     }
+    if (item.kind === 'page_feedback') {
+      const note = item.comment?.trim();
+      return note
+        ? `${item.employee_name}: «${note}»`
+        : `${item.employee_name} оценил(а) страницу, комментария нет.`;
+    }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
   };
@@ -146,6 +159,7 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') return 'Банк идей';
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
     if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
+    if (item.kind === 'page_feedback') return 'База знаний';
     return 'Справочник';
   };
 
@@ -158,6 +172,7 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') return '/admin/ideas';
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
     if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
+    if (item.kind === 'page_feedback') return '/knowledge';
     return '/admin/employees';
   };
 

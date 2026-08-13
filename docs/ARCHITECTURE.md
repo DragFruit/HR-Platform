@@ -121,7 +121,7 @@ flowchart TB
 - `vacations.vue` — employee UI или `VacationsManagerExperience` (manager/hr)
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
-- `knowledge/index.vue` — поиск / чат ИИ; `knowledge/[id].vue` — статья. Сид `data/knowledgeBaseCatalog.ts`. Поиск: `utils/knowledgeSearch.ts`, `useKnowledgeSearch`. ИИ-заглушка: `useKnowledgeAiAnswer` (цитаты обязательны), `useKnowledgeAiChat`.
+- `knowledge/index.vue` — поиск / чат ИИ; `knowledge/[id].vue` — статья. Сид `data/knowledgeBaseCatalog.ts`. Поиск: `utils/knowledgeSearch.ts`, `useKnowledgeSearch`. ИИ-заглушка: `useKnowledgeAiAnswer` (цитаты обязательны), `useKnowledgeAiChat`. Оценка страницы: `POST /api/knowledge/feedback` → админ-уведомление `page_feedback` + imbot Драго. Подсказки: `knowledgeSearchPhrases.ts`.
 
 ### Админ
 
@@ -403,6 +403,7 @@ OrgLink        // from/to ports + optional mid
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |
 | `vbi-kb-ai-chat-v1` | `useKnowledgeAiChat` — диалог ИИ базы знаний, TTL 24 ч |
+| `vbi-kb-page-rating-v1` | оценка удобства `/knowledge` (один раз на браузер) |
 
 Идеи: сервер `server/data/ideas.json` (не localStorage). Устаревшие ключи `vbi-ideas-bank-v2` / `vbi-ideas-votes-v1-*` больше не используются.
 

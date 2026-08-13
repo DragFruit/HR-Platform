@@ -10,7 +10,8 @@ export type AdminNotificationKind =
   | 'tenure_gift_order'
   | 'idea_submitted'
   | 'vpn_peer_delete_failed'
-  | 'sales_best_pick_due';
+  | 'sales_best_pick_due'
+  | 'page_feedback';
 
 export type AdminNotification = {
   id: string;
@@ -42,6 +43,10 @@ export type AdminNotification = {
   /** Лучший специалист продаж — выбор за месяц */
   sales_period?: string;
   sales_period_label?: string;
+  /** Оценка страницы */
+  stars?: number;
+  comment?: string;
+  page?: string;
 };
 
 type NotificationsState = {
@@ -333,6 +338,30 @@ export async function createSalesBestPickDueNotification(input: {
     employee_name: 'Отдел продаж',
     sales_period: input.period,
     sales_period_label: input.period_label,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createPageFeedbackNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  stars: number;
+  comment?: string;
+  page?: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'page_feedback',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    stars: input.stars,
+    comment: input.comment || '',
+    page: input.page || '/knowledge',
     created_at: new Date().toISOString(),
     admin_seen: false
   };

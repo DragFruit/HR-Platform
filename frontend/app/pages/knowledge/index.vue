@@ -1,5 +1,44 @@
 <template>
   <div class="kb-page kb-page--search" :data-mode="mode">
+    <aside
+      v-if="rateVisible"
+      class="kb-rate"
+      :class="{ 'is-out': rateLeaving }"
+      aria-label="Оценка страницы"
+    >
+      <template v-if="rateStep === 'stars'">
+        <p class="kb-rate__ask">Оцените удобство этой страницы</p>
+        <div class="kb-rate__stars" role="group" aria-label="Оценка от 1 до 5">
+          <button
+            v-for="n in 5"
+            :key="n"
+            type="button"
+            class="kb-rate__star"
+            :class="{ 'is-on': n <= (rateHover || rateStars) }"
+            :aria-label="`${n} из 5`"
+            @mouseenter="rateHover = n"
+            @mouseleave="rateHover = 0"
+            @click="pickStars(n)"
+          >
+            ★
+          </button>
+        </div>
+      </template>
+      <template v-else>
+        <p class="kb-rate__ask">Спасибо!</p>
+        <form v-if="rateStep === 'comment'" class="kb-rate__form" @submit.prevent="sendFeedback">
+          <textarea
+            v-model="rateComment"
+            class="kb-rate__comment"
+            rows="2"
+            maxlength="2000"
+            placeholder="Как можно улучшить этот раздел?"
+          />
+          <button type="submit" class="kb-rate__send">Отправить</button>
+        </form>
+      </template>
+    </aside>
+
     <section class="kb-console" aria-label="Поиск по базе знаний">
       <h2 class="kb-console__title">Найти в базе</h2>
 
@@ -27,14 +66,19 @@
       </div>
 
       <form v-if="mode === 'classic'" class="kb-seek" @submit.prevent="onClassicSubmit">
-        <input
-          v-model="draftQuery"
-          type="text"
-          class="kb-seek__input"
-          placeholder="Например: отпуск, аванс, адаптация"
-          autocomplete="off"
-          aria-label="Найти по базе"
-        />
+        <div class="kb-seek__field">
+          <input
+            v-model="draftQuery"
+            type="text"
+            class="kb-seek__input"
+            autocomplete="off"
+            aria-label="Найти по базе"
+            @input="onQueryInput"
+          />
+          <span v-if="!draftQuery" class="kb-seek__ghost" aria-hidden="true">
+            {{ placeholderText }}<i class="kb-seek__caret" />
+          </span>
+        </div>
         <button type="submit" class="kb-seek__go">Искать</button>
       </form>
       <form v-else class="kb-seek" @submit.prevent="onAiSubmit">
@@ -49,7 +93,7 @@
         <button type="submit" class="kb-seek__go">Спросить</button>
       </form>
 
-      <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Быстрые фильтры">
+      <div v-if="KB_FILTERS_ENABLED && mode === 'classic'" class="kb-filters" role="group" aria-label="Быстрые фильтры">
         <button
           type="button"
           class="kb-filter-btn"
@@ -85,7 +129,7 @@
 
     <Teleport to="body">
       <div
-        v-if="mode === 'classic' && filterOpen"
+        v-if="KB_FILTERS_ENABLED && mode === 'classic' && filterOpen"
         class="kb-filter-layer"
         @click.self="filterOpen = false"
       >
@@ -193,7 +237,7 @@
               </template>
             </span>
           </NuxtLink>
-          <p v-if="!hits.length" class="kb-empty muted">Ничего не нашли — попробуй другой запрос или фильтр.</p>
+          <p v-if="!hits.length" class="kb-empty muted">Ничего не нашли — попробуй другой запрос.</p>
           <div v-if="hasMore" ref="sentinelRef" class="kb-results__sentinel" aria-hidden="true" />
         </template>
       </div>
@@ -229,8 +273,15 @@
 
 <script setup lang="ts">
 import { knowledgeAuthors, knowledgeCategories } from '~/data/knowledgeBaseCatalog';
+import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
+
+/** Фильтры спрятаны, код не удалять — вернуть `true`, если снова нужны. */
+const KB_FILTERS_ENABLED = false;
+
+const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
 
 type SearchMode = 'classic' | 'ai';
+type RateStep = 'stars' | 'thanks' | 'comment';
 
 const {
   draftQuery,
@@ -244,6 +295,7 @@ const {
 } = useKnowledgeSearch();
 
 const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
+const { text: placeholderText, stop: stopPlaceholder } = useKnowledgePlaceholder(KNOWLEDGE_SEARCH_PHRASES);
 
 const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей'];
 
@@ -315,7 +367,73 @@ const toggleTopic = (topic: string) => {
   draftFilters.value.topic = draftFilters.value.topic === topic ? '' : topic;
 };
 
+const rateVisible = ref(false);
+const rateLeaving = ref(false);
+const rateStep = ref<RateStep>('stars');
+const rateStars = ref(0);
+const rateHover = ref(0);
+const rateComment = ref('');
+let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
+let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
+
+const alreadyRated = () => {
+  try {
+    return Boolean(localStorage.getItem(RATE_STORAGE_KEY));
+  } catch {
+    return false;
+  }
+};
+
+const markRated = () => {
+  try {
+    localStorage.setItem(RATE_STORAGE_KEY, JSON.stringify({ at: new Date().toISOString(), stars: rateStars.value }));
+  } catch {
+    /* ignore */
+  }
+};
+
+const hideRate = () => {
+  rateLeaving.value = true;
+  rateHideTimer = setTimeout(() => {
+    rateVisible.value = false;
+  }, 320);
+};
+
+const submitRating = async (comment: string) => {
+  markRated();
+  try {
+    await $fetch('/api/knowledge/feedback', {
+      method: 'POST',
+      body: { stars: rateStars.value, comment, page: '/knowledge' }
+    });
+  } catch (err) {
+    console.warn('[knowledge] feedback failed:', err);
+  }
+};
+
+const pickStars = async (n: number) => {
+  rateStars.value = n;
+  if (n >= 5) {
+    rateStep.value = 'thanks';
+    await submitRating('');
+    rateHideTimer = setTimeout(hideRate, 1600);
+    return;
+  }
+  rateStep.value = 'comment';
+};
+
+const sendFeedback = async () => {
+  await submitRating(rateComment.value.trim());
+  rateStep.value = 'thanks';
+  rateHideTimer = setTimeout(hideRate, 1200);
+};
+
+const onQueryInput = () => {
+  if (draftQuery.value) stopPlaceholder();
+};
+
 const onClassicSubmit = () => {
+  if (draftQuery.value) stopPlaceholder();
   runSearch();
 };
 
@@ -356,11 +474,18 @@ onMounted(() => {
   hydrate();
   document.addEventListener('pointerdown', onDocPointer);
   document.addEventListener('keydown', onDocKey);
+  if (!alreadyRated()) {
+    rateShowTimer = setTimeout(() => {
+      rateVisible.value = true;
+    }, 1200);
+  }
 });
 
 onBeforeUnmount(() => {
   observer?.disconnect();
   document.removeEventListener('pointerdown', onDocPointer);
   document.removeEventListener('keydown', onDocKey);
+  if (rateHideTimer) clearTimeout(rateHideTimer);
+  if (rateShowTimer) clearTimeout(rateShowTimer);
 });
 </script>
