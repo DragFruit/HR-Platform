@@ -15296,9 +15296,9 @@ button.button {
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* выезд из-за края — через JS sync с currentTime ролика, без отдельной CSS-анимации */
+  /* старт за правым краем (клип .kb-page); длительность задаётся из RATE_WALK_END_SEC */
   transform: translateX(100%);
-  will-change: transform;
+  animation: kb-rate-cat-in 3.9s linear forwards;
 }
 
 .kb-rate-cat.is-out {
@@ -15476,6 +15476,15 @@ button.button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+@keyframes kb-rate-cat-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes kb-rate-cat-out {
