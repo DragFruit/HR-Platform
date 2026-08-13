@@ -312,8 +312,8 @@ import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 const KB_FILTERS_ENABLED = false;
 
 const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
-/** Длина выезда = фаза ходьбы в ролике (лапы встают ~3.9 с) */
-const RATE_WALK_END_SEC = 3.9;
+/** Длина выезда = посадка в ролике (~frame 105 @ 30fps ≈ 3500 ms) */
+const RATE_WALK_END_SEC = 3.5;
 
 type SearchMode = 'classic' | 'ai';
 type RateStep = 'stars' | 'thanks' | 'comment';

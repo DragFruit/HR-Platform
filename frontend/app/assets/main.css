@@ -15298,7 +15298,7 @@ button.button {
   pointer-events: none;
   /* старт за правым краем (клип .kb-page); длительность задаётся из RATE_WALK_END_SEC */
   transform: translateX(100%);
-  animation: kb-rate-cat-in 3.9s linear forwards;
+  animation: kb-rate-cat-in 3.5s linear forwards;
 }
 
 .kb-rate-cat.is-out {
