@@ -9,6 +9,15 @@
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
 
       <div class="kb-rate-cat__stage">
+        <img
+          class="kb-rate-cat__banner"
+          :class="{ 'is-live': rateReady }"
+          src="/knowledge/rating-paper-full.png"
+          alt=""
+          width="424"
+          height="192"
+          draggable="false"
+        />
         <video
           ref="rateVideoRef"
           class="kb-rate-cat__video"
@@ -423,6 +432,17 @@ const hideRate = () => {
 };
 
 const onRateVideoEnded = () => {
+  const video = rateVideoRef.value;
+  if (video) {
+    try {
+      video.pause();
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = video.duration;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   rateReady.value = true;
 };
 

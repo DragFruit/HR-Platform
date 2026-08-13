@@ -15,6 +15,6 @@
 
 Фильтры в UI выключены (код оставлен). В строке — печатающаяся подсказка.
 
-Оценка: анимация кота `frontend/public/knowledge/rating-cat.webm` (чёрный фон → `mix-blend-mode: screen`). Поверх бумажки — `.kb-rate-cat__paper` со звёздами (зона ~24–96% × 34–76% кадра). Эталон звёзд — `docs/design-refs/knowledge-base/` + реф с котом.
+Оценка: ролик кота `frontend/public/knowledge/rating-cat.webm` (чёрный фон → `mix-blend-mode: screen`). В конце — полная бумажка `rating-paper-full.png` сзади (swallowtail справа); звёзды на `.kb-rate-cat__paper` в зоне бумажки. Композит: `rating-cat-paper-composite.png`.
 
 Страница: `/knowledge`. Сид: `knowledgeBaseCatalog.ts`.
