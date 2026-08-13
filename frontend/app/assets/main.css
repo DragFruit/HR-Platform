@@ -15123,25 +15123,25 @@ button.button {
 }
 
 .kb-filter-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 6;
+  z-index: 80;
   display: flex;
-  align-items: flex-end;
-  padding: 16px;
-  border-radius: inherit;
-  background: rgba(17, 17, 17, 0.18);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 17, 17, 0.28);
 }
 
 .kb-filter-pop {
-  width: 100%;
-  max-height: calc(100% - 8px);
+  width: min(440px, 100%);
+  max-height: min(80vh, 640px);
   overflow: auto;
-  padding: 16px 16px 14px;
+  padding: 20px 20px 16px;
   border: 1px solid #111;
   border-radius: 24px;
   background: #fff;
-  box-shadow: 4px 4px 0 #111;
+  box-shadow: 6px 6px 0 #111;
 }
 
 .kb-filter-pop__head {

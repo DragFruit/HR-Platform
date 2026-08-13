@@ -51,16 +51,6 @@
 
       <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Быстрые фильтры">
         <button
-          v-for="topic in visibleTopics"
-          :key="topic"
-          type="button"
-          class="kb-chip"
-          :class="{ 'is-on': draftFilters.topic === topic }"
-          @click="toggleTopic(topic)"
-        >
-          {{ topic }}
-        </button>
-        <button
           type="button"
           class="kb-filter-btn"
           :class="{ 'is-on': filterOpen || detailFilterCount > 0 }"
@@ -80,8 +70,20 @@
           </svg>
           <span v-if="detailFilterCount" class="kb-filter-btn__count">{{ detailFilterCount }}</span>
         </button>
+        <button
+          v-for="topic in visibleTopics"
+          :key="topic"
+          type="button"
+          class="kb-chip"
+          :class="{ 'is-on': draftFilters.topic === topic }"
+          @click="toggleTopic(topic)"
+        >
+          {{ topic }}
+        </button>
       </div>
+    </section>
 
+    <Teleport to="body">
       <div
         v-if="mode === 'classic' && filterOpen"
         class="kb-filter-layer"
@@ -166,7 +168,7 @@
           </div>
         </div>
       </div>
-    </section>
+    </Teleport>
 
     <div class="kb-stage">
       <div
