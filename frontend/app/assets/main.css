@@ -15296,9 +15296,9 @@ button.button {
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* выезд из-за правого края (клип страницы), без fade — ~длина ролика */
+  /* выезд из-за края — через JS sync с currentTime ролика, без отдельной CSS-анимации */
   transform: translateX(100%);
-  animation: kb-rate-cat-in 5s linear forwards;
+  will-change: transform;
 }
 
 .kb-rate-cat.is-out {
@@ -15476,15 +15476,6 @@ button.button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
-}
-
-@keyframes kb-rate-cat-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
 }
 
 @keyframes kb-rate-cat-out {

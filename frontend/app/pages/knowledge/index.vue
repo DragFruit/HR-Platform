@@ -4,6 +4,7 @@
       v-if="rateVisible"
       class="kb-rate-cat"
       :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
+      :style="rateLeaving ? undefined : { transform: `translateX(${rateWalkX})` }"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
@@ -311,6 +312,8 @@ import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 const KB_FILTERS_ENABLED = false;
 
 const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
+/** Секунда ролика, к которой лапы уже стоят — дальше виджет не двигаем */
+const RATE_WALK_END_SEC = 3.9;
 
 type SearchMode = 'classic' | 'ai';
 type RateStep = 'stars' | 'thanks' | 'comment';
@@ -407,8 +410,18 @@ const rateStars = ref(0);
 const rateHover = ref(0);
 const rateComment = ref('');
 const rateVideoRef = ref<HTMLVideoElement | null>(null);
+/** 100% = за правым краем, 0% = финальная позиция; только пока идёт в ролике */
+const rateWalkX = ref('100%');
 let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
 let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
+let rateWalkRaf = 0;
+
+const stopRateWalkSync = () => {
+  if (rateWalkRaf) {
+    cancelAnimationFrame(rateWalkRaf);
+    rateWalkRaf = 0;
+  }
+};
 
 const alreadyRated = () => {
   try {
@@ -426,14 +439,31 @@ const markRated = () => {
   }
 };
 
+const syncRateWalk = () => {
+  rateWalkRaf = 0;
+  const video = rateVideoRef.value;
+  if (!video || rateLeaving.value) return;
+  const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : RATE_WALK_END_SEC;
+  const walkEnd = Math.min(RATE_WALK_END_SEC, duration);
+  const t = Math.max(0, video.currentTime || 0);
+  const p = walkEnd > 0 ? Math.min(1, t / walkEnd) : 1;
+  rateWalkX.value = p >= 1 ? '0%' : `${((1 - p) * 100).toFixed(3)}%`;
+  if (!video.paused && !video.ended && p < 1) {
+    rateWalkRaf = requestAnimationFrame(syncRateWalk);
+  }
+};
+
 const hideRate = () => {
+  stopRateWalkSync();
   rateLeaving.value = true;
   rateHideTimer = setTimeout(() => {
     rateVisible.value = false;
-  }, 420);
+  }, 1100);
 };
 
 const onRateVideoEnded = () => {
+  stopRateWalkSync();
+  rateWalkX.value = '0%';
   const video = rateVideoRef.value;
   if (video) {
     try {
@@ -452,11 +482,15 @@ const playRateVideo = async () => {
   await nextTick();
   const video = rateVideoRef.value;
   if (!video) return;
+  stopRateWalkSync();
+  rateWalkX.value = '100%';
   try {
     video.currentTime = 0;
     await video.play();
+    syncRateWalk();
   } catch (err) {
     console.warn('[knowledge] rating video play failed:', err);
+    rateWalkX.value = '0%';
     rateReady.value = true;
   }
 };
@@ -551,6 +585,7 @@ onBeforeUnmount(() => {
   observer?.disconnect();
   document.removeEventListener('pointerdown', onDocPointer);
   document.removeEventListener('keydown', onDocKey);
+  stopRateWalkSync();
   if (rateHideTimer) clearTimeout(rateHideTimer);
   if (rateShowTimer) clearTimeout(rateShowTimer);
 });
