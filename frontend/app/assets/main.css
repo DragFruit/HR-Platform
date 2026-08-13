@@ -14814,21 +14814,22 @@ button.button {
   --kb-face: #eeeee8;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
-  padding-top: 8px;
+  padding-bottom: 4px;
   background-color: #eeeee8;
   background-image:
-    radial-gradient(ellipse 90% 58% at 50% -18%, rgba(116, 81, 244, 0.16), transparent 62%),
-    radial-gradient(ellipse 46% 36% at 88% 6%, rgba(221, 243, 101, 0.2), transparent 58%),
+    radial-gradient(ellipse 90% 52% at 50% 112%, rgba(116, 81, 244, 0.16), transparent 62%),
+    radial-gradient(ellipse 48% 34% at 82% 94%, rgba(221, 243, 101, 0.18), transparent 58%),
     var(--noise-url);
   background-size: auto, auto, 220px 220px;
 }
 
 .kb-stage {
+  order: 1;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -14846,7 +14847,7 @@ button.button {
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
-  padding: 4px 2px 16px 0;
+  padding: 8px 2px 8px 0;
 }
 
 .kb-hit {
@@ -14891,10 +14892,11 @@ button.button {
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  padding: 4px 4px 16px 0;
+  padding: 8px 4px 8px 0;
 }
 
 .kb-thread__pin {
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -14954,9 +14956,10 @@ button.button {
 
 .kb-console {
   position: relative;
+  order: 2;
   flex: 0 0 auto;
   width: min(72%, 720px);
-  margin: 4px auto 0;
+  margin: 0 auto 8px;
   padding: 28px 28px 22px;
   display: flex;
   flex-direction: column;
