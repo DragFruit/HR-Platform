@@ -2,6 +2,11 @@
 
 export type KnowledgeCardTone = 'violet' | 'lime' | 'ink' | 'plum' | 'doc' | 'placeholder';
 
+export type KnowledgeArticleType = 'regulation' | 'faq';
+
+/** Пока все сиды — всей компании. Отделы появятся на странице редактуры. */
+export type KnowledgeVisibility = 'all';
+
 export type KnowledgeCard = {
   id: string;
   category: string;
@@ -13,6 +18,14 @@ export type KnowledgeCard = {
   previewItems?: string[];
   /** Абзацы статьи на странице материала */
   body?: string[];
+  type?: KnowledgeArticleType;
+  publishedAt?: string;
+  visibility?: KnowledgeVisibility;
+};
+
+export const KNOWLEDGE_TYPE_LABEL: Record<KnowledgeArticleType, string> = {
+  regulation: 'Регламент',
+  faq: 'FAQ'
 };
 
 export const knowledgeBaseCards: KnowledgeCard[] = [
@@ -24,6 +37,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
       'Как устроен онбординг: кто помогает, какие шаги в треке и что считается «готово» на каждом этапе.',
     author: 'HR-команда',
     tone: 'violet',
+    type: 'regulation',
+    publishedAt: '2025-09-12',
+    visibility: 'all',
     body: [
       'Онбординг в VBI — это трек на 90 дней: от первого входа до уверенной работы в команде. Шаги видны в разделе «Адаптация».',
       'На каждом этапе есть чеклист и, где нужно, короткий тест. Статус «готово» появляется после выполнения шага или успешной сдачи теста.',
@@ -38,6 +54,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
       'Заявка, бронь, согласование руководителем и что видно коллегам в календаре команды.',
     author: 'HR-команда',
     tone: 'lime',
+    type: 'regulation',
+    publishedAt: '2026-03-02',
+    visibility: 'all',
     body: [
       'В разделе «График отпусков» можно создать заявку или предварительную бронь. Бронь не списывает дни, пока её не превратили в заявку.',
       'Заявка уходит руководителю на согласование. После одобрения отпуск появляется у коллег в календаре команды и, если настроено, в Bitrix.',
@@ -52,6 +71,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
       'Откуда берётся остаток, что такое аванс и как не перепутать учётный год с календарным.',
     author: 'HR-команда',
     tone: 'ink',
+    type: 'faq',
+    publishedAt: '2026-04-18',
+    visibility: 'all',
     body: [
       'Остаток дней считается по учётному году компании и твоей дате найма. В карточке отпуска видно доступный баланс на выбранные даты.',
       'Аванс — это дни «вперёд», если на момент отпуска накоплено меньше, чем нужно. Платформа предупредит об авансе до отправки заявки.',
@@ -66,6 +88,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
       'От черновика до статуса «сделано»: голосование, этапы и что происходит после внедрения.',
     author: 'Product',
     tone: 'plum',
+    type: 'faq',
+    publishedAt: '2025-11-20',
+    visibility: 'all',
     body: [
       'В «Банке идей» можно предложить улучшение офиса, процессов или культуры. Идея появляется в общей ленте.',
       'Коллеги голосуют, редакция и HR ведут статусы. Когда идею берут в работу или внедряют — это отражается в статусе и может попасть в активность профиля.',
@@ -79,6 +104,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
     description: 'Короткий оглавление внутренних правил и полезных ссылок.',
     author: 'HR-команда',
     tone: 'doc',
+    type: 'regulation',
+    publishedAt: '2025-08-01',
+    visibility: 'all',
     previewItems: [
       'Контакты HR и бухгалтерии',
       'Офис, удалёнка, командировки',
@@ -100,6 +128,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
     description: 'За что начисляются баллы, какие лимиты у товаров и как забрать заказ.',
     author: 'HR-команда',
     tone: 'violet',
+    type: 'faq',
+    publishedAt: '2026-01-15',
+    visibility: 'all',
     body: [
       'Баллы начисляются за активность на платформе: задачи, идеи, обучение и другие события, которые HR подключает к кошельку.',
       'В магазине у товаров есть цена и месячный лимит. Если баллов не хватает, кнопка покупки будет недоступна.',
@@ -113,6 +144,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
     description: 'Что попадает в ленту профиля, как открываются ачивки и зачем юбилейный купон.',
     author: 'People Ops',
     tone: 'lime',
+    type: 'faq',
+    publishedAt: '2026-02-08',
+    visibility: 'all',
     body: [
       'В профиле — превью ачивок и лента недавней активности. Лента сортируется по дате события.',
       'Ачивки открываются автоматически (стаж, отпуск, магазин, идеи) или вручную через активность, которую добавляет HR.',
@@ -126,6 +160,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
     description: 'Когда отпуск уходит в календарь портала и что делать, если уведомление не пришло.',
     author: 'IT',
     tone: 'ink',
+    type: 'faq',
+    publishedAt: '2026-05-21',
+    visibility: 'all',
     body: [
       'После согласования отпуска платформа может создать отсутствие в Bitrix (пальма / календарь) — если интеграция включена.',
       'Системные уведомления в Bitrix идут через колокольчик приложения VBI HR, не через личный чат.',
@@ -139,6 +176,9 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
     description: 'Ритм команды, созвоны, асинхрон и принципы обратной связи без воды.',
     author: 'People Ops',
     tone: 'plum',
+    type: 'regulation',
+    publishedAt: '2025-10-03',
+    visibility: 'all',
     body: [
       'Мы много работаем асинхронно: пиши так, чтобы коллега мог ответить без созвона, если вопрос не горит.',
       'Созвоны — для решений и сложных обсуждений. Перед встречей — короткий контекст и цель.',
@@ -157,10 +197,21 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
 export const findKnowledgeCard = (id: string) =>
   knowledgeBaseCards.find((card) => card.id === id && card.tone !== 'placeholder');
 
+export const knowledgeArticles = () =>
+  knowledgeBaseCards.filter((card) => card.tone !== 'placeholder');
+
 export const knowledgeCategories = () => {
   const set = new Set<string>();
-  for (const card of knowledgeBaseCards) {
+  for (const card of knowledgeArticles()) {
     if (card.category) set.add(card.category);
+  }
+  return [...set];
+};
+
+export const knowledgeAuthors = () => {
+  const set = new Set<string>();
+  for (const card of knowledgeArticles()) {
+    if (card.author) set.add(card.author);
   }
   return [...set];
 };
