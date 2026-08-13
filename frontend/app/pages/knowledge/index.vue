@@ -1,62 +1,7 @@
 <template>
   <div class="kb-page kb-page--search" :data-mode="mode">
-    <div class="kb-stage">
-      <div
-        v-if="mode === 'classic'"
-        ref="resultsRef"
-        class="kb-results"
-        role="list"
-        aria-label="Результаты поиска"
-      >
-        <template v-if="hasSearched">
-          <NuxtLink
-            v-for="hit in visibleHits"
-            :key="hit.card.id"
-            :to="`/knowledge/${hit.card.id}`"
-            class="kb-hit"
-            role="listitem"
-          >
-            <span class="kb-hit__title">
-              <template v-for="(part, idx) in hit.titleParts" :key="`${hit.card.id}-${idx}`">
-                <mark v-if="part.hit">{{ part.text }}</mark>
-                <template v-else>{{ part.text }}</template>
-              </template>
-            </span>
-          </NuxtLink>
-          <p v-if="!hits.length" class="kb-empty muted">Ничего не нашли — попробуй другой запрос или фильтр.</p>
-          <div v-if="hasMore" ref="sentinelRef" class="kb-results__sentinel" aria-hidden="true" />
-        </template>
-      </div>
-
-      <div v-else ref="threadRef" class="kb-thread" role="log" aria-live="polite" aria-label="Диалог с ИИ">
-        <div class="kb-thread__pin">
-          <article
-            v-for="msg in messages"
-            :key="msg.id"
-            class="kb-bubble"
-            :class="`kb-bubble--${msg.from}`"
-          >
-            <p v-if="msg.from === 'user'" class="kb-bubble__text">{{ msg.text }}</p>
-            <p v-else class="kb-bubble__text">
-              <template v-for="(part, idx) in msg.parts ?? []" :key="`${msg.id}-${idx}`">
-                <NuxtLink
-                  v-if="part.type === 'cite'"
-                  :to="`/knowledge/${part.id}`"
-                  class="kb-cite"
-                >
-                  {{ part.title }}
-                </NuxtLink>
-                <template v-else>{{ part.value }}</template>
-              </template>
-            </p>
-          </article>
-          <p v-if="aiError" class="kb-empty muted" role="alert">{{ aiError }}</p>
-        </div>
-      </div>
-    </div>
-
     <section class="kb-console" aria-label="Поиск по базе знаний">
-      <h2 class="kb-console__title">{{ mode === 'ai' ? 'Спросить ИИ' : 'Найти в базе' }}</h2>
+      <h2 class="kb-console__title">Найти в базе</h2>
 
       <div class="kb-modes" role="tablist" aria-label="Режим поиска">
         <button
@@ -67,7 +12,7 @@
           :aria-selected="mode === 'classic'"
           @click="setMode('classic')"
         >
-          По базе
+          Поиск
         </button>
         <button
           type="button"
@@ -217,11 +162,66 @@
 
           <div class="kb-filter-pop__foot">
             <button type="button" class="kb-filter-pop__clear" @click="clearDetailFilters">Сбросить</button>
-            <button type="button" class="kb-filter-pop__done" @click="applyDetailFilters">Готово</button>
+            <button type="button" class="kb-filter-pop__done" @click="filterOpen = false">Готово</button>
           </div>
         </div>
       </div>
     </section>
+
+    <div class="kb-stage">
+      <div
+        v-if="mode === 'classic'"
+        ref="resultsRef"
+        class="kb-results"
+        role="list"
+        aria-label="Результаты поиска"
+      >
+        <template v-if="hasSearched">
+          <NuxtLink
+            v-for="hit in visibleHits"
+            :key="hit.card.id"
+            :to="`/knowledge/${hit.card.id}`"
+            class="kb-hit"
+            role="listitem"
+          >
+            <span class="kb-hit__title">
+              <template v-for="(part, idx) in hit.titleParts" :key="`${hit.card.id}-${idx}`">
+                <mark v-if="part.hit">{{ part.text }}</mark>
+                <template v-else>{{ part.text }}</template>
+              </template>
+            </span>
+          </NuxtLink>
+          <p v-if="!hits.length" class="kb-empty muted">Ничего не нашли — попробуй другой запрос или фильтр.</p>
+          <div v-if="hasMore" ref="sentinelRef" class="kb-results__sentinel" aria-hidden="true" />
+        </template>
+      </div>
+
+      <div v-else ref="threadRef" class="kb-thread" role="log" aria-live="polite" aria-label="Диалог с ИИ">
+        <div class="kb-thread__pin">
+          <article
+            v-for="msg in messages"
+            :key="msg.id"
+            class="kb-bubble"
+            :class="`kb-bubble--${msg.from}`"
+          >
+            <p v-if="msg.from === 'user'" class="kb-bubble__text">{{ msg.text }}</p>
+            <p v-else class="kb-bubble__text">
+              <template v-for="(part, idx) in msg.parts ?? []" :key="`${msg.id}-${idx}`">
+                <NuxtLink
+                  v-if="part.type === 'cite'"
+                  :to="`/knowledge/${part.id}`"
+                  class="kb-cite"
+                >
+                  {{ part.title }}
+                </NuxtLink>
+                <template v-else>{{ part.value }}</template>
+              </template>
+            </p>
+          </article>
+          <p v-if="aiError" class="kb-empty muted" role="alert">{{ aiError }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -243,7 +243,7 @@ const {
 
 const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
 
-const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей', 'Документ'];
+const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей'];
 
 const mode = ref<SearchMode>('classic');
 const filterOpen = ref(false);
@@ -282,13 +282,6 @@ const clearDetailFilters = () => {
   draftFilters.value.author = '';
   if (draftFilters.value.topic && extraTopics.includes(draftFilters.value.topic)) {
     draftFilters.value.topic = '';
-  }
-};
-
-const applyDetailFilters = () => {
-  filterOpen.value = false;
-  if (hasSearched.value || draftQuery.value.trim() || detailFilterCount.value || draftFilters.value.topic) {
-    runSearch();
   }
 };
 
