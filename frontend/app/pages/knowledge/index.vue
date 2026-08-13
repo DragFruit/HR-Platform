@@ -104,9 +104,9 @@
         <button type="submit" class="kb-seek__go">Спросить</button>
       </form>
 
-      <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Фильтры поиска">
+      <div v-if="mode === 'classic'" class="kb-filters" role="group" aria-label="Быстрые фильтры">
         <button
-          v-for="topic in topics"
+          v-for="topic in visibleTopics"
           :key="topic"
           type="button"
           class="kb-chip"
@@ -117,54 +117,109 @@
         </button>
         <button
           type="button"
-          class="kb-chip"
-          :class="{ 'is-on': draftFilters.type === 'regulation' }"
-          @click="toggleType('regulation')"
+          class="kb-filter-btn"
+          :class="{ 'is-on': filterOpen || detailFilterCount > 0 }"
+          :aria-expanded="filterOpen"
+          aria-haspopup="dialog"
+          :aria-label="detailFilterCount ? `Фильтры, выбрано ${detailFilterCount}` : 'Фильтры'"
+          @click="filterOpen = !filterOpen"
         >
-          Регламент
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path
+              d="M4 6h16l-6.2 7.4V18l-3.6 2v-6.6L4 6z"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span v-if="detailFilterCount" class="kb-filter-btn__count">{{ detailFilterCount }}</span>
         </button>
-        <button
-          type="button"
-          class="kb-chip"
-          :class="{ 'is-on': draftFilters.type === 'faq' }"
-          @click="toggleType('faq')"
+      </div>
+
+      <div
+        v-if="mode === 'classic' && filterOpen"
+        class="kb-filter-layer"
+        @click.self="filterOpen = false"
+      >
+        <div
+          ref="filterPopRef"
+          class="kb-filter-pop"
+          role="dialog"
+          aria-label="Настройка фильтров"
         >
-          FAQ
-        </button>
-        <div class="kb-field kb-field--date" :class="{ 'is-open': dateOpen }">
-          <button
-            type="button"
-            class="kb-chip"
-            :class="{ 'is-on': Boolean(draftFilters.dateFrom || draftFilters.dateTo) }"
-            :aria-expanded="dateOpen"
-            aria-haspopup="dialog"
-            @click="dateOpen = !dateOpen"
-          >
-            {{ draftFilters.dateFrom || draftFilters.dateTo ? dateLabel : 'Дата' }}
-          </button>
-          <div v-if="dateOpen" class="kb-date-pop" role="dialog" aria-label="Период">
-            <label>
-              С
-              <input v-model="draftFilters.dateFrom" type="date" />
-            </label>
-            <label>
-              По
-              <input v-model="draftFilters.dateTo" type="date" />
-            </label>
-            <button type="button" class="kb-date-pop__clear" @click="clearDate">Сбросить</button>
+          <div class="kb-filter-pop__head">
+            <h3 class="kb-filter-pop__title">Фильтры</h3>
+            <button type="button" class="kb-filter-pop__close" aria-label="Закрыть" @click="filterOpen = false">
+              ×
+            </button>
+          </div>
+
+          <div class="kb-filter-pop__section">
+            <p class="kb-filter-pop__label">Тип</p>
+            <div class="kb-filter-pop__row">
+              <button
+                type="button"
+                class="kb-chip"
+                :class="{ 'is-on': draftFilters.type === 'regulation' }"
+                @click="toggleType('regulation')"
+              >
+                Регламент
+              </button>
+              <button
+                type="button"
+                class="kb-chip"
+                :class="{ 'is-on': draftFilters.type === 'faq' }"
+                @click="toggleType('faq')"
+              >
+                FAQ
+              </button>
+            </div>
+          </div>
+
+          <div v-if="extraTopics.length" class="kb-filter-pop__section">
+            <p class="kb-filter-pop__label">Ещё тематики</p>
+            <div class="kb-filter-pop__row">
+              <button
+                v-for="topic in extraTopics"
+                :key="topic"
+                type="button"
+                class="kb-chip"
+                :class="{ 'is-on': draftFilters.topic === topic }"
+                @click="toggleTopic(topic)"
+              >
+                {{ topic }}
+              </button>
+            </div>
+          </div>
+
+          <div class="kb-filter-pop__section">
+            <p class="kb-filter-pop__label">Период</p>
+            <div class="kb-filter-pop__dates">
+              <label>
+                С
+                <input v-model="draftFilters.dateFrom" type="date" />
+              </label>
+              <label>
+                По
+                <input v-model="draftFilters.dateTo" type="date" />
+              </label>
+            </div>
+          </div>
+
+          <div class="kb-filter-pop__section">
+            <p class="kb-filter-pop__label">Автор</p>
+            <select v-model="draftFilters.author" class="kb-filter-pop__select" aria-label="Автор">
+              <option value="">Все авторы</option>
+              <option v-for="name in authors" :key="name" :value="name">{{ name }}</option>
+            </select>
+          </div>
+
+          <div class="kb-filter-pop__foot">
+            <button type="button" class="kb-filter-pop__clear" @click="clearDetailFilters">Сбросить</button>
+            <button type="button" class="kb-filter-pop__done" @click="applyDetailFilters">Готово</button>
           </div>
         </div>
-        <label class="kb-field">
-          <select
-            v-model="draftFilters.author"
-            class="kb-chip kb-chip--select"
-            :class="{ 'is-on': Boolean(draftFilters.author) }"
-            aria-label="Автор"
-          >
-            <option value="">Автор</option>
-            <option v-for="name in authors" :key="name" :value="name">{{ name }}</option>
-          </select>
-        </label>
       </div>
     </section>
   </div>
@@ -188,46 +243,71 @@ const {
 
 const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
 
+const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей', 'Документ'];
+
 const mode = ref<SearchMode>('classic');
-const dateOpen = ref(false);
+const filterOpen = ref(false);
 const aiDraft = ref('');
 const resultsRef = ref<HTMLElement | null>(null);
 const sentinelRef = ref<HTMLElement | null>(null);
 const threadRef = ref<HTMLElement | null>(null);
+const filterPopRef = ref<HTMLElement | null>(null);
 
 const authors = knowledgeAuthors();
 const topics = knowledgeCategories();
+const quickTopics = QUICK_TOPICS.filter((topic) => topics.includes(topic));
+const extraTopics = topics.filter((topic) => !QUICK_TOPICS.includes(topic));
 
-const formatDateShort = (iso: string) => {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  if (!d || !m) return iso;
-  return `${d}.${m}`;
-};
-
-const dateLabel = computed(() => {
-  const from = formatDateShort(draftFilters.value.dateFrom);
-  const to = formatDateShort(draftFilters.value.dateTo);
-  if (from && to) return `${from}–${to}`;
-  if (from) return `с ${from}`;
-  if (to) return `до ${to}`;
-  return 'все';
+const visibleTopics = computed(() => {
+  const selected = draftFilters.value.topic;
+  if (selected && extraTopics.includes(selected) && !quickTopics.includes(selected)) {
+    return [...quickTopics, selected];
+  }
+  return quickTopics;
 });
 
-const clearDate = () => {
+const detailFilterCount = computed(() => {
+  let count = 0;
+  if (draftFilters.value.type) count += 1;
+  if (draftFilters.value.dateFrom || draftFilters.value.dateTo) count += 1;
+  if (draftFilters.value.author) count += 1;
+  if (draftFilters.value.topic && extraTopics.includes(draftFilters.value.topic)) count += 1;
+  return count;
+});
+
+const clearDetailFilters = () => {
+  draftFilters.value.type = '';
   draftFilters.value.dateFrom = '';
   draftFilters.value.dateTo = '';
+  draftFilters.value.author = '';
+  if (draftFilters.value.topic && extraTopics.includes(draftFilters.value.topic)) {
+    draftFilters.value.topic = '';
+  }
+};
+
+const applyDetailFilters = () => {
+  filterOpen.value = false;
+  if (hasSearched.value || draftQuery.value.trim() || detailFilterCount.value || draftFilters.value.topic) {
+    runSearch();
+  }
 };
 
 const onDocPointer = (event: PointerEvent) => {
+  if (!filterOpen.value) return;
   const target = event.target as Node | null;
-  const host = document.querySelector('.kb-field--date');
-  if (host && target && !host.contains(target)) dateOpen.value = false;
+  const host = filterPopRef.value;
+  const toggle = (event.target as HTMLElement | null)?.closest?.('.kb-filter-btn');
+  if (toggle) return;
+  if (host && target && !host.contains(target)) filterOpen.value = false;
+};
+
+const onDocKey = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') filterOpen.value = false;
 };
 
 const setMode = (next: SearchMode) => {
   if (next === mode.value) return;
-  dateOpen.value = false;
+  filterOpen.value = false;
   mode.value = next;
   if (next === 'ai') nextTick(() => scrollThread());
 };
@@ -280,10 +360,12 @@ watch([hasMore, visibleHits, mode], async () => {
 onMounted(() => {
   hydrate();
   document.addEventListener('pointerdown', onDocPointer);
+  document.addEventListener('keydown', onDocKey);
 });
 
 onBeforeUnmount(() => {
   observer?.disconnect();
   document.removeEventListener('pointerdown', onDocPointer);
+  document.removeEventListener('keydown', onDocKey);
 });
 </script>
