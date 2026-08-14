@@ -15315,16 +15315,36 @@ button.button {
 }
 
 .kb-rate-cat__ask {
+  position: absolute;
+  left: 6%;
+  top: 4%;
+  z-index: 4;
+  max-width: 70%;
   margin: 0;
-  padding: 6px 10px;
-  border: 1px solid #111;
-  border-radius: 999px;
+  padding: 8px 12px;
+  border: 2px solid #111;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 3px 3px 0 #111;
+  box-shadow: 3px 3px 0 #ddf365;
   font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1.25;
   pointer-events: none;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.kb-rate-cat__ask::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  bottom: -9px;
+  width: 14px;
+  height: 14px;
+  border-right: 2px solid #111;
+  border-bottom: 2px solid #111;
+  background: #fff;
+  transform: rotate(45deg);
+  box-shadow: 2px 2px 0 #ddf365;
 }
 
 .kb-rate-cat__panel {

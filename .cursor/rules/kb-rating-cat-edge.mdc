@@ -1,12 +1,16 @@
 ---
 description: Кот оценки базы знаний появляется только из-за края экрана
-globs: frontend/app/pages/knowledge/**,frontend/app/assets/main.css
+globs: frontend/app/pages/knowledge/**,frontend/app/assets/main.css,frontend/app/components/KnowledgeRateCat.vue
 alwaysApply: true
 ---
 
 # Кот оценки `/knowledge` — только из-за края
 
 Единственный способ появления: **выезд `translateX` из-за правого края** (клип `overflow: hidden` у `.kb-page--search`).
+
+## Locked (авг 2026)
+
+**Не менять** ролик `rating-cat.webm`, хвост `rating-paper-tail.png`, тайминги выезда 2.8 с и геометрию бумажки/звёзд — заказчик зафиксировал. Правки только вокруг (плашка «Оцените…», комментарий, уход).
 
 ## Запрещено
 
@@ -29,3 +33,4 @@ alwaysApply: true
 - Хвост бумажки — бежевый `#f3eee5` без `mix-blend-mode: screen` (screen даёт белый шов), нахлёст ~16px + `box-shadow` влево того же цвета
 - Комментарий ≤4★ — отдельное поле над котом, не внутри бумажки
 - Уход: весь блок (кот + бумажка + отмеченные звёзды)
+- «Оцените удобство» — речевой пузырь над мордой кота (хвостик вниз), не отдельная плашка справа сверху
