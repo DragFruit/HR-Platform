@@ -15297,12 +15297,8 @@ button.button {
   pointer-events: none;
   opacity: 1;
   transform: translateX(100%);
-  animation: kb-rate-cat-in 2.8s linear forwards;
   transition: none;
-}
-
-.kb-rate-cat.is-out {
-  animation: kb-rate-cat-out 1.1s linear forwards;
+  will-change: transform;
 }
 
 .kb-rate-cat__ask {
@@ -15335,13 +15331,13 @@ button.button {
   position: relative;
   width: 100%;
   aspect-ratio: 944 / 720;
-  --tail-left: 89.619%;
-  --tail-top: 54.306%;
-  --tail-h: 24.306%;
-  --stars-left: 67.5%;
-  --stars-top: 58%;
-  --stars-w: 22%;
-  --stars-h: 16%;
+  --tail-left: 88.453%;
+  --tail-top: 54.167%;
+  --tail-h: 24.028%;
+  --stars-left: 67.121%;
+  --stars-top: 58.106%;
+  --stars-w: 24.456%;
+  --stars-h: 16.15%;
 }
 
 .kb-rate-cat__video {
@@ -15362,9 +15358,10 @@ button.button {
   position: absolute;
   left: var(--tail-left);
   top: var(--tail-top);
-  width: 10.169%;
+  width: 10.805%;
   height: var(--tail-h);
   object-fit: fill;
+  mix-blend-mode: screen;
   pointer-events: none;
   user-select: none;
   z-index: 2;
@@ -15477,24 +15474,6 @@ button.button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
-}
-
-@keyframes kb-rate-cat-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes kb-rate-cat-out {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(110%);
-  }
 }
 
 @media (max-width: 720px) {

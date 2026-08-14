@@ -4,6 +4,13 @@
 
 ## 2026-08-14
 
+### База знаний: кот не откатывается, хвост не двоится
+
+- Выезд больше не CSS-animation (её срывал ререндер страницы) — `translateX` из `currentTime` ролика, после 2.8 с заморозка в `0`.
+- Хвост бумажки синхронится по кадрам (`requestVideoFrameCallback`), нахлёст 12px с мягким стыком.
+- Пути: `pages/knowledge/index.vue`, `assets/main.css`, `public/knowledge/rating-paper-tail.png`.
+- Проверка: `/knowledge`, `localStorage.removeItem('vbi-kb-page-rating-v1')`, жёсткое обновление — кот только слева, после 2.8 с стоит, хвост не отстаёт.
+
 ### База знаний: не трогать style анимированного кота
 
 - CSS-переменные хвоста пишутся в `.kb-rate-cat__stage` через `setProperty`, не через `:style` на aside — иначе выезд срывается и кот едет назад.

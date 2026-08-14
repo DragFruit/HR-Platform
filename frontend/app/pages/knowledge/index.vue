@@ -2,8 +2,8 @@
   <div class="kb-page kb-page--search" :data-mode="mode">
     <aside
       v-if="rateVisible"
+      ref="rateHostRef"
       class="kb-rate-cat"
-      :class="{ 'is-out': rateLeaving }"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
@@ -33,15 +33,14 @@
           muted
           playsinline
           preload="auto"
-          @timeupdate="onRateTimeUpdate"
           @ended="onRateVideoEnded"
         />
         <img
           class="kb-rate-cat__tail"
           src="/knowledge/rating-paper-tail.png"
           alt=""
-          width="96"
-          height="175"
+          width="102"
+          height="180"
           draggable="false"
         />
         <div
@@ -316,37 +315,64 @@ const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
 const RATE_WALK_END_SEC = 2.8;
 const RATE_STAGE_W = 944;
 const RATE_STAGE_H = 720;
-const RATE_TAIL_W = 96;
+const RATE_TAIL_W = 102;
+const RATE_TAIL_OVERLAP = 12;
 const RATE_NOTCH = 52;
 /** [t, left, top, right, bot] бумажки в пикселях ролика 848×720 */
 const RATE_PAPER_KEYS: number[][] = [
-  [0, 441, 335, 829, 483],
-  [0.133, 444, 334, 831, 477],
-  [0.267, 444, 364, 834, 513],
-  [0.4, 446, 354, 836, 504],
-  [0.533, 448, 341, 840, 490],
-  [0.667, 451, 334, 842, 481],
-  [0.8, 453, 345, 847, 494],
-  [0.933, 456, 360, 847, 512],
-  [1.067, 459, 343, 847, 495],
-  [1.2, 465, 336, 847, 487],
-  [1.333, 470, 362, 847, 516],
-  [1.467, 474, 356, 847, 512],
-  [1.6, 480, 338, 847, 492],
-  [1.733, 486, 357, 847, 512],
-  [1.867, 491, 362, 847, 518],
-  [2, 499, 342, 847, 499],
-  [2.133, 506, 343, 847, 498],
-  [2.267, 511, 368, 847, 527],
-  [2.4, 517, 351, 847, 512],
-  [2.533, 527, 344, 847, 506],
-  [2.667, 541, 364, 847, 527],
-  [2.8, 553, 374, 847, 537],
-  [2.933, 569, 360, 847, 527],
-  [3.067, 585, 358, 847, 525],
-  [3.2, 599, 368, 847, 535],
-  [3.333, 597, 392, 847, 564],
-  [3.467, 597, 391, 847, 565]
+  [0, 439, 319, 791, 471],
+  [0.0667, 438, 316, 791, 468],
+  [0.1333, 440, 306, 790, 459],
+  [0.2, 441, 317, 793, 468],
+  [0.2667, 443, 359, 801, 511],
+  [0.3333, 444, 356, 803, 507],
+  [0.4, 445, 349, 803, 501],
+  [0.4667, 446, 339, 804, 490],
+  [0.5333, 446, 329, 804, 481],
+  [0.6, 447, 325, 804, 476],
+  [0.6667, 448, 313, 804, 466],
+  [0.7333, 448, 310, 804, 463],
+  [0.8, 451, 326, 810, 479],
+  [0.8667, 452, 348, 814, 501],
+  [0.9333, 455, 355, 818, 509],
+  [1, 456, 343, 821, 497],
+  [1.0667, 458, 332, 820, 486],
+  [1.1333, 460, 326, 822, 480],
+  [1.2, 462, 316, 822, 472],
+  [1.2667, 465, 315, 825, 471],
+  [1.3333, 469, 355, 837, 510],
+  [1.4, 471, 359, 838, 515],
+  [1.4667, 473, 349, 839, 507],
+  [1.5333, 474, 333, 841, 490],
+  [1.6, 476, 319, 841, 475],
+  [1.6667, 481, 322, 847, 479],
+  [1.7333, 483, 341, 847, 498],
+  [1.8, 488, 364, 847, 521],
+  [1.8667, 489, 357, 847, 515],
+  [1.9333, 493, 339, 847, 495],
+  [2, 496, 326, 847, 484],
+  [2.0667, 498, 319, 847, 477],
+  [2.1333, 502, 319, 847, 478],
+  [2.2, 505, 343, 847, 501],
+  [2.2667, 509, 365, 847, 523],
+  [2.3333, 513, 355, 847, 514],
+  [2.4, 516, 345, 847, 505],
+  [2.4667, 521, 343, 847, 502],
+  [2.5333, 524, 331, 847, 492],
+  [2.6, 531, 328, 847, 490],
+  [2.6667, 538, 355, 847, 516],
+  [2.7333, 541, 363, 847, 525],
+  [2.8, 551, 374, 847, 535],
+  [2.8667, 557, 364, 847, 527],
+  [2.9333, 567, 356, 847, 520],
+  [3, 578, 355, 847, 518],
+  [3.0667, 582, 353, 847, 517],
+  [3.1333, 593, 352, 847, 517],
+  [3.2, 596, 363, 847, 528],
+  [3.2667, 596, 385, 847, 553],
+  [3.3333, 596, 392, 847, 562],
+  [3.4, 596, 392, 847, 562],
+  [3.4667, 596, 391, 847, 562]
 ];
 
 type SearchMode = 'classic' | 'ai';
@@ -437,7 +463,6 @@ const toggleTopic = (topic: string) => {
 };
 
 const rateVisible = ref(false);
-const rateLeaving = ref(false);
 const rateReady = ref(false);
 const rateStep = ref<RateStep>('stars');
 const rateStars = ref(0);
@@ -445,8 +470,13 @@ const rateHover = ref(0);
 const rateComment = ref('');
 const rateVideoRef = ref<HTMLVideoElement | null>(null);
 const rateStageRef = ref<HTMLElement | null>(null);
+const rateHostRef = ref<HTMLElement | null>(null);
 let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
 let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
+let rateRaf = 0;
+let rateSyncing = false;
+let rateWalkParked = false;
+let rateLeaving = false;
 
 function lerpPaper(t: number): number[] {
   const keys = RATE_PAPER_KEYS;
@@ -469,7 +499,7 @@ function paperCssVars(box: number[]): Record<string, string> {
   const top = box[2];
   const right = box[3];
   const bot = box[4];
-  const join = right - 1;
+  const join = right - RATE_TAIL_OVERLAP;
   const ph = bot - top;
   const starLeft = left + ph * 0.22;
   const starRight = join + RATE_TAIL_W - RATE_NOTCH - ph * 0.12;
@@ -478,8 +508,8 @@ function paperCssVars(box: number[]): Record<string, string> {
   const pct = (n: number, den: number) => `${((n / den) * 100).toFixed(3)}%`;
   return {
     '--tail-left': pct(join, RATE_STAGE_W),
-    '--tail-top': pct(top, RATE_STAGE_H),
-    '--tail-h': pct(ph, RATE_STAGE_H),
+    '--tail-top': pct(top - 1, RATE_STAGE_H),
+    '--tail-h': pct(ph + 2, RATE_STAGE_H),
     '--stars-left': pct(starLeft, RATE_STAGE_W),
     '--stars-top': pct(starTop, RATE_STAGE_H),
     '--stars-w': pct(Math.max(8, starRight - starLeft), RATE_STAGE_W),
@@ -512,35 +542,94 @@ const markRated = () => {
   }
 };
 
+const applyWalkTransform = (t: number) => {
+  const host = rateHostRef.value;
+  if (!host || rateLeaving) return;
+  if (rateWalkParked || t >= RATE_WALK_END_SEC) {
+    host.style.transform = 'translateX(0)';
+    rateWalkParked = true;
+    return;
+  }
+  const pct = (1 - t / RATE_WALK_END_SEC) * 100;
+  host.style.transform = `translateX(${pct.toFixed(3)}%)`;
+};
+
+const syncRateFrame = (t: number) => {
+  applyWalkTransform(t);
+  syncRatePaper(t);
+};
+
+const stopRateSync = () => {
+  rateSyncing = false;
+  if (rateRaf) {
+    cancelAnimationFrame(rateRaf);
+    rateRaf = 0;
+  }
+};
+
+const loopRateSync = (_now?: number, meta?: { mediaTime: number }) => {
+  if (!rateSyncing) return;
+  const video = rateVideoRef.value;
+  const t = meta?.mediaTime ?? video?.currentTime ?? 0;
+  syncRateFrame(t);
+  if (!video || video.ended) {
+    rateSyncing = false;
+    return;
+  }
+  if (typeof video.requestVideoFrameCallback === 'function') {
+    video.requestVideoFrameCallback(loopRateSync);
+    return;
+  }
+  rateRaf = requestAnimationFrame(loopRateSync);
+};
+
+const startRateSync = () => {
+  stopRateSync();
+  rateSyncing = true;
+  loopRateSync();
+};
+
 const hideRate = () => {
-  rateLeaving.value = true;
+  rateLeaving = true;
+  rateWalkParked = true;
+  stopRateSync();
+  const host = rateHostRef.value;
+  if (host) {
+    host.style.transition = 'transform 1.1s linear';
+    host.style.transform = 'translateX(110%)';
+  }
   rateHideTimer = setTimeout(() => {
     rateVisible.value = false;
   }, 1100);
 };
 
-const onRateTimeUpdate = () => {
-  const video = rateVideoRef.value;
-  if (!video) return;
-  syncRatePaper(video.currentTime || 0);
-};
-
 const onRateVideoEnded = () => {
-  syncRatePaper(RATE_PAPER_KEYS[RATE_PAPER_KEYS.length - 1][0]);
+  stopRateSync();
+  syncRateFrame(RATE_PAPER_KEYS[RATE_PAPER_KEYS.length - 1][0]);
   rateReady.value = true;
 };
 
 const playRateVideo = async () => {
   await nextTick();
   const video = rateVideoRef.value;
+  const host = rateHostRef.value;
   if (!video) return;
+  rateWalkParked = false;
+  rateLeaving = false;
+  if (host) {
+    host.style.transition = 'none';
+    host.style.transform = 'translateX(100%)';
+  }
   syncRatePaper(0);
   try {
     video.pause();
     video.currentTime = 0;
     await video.play();
+    startRateSync();
   } catch (err) {
     console.warn('[knowledge] rating video play failed:', err);
+    if (host) host.style.transform = 'translateX(0)';
+    rateWalkParked = true;
     rateReady.value = true;
   }
 };
@@ -637,5 +726,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', onDocKey);
   if (rateHideTimer) clearTimeout(rateHideTimer);
   if (rateShowTimer) clearTimeout(rateShowTimer);
+  stopRateSync();
 });
 </script>
