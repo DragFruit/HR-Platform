@@ -11484,6 +11484,11 @@ button.emp-name--card:hover {
 }
 
 /* Общий календарь сотрудника: белая рамка ≥ вкладок; таблица по контенту (без «дыры» скругления) */
+.vac-team-calendar--employee-team {
+  /* Fallback до JS-замера; фактический потолок — --vac-team-viewport-max с корня */
+  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 160px);
+}
+
 .vac-team-calendar--employee-team .vac-team-calendar__main,
 .vac-team-calendar--employee-team .vac-team-calendar__pane,
 .vac-team-calendar--employee-team .vac-team-calendar__body {
@@ -11500,7 +11505,6 @@ button.emp-name--card:hover {
 }
 
 .vac-team-calendar--employee-team .vac-team-calendar__frame {
-  --vac-team-viewport-max: calc(100dvh - var(--vac-chrome-block) - 108px);
   flex: 0 0 auto;
   min-height: 0;
   height: auto;

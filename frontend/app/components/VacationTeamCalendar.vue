@@ -174,17 +174,36 @@ const fillViewport = computed(
 );
 
 const updateViewportMax = () => {
-  if (props.variant !== 'manager' || !import.meta.client) return;
+  if (!import.meta.client) return;
+  if (props.variant !== 'manager' && props.variant !== 'employee-team') return;
   const el = frameRef.value;
   if (!el) return;
   const top = el.getBoundingClientRect().top;
-  // До низа окна (первый экран = 100dvh, футер ниже fold) — 8px зазор
-  const visualRoom = window.innerHeight - top - VIEWPORT_BOTTOM_GAP_PX;
-  viewportMaxPx.value = Math.max(160, Math.floor(visualRoom));
+  let bottomLimit = window.innerHeight - VIEWPORT_BOTTOM_GAP_PX;
+
+  // Сотрудник «Общий»: не 100dvh «на глаз» — до низа рабочей зоны минус padding рамки,
+  // иначе низ таблицы обрезается overflow:hidden у pane/page и скролл «не доезжает».
+  if (props.variant === 'employee-team') {
+    const clip = el.closest('.vac-emp-page') || el.closest('.content');
+    if (clip) {
+      bottomLimit = Math.min(
+        bottomLimit,
+        clip.getBoundingClientRect().bottom - VIEWPORT_BOTTOM_GAP_PX
+      );
+    }
+    const pane = el.closest('.vac-emp-calendar-pane');
+    if (pane) {
+      const padBottom = parseFloat(getComputedStyle(pane).paddingBottom) || 0;
+      bottomLimit -= padBottom;
+    }
+  }
+
+  viewportMaxPx.value = Math.max(160, Math.floor(bottomLimit - top));
 };
 
 const viewportStyle = computed(() => {
-  if (props.variant !== 'manager' || viewportMaxPx.value == null) return undefined;
+  if (viewportMaxPx.value == null) return undefined;
+  if (props.variant !== 'manager' && props.variant !== 'employee-team') return undefined;
   return { '--vac-team-viewport-max': `${viewportMaxPx.value}px` };
 });
 
