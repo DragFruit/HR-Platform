@@ -6,24 +6,37 @@
       :class="{ 'is-parked': parked, 'is-out': leaving }"
     >
       <div
+        v-if="step === 'thanks' || step === 'comment'"
+        class="kb-rate-cat__panel"
+        :class="{ 'is-comment': step === 'comment' }"
+        :style="panelHeight ? { height: `${panelHeight}px` } : undefined"
+      >
+        <button
+          v-if="step === 'comment'"
+          type="button"
+          class="kb-rate-cat__resize"
+          aria-label="Растянуть поле вверх"
+          @pointerdown="onPanelResizeStart"
+        />
+        <p class="kb-rate-cat__thanks">Спасибо!</p>
+        <form v-if="step === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
+          <textarea
+            v-model="comment"
+            class="kb-rate-cat__comment"
+            rows="2"
+            maxlength="2000"
+            placeholder="Как можно улучшить этот раздел?"
+          />
+          <button type="submit" class="kb-rate-cat__send">Отправить</button>
+        </form>
+      </div>
+
+      <div
         ref="stageRef"
         class="kb-rate-cat__stage"
         :class="{ 'is-ready': ready, [`is-${step}`]: true }"
       >
         <p v-if="ready && step === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
-        <div v-if="step === 'thanks' || step === 'comment'" class="kb-rate-cat__panel">
-          <p class="kb-rate-cat__thanks">Спасибо!</p>
-          <form v-if="step === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
-            <textarea
-              v-model="comment"
-              class="kb-rate-cat__comment"
-              rows="2"
-              maxlength="2000"
-              placeholder="Как можно улучшить этот раздел?"
-            />
-            <button type="submit" class="kb-rate-cat__send">Отправить</button>
-          </form>
-        </div>
         <video
           ref="videoRef"
           class="kb-rate-cat__video"
@@ -144,6 +157,7 @@ const step = ref<RateStep>('stars');
 const stars = ref(0);
 const hover = ref(0);
 const comment = ref('');
+const panelHeight = ref<number | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
 const slideRef = ref<HTMLElement | null>(null);
@@ -154,6 +168,35 @@ let raf = 0;
 let syncing = false;
 let lastT = 0;
 let minPct = 100;
+let resizeStartY = 0;
+let resizeStartH = 0;
+let resizeMove: ((ev: PointerEvent) => void) | null = null;
+let resizeUp: (() => void) | null = null;
+
+const stopPanelResize = () => {
+  if (resizeMove) window.removeEventListener('pointermove', resizeMove);
+  if (resizeUp) window.removeEventListener('pointerup', resizeUp);
+  resizeMove = null;
+  resizeUp = null;
+};
+
+const onPanelResizeStart = (event: PointerEvent) => {
+  if (step.value !== 'comment') return;
+  const panel = (event.currentTarget as HTMLElement | null)?.closest('.kb-rate-cat__panel');
+  if (!panel) return;
+  event.preventDefault();
+  stopPanelResize();
+  resizeStartY = event.clientY;
+  resizeStartH = panel.getBoundingClientRect().height;
+  panelHeight.value = resizeStartH;
+  resizeMove = (ev: PointerEvent) => {
+    const next = resizeStartH + (resizeStartY - ev.clientY);
+    panelHeight.value = Math.min(340, Math.max(118, next));
+  };
+  resizeUp = () => stopPanelResize();
+  window.addEventListener('pointermove', resizeMove);
+  window.addEventListener('pointerup', resizeUp);
+};
 
 function lerpPaper(t: number): number[] {
   const keys = RATE_PAPER_KEYS;
@@ -335,11 +378,13 @@ const pickStars = async (n: number) => {
     return;
   }
   step.value = 'comment';
+  panelHeight.value = null;
 };
 
 const sendFeedback = async () => {
   await submitRating(comment.value.trim());
   step.value = 'thanks';
+  panelHeight.value = null;
   hideTimer = setTimeout(hide, 1200);
 };
 
@@ -356,6 +401,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (hideTimer) clearTimeout(hideTimer);
   if (showTimer) clearTimeout(showTimer);
+  stopPanelResize();
   stopSync();
 });
 </script>
