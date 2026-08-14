@@ -72,14 +72,17 @@ function writeState(state: GateState) {
 }
 
 /**
- * Кот оценки: раз в ~2 месяца на пользователя, день свой (hash),
- * только в разделе с суммарным временем ≥ 1 ч.
+ * Кот оценки: на бою — раз в ~2 месяца, день свой (hash), ≥ 1 ч в разделе.
+ * На стейдже / localhost — без таймеров (удобно тестировать UI и отправку).
  */
 export function usePageRatingGate() {
   const { user } = useAuth();
   const { isPathAllowed } = useLaunchScope();
+  const { isProduction } = useAppEnv();
 
   const userId = computed(() => Number(user.value?.id) || 0);
+  /** Прод: полные гейты. Стейдж/тест: кот сразу на открытом разделе. */
+  const strictGates = computed(() => isProduction.value);
 
   let tickTimer: ReturnType<typeof setInterval> | null = null;
   let activeSectionPath: string | null = null;
@@ -105,6 +108,7 @@ export function usePageRatingGate() {
     stopDwell();
     if (!import.meta.client || !section || userId.value <= 0) return;
     if (!isPathAllowed(section.path)) return;
+    // На стейдже счётчик не нужен для показа, но копим — чтобы на проде данные уже были
     activeSectionPath = section.path;
     tickTimer = setInterval(() => {
       if (!activeSectionPath) return;
@@ -121,6 +125,7 @@ export function usePageRatingGate() {
   };
 
   const hasRatedThisPeriod = () => {
+    if (!strictGates.value) return false;
     const id = userId.value;
     if (id <= 0) return true;
     const state = readState(id);
@@ -129,6 +134,7 @@ export function usePageRatingGate() {
   };
 
   const markShownThisPeriod = () => {
+    if (!strictGates.value) return;
     const id = userId.value;
     if (id <= 0) return;
     const state = readState(id);
@@ -137,6 +143,7 @@ export function usePageRatingGate() {
   };
 
   const markRatedThisPeriod = () => {
+    if (!strictGates.value) return;
     const id = userId.value;
     if (id <= 0) return;
     const state = readState(id);
@@ -160,6 +167,7 @@ export function usePageRatingGate() {
     const id = userId.value;
     if (id <= 0) return false;
     if (!isPathAllowed(section.path)) return false;
+    if (!strictGates.value) return true;
     if (hasRatedThisPeriod()) return false;
     if (dwellMsFor(section.path) < PAGE_RATING_DWELL_MS) return false;
     const period = pageRatingPeriodIndex();
@@ -187,6 +195,7 @@ export function usePageRatingGate() {
     markRatedThisPeriod,
     hasRatedThisPeriod,
     dwellMsFor,
-    sectionForRoute
+    sectionForRoute,
+    strictGates
   };
 }
