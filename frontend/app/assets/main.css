@@ -15351,14 +15351,15 @@ button.button {
 .kb-rate-cat__panel {
   position: absolute;
   left: 4%;
-  bottom: 100%;
+  /* Ниже к морде; низ/хвостик совпадают у «Спасибо» и «Спасибо+коммент». */
+  bottom: calc(100% - 28px);
   z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: min(92%, 240px);
   min-height: 0;
-  margin: 0 0 6px;
+  margin: 0;
   padding: 10px 12px;
   border: 2px solid #111;
   border-radius: 14px;
@@ -15369,37 +15370,27 @@ button.button {
   pointer-events: auto;
 }
 
-.kb-rate-cat__resize {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0 12px 0 0;
-  background:
-    linear-gradient(225deg, #111 0 1.5px, transparent 1.5px) 12px 4px / 8px 8px no-repeat,
-    linear-gradient(225deg, #ddf365 40%, transparent 40%);
-  cursor: nesw-resize;
-  touch-action: none;
-}
-
 .kb-rate-cat__form {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1 1 auto;
   min-height: 0;
 }
 
-.kb-rate-cat__comment {
+.kb-rate-cat__comment-wrap {
+  position: relative;
   width: 100%;
-  box-sizing: border-box;
-  flex: 1 1 auto;
   min-height: 56px;
+  height: 56px;
+  box-sizing: border-box;
+}
+
+.kb-rate-cat__comment {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
   padding: 8px 10px;
   border: 1px solid #111;
   border-radius: 12px;
@@ -15409,6 +15400,24 @@ button.button {
   font-size: 0.84rem;
   resize: none;
   overflow-y: auto;
+}
+
+.kb-rate-cat__resize {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 11px 0 0;
+  background:
+    linear-gradient(225deg, #111 0 1.5px, transparent 1.5px) 10px 3px / 7px 7px no-repeat,
+    linear-gradient(225deg, rgba(17, 17, 17, 0.18) 42%, transparent 42%);
+  cursor: nesw-resize;
+  touch-action: none;
 }
 
 .kb-rate-cat__stage {
