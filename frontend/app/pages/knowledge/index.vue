@@ -1,75 +1,6 @@
 <template>
   <div class="kb-page kb-page--search" :data-mode="mode">
-    <aside
-      v-if="rateVisible"
-      ref="rateHostRef"
-      class="kb-rate-cat"
-      aria-label="Оценка страницы"
-    >
-      <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
-      <div v-if="rateStep === 'thanks' || rateStep === 'comment'" class="kb-rate-cat__panel">
-        <p class="kb-rate-cat__thanks">Спасибо!</p>
-        <form v-if="rateStep === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
-          <textarea
-            v-model="rateComment"
-            class="kb-rate-cat__comment"
-            rows="2"
-            maxlength="2000"
-            placeholder="Как можно улучшить этот раздел?"
-          />
-          <button type="submit" class="kb-rate-cat__send">Отправить</button>
-        </form>
-      </div>
-
-      <div
-        ref="rateStageRef"
-        class="kb-rate-cat__stage"
-        :class="{ 'is-ready': rateReady, [`is-${rateStep}`]: true }"
-      >
-        <video
-          ref="rateVideoRef"
-          class="kb-rate-cat__video"
-          src="/knowledge/rating-cat.webm"
-          muted
-          playsinline
-          preload="auto"
-          @ended="onRateVideoEnded"
-        />
-        <img
-          class="kb-rate-cat__tail"
-          src="/knowledge/rating-paper-tail.png"
-          alt=""
-          width="102"
-          height="180"
-          draggable="false"
-        />
-        <div
-          class="kb-rate-cat__paper"
-          :class="{ 'is-live': rateReady }"
-          role="group"
-          aria-label="Оценка от 1 до 5"
-        >
-          <button
-            v-for="n in 5"
-            :key="n"
-            type="button"
-            class="kb-rate-cat__star"
-            :class="{ 'is-on': n <= (rateHover || rateStars) }"
-            :disabled="!rateReady || rateStep !== 'stars'"
-            :aria-label="`${n} из 5`"
-            @mouseenter="rateHover = n"
-            @mouseleave="rateHover = 0"
-            @click="pickStars(n)"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </aside>
+    <KnowledgeRateCat />
 
     <section class="kb-console" aria-label="Поиск по базе знаний">
       <h2 class="kb-console__title">Найти в базе</h2>
@@ -105,11 +36,8 @@
             class="kb-seek__input"
             autocomplete="off"
             aria-label="Найти по базе"
-            @input="onQueryInput"
           />
-          <span v-if="!draftQuery" class="kb-seek__ghost" aria-hidden="true">
-            {{ placeholderText }}<i class="kb-seek__caret" />
-          </span>
+          <KnowledgeSearchGhost v-if="!draftQuery" />
         </div>
         <button type="submit" class="kb-seek__go">Искать</button>
       </form>
@@ -305,78 +233,11 @@
 
 <script setup lang="ts">
 import { knowledgeAuthors, knowledgeCategories } from '~/data/knowledgeBaseCatalog';
-import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 
 /** Фильтры спрятаны, код не удалять — вернуть `true`, если снова нужны. */
 const KB_FILTERS_ENABLED = false;
 
-const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
-/** Стоп сдвига виджета = 2.8 с; ролик доигрывает. */
-const RATE_WALK_END_SEC = 2.8;
-const RATE_STAGE_W = 944;
-const RATE_STAGE_H = 720;
-const RATE_TAIL_W = 102;
-const RATE_TAIL_OVERLAP = 12;
-const RATE_NOTCH = 52;
-/** [t, left, top, right, bot] бумажки в пикселях ролика 848×720 */
-const RATE_PAPER_KEYS: number[][] = [
-  [0, 439, 319, 791, 471],
-  [0.0667, 438, 316, 791, 468],
-  [0.1333, 440, 306, 790, 459],
-  [0.2, 441, 317, 793, 468],
-  [0.2667, 443, 359, 801, 511],
-  [0.3333, 444, 356, 803, 507],
-  [0.4, 445, 349, 803, 501],
-  [0.4667, 446, 339, 804, 490],
-  [0.5333, 446, 329, 804, 481],
-  [0.6, 447, 325, 804, 476],
-  [0.6667, 448, 313, 804, 466],
-  [0.7333, 448, 310, 804, 463],
-  [0.8, 451, 326, 810, 479],
-  [0.8667, 452, 348, 814, 501],
-  [0.9333, 455, 355, 818, 509],
-  [1, 456, 343, 821, 497],
-  [1.0667, 458, 332, 820, 486],
-  [1.1333, 460, 326, 822, 480],
-  [1.2, 462, 316, 822, 472],
-  [1.2667, 465, 315, 825, 471],
-  [1.3333, 469, 355, 837, 510],
-  [1.4, 471, 359, 838, 515],
-  [1.4667, 473, 349, 839, 507],
-  [1.5333, 474, 333, 841, 490],
-  [1.6, 476, 319, 841, 475],
-  [1.6667, 481, 322, 847, 479],
-  [1.7333, 483, 341, 847, 498],
-  [1.8, 488, 364, 847, 521],
-  [1.8667, 489, 357, 847, 515],
-  [1.9333, 493, 339, 847, 495],
-  [2, 496, 326, 847, 484],
-  [2.0667, 498, 319, 847, 477],
-  [2.1333, 502, 319, 847, 478],
-  [2.2, 505, 343, 847, 501],
-  [2.2667, 509, 365, 847, 523],
-  [2.3333, 513, 355, 847, 514],
-  [2.4, 516, 345, 847, 505],
-  [2.4667, 521, 343, 847, 502],
-  [2.5333, 524, 331, 847, 492],
-  [2.6, 531, 328, 847, 490],
-  [2.6667, 538, 355, 847, 516],
-  [2.7333, 541, 363, 847, 525],
-  [2.8, 551, 374, 847, 535],
-  [2.8667, 557, 364, 847, 527],
-  [2.9333, 567, 356, 847, 520],
-  [3, 578, 355, 847, 518],
-  [3.0667, 582, 353, 847, 517],
-  [3.1333, 593, 352, 847, 517],
-  [3.2, 596, 363, 847, 528],
-  [3.2667, 596, 385, 847, 553],
-  [3.3333, 596, 392, 847, 562],
-  [3.4, 596, 392, 847, 562],
-  [3.4667, 596, 391, 847, 562]
-];
-
 type SearchMode = 'classic' | 'ai';
-type RateStep = 'stars' | 'thanks' | 'comment';
 
 const {
   draftQuery,
@@ -390,7 +251,6 @@ const {
 } = useKnowledgeSearch();
 
 const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
-const { text: placeholderText, stop: stopPlaceholder } = useKnowledgePlaceholder(KNOWLEDGE_SEARCH_PHRASES);
 
 const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей'];
 
@@ -462,214 +322,7 @@ const toggleTopic = (topic: string) => {
   draftFilters.value.topic = draftFilters.value.topic === topic ? '' : topic;
 };
 
-const rateVisible = ref(false);
-const rateReady = ref(false);
-const rateStep = ref<RateStep>('stars');
-const rateStars = ref(0);
-const rateHover = ref(0);
-const rateComment = ref('');
-const rateVideoRef = ref<HTMLVideoElement | null>(null);
-const rateStageRef = ref<HTMLElement | null>(null);
-const rateHostRef = ref<HTMLElement | null>(null);
-let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
-let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
-let rateRaf = 0;
-let rateSyncing = false;
-let rateWalkParked = false;
-let rateLeaving = false;
-
-function lerpPaper(t: number): number[] {
-  const keys = RATE_PAPER_KEYS;
-  if (t <= keys[0][0]) return keys[0];
-  const last = keys[keys.length - 1];
-  if (t >= last[0]) return last;
-  for (let i = 1; i < keys.length; i++) {
-    if (t <= keys[i][0]) {
-      const a = keys[i - 1];
-      const b = keys[i];
-      const p = (t - a[0]) / (b[0] - a[0] || 1);
-      return a.map((v, idx) => v + (b[idx] - v) * p);
-    }
-  }
-  return last;
-}
-
-function paperCssVars(box: number[]): Record<string, string> {
-  const left = box[1];
-  const top = box[2];
-  const right = box[3];
-  const bot = box[4];
-  const join = right - RATE_TAIL_OVERLAP;
-  const ph = bot - top;
-  const starLeft = left + ph * 0.22;
-  const starRight = join + RATE_TAIL_W - RATE_NOTCH - ph * 0.12;
-  const starTop = top + ph * 0.16;
-  const starH = ph * 0.68;
-  const pct = (n: number, den: number) => `${((n / den) * 100).toFixed(3)}%`;
-  return {
-    '--tail-left': pct(join, RATE_STAGE_W),
-    '--tail-top': pct(top - 1, RATE_STAGE_H),
-    '--tail-h': pct(ph + 2, RATE_STAGE_H),
-    '--stars-left': pct(starLeft, RATE_STAGE_W),
-    '--stars-top': pct(starTop, RATE_STAGE_H),
-    '--stars-w': pct(Math.max(8, starRight - starLeft), RATE_STAGE_W),
-    '--stars-h': pct(starH, RATE_STAGE_H)
-  };
-}
-
-const syncRatePaper = (t: number) => {
-  const el = rateStageRef.value;
-  if (!el) return;
-  const vars = paperCssVars(lerpPaper(t));
-  for (const [key, value] of Object.entries(vars)) {
-    el.style.setProperty(key, value);
-  }
-};
-
-const alreadyRated = () => {
-  try {
-    return Boolean(localStorage.getItem(RATE_STORAGE_KEY));
-  } catch {
-    return false;
-  }
-};
-
-const markRated = () => {
-  try {
-    localStorage.setItem(RATE_STORAGE_KEY, JSON.stringify({ at: new Date().toISOString(), stars: rateStars.value }));
-  } catch {
-    /* ignore */
-  }
-};
-
-const applyWalkTransform = (t: number) => {
-  const host = rateHostRef.value;
-  if (!host || rateLeaving) return;
-  if (rateWalkParked || t >= RATE_WALK_END_SEC) {
-    host.style.transform = 'translateX(0)';
-    rateWalkParked = true;
-    return;
-  }
-  const pct = (1 - t / RATE_WALK_END_SEC) * 100;
-  host.style.transform = `translateX(${pct.toFixed(3)}%)`;
-};
-
-const syncRateFrame = (t: number) => {
-  applyWalkTransform(t);
-  syncRatePaper(t);
-};
-
-const stopRateSync = () => {
-  rateSyncing = false;
-  if (rateRaf) {
-    cancelAnimationFrame(rateRaf);
-    rateRaf = 0;
-  }
-};
-
-const loopRateSync = (_now?: number, meta?: { mediaTime: number }) => {
-  if (!rateSyncing) return;
-  const video = rateVideoRef.value;
-  const t = meta?.mediaTime ?? video?.currentTime ?? 0;
-  syncRateFrame(t);
-  if (!video || video.ended) {
-    rateSyncing = false;
-    return;
-  }
-  if (typeof video.requestVideoFrameCallback === 'function') {
-    video.requestVideoFrameCallback(loopRateSync);
-    return;
-  }
-  rateRaf = requestAnimationFrame(loopRateSync);
-};
-
-const startRateSync = () => {
-  stopRateSync();
-  rateSyncing = true;
-  loopRateSync();
-};
-
-const hideRate = () => {
-  rateLeaving = true;
-  rateWalkParked = true;
-  stopRateSync();
-  const host = rateHostRef.value;
-  if (host) {
-    host.style.transition = 'transform 1.1s linear';
-    host.style.transform = 'translateX(110%)';
-  }
-  rateHideTimer = setTimeout(() => {
-    rateVisible.value = false;
-  }, 1100);
-};
-
-const onRateVideoEnded = () => {
-  stopRateSync();
-  syncRateFrame(RATE_PAPER_KEYS[RATE_PAPER_KEYS.length - 1][0]);
-  rateReady.value = true;
-};
-
-const playRateVideo = async () => {
-  await nextTick();
-  const video = rateVideoRef.value;
-  const host = rateHostRef.value;
-  if (!video) return;
-  rateWalkParked = false;
-  rateLeaving = false;
-  if (host) {
-    host.style.transition = 'none';
-    host.style.transform = 'translateX(100%)';
-  }
-  syncRatePaper(0);
-  try {
-    video.pause();
-    video.currentTime = 0;
-    await video.play();
-    startRateSync();
-  } catch (err) {
-    console.warn('[knowledge] rating video play failed:', err);
-    if (host) host.style.transform = 'translateX(0)';
-    rateWalkParked = true;
-    rateReady.value = true;
-  }
-};
-
-const submitRating = async (comment: string) => {
-  markRated();
-  try {
-    await $fetch('/api/knowledge/feedback', {
-      method: 'POST',
-      body: { stars: rateStars.value, comment, page: '/knowledge' }
-    });
-  } catch (err) {
-    console.warn('[knowledge] feedback failed:', err);
-  }
-};
-
-const pickStars = async (n: number) => {
-  if (!rateReady.value || rateStep.value !== 'stars') return;
-  rateStars.value = n;
-  if (n >= 5) {
-    rateStep.value = 'thanks';
-    await submitRating('');
-    rateHideTimer = setTimeout(hideRate, 1600);
-    return;
-  }
-  rateStep.value = 'comment';
-};
-
-const sendFeedback = async () => {
-  await submitRating(rateComment.value.trim());
-  rateStep.value = 'thanks';
-  rateHideTimer = setTimeout(hideRate, 1200);
-};
-
-const onQueryInput = () => {
-  if (draftQuery.value) stopPlaceholder();
-};
-
 const onClassicSubmit = () => {
-  if (draftQuery.value) stopPlaceholder();
   runSearch();
 };
 
@@ -710,22 +363,11 @@ onMounted(() => {
   hydrate();
   document.addEventListener('pointerdown', onDocPointer);
   document.addEventListener('keydown', onDocKey);
-  if (!alreadyRated()) {
-    rateShowTimer = setTimeout(() => {
-      rateVisible.value = true;
-      rateReady.value = false;
-      rateStep.value = 'stars';
-      playRateVideo();
-    }, 900);
-  }
 });
 
 onBeforeUnmount(() => {
   observer?.disconnect();
   document.removeEventListener('pointerdown', onDocPointer);
   document.removeEventListener('keydown', onDocKey);
-  if (rateHideTimer) clearTimeout(rateHideTimer);
-  if (rateShowTimer) clearTimeout(rateShowTimer);
-  stopRateSync();
 });
 </script>
