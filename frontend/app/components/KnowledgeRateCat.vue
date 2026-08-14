@@ -5,26 +5,25 @@
       class="kb-rate-cat__slide"
       :class="{ 'is-parked': parked, 'is-out': leaving }"
     >
-      <div v-if="step === 'thanks' || step === 'comment'" class="kb-rate-cat__panel">
-        <p class="kb-rate-cat__thanks">Спасибо!</p>
-        <form v-if="step === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
-          <textarea
-            v-model="comment"
-            class="kb-rate-cat__comment"
-            rows="2"
-            maxlength="2000"
-            placeholder="Как можно улучшить этот раздел?"
-          />
-          <button type="submit" class="kb-rate-cat__send">Отправить</button>
-        </form>
-      </div>
-
       <div
         ref="stageRef"
         class="kb-rate-cat__stage"
         :class="{ 'is-ready': ready, [`is-${step}`]: true }"
       >
         <p v-if="ready && step === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
+        <div v-if="step === 'thanks' || step === 'comment'" class="kb-rate-cat__panel">
+          <p class="kb-rate-cat__thanks">Спасибо!</p>
+          <form v-if="step === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
+            <textarea
+              v-model="comment"
+              class="kb-rate-cat__comment"
+              rows="2"
+              maxlength="2000"
+              placeholder="Как можно улучшить этот раздел?"
+            />
+            <button type="submit" class="kb-rate-cat__send">Отправить</button>
+          </form>
+        </div>
         <video
           ref="videoRef"
           class="kb-rate-cat__video"
