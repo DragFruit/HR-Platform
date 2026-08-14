@@ -1,7 +1,5 @@
 <template>
   <div class="kb-page kb-page--search" :data-mode="mode">
-    <KnowledgeRateCat />
-
     <section class="kb-console" aria-label="Поиск по базе знаний">
       <h2 class="kb-console__title">Найти в базе</h2>
 

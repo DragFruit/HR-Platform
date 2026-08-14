@@ -113,6 +113,9 @@
 
     <TenureCelebrationOverlay v-if="isAuthenticated && user" />
     <EmployeeVisitingCard v-if="isAuthenticated" />
+    <ClientOnly>
+      <PageRateCatHost v-if="isAuthenticated" />
+    </ClientOnly>
   </div>
 </template>
 

@@ -15285,12 +15285,22 @@ button.button {
 }
 
 .kb-rate-cat {
-  position: absolute;
-  right: 0;
-  bottom: 4px;
+  position: relative;
+  right: auto;
+  bottom: auto;
   z-index: 6;
-  width: min(286px, 88vw);
+  width: 100%;
   overflow: visible;
+  pointer-events: none;
+}
+
+.page-rate-cat-host {
+  position: fixed;
+  right: 0;
+  bottom: 8px;
+  z-index: 40;
+  width: min(286px, 88vw);
+  overflow: hidden;
   pointer-events: none;
 }
 

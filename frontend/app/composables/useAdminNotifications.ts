@@ -42,6 +42,19 @@ const fieldLabels: Record<'name' | 'title', string> = {
   title: 'должность'
 };
 
+const PAGE_FEEDBACK_LABELS: Record<string, string> = {
+  '/knowledge': 'База знаний',
+  '/vacations': 'Отпуска',
+  '/ideas': 'Банк идей',
+  '/vpn': 'VPN',
+  '/profile': 'Профиль'
+};
+
+function pageFeedbackLabel(page?: string) {
+  if (!page) return 'Раздел';
+  return PAGE_FEEDBACK_LABELS[page] || page;
+}
+
 export function useAdminNotifications() {
   const notifications = useState<AdminNotification[]>('admin-notifications', () => []);
   const unseenCount = useState<number>('admin-notifications-unseen', () => 0);
@@ -96,7 +109,8 @@ export function useAdminNotifications() {
       return 'Не удалось удалить VPN-ключи';
     }
     if (item.kind === 'page_feedback') {
-      return `Оценка базы знаний: ${item.stars ?? '—'}/5`;
+      const section = pageFeedbackLabel(item.page);
+      return `Оценка «${section}»: ${item.stars ?? '—'}/5`;
     }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
@@ -159,7 +173,7 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') return 'Банк идей';
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
     if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
-    if (item.kind === 'page_feedback') return 'База знаний';
+    if (item.kind === 'page_feedback') return pageFeedbackLabel(item.page);
     return 'Справочник';
   };
 
@@ -172,7 +186,7 @@ export function useAdminNotifications() {
     if (item.kind === 'idea_submitted') return '/admin/ideas';
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
     if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
-    if (item.kind === 'page_feedback') return '/knowledge';
+    if (item.kind === 'page_feedback') return item.page || '/knowledge';
     return '/admin/employees';
   };
 

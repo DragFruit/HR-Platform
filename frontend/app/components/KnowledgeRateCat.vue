@@ -87,7 +87,15 @@
 </template>
 
 <script setup lang="ts">
-const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
+const props = defineProps<{
+  page: string;
+  pageLabel?: string;
+}>();
+
+const emit = defineEmits<{ done: [] }>();
+
+const { markRatedThisPeriod, markShownThisPeriod } = usePageRatingGate();
+
 const RATE_WALK_END_SEC = 2.8;
 const RATE_STAGE_W = 944;
 const RATE_STAGE_H = 720;
@@ -250,22 +258,6 @@ const syncPaper = (t: number) => {
   }
 };
 
-const alreadyRated = () => {
-  try {
-    return Boolean(localStorage.getItem(RATE_STORAGE_KEY));
-  } catch {
-    return false;
-  }
-};
-
-const markRated = () => {
-  try {
-    localStorage.setItem(RATE_STORAGE_KEY, JSON.stringify({ at: new Date().toISOString(), stars: stars.value }));
-  } catch {
-    /* ignore */
-  }
-};
-
 const applyWalk = (t: number) => {
   const host = slideRef.value;
   if (!host || leaving.value) return;
@@ -322,6 +314,7 @@ const hide = () => {
   stopSync();
   hideTimer = setTimeout(() => {
     visible.value = false;
+    emit('done');
   }, 1100);
 };
 
@@ -361,14 +354,19 @@ const playVideo = async () => {
 };
 
 const submitRating = async (text: string) => {
-  markRated();
+  markRatedThisPeriod();
   try {
     await $fetch('/api/knowledge/feedback', {
       method: 'POST',
-      body: { stars: stars.value, comment: text, page: '/knowledge' }
+      body: {
+        stars: stars.value,
+        comment: text,
+        page: props.page,
+        page_label: props.pageLabel || props.page
+      }
     });
   } catch (err) {
-    console.warn('[knowledge] feedback failed:', err);
+    console.warn('[page-rating] feedback failed:', err);
   }
 };
 
@@ -393,7 +391,7 @@ const sendFeedback = async () => {
 };
 
 onMounted(() => {
-  if (alreadyRated()) return;
+  markShownThisPeriod();
   showTimer = setTimeout(() => {
     visible.value = true;
     ready.value = false;
