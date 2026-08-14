@@ -15297,13 +15297,13 @@ button.button {
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  transform: translateX(100%);
-  animation: kb-rate-cat-in 2.8s linear forwards;
+  /* покой = на месте; выезд только пока .is-entering, иначе откат к 100% */
+  transform: translateX(0);
 }
 
-.kb-rate-cat.is-parked {
-  animation: none;
-  transform: translateX(0);
+.kb-rate-cat.is-entering {
+  transform: translateX(100%);
+  animation: kb-rate-cat-in 2.8s linear forwards;
 }
 
 .kb-rate-cat.is-out {

@@ -4,8 +4,8 @@
       v-if="rateVisible"
       class="kb-rate-cat"
       :class="{
+        'is-entering': !rateParked && !rateLeaving,
         'is-ready': rateReady,
-        'is-parked': rateParked,
         'is-out': rateLeaving,
         [`is-${rateStep}`]: true
       }"
@@ -22,7 +22,6 @@
           muted
           playsinline
           preload="auto"
-          @timeupdate="onRateTimeUpdate"
           @ended="onRateVideoEnded"
         />
         <!-- полная бумажка поверх ролика: swallowtail + звёзды на ней -->
@@ -436,23 +435,6 @@ const markRated = () => {
   }
 };
 
-const freezeRateVideo = () => {
-  const video = rateVideoRef.value;
-  if (!video) return;
-  try {
-    video.pause();
-  } catch {
-    /* ignore */
-  }
-};
-
-const parkRateCat = () => {
-  if (rateParked.value || rateLeaving.value) return;
-  freezeRateVideo();
-  rateParked.value = true;
-  rateReady.value = true;
-};
-
 const hideRate = () => {
   rateLeaving.value = true;
   rateHideTimer = setTimeout(() => {
@@ -462,17 +444,12 @@ const hideRate = () => {
 
 const onRateAnimEnd = (event: AnimationEvent) => {
   if (event.animationName !== 'kb-rate-cat-in') return;
-  parkRateCat();
-};
-
-const onRateTimeUpdate = () => {
-  const video = rateVideoRef.value;
-  if (!video || rateParked.value || rateLeaving.value) return;
-  if (video.currentTime >= RATE_WALK_END_SEC) parkRateCat();
+  rateParked.value = true;
 };
 
 const onRateVideoEnded = () => {
-  parkRateCat();
+  rateParked.value = true;
+  rateReady.value = true;
 };
 
 const playRateVideo = async () => {
@@ -485,7 +462,8 @@ const playRateVideo = async () => {
     await video.play();
   } catch (err) {
     console.warn('[knowledge] rating video play failed:', err);
-    parkRateCat();
+    rateParked.value = true;
+    rateReady.value = true;
   }
 };
 
