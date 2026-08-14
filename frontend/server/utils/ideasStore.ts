@@ -1,7 +1,7 @@
 import { readFile, mkdir } from 'node:fs/promises';
 import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
-import type { Idea } from '../../app/composables/useIdeasBank';
+import { normalizeIdeaCategory, type Idea } from '../../app/composables/useIdeasBank';
 
 export type IdeaVoteDirection = 'up' | 'down';
 export type IdeaVotesByUser = Record<string, IdeaVoteDirection>;
@@ -40,7 +40,7 @@ const normalizeIdea = (raw: Partial<Idea>): Idea | null => {
     authorName: String(raw.authorName || '').trim() || 'Сотрудник',
     title: String(raw.title || '').trim(),
     description: String(raw.description || '').trim(),
-    category: String(raw.category || '').trim() || 'Другое',
+    category: normalizeIdeaCategory(String(raw.category || '')),
     city: String(raw.city || '').trim() || 'Москва',
     status,
     createdAt: String(raw.createdAt || '').slice(0, 10) || new Date().toISOString().slice(0, 10),

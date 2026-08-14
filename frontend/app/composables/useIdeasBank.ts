@@ -31,9 +31,18 @@ export const IDEA_CATEGORIES = [
   'Процессы',
   'Культура',
   'IT и инструменты',
-  'Благополучие',
+  'Корпоративы и развлечения',
   'Другое'
 ] as const;
+
+const IDEA_CATEGORY_RENAMES: Record<string, string> = {
+  Благополучие: 'Корпоративы и развлечения'
+};
+
+export function normalizeIdeaCategory(raw: string): string {
+  const trimmed = raw.trim() || 'Другое';
+  return IDEA_CATEGORY_RENAMES[trimmed] ?? trimmed;
+}
 
 export const IDEA_CITIES = ['Москва', 'Санкт-Петербург', 'Казань', 'Удалённо'] as const;
 
