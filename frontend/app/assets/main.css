@@ -15297,13 +15297,12 @@ button.button {
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* покой = на месте; выезд только пока .is-entering, иначе откат к 100% */
-  transform: translateX(0);
+  /* both: до старта за краем, после 2.8с залипает на 0. Класс не снимать — иначе откат. */
+  transition: none;
 }
 
 .kb-rate-cat.is-entering {
-  transform: translateX(100%);
-  animation: kb-rate-cat-in 2.8s linear forwards;
+  animation: kb-rate-cat-in 2.8s linear both;
 }
 
 .kb-rate-cat.is-out {

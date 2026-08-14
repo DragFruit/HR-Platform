@@ -4,12 +4,11 @@
       v-if="rateVisible"
       class="kb-rate-cat"
       :class="{
-        'is-entering': !rateParked && !rateLeaving,
+        'is-entering': !rateLeaving,
         'is-ready': rateReady,
         'is-out': rateLeaving,
         [`is-${rateStep}`]: true
       }"
-      @animationend="onRateAnimEnd"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
@@ -410,7 +409,6 @@ const toggleTopic = (topic: string) => {
 const rateVisible = ref(false);
 const rateLeaving = ref(false);
 const rateReady = ref(false);
-const rateParked = ref(false);
 const rateStep = ref<RateStep>('stars');
 const rateStars = ref(0);
 const rateHover = ref(0);
@@ -442,13 +440,7 @@ const hideRate = () => {
   }, 1100);
 };
 
-const onRateAnimEnd = (event: AnimationEvent) => {
-  if (event.animationName !== 'kb-rate-cat-in') return;
-  rateParked.value = true;
-};
-
 const onRateVideoEnded = () => {
-  rateParked.value = true;
   rateReady.value = true;
 };
 
@@ -462,7 +454,6 @@ const playRateVideo = async () => {
     await video.play();
   } catch (err) {
     console.warn('[knowledge] rating video play failed:', err);
-    rateParked.value = true;
     rateReady.value = true;
   }
 };
@@ -547,7 +538,6 @@ onMounted(() => {
     rateShowTimer = setTimeout(() => {
       rateVisible.value = true;
       rateReady.value = false;
-      rateParked.value = false;
       rateStep.value = 'stars';
       playRateVideo();
     }, 900);
