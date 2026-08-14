@@ -15289,18 +15289,23 @@ button.button {
   right: 0;
   bottom: 4px;
   z-index: 6;
-  /* ширина = кот (360/1.5) + дорисованный хвост бумажки (158/848) */
   width: min(286px, 88vw);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* первый кадр УЖЕ за правым краем; fade/pop-in запрещены */
   opacity: 1;
   transform: translateX(100%);
   animation: kb-rate-cat-in 2.8s linear forwards;
   transition: none;
+  --tail-left: 89.619%;
+  --tail-top: 54.306%;
+  --tail-h: 24.306%;
+  --stars-left: 67.5%;
+  --stars-top: 58%;
+  --stars-w: 22%;
+  --stars-h: 16%;
 }
 
 .kb-rate-cat.is-out {
@@ -15308,10 +15313,7 @@ button.button {
 }
 
 .kb-rate-cat__ask {
-  position: absolute;
-  right: 0;
-  bottom: 100%;
-  margin: 0 0 6px;
+  margin: 0;
   padding: 6px 10px;
   border: 1px solid #111;
   border-radius: 999px;
@@ -15323,11 +15325,23 @@ button.button {
   white-space: nowrap;
 }
 
+.kb-rate-cat__panel {
+  z-index: 3;
+  display: grid;
+  gap: 8px;
+  width: min(260px, 100%);
+  padding: 8px 10px;
+  border: 1px solid #111;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 3px 3px 0 #111;
+  pointer-events: auto;
+}
+
 .kb-rate-cat__stage {
   position: relative;
   width: 100%;
-  /* ролик 848×720 + вылет бумажки со swallowtail справа */
-  aspect-ratio: 1006 / 720;
+  aspect-ratio: 944 / 720;
 }
 
 .kb-rate-cat__video {
@@ -15335,55 +15349,52 @@ button.button {
   left: 0;
   top: 0;
   display: block;
-  width: 84.294%;
+  width: 89.831%;
   height: 100%;
   object-fit: fill;
-  /* чёрный фон ролика → прозрачность на светлом холсте */
   mix-blend-mode: screen;
   pointer-events: none;
   user-select: none;
   z-index: 1;
 }
 
-.kb-rate-cat__banner {
+.kb-rate-cat__tail {
   position: absolute;
-  left: 59.344%;
-  top: 54.444%;
-  width: 40.656%;
-  height: 23.889%;
-  z-index: 2;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.kb-rate-cat__banner.is-live {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.kb-rate-cat__banner-img {
-  display: block;
-  width: 100%;
-  height: 100%;
+  left: var(--tail-left);
+  top: var(--tail-top);
+  width: 10.169%;
+  height: var(--tail-h);
   object-fit: fill;
   pointer-events: none;
   user-select: none;
+  z-index: 2;
 }
 
 .kb-rate-cat__paper {
   position: absolute;
-  /* правее кота/люверса, левее V-хвоста — только открытое поле бумажки */
-  left: 40%;
-  right: 20%;
-  top: 16%;
-  bottom: 16%;
+  left: var(--stars-left);
+  top: var(--stars-top);
+  width: var(--stars-w);
+  height: var(--stars-h);
+  z-index: 3;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0;
+  justify-content: space-evenly;
+  gap: 2%;
   padding: 0;
   box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kb-rate-cat__paper.is-live {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kb-rate-cat.is-thanks .kb-rate-cat__paper.is-live,
+.kb-rate-cat.is-comment .kb-rate-cat__paper.is-live {
+  pointer-events: none;
 }
 
 .kb-rate-cat__star {
@@ -15392,11 +15403,11 @@ button.button {
   padding: 0;
   border: 0;
   background: none;
-  flex: 0 0 auto;
-  width: 17%;
-  height: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 78%;
+  width: auto;
   aspect-ratio: 1;
-  max-height: 100%;
   cursor: pointer;
   line-height: 0;
 }
@@ -15421,22 +15432,6 @@ button.button {
 
 .kb-rate-cat__star:disabled {
   cursor: default;
-}
-
-.kb-rate-cat__panel {
-  position: absolute;
-  left: 59.344%;
-  width: 40.656%;
-  top: 52%;
-  z-index: 3;
-  display: grid;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #111;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 3px 3px 0 #111;
-  pointer-events: auto;
 }
 
 .kb-rate-cat__thanks {

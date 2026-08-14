@@ -4,9 +4,23 @@
       v-if="rateVisible"
       class="kb-rate-cat"
       :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
+      :style="ratePaperStyle"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
+      <div v-if="rateStep === 'thanks' || rateStep === 'comment'" class="kb-rate-cat__panel">
+        <p class="kb-rate-cat__thanks">Спасибо!</p>
+        <form v-if="rateStep === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
+          <textarea
+            v-model="rateComment"
+            class="kb-rate-cat__comment"
+            rows="2"
+            maxlength="2000"
+            placeholder="Как можно улучшить этот раздел?"
+          />
+          <button type="submit" class="kb-rate-cat__send">Отправить</button>
+        </form>
+      </div>
 
       <div class="kb-rate-cat__stage">
         <video
@@ -16,57 +30,41 @@
           muted
           playsinline
           preload="auto"
+          @timeupdate="onRateTimeUpdate"
           @ended="onRateVideoEnded"
         />
-        <!-- полная бумажка поверх ролика: swallowtail + звёзды на ней -->
-        <div class="kb-rate-cat__banner" :class="{ 'is-live': rateReady }" :aria-hidden="!rateReady">
-          <img
-            class="kb-rate-cat__banner-img"
-            src="/knowledge/rating-paper-full.png"
-            alt=""
-            width="409"
-            height="172"
-            draggable="false"
-          />
-          <div
-            v-show="rateStep === 'stars'"
-            class="kb-rate-cat__paper"
-            role="group"
-            aria-label="Оценка от 1 до 5"
+        <img
+          class="kb-rate-cat__tail"
+          src="/knowledge/rating-paper-tail.png"
+          alt=""
+          width="96"
+          height="175"
+          draggable="false"
+        />
+        <div
+          class="kb-rate-cat__paper"
+          :class="{ 'is-live': rateReady }"
+          role="group"
+          aria-label="Оценка от 1 до 5"
+        >
+          <button
+            v-for="n in 5"
+            :key="n"
+            type="button"
+            class="kb-rate-cat__star"
+            :class="{ 'is-on': n <= (rateHover || rateStars) }"
+            :disabled="!rateReady || rateStep !== 'stars'"
+            :aria-label="`${n} из 5`"
+            @mouseenter="rateHover = n"
+            @mouseleave="rateHover = 0"
+            @click="pickStars(n)"
           >
-            <button
-              v-for="n in 5"
-              :key="n"
-              type="button"
-              class="kb-rate-cat__star"
-              :class="{ 'is-on': n <= (rateHover || rateStars) }"
-              :disabled="!rateReady || rateStep !== 'stars'"
-              :aria-label="`${n} из 5`"
-              @mouseenter="rateHover = n"
-              @mouseleave="rateHover = 0"
-              @click="pickStars(n)"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div v-if="rateStep === 'thanks' || rateStep === 'comment'" class="kb-rate-cat__panel">
-          <p class="kb-rate-cat__thanks">Спасибо!</p>
-          <form v-if="rateStep === 'comment'" class="kb-rate-cat__form" @submit.prevent="sendFeedback">
-            <textarea
-              v-model="rateComment"
-              class="kb-rate-cat__comment"
-              rows="2"
-              maxlength="2000"
-              placeholder="Как можно улучшить этот раздел?"
-            />
-            <button type="submit" class="kb-rate-cat__send">Отправить</button>
-          </form>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 2.4l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.2 6.2 20.3l1.1-6.5L2.6 9.2l6.5-.9L12 2.4z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
@@ -311,8 +309,42 @@ import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 const KB_FILTERS_ENABLED = false;
 
 const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
-/** Стоп в ролике = 2.8 с: к этому моменту виджет (кот + вся бумажка) уже на экране. */
+/** Стоп сдвига виджета = 2.8 с; ролик доигрывает. */
 const RATE_WALK_END_SEC = 2.8;
+const RATE_STAGE_W = 944;
+const RATE_STAGE_H = 720;
+const RATE_TAIL_W = 96;
+const RATE_NOTCH = 52;
+/** [t, left, top, right, bot] бумажки в пикселях ролика 848×720 */
+const RATE_PAPER_KEYS: number[][] = [
+  [0, 441, 335, 829, 483],
+  [0.133, 444, 334, 831, 477],
+  [0.267, 444, 364, 834, 513],
+  [0.4, 446, 354, 836, 504],
+  [0.533, 448, 341, 840, 490],
+  [0.667, 451, 334, 842, 481],
+  [0.8, 453, 345, 847, 494],
+  [0.933, 456, 360, 847, 512],
+  [1.067, 459, 343, 847, 495],
+  [1.2, 465, 336, 847, 487],
+  [1.333, 470, 362, 847, 516],
+  [1.467, 474, 356, 847, 512],
+  [1.6, 480, 338, 847, 492],
+  [1.733, 486, 357, 847, 512],
+  [1.867, 491, 362, 847, 518],
+  [2, 499, 342, 847, 499],
+  [2.133, 506, 343, 847, 498],
+  [2.267, 511, 368, 847, 527],
+  [2.4, 517, 351, 847, 512],
+  [2.533, 527, 344, 847, 506],
+  [2.667, 541, 364, 847, 527],
+  [2.8, 553, 374, 847, 537],
+  [2.933, 569, 360, 847, 527],
+  [3.067, 585, 358, 847, 525],
+  [3.2, 599, 368, 847, 535],
+  [3.333, 597, 392, 847, 564],
+  [3.467, 597, 391, 847, 565]
+];
 
 type SearchMode = 'classic' | 'ai';
 type RateStep = 'stars' | 'thanks' | 'comment';
@@ -409,8 +441,52 @@ const rateStars = ref(0);
 const rateHover = ref(0);
 const rateComment = ref('');
 const rateVideoRef = ref<HTMLVideoElement | null>(null);
+const ratePaperStyle = ref<Record<string, string>>(paperCssVars(RATE_PAPER_KEYS[0]));
 let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
 let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
+
+function lerpPaper(t: number): number[] {
+  const keys = RATE_PAPER_KEYS;
+  if (t <= keys[0][0]) return keys[0];
+  const last = keys[keys.length - 1];
+  if (t >= last[0]) return last;
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const a = keys[i - 1];
+      const b = keys[i];
+      const p = (t - a[0]) / (b[0] - a[0] || 1);
+      return a.map((v, idx) => v + (b[idx] - v) * p);
+    }
+  }
+  return last;
+}
+
+function paperCssVars(box: number[]): Record<string, string> {
+  const left = box[1];
+  const top = box[2];
+  const right = box[3];
+  const bot = box[4];
+  const join = right - 1;
+  const ph = bot - top;
+  const starLeft = left + ph * 0.22;
+  const starRight = join + RATE_TAIL_W - RATE_NOTCH - ph * 0.12;
+  const starTop = top + ph * 0.16;
+  const starH = ph * 0.68;
+  const pct = (n: number, den: number) => `${((n / den) * 100).toFixed(3)}%`;
+  return {
+    '--tail-left': pct(join, RATE_STAGE_W),
+    '--tail-top': pct(top, RATE_STAGE_H),
+    '--tail-h': pct(ph, RATE_STAGE_H),
+    '--stars-left': pct(starLeft, RATE_STAGE_W),
+    '--stars-top': pct(starTop, RATE_STAGE_H),
+    '--stars-w': pct(Math.max(8, starRight - starLeft), RATE_STAGE_W),
+    '--stars-h': pct(starH, RATE_STAGE_H)
+  };
+}
+
+const syncRatePaper = (t: number) => {
+  ratePaperStyle.value = paperCssVars(lerpPaper(t));
+};
 
 const alreadyRated = () => {
   try {
@@ -435,7 +511,14 @@ const hideRate = () => {
   }, 1100);
 };
 
+const onRateTimeUpdate = () => {
+  const video = rateVideoRef.value;
+  if (!video) return;
+  syncRatePaper(video.currentTime || 0);
+};
+
 const onRateVideoEnded = () => {
+  syncRatePaper(RATE_PAPER_KEYS[RATE_PAPER_KEYS.length - 1][0]);
   rateReady.value = true;
 };
 
@@ -443,6 +526,7 @@ const playRateVideo = async () => {
   await nextTick();
   const video = rateVideoRef.value;
   if (!video) return;
+  syncRatePaper(0);
   try {
     video.pause();
     video.currentTime = 0;
