@@ -111,6 +111,29 @@ export function isSessionDenied(
   });
 }
 
+/** Сотрудник в denylist — нельзя держать в справочнике и возвращать синкам/деплоем. */
+export function isRosterEmployeeDenied(
+  entries: AccessDenylistEntry[],
+  emp: {
+    id?: number;
+    bitrix_user_id?: number | null;
+    platform_user_id?: number | null;
+    email?: string;
+    name?: string;
+  }
+): boolean {
+  const bitrixId = Number(emp.bitrix_user_id ?? emp.platform_user_id ?? 0);
+  const email = normEmail(emp.email);
+  return entries.some((row) => {
+    if (emp.id && Number(row.employee_id) === emp.id) return true;
+    if (bitrixId > 0 && Number(row.bitrix_user_id) === bitrixId) return true;
+    if (bitrixId > 0 && Number(row.platform_user_id) === bitrixId) return true;
+    if (email && normEmail(row.email) === email) return true;
+    if (namesMatch(row.name, emp.name)) return true;
+    return false;
+  });
+}
+
 export async function isBitrixUserAccessRevoked(bitrixUserId: number): Promise<boolean> {
   if (!Number.isFinite(bitrixUserId) || bitrixUserId <= 0) return false;
   const entries = await readAccessDenylist();

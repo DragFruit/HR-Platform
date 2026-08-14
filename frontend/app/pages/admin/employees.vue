@@ -154,7 +154,7 @@
                 type="button"
                 aria-label="Удалить сотрудника"
                 title="Удалить"
-                @click="removeEmployee(emp.id)"
+                @click="onRemoveEmployee(emp)"
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
                   <path
@@ -199,6 +199,15 @@ const {
   saveError,
   reloadLoading
 } = useEmployees();
+
+const onRemoveEmployee = async (emp: Employee) => {
+  const label = emp.name.trim() || `id ${emp.id}`;
+  if (!window.confirm(`Удалить «${label}» из справочника насовсем?`)) return;
+  const result = await removeEmployee(emp.id);
+  if (!result.ok) {
+    window.alert(result.error || 'Не удалось удалить на сервере');
+  }
+};
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 

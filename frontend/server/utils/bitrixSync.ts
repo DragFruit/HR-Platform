@@ -11,7 +11,7 @@ import {
   type BitrixUser
 } from './bitrixClient';
 import { getBitrixConfig, isBitrixWebhookConfigured, parseGroupIds } from './bitrixConfig';
-import { isBitrixUserAccessRevoked } from './employeeAccessDenylist';
+import { isBitrixUserAccessRevoked, isRosterEmployeeDenied, readAccessDenylist } from './employeeAccessDenylist';
 
 type BitrixUserRow = BitrixUser & { ID: string };
 
@@ -351,9 +351,12 @@ async function syncEmployeesFromBitrixUncached(
   }
 
   const syncedIds = new Set(synced.map((row) => row.bitrix_user_id).filter((id): id is number => id != null));
-  const keptRosterOnly = existing.filter(
-    (row) => row.bitrix_user_id && !syncedIds.has(row.bitrix_user_id)
-  );
+  const denylist = await readAccessDenylist();
+  const keptRosterOnly = existing.filter((row) => {
+    if (!row.bitrix_user_id || syncedIds.has(row.bitrix_user_id)) return false;
+    if (isRosterEmployeeDenied(denylist, row)) return false;
+    return true;
+  });
 
   if (keptRosterOnly.length > 0) {
     const bitrixLinkedCount = existing.filter((row) => row.bitrix_user_id).length;
@@ -391,6 +394,7 @@ async function syncEmployeesFromBitrixUncached(
 
   const manualOnly = existing.filter((row) => {
     if (row.bitrix_user_id) return false;
+    if (isRosterEmployeeDenied(denylist, row)) return false;
     const keys = employeeIdentityKeys(row);
     if (keys.some((key) => coveredKeys.has(key))) return false;
     return true;

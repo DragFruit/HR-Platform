@@ -99,11 +99,13 @@ for seed in adaptation-track.json employees.json vacations.json ideas.json org-s
   fi
 
   if [[ "${seed}" == "employees.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
-    echo "→ merge ${seed} (production — данные с сервера, +новые из репо, руководители из overlay)"
+    echo "→ merge ${seed} (production — данные с сервера, +новые из репо, без denylist, руководители из overlay)"
     INCOMING="${REMOTE_DATA}/.employees-incoming.json"
+    REMOTE_DENYLIST="${REMOTE_DATA}/employee-access-denylist.json"
     "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${INCOMING}"
     "${SCP_CMD[@]}" "${MERGE_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/merge-employees-seed.mjs"
-    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-employees-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' '${REMOTE_MANAGERS}' && rm -f '${INCOMING}'"
+    "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DENYLIST}' || printf '%s\\n' '{\"entries\":[]}' > '${REMOTE_DENYLIST}'"
+    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-employees-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' '${REMOTE_MANAGERS}' '${REMOTE_DENYLIST}' && rm -f '${INCOMING}'"
     continue
   fi
 

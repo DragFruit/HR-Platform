@@ -327,11 +327,18 @@ export function useEmployees() {
     persist();
   };
 
-  const removeEmployee = (id: number) => {
+  const removeEmployee = async (id: number) => {
     const target = employeesRaw.value.find((emp) => emp.id === id);
-    if (target?.account_role === 'admin') return;
+    if (target?.account_role === 'admin') return { ok: false as const, error: 'Админа удалить нельзя' };
+    const prev = employeesRaw.value.slice();
     employeesRaw.value = employeesRaw.value.filter((emp) => emp.id !== id);
-    persist();
+    applyEmployeeList(employeesRaw.value);
+    const result = await syncToServer();
+    if (!result.ok) {
+      applyEmployeeList(prev);
+      return result;
+    }
+    return { ok: true as const };
   };
 
   const findByUserId = (userId: number | undefined) => {

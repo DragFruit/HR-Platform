@@ -16,7 +16,9 @@ import {
 } from './employeeManagersStore';
 import {
   clearAccessRevocationForEmployee,
+  isRosterEmployeeDenied,
   purgeExpiredRevocationArtifacts,
+  readAccessDenylist,
   revokeEmployeeAccess
 } from './employeeAccessDenylist';
 
@@ -73,7 +75,20 @@ export async function readEmployees(): Promise<ServerEmployee[]> {
   }
   const assignments = await readManagerAssignments();
   const withManagers = applyManagerAssignments(deduped, assignments);
-  return mergeQaTestEmployees(withManagers);
+  const denylist = await readAccessDenylist();
+  const withoutDenied = withManagers.filter((row) => !isRosterEmployeeDenied(denylist, row));
+  // Лечим файл, если деплой/синк вернул удалённых
+  if (withoutDenied.length !== withManagers.length) {
+    await enqueueEmployeesMutation(async () => {
+      const again = await readEmployeesRawWithoutQaMerge();
+      const denylistNow = await readAccessDenylist();
+      const cleaned = again.filter((row) => !isRosterEmployeeDenied(denylistNow, row));
+      if (cleaned.length !== again.length) {
+        await writeJsonAtomic(DATA_FILE, cleaned);
+      }
+    });
+  }
+  return mergeQaTestEmployees(withoutDenied);
 }
 
 export type WriteEmployeesOptions = {
@@ -88,7 +103,7 @@ export async function writeEmployees(
   return enqueueEmployeesMutation(async () => {
     await ensureFile();
     const previous = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
-    const normalized = dedupeEmployees(stripQaTestEmployees(list));
+    let normalized = dedupeEmployees(stripQaTestEmployees(list));
 
     const nextIds = new Set(normalized.map((row) => row.id));
     for (const prev of previous) {
@@ -100,6 +115,10 @@ export async function writeEmployees(
       if (previousIds.has(row.id)) continue;
       await clearAccessRevocationForEmployee(row);
     }
+
+    // После clear: старые отзывы не пишем обратно в справочник
+    const denylistAfter = await readAccessDenylist();
+    normalized = normalized.filter((row) => !isRosterEmployeeDenied(denylistAfter, row));
 
     void purgeExpiredRevocationArtifacts().catch(() => {});
 
