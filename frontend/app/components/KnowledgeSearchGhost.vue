@@ -5,5 +5,7 @@ const { text } = useKnowledgePlaceholder(KNOWLEDGE_SEARCH_PHRASES);
 </script>
 
 <template>
-  <span class="kb-seek__ghost" aria-hidden="true">{{ text }}<i class="kb-seek__caret" /></span>
+  <span class="kb-seek__ghost" aria-hidden="true">
+    Например: {{ text }}<i class="kb-seek__caret" />
+  </span>
 </template>
