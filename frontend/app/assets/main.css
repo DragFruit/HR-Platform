@@ -15300,6 +15300,9 @@ button.button {
   bottom: 8px;
   z-index: 40;
   width: min(286px, 88vw);
+  /* overflow режет выезд справа; padding-top — место под пузырь «Спасибо»+коммент сверху */
+  padding-top: min(400px, 48vh);
+  box-sizing: content-box;
   overflow: hidden;
   pointer-events: none;
 }
