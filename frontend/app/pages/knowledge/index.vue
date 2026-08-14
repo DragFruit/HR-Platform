@@ -312,8 +312,11 @@ import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 const KB_FILTERS_ENABLED = false;
 
 const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
-/** Длина выезда = посадка в ролике (~frame 105 @ 30fps ≈ 3500 ms) */
-const RATE_WALK_END_SEC = 3.5;
+/**
+ * Выезд чуть быстрее посадки (~3500 ms): хвост бумажки — правые ~16% сцены,
+ * он входит последним. 3.2 с — вся бумажка уже на экране, затем кот садится на месте.
+ */
+const RATE_WALK_END_SEC = 3.2;
 
 type SearchMode = 'classic' | 'ai';
 type RateStep = 'stars' | 'thanks' | 'comment';

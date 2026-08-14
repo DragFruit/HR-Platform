@@ -15286,19 +15286,20 @@ button.button {
 
 .kb-rate-cat {
   position: absolute;
-  right: 0;
+  /* небольшой зазор справа — swallowtail не режется overflow страницы */
+  right: 10px;
   bottom: 4px;
   z-index: 6;
-  /* кот ≈ 1.5× меньше прежних 360px; сцена шире ролика из‑за хвоста бумажки */
-  width: min(286px, 88vw);
+  /* ширина = кот (360/1.5) + дорисованный хвост бумажки (158/848) */
+  width: min(286px, calc(88vw - 10px));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* старт за правым краем (клип .kb-page); длительность задаётся из RATE_WALK_END_SEC */
+  /* старт за правым краем; длительность — RATE_WALK_END_SEC (вся бумажка до посадки) */
   transform: translateX(100%);
-  animation: kb-rate-cat-in 3.5s linear forwards;
+  animation: kb-rate-cat-in 3.2s linear forwards;
 }
 
 .kb-rate-cat.is-out {
