@@ -3,8 +3,7 @@
     <aside
       v-if="rateVisible"
       class="kb-rate-cat"
-      :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
-      :style="ratePaperStyle"
+      :class="{ 'is-out': rateLeaving }"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
@@ -22,7 +21,11 @@
         </form>
       </div>
 
-      <div class="kb-rate-cat__stage">
+      <div
+        ref="rateStageRef"
+        class="kb-rate-cat__stage"
+        :class="{ 'is-ready': rateReady, [`is-${rateStep}`]: true }"
+      >
         <video
           ref="rateVideoRef"
           class="kb-rate-cat__video"
@@ -441,7 +444,7 @@ const rateStars = ref(0);
 const rateHover = ref(0);
 const rateComment = ref('');
 const rateVideoRef = ref<HTMLVideoElement | null>(null);
-const ratePaperStyle = ref<Record<string, string>>(paperCssVars(RATE_PAPER_KEYS[0]));
+const rateStageRef = ref<HTMLElement | null>(null);
 let rateHideTimer: ReturnType<typeof setTimeout> | null = null;
 let rateShowTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -485,7 +488,12 @@ function paperCssVars(box: number[]): Record<string, string> {
 }
 
 const syncRatePaper = (t: number) => {
-  ratePaperStyle.value = paperCssVars(lerpPaper(t));
+  const el = rateStageRef.value;
+  if (!el) return;
+  const vars = paperCssVars(lerpPaper(t));
+  for (const [key, value] of Object.entries(vars)) {
+    el.style.setProperty(key, value);
+  }
 };
 
 const alreadyRated = () => {

@@ -15299,13 +15299,6 @@ button.button {
   transform: translateX(100%);
   animation: kb-rate-cat-in 2.8s linear forwards;
   transition: none;
-  --tail-left: 89.619%;
-  --tail-top: 54.306%;
-  --tail-h: 24.306%;
-  --stars-left: 67.5%;
-  --stars-top: 58%;
-  --stars-w: 22%;
-  --stars-h: 16%;
 }
 
 .kb-rate-cat.is-out {
@@ -15342,6 +15335,13 @@ button.button {
   position: relative;
   width: 100%;
   aspect-ratio: 944 / 720;
+  --tail-left: 89.619%;
+  --tail-top: 54.306%;
+  --tail-h: 24.306%;
+  --stars-left: 67.5%;
+  --stars-top: 58%;
+  --stars-w: 22%;
+  --stars-h: 16%;
 }
 
 .kb-rate-cat__video {
@@ -15392,8 +15392,8 @@ button.button {
   pointer-events: auto;
 }
 
-.kb-rate-cat.is-thanks .kb-rate-cat__paper.is-live,
-.kb-rate-cat.is-comment .kb-rate-cat__paper.is-live {
+.kb-rate-cat__stage.is-thanks .kb-rate-cat__paper.is-live,
+.kb-rate-cat__stage.is-comment .kb-rate-cat__paper.is-live {
   pointer-events: none;
 }
 
