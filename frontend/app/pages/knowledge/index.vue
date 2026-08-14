@@ -3,8 +3,13 @@
     <aside
       v-if="rateVisible"
       class="kb-rate-cat"
-      :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
-      :style="rateLeaving ? undefined : { animationDuration: `${RATE_WALK_END_SEC}s` }"
+      :class="{
+        'is-ready': rateReady,
+        'is-parked': rateParked,
+        'is-out': rateLeaving,
+        [`is-${rateStep}`]: true
+      }"
+      @animationend="onRateAnimEnd"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
@@ -17,6 +22,7 @@
           muted
           playsinline
           preload="auto"
+          @timeupdate="onRateTimeUpdate"
           @ended="onRateVideoEnded"
         />
         <!-- полная бумажка поверх ролика: swallowtail + звёзды на ней -->
@@ -405,6 +411,7 @@ const toggleTopic = (topic: string) => {
 const rateVisible = ref(false);
 const rateLeaving = ref(false);
 const rateReady = ref(false);
+const rateParked = ref(false);
 const rateStep = ref<RateStep>('stars');
 const rateStars = ref(0);
 const rateHover = ref(0);
@@ -429,6 +436,23 @@ const markRated = () => {
   }
 };
 
+const freezeRateVideo = () => {
+  const video = rateVideoRef.value;
+  if (!video) return;
+  try {
+    video.pause();
+  } catch {
+    /* ignore */
+  }
+};
+
+const parkRateCat = () => {
+  if (rateParked.value || rateLeaving.value) return;
+  freezeRateVideo();
+  rateParked.value = true;
+  rateReady.value = true;
+};
+
 const hideRate = () => {
   rateLeaving.value = true;
   rateHideTimer = setTimeout(() => {
@@ -436,19 +460,19 @@ const hideRate = () => {
   }, 1100);
 };
 
-const onRateVideoEnded = () => {
+const onRateAnimEnd = (event: AnimationEvent) => {
+  if (event.animationName !== 'kb-rate-cat-in') return;
+  parkRateCat();
+};
+
+const onRateTimeUpdate = () => {
   const video = rateVideoRef.value;
-  if (video) {
-    try {
-      video.pause();
-      if (Number.isFinite(video.duration) && video.duration > 0) {
-        video.currentTime = video.duration;
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  rateReady.value = true;
+  if (!video || rateParked.value || rateLeaving.value) return;
+  if (video.currentTime >= RATE_WALK_END_SEC) parkRateCat();
+};
+
+const onRateVideoEnded = () => {
+  parkRateCat();
 };
 
 const playRateVideo = async () => {
@@ -461,7 +485,7 @@ const playRateVideo = async () => {
     await video.play();
   } catch (err) {
     console.warn('[knowledge] rating video play failed:', err);
-    rateReady.value = true;
+    parkRateCat();
   }
 };
 
@@ -545,6 +569,7 @@ onMounted(() => {
     rateShowTimer = setTimeout(() => {
       rateVisible.value = true;
       rateReady.value = false;
+      rateParked.value = false;
       rateStep.value = 'stars';
       playRateVideo();
     }, 900);

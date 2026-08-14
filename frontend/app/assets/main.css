@@ -15297,9 +15297,13 @@ button.button {
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* старт за правым краем; длительность — RATE_WALK_END_SEC (вся бумажка до посадки) */
   transform: translateX(100%);
   animation: kb-rate-cat-in 2.8s linear forwards;
+}
+
+.kb-rate-cat.is-parked {
+  animation: none;
+  transform: translateX(0);
 }
 
 .kb-rate-cat.is-out {
@@ -15307,7 +15311,10 @@ button.button {
 }
 
 .kb-rate-cat__ask {
-  margin: 0 8px 0 0;
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  margin: 0 0 6px;
   padding: 6px 10px;
   border: 1px solid #111;
   border-radius: 999px;
@@ -15316,6 +15323,7 @@ button.button {
   font-size: 0.72rem;
   font-weight: 800;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .kb-rate-cat__stage {
