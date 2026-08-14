@@ -312,11 +312,8 @@ import { KNOWLEDGE_SEARCH_PHRASES } from '~/data/knowledgeSearchPhrases';
 const KB_FILTERS_ENABLED = false;
 
 const RATE_STORAGE_KEY = 'vbi-kb-page-rating-v1';
-/**
- * Выезд чуть быстрее посадки (~3500 ms): хвост бумажки — правые ~16% сцены,
- * он входит последним. 3.2 с — вся бумажка уже на экране, затем кот садится на месте.
- */
-const RATE_WALK_END_SEC = 3.2;
+/** Стоп в ролике = 2.8 с: к этому моменту виджет (кот + вся бумажка) уже на экране. */
+const RATE_WALK_END_SEC = 2.8;
 
 type SearchMode = 'classic' | 'ai';
 type RateStep = 'stars' | 'thanks' | 'comment';

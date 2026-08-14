@@ -15299,7 +15299,7 @@ button.button {
   pointer-events: none;
   /* старт за правым краем; длительность — RATE_WALK_END_SEC (вся бумажка до посадки) */
   transform: translateX(100%);
-  animation: kb-rate-cat-in 3.2s linear forwards;
+  animation: kb-rate-cat-in 2.8s linear forwards;
 }
 
 .kb-rate-cat.is-out {
