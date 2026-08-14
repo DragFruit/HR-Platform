@@ -11599,17 +11599,18 @@ button.emp-name--card:hover {
   margin-inline: auto;
 }
 
-/* На больших экранах (desktop 1600x900+) делаем даты в "Общем" чуть крупнее. */
+/* На больших экранах даты в «Общем» чуть крупнее базовых 0.52rem, но без обрезки в ячейке. */
 @media (min-width: 1500px) and (min-height: 850px) {
   .vac-team-calendar--employee-team .vac-cell--compact {
-    padding: 6px 4px;
+    padding: 5px 3px;
   }
 
   .vac-team-calendar--employee-team .vac-cell--compact .vac-block {
-    padding: 3px 5px;
-    font-size: 0.78rem;
-    line-height: 1.2;
-    font-weight: 500;
+    padding: 2px 3px;
+    font-size: 0.6rem;
+    line-height: 1.15;
+    font-weight: 400;
+    letter-spacing: -0.02em;
   }
 }
 
