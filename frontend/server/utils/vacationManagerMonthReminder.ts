@@ -1,4 +1,5 @@
 import type { VacationRequest } from '../../app/composables/useVacations';
+import { DEPARTMENT_SCOPE_BY_MANAGER } from '../../app/utils/departmentTeamScope';
 import { isDigitalDepartment } from '../../app/utils/vacationApproval';
 import { sendBitrixImbotMessage, isBitrixImbotConfigured } from './bitrixImbot';
 import { readEmployees, type ServerEmployee } from './employeesStore';
@@ -13,18 +14,7 @@ import { readVacations } from './vacationsStore';
 /** Гендир — бот не пишет. */
 export const MANAGER_MONTH_REMINDER_NEVER = new Set(['Юдин Вадим']);
 
-/**
- * Руководители отделов: вся зона отдела (не только прямые подчинённые).
- * Лашин в справочнике в «Дирекции», но команда — «Отдел продаж».
- */
-export const DEPARTMENT_SCOPE_BY_MANAGER: Record<string, string> = {
-  'Ревзина Ксения': 'Digital',
-  'Музыка Сергей': 'DEV',
-  'Трубицына Анна': 'SEO / ORM',
-  'Волдайский Кирилл': 'Маркетинг',
-  'Малиновская Евгения': 'Бухгалтерия',
-  'Лашин Владислав': 'Отдел продаж'
-};
+export { DEPARTMENT_SCOPE_BY_MANAGER };
 
 export type ManagerMonthOutlook = 'next' | 'current';
 

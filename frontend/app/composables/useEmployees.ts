@@ -1,4 +1,5 @@
 import { canApproverReviewRequest } from '~/utils/vacationApproval';
+import { departmentScopeForManager } from '~/utils/departmentTeamScope';
 import { listDepartmentsForUi } from '~/data/departments';
 import { dedupeEmployeeList } from '~/utils/employeeDedupe';
 import { normalizeEmployeeNameKey, resolveManagerFromList } from '~/utils/employeeName';
@@ -444,6 +445,18 @@ export function useEmployees() {
     };
 
     if (isManager && myName) {
+      const deptScope = departmentScopeForManager(myName);
+      if (deptScope) {
+        const members = employeesInDepartment(deptScope)
+          .filter((emp) => !isSelf(emp))
+          .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        return {
+          mode: 'department',
+          department: deptScope,
+          members
+        };
+      }
+
       const members = directReports(myName)
         .filter((emp) => emp.name.trim() && !isSelf(emp))
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
