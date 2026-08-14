@@ -15286,23 +15286,21 @@ button.button {
 
 .kb-rate-cat {
   position: absolute;
-  /* небольшой зазор справа — swallowtail не режется overflow страницы */
-  right: 10px;
+  right: 0;
   bottom: 4px;
   z-index: 6;
   /* ширина = кот (360/1.5) + дорисованный хвост бумажки (158/848) */
-  width: min(286px, calc(88vw - 10px));
+  width: min(286px, 88vw);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
   pointer-events: none;
-  /* both: до старта за краем, после 2.8с залипает на 0. Класс не снимать — иначе откат. */
+  /* первый кадр УЖЕ за правым краем; fade/pop-in запрещены */
+  opacity: 1;
+  transform: translateX(100%);
+  animation: kb-rate-cat-in 2.8s linear forwards;
   transition: none;
-}
-
-.kb-rate-cat.is-entering {
-  animation: kb-rate-cat-in 2.8s linear both;
 }
 
 .kb-rate-cat.is-out {

@@ -3,12 +3,7 @@
     <aside
       v-if="rateVisible"
       class="kb-rate-cat"
-      :class="{
-        'is-entering': !rateLeaving,
-        'is-ready': rateReady,
-        'is-out': rateLeaving,
-        [`is-${rateStep}`]: true
-      }"
+      :class="{ 'is-ready': rateReady, 'is-out': rateLeaving, [`is-${rateStep}`]: true }"
       aria-label="Оценка страницы"
     >
       <p v-if="rateReady && rateStep === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>

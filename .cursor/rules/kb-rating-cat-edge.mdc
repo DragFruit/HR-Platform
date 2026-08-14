@@ -1,0 +1,23 @@
+---
+description: Кот оценки базы знаний появляется только из-за края экрана
+globs: frontend/app/pages/knowledge/**,frontend/app/assets/main.css
+alwaysApply: true
+---
+
+# Кот оценки `/knowledge` — только из-за края
+
+Единственный способ появления: **выезд `translateX` из-за правого края** (клип `overflow: hidden` у `.kb-page--search`).
+
+## Запрещено
+
+- fade / `opacity` 0→1
+- scale / pop-in на месте
+- первый кадр с `transform: none` или `translateX(0)` — кот мелькнёт уже на экране
+- снимать CSS-анимацию выезда после стопа (браузер откатывает за край или наоборот показывает на месте)
+
+## Как надо
+
+- До анимации: `transform: translateX(100%)` на самом `.kb-rate-cat`
+- Выезд: `animation: kb-rate-cat-in 2.8s linear forwards` (не снимать класс)
+- Ролик доигрывает до конца; стоп сдвига ≠ пауза видео
+- `transition: none` на виджете
