@@ -130,13 +130,14 @@ export function buildQaTestEmployees(): Employee[] {
     {
       id: 9005,
       name: QA_EMPLOYEE_ALINA_NAME,
-      title: 'Тестировщик',
+      title: 'Директор (тест профиля)',
       department: QA_TEST_DEPARTMENT_NAME,
+      /** В иерархии отпусков остаётся у тимлида; в профиле — весь отдел через departmentTeamScope */
       manager: QA_TEAM_LEAD_NAME,
       hired_at: '2025-06-01',
       platform_user_id: 6,
       email: 'alina@vbi.local',
-      account_role: 'employee',
+      account_role: 'manager',
       vacation_opening_balance: 28
     },
     {
@@ -211,12 +212,11 @@ export function applyQaDemoSessionOverrides<
   const next = { ...user, department: QA_TEST_DEPARTMENT_NAME };
   const displayName = QA_DEMO_SESSION_NAMES[email];
   if (displayName) next.name = displayName;
-  if (email === 'masha@vbi.local' || email === 'kostya@vbi.local') {
+  if (email === 'masha@vbi.local' || email === 'kostya@vbi.local' || email === 'alina@vbi.local') {
     next.role = 'manager';
   } else if (
     email === 'katya@vbi.local' ||
     email === 'vasya@vbi.local' ||
-    email === 'alina@vbi.local' ||
     email === 'jubilee@vbi.local'
   ) {
     next.role = 'employee';
@@ -231,7 +231,8 @@ export const QA_DEMO_ACCOUNT_HINTS: Record<string, string> = {
   'kostya@vbi.local': `Руководитель: ${QA_TEAM_LEAD_NAME} — команда 28 чел. (+он = 29 в таблице), согласование шаг 1`,
   'katya@vbi.local': 'Сотрудник: Даша Тестова — заявки, бронь, обучалка',
   'vasya@vbi.local': 'Сотрудник: Василий Тестов — свой календарь и заявки',
-  'alina@vbi.local': 'Сотрудник: Алина Тестова — заявка на согласовании',
+  'alina@vbi.local':
+    'Директор (тест): Алина Тестова — весь отдел Тестировщики в «Твоя команда» (как Ревзина / Digital)',
   'jubilee@vbi.local': 'Юбиляр: 5 лет в компании — тест поздравления / ачивки / купона',
   'masha@vbi.local': `Директор: ${QA_DIRECTOR_NAME} — согласование шаг 2`,
   'stas@vbi.local': 'Администратор платформы (HR)'

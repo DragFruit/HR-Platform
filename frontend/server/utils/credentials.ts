@@ -62,7 +62,7 @@ const credentials: Credential[] = [
     name: 'Алина',
     email: 'alina@vbi.local',
     password: 'employee123',
-    role: 'employee',
+    role: 'manager',
     department: 'Команда'
   },
   {

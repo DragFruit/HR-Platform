@@ -32,7 +32,7 @@ export const PLATFORM_ACCOUNTS: Record<
   3: { email: 'katya@vbi.local', account_role: 'employee', name: 'Катя' },
   4: { email: 'vasya@vbi.local', account_role: 'employee', name: 'Вася' },
   5: { email: 'masha@vbi.local', account_role: 'employee', name: 'Маша' },
-  6: { email: 'alina@vbi.local', account_role: 'employee', name: 'Алина' },
+  6: { email: 'alina@vbi.local', account_role: 'manager', name: 'Алина' },
   9100: { email: 'jubilee@vbi.local', account_role: 'employee', name: 'Юбилеев Тест' }
 };
 
