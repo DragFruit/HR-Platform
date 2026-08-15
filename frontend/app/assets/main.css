@@ -4287,12 +4287,9 @@ button.org-unit-head--link:hover {
 .profile-grid-2--own .profile-slot--team {
   grid-column: 2;
   grid-row: 1 / -1;
+  /* Карточка своей высоты (title + фиксированный скролл), не растягиваем и не клипаем сеткой */
+  align-self: start;
   min-height: 0;
-  /* Высота = левая колонка (ачивки + активность); длинный список — скролл внутри */
-  align-self: stretch;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--achievements {
@@ -4915,25 +4912,48 @@ button.org-unit-head--link:hover {
   flex: 0 0 auto;
 }
 
-.profile-team__scroll {
-  flex: 1 1 auto;
+/* Как .profile-activity__scroll: жёсткая высота + скролл внутри, иначе .card overflow:hidden режет список */
+.card.profile-team {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
   min-height: 0;
+}
+
+.profile-team__scroll {
+  --profile-team-scroll-h: 22rem;
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  height: var(--profile-team-scroll-h);
+  min-height: var(--profile-team-scroll-h);
+  max-height: var(--profile-team-scroll-h);
   margin: 12px 0 0;
+  padding: 0 6px 10px 0;
   overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
-  /* Фиксируем высоту — иначе сетка раздувает карточку и скролл не появляется */
-  max-height: min(22rem, 48dvh);
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #111 #eeeee8;
 }
 
 .profile-team__scroll::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
+}
+
+.profile-team__scroll::-webkit-scrollbar-track {
+  background: #eeeee8;
+  border-radius: 8px;
 }
 
 .profile-team__scroll::-webkit-scrollbar-thumb {
-  background: rgba(17, 17, 17, 0.35);
-  border-radius: 999px;
+  background: #111;
+  border-radius: 8px;
+  border: 2px solid #eeeee8;
 }
 
 .profile-team__row {
