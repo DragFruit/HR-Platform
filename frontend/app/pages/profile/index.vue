@@ -368,26 +368,28 @@
     >
       <h3 class="profile-hub-card__title profile-team__title">{{ teamTitle }}</h3>
 
-      <ul v-if="teamDisplayMembers.length" class="profile-team__row">
-        <li
-          v-for="member in teamDisplayMembers"
-          :key="member.id"
-          class="profile-team__member"
-          :class="{ 'profile-team__member--manager': member.isManager }"
-        >
-          <button
-            type="button"
-            class="profile-team__member-link"
-            @click="openEmployeeVisitingCard(member, $event)"
+      <div v-if="teamDisplayMembers.length" class="profile-team__scroll">
+        <ul class="profile-team__row">
+          <li
+            v-for="member in teamDisplayMembers"
+            :key="member.id"
+            class="profile-team__member"
+            :class="{ 'profile-team__member--manager': member.isManager }"
           >
-            <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
-              <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
-              <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
-            </div>
-            <span class="profile-team__name">{{ member.name }}</span>
-          </button>
-        </li>
-      </ul>
+            <button
+              type="button"
+              class="profile-team__member-link"
+              @click="openEmployeeVisitingCard(member, $event)"
+            >
+              <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
+                <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
+                <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
+              </div>
+              <span class="profile-team__name">{{ member.name }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <p v-else class="muted profile-team__empty">{{ teamEmptyText }}</p>
     </section>
