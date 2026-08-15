@@ -221,7 +221,7 @@
     </nav>
   </section>
 
-  <!-- P1–P2: ачивки / активность / команда (раскладка от размера команды) -->
+  <!-- P1–P2: второй экран — ачивки + команда + активность в одном fold -->
   <div
     class="profile-grid-2"
     :class="{
@@ -575,11 +575,13 @@ const activityScrollRef = ref<HTMLElement | null>(null);
 const activityListRef = ref<HTMLElement | null>(null);
 const activityScrollMaxHeight = ref<number | null>(null);
 
-/** Высота поля = 6.5 строк активности (хвост полстроки). */
+/** Высота поля = 6.5 строк (только чужой профиль без fold-сетки). */
 const ACTIVITY_SLOT_ROWS = 6.5;
 const ACTIVITY_ROW_FALLBACK_PX = 72;
 
 const activityScrollStyle = computed(() => {
+  /* Свой профиль: высоту даёт второй экран (CSS fold), не фиксированные 6.5 строк */
+  if (isOwnProfile.value) return {};
   const height = activityScrollMaxHeight.value ?? Math.round(ACTIVITY_ROW_FALLBACK_PX * ACTIVITY_SLOT_ROWS);
   return {
     height: `${height}px`,

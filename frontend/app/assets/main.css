@@ -4266,30 +4266,45 @@ button.org-unit-head--link:hover {
   align-items: stretch;
 }
 
+/*
+ * Второй экран профиля (свой): ачивки + команда + активность
+ * умещаются в один viewport под топбаром. Лишнее — скролл внутри полей.
+ * Ачивки (ряд 1) не трогаем по виду — только естественная высота.
+ */
 .profile-grid-2--own {
+  --profile-second-fold-h: calc(100dvh - 64px);
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  /* Высоту задаёт левая колонка; правая «команда» не раздувает сетку */
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: var(--profile-second-fold-h);
+  max-height: var(--profile-second-fold-h);
+  overflow: hidden;
+  align-items: stretch;
+  box-sizing: border-box;
 }
 
 .profile-grid-2--own .profile-slot--achievements {
   grid-column: 1;
   grid-row: 1;
+  min-height: 0;
 }
 
 .profile-grid-2--own .profile-slot--activity {
   grid-column: 1;
   grid-row: 2;
   min-height: 0;
-  align-self: start;
+  align-self: stretch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-grid-2--own .profile-slot--team {
   grid-column: 2;
   grid-row: 1 / -1;
-  /* Карточка своей высоты (title + фиксированный скролл), не растягиваем и не клипаем сеткой */
-  align-self: start;
   min-height: 0;
+  align-self: stretch;
+  overflow: hidden;
+  height: 100%;
 }
 
 .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--achievements {
@@ -4300,18 +4315,18 @@ button.org-unit-head--link:hover {
 .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--team {
   grid-column: 1;
   grid-row: 2;
-  align-self: start;
+  align-self: stretch;
+  overflow: hidden;
 }
 
 .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--activity {
   grid-column: 2;
   grid-row: 1 / -1;
   min-height: 0;
-  align-self: start;
-}
-
-  .profile-grid-2--own.profile-grid-2--compact-team .profile-activity__scroll {
-  max-height: none;
+  align-self: stretch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-left-stack {
@@ -4556,6 +4571,15 @@ button.org-unit-head--link:hover {
   gap: 10px;
 }
 
+/* Свой профиль: активность заполняет оставшуюся высоту второго экрана */
+.profile-grid-2--own .profile-activity.card.profile-itmo-panel {
+  flex: 1 1 auto;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .profile-activity__scroll {
   --profile-activity-row: 72px;
   position: relative;
@@ -4571,6 +4595,34 @@ button.org-unit-head--link:hover {
   padding: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
+}
+
+.profile-grid-2--own .profile-activity__scroll {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #111 #eeeee8;
+}
+
+.profile-grid-2--own .profile-activity__scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.profile-grid-2--own .profile-activity__scroll::-webkit-scrollbar-track {
+  background: #eeeee8;
+  border-radius: 8px;
+}
+
+.profile-grid-2--own .profile-activity__scroll::-webkit-scrollbar-thumb {
+  background: #111;
+  border-radius: 8px;
+  border: 2px solid #eeeee8;
 }
 
 .profile-activity__scroll::-webkit-scrollbar {
@@ -4912,7 +4964,7 @@ button.org-unit-head--link:hover {
   flex: 0 0 auto;
 }
 
-/* Как .profile-activity__scroll: жёсткая высота + скролл внутри, иначе .card overflow:hidden режет список */
+/* Команда на втором экране: карточка на всю высоту колонки, список скроллится внутри */
 .card.profile-team {
   display: flex;
   flex-direction: column;
@@ -4921,19 +4973,21 @@ button.org-unit-head--link:hover {
   min-height: 0;
 }
 
+.profile-grid-2--own .card.profile-team {
+  height: 100%;
+  max-height: 100%;
+}
+
 .profile-team__scroll {
-  --profile-team-scroll-h: 22rem;
   position: relative;
   z-index: 2;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   box-sizing: border-box;
-  height: var(--profile-team-scroll-h);
-  min-height: var(--profile-team-scroll-h);
-  max-height: var(--profile-team-scroll-h);
+  min-height: 0;
   margin: 12px 0 0;
   padding: 0 6px 10px 0;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
