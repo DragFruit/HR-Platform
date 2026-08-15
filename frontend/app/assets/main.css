@@ -5237,6 +5237,9 @@ button.org-unit-head--link:hover {
   .profile-grid-2--own.profile-grid-2--compact-team {
     grid-template-columns: 1fr;
     grid-template-rows: none;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .profile-grid-2--own .profile-slot--achievements,
@@ -5247,6 +5250,28 @@ button.org-unit-head--link:hover {
   .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--team {
     grid-column: 1;
     grid-row: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .profile-grid-2--own .card.profile-team {
+    height: auto;
+    max-height: none;
+  }
+
+  .profile-grid-2--own .profile-team__scroll {
+    max-height: min(22rem, 48dvh);
+  }
+
+  .profile-grid-2--own .profile-activity.card.profile-itmo-panel {
+    height: auto;
+  }
+
+  .profile-grid-2--own .profile-activity__scroll {
+    flex: 0 0 auto;
+    height: calc(var(--profile-activity-row, 72px) * 6.5);
+    min-height: calc(var(--profile-activity-row, 72px) * 6.5);
+    max-height: calc(var(--profile-activity-row, 72px) * 6.5);
   }
 
   .profile-grid-2--own.profile-grid-2--compact-team .profile-slot--achievements {
