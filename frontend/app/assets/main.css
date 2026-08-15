@@ -4923,8 +4923,8 @@ button.org-unit-head--link:hover {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(17, 17, 17, 0.35) transparent;
-  /* Страховка, если сетка не зажала высоту (мобилка / чужой профиль) */
-  max-height: min(28rem, 62dvh);
+  /* Фиксируем высоту — иначе сетка раздувает карточку и скролл не появляется */
+  max-height: min(22rem, 48dvh);
 }
 
 .profile-team__scroll::-webkit-scrollbar {
@@ -4934,11 +4934,6 @@ button.org-unit-head--link:hover {
 .profile-team__scroll::-webkit-scrollbar-thumb {
   background: rgba(17, 17, 17, 0.35);
   border-radius: 999px;
-}
-
-.profile-grid-2--own:not(.profile-grid-2--compact-team) .profile-team__scroll {
-  /* В раскладке «большая команда» высота берётся от колонки, не от max-height */
-  max-height: none;
 }
 
 .profile-team__row {
