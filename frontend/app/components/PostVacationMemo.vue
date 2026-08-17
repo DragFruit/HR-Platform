@@ -77,11 +77,13 @@
           <span class="pvm-geo__sq pvm-geo__sq--b23" />
           <span class="pvm-geo__circle pvm-geo__circle--b34" />
           <span class="pvm-geo__sq pvm-geo__sq--b34" />
+          <span class="pvm-geo__circle pvm-geo__circle--b45" />
+          <span class="pvm-geo__sq pvm-geo__sq--b45" />
           <span class="pvm-geo__ribbon" />
         </div>
 
         <article v-for="item in slides" :key="item.id" class="pvm-slide">
-          <div class="pvm-visual">
+          <div class="pvm-visual" :class="{ 'pvm-visual--welcome': item.id === 'intro' }">
             <img
               v-if="item.coverSrc"
               :src="item.coverSrc"

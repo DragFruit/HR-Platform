@@ -32,6 +32,13 @@ export const POST_VACATION_DOCK = {
 
 export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
   {
+    id: 'intro',
+    title: 'Вот четыре совета',
+    paragraphs: ['Как спокойно вернуться к работе после отпуска. Листай дальше.'],
+    coverSrc: '/memos/post-vacation-cover.png',
+    cta: 'Дальше'
+  },
+  {
     id: 'pace',
     kicker: 'Совет',
     title: 'Войди в ритм плавно',

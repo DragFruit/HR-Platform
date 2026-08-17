@@ -16575,7 +16575,7 @@ button.button {
   top: 0;
   left: 0;
   z-index: 0;
-  width: 400%;
+  width: 500%;
   height: var(--pvm-visual);
   pointer-events: none;
   overflow: visible;
@@ -16619,7 +16619,7 @@ button.button {
 }
 
 .pvm-geo__circle--s1 {
-  left: calc(8% - 36px);
+  left: calc(6% - 36px);
   top: 72px;
   width: 72px;
   height: 72px;
@@ -16627,7 +16627,7 @@ button.button {
 }
 
 .pvm-geo__circle--b12 {
-  left: calc(25% - 110px);
+  left: calc(20% - 110px);
   top: 18px;
   width: 220px;
   height: 220px;
@@ -16635,7 +16635,7 @@ button.button {
 }
 
 .pvm-geo__circle--b23 {
-  left: calc(50% - 86px);
+  left: calc(40% - 86px);
   top: -48px;
   width: 172px;
   height: 172px;
@@ -16643,11 +16643,19 @@ button.button {
 }
 
 .pvm-geo__circle--b34 {
-  left: calc(75% - 104px);
+  left: calc(60% - 104px);
   top: 28px;
   width: 208px;
   height: 208px;
   background: #ddf365;
+}
+
+.pvm-geo__circle--b45 {
+  left: calc(80% - 90px);
+  top: -36px;
+  width: 180px;
+  height: 180px;
+  background: #5a38d4;
 }
 
 .pvm-geo__sq {
@@ -16657,21 +16665,28 @@ button.button {
 }
 
 .pvm-geo__sq--b12 {
-  left: calc(25% - 18px);
+  left: calc(20% - 18px);
   top: 16px;
 }
 
 .pvm-geo__sq--b23 {
-  left: calc(50% - 14px);
+  left: calc(40% - 14px);
   top: 118px;
   width: 28px;
   height: 28px;
 }
 
 .pvm-geo__sq--b34 {
-  left: calc(75% - 16px);
+  left: calc(60% - 16px);
   top: 10px;
   background: #5a38d4;
+}
+
+.pvm-geo__sq--b45 {
+  left: calc(80% - 14px);
+  top: 108px;
+  width: 28px;
+  height: 28px;
 }
 
 .pvm-geo__ribbon {
