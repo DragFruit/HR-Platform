@@ -29,6 +29,9 @@
         <h2 :id="slideTitleId" class="pvm-title">{{ slide.title }}</h2>
         <div class="pvm-copy">
           <p v-for="(para, i) in slide.paragraphs" :key="i" class="pvm-body">{{ para }}</p>
+          <ol v-if="slide.points?.length" class="pvm-points">
+            <li v-for="point in slide.points" :key="point">{{ point }}</li>
+          </ol>
         </div>
 
         <div class="pvm-nav">

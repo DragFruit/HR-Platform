@@ -16284,7 +16284,7 @@ button.button {
 
 .pvm-cover {
   display: block;
-  width: min(28%, 132px);
+  width: min(32%, 148px);
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
@@ -16318,6 +16318,39 @@ button.button {
 
 .pvm-body:last-child {
   margin-bottom: 0;
+}
+
+.pvm-points {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.pvm-points li {
+  position: relative;
+  margin: 0;
+  padding: 8px 0 8px 22px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.35;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.14);
+}
+
+.pvm-points li:last-child {
+  border-bottom: 0;
+}
+
+.pvm-points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  background: #ddf365;
+  border: 1.5px solid #111;
 }
 
 .pvm-nav {
