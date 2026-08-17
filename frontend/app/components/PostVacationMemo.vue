@@ -16,9 +16,6 @@
       <template v-if="ui === 'welcome' || ui === 'collapsing'">
         <div class="pvm-welcome" :class="{ 'is-fading': ui === 'collapsing' }">
           <div class="pvm-visual pvm-visual--welcome">
-            <span class="pvm-visual__arc pvm-visual__arc--a" aria-hidden="true" />
-            <span class="pvm-visual__arc pvm-visual__arc--b" aria-hidden="true" />
-            <span class="pvm-visual__sq" aria-hidden="true" />
             <img
               v-if="welcome.coverSrc"
               :src="welcome.coverSrc"
@@ -170,10 +167,15 @@ const reducedMotion = () =>
 const onThanks = async () => {
   await sayThanks();
   await nextTick();
-  const collapseMs = reducedMotion() ? 0 : 420;
+  const collapseMs = reducedMotion() ? 0 : 480;
   window.setTimeout(() => {
     void flyToCorner();
   }, collapseMs);
+};
+
+const quad = (t: number, a: number, b: number, c: number) => {
+  const u = 1 - t;
+  return u * u * a + 2 * u * t * b + t * t * c;
 };
 
 const flyToCorner = async () => {
@@ -190,7 +192,9 @@ const flyToCorner = async () => {
     width: `${from.width}px`,
     height: `${from.height}px`,
     right: 'auto',
-    bottom: 'auto'
+    bottom: 'auto',
+    transform: 'none',
+    transition: 'none'
   };
   await nextTick();
   const el = dockRef.value;
@@ -211,15 +215,26 @@ const flyToCorner = async () => {
     return;
   }
 
-  const anim = el.animate(
-    [
-      { transform: 'translate(0, 0)' },
-      { transform: `translate(${dx * 0.55}px, ${dy * 0.18 - 96}px)`, offset: 0.42 },
-      { transform: `translate(${dx}px, ${dy}px)` }
-    ],
-    { duration: 720, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
-  );
+  el.style.transition = 'none';
+  const steps = 24;
+  const frames: Keyframe[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = quad(t, 0, dx * 0.38, dx);
+    const y = quad(t, 0, dy * 0.08 - 72, dy);
+    frames.push({
+      transform: `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`,
+      offset: t
+    });
+  }
+  const anim = el.animate(frames, {
+    duration: 980,
+    easing: 'cubic-bezier(0.33, 0.08, 0.22, 1)',
+    fill: 'forwards'
+  });
   await anim.finished.catch(() => {});
+  if (typeof anim.commitStyles === 'function') anim.commitStyles();
+  anim.cancel();
   dockStyle.value = {
     left: 'auto',
     top: 'auto',
@@ -227,9 +242,9 @@ const flyToCorner = async () => {
     bottom: '20px',
     width: `${width}px`,
     height: `${height}px`,
-    transform: 'none'
+    transform: 'none',
+    transition: 'none'
   };
-  anim.cancel();
   finishFly();
   await nextTick();
   dockStyle.value = {};

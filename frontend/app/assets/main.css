@@ -16241,7 +16241,7 @@ button.button {
 }
 
 .pvm-stage {
-  --pvm-visual: clamp(188px, 26vh, 228px);
+  --pvm-visual: clamp(220px, 32vh, 268px);
   --pvm-radius: 28px;
   position: relative;
   display: flex;
@@ -16253,9 +16253,9 @@ button.button {
   border-radius: var(--pvm-radius);
   overflow: hidden;
   box-shadow: 0 18px 40px rgba(10, 12, 18, 0.28);
-  transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    height 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 0.42s ease;
+  transition: width 0.48s cubic-bezier(0.33, 0.08, 0.22, 1),
+    height 0.48s cubic-bezier(0.33, 0.08, 0.22, 1),
+    border-radius 0.48s cubic-bezier(0.33, 0.08, 0.22, 1);
 }
 
 .pvm-stage.is-collapse {
@@ -16263,6 +16263,8 @@ button.button {
   height: 76px;
   aspect-ratio: auto;
   border-radius: 18px;
+  border: 2px solid #111;
+  box-shadow: 4px 4px 0 #ddf365;
   pointer-events: none;
 }
 
@@ -16280,7 +16282,16 @@ button.button {
 }
 
 .pvm-visual--welcome {
-  background: #7451f4;
+  overflow: hidden;
+  background: #eeeee8;
+}
+
+.pvm-visual--welcome .pvm-cover {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  transform: none;
 }
 
 .pvm-visual__arc {
@@ -16409,30 +16420,23 @@ button.button {
     linear-gradient(145deg, #8b6cf8 0%, #7451f4 48%, #5a38d4 100%);
   box-shadow: 4px 4px 0 #ddf365;
   overflow: hidden;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  transition: box-shadow 0.16s ease;
 }
 
 .pvm-dock.is-flying {
   right: auto;
   bottom: auto;
   pointer-events: none;
+  transition: none;
 }
 
 .pvm-dock:hover {
-  transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0 #ddf365;
-}
-
-.pvm-dock:not(.is-flying) {
-  transform: none;
 }
 
 .pvm-dock:not(.is-flying):hover {
   transform: translate(-2px, -2px);
-}
-
-.pvm-dock.is-flying:hover {
-  transform: none;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 .pvm-dock__img {
@@ -16604,24 +16608,23 @@ button.button {
 
 .pvm-visual {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   flex: 0 0 var(--pvm-visual);
   height: var(--pvm-visual);
   display: grid;
   place-items: center;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .pvm-cover {
   display: block;
   width: auto;
-  height: 94%;
-  max-width: 84%;
+  height: 88%;
+  max-width: 82%;
   object-fit: contain;
   position: relative;
   z-index: 2;
-  transform: translateY(12px);
 }
 
 .pvm-body-wrap {
