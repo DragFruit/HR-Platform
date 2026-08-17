@@ -16234,17 +16234,19 @@ button.button {
 }
 
 .pvm-stage {
-  --pvm-frame: 18px;
-  --pvm-sq: 22px;
-  --pvm-radius: 32px;
+  --pvm-stroke: 2.5px;
+  --pvm-sq: 13px;
+  --pvm-radius: 28px;
+  --pvm-sq-inset: 34px;
+  --pvm-sq-shift: calc(var(--pvm-stroke) / 2 - var(--pvm-sq) / 2);
   position: relative;
   width: min(560px, 92vw, 86dvh);
   aspect-ratio: 1 / 1;
   box-sizing: border-box;
-  padding: var(--pvm-frame);
-  background: #111;
+  background: #eeeee8;
+  border: var(--pvm-stroke) solid #111;
   border-radius: var(--pvm-radius);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pvm-sq {
@@ -16255,26 +16257,26 @@ button.button {
   pointer-events: none;
 }
 
-.pvm-sq--t1 { top: 0; left: 40px; background: #ddf365; }
-.pvm-sq--t2 { top: 0; right: 40px; background: #7451f4; }
-.pvm-sq--r1 { top: 40px; right: 0; background: #ddf365; }
-.pvm-sq--r2 { bottom: 40px; right: 0; background: #7451f4; }
-.pvm-sq--b1 { bottom: 0; left: 40px; background: #7451f4; }
-.pvm-sq--b2 { bottom: 0; right: 40px; background: #ddf365; }
-.pvm-sq--l1 { top: 40px; left: 0; background: #7451f4; }
-.pvm-sq--l2 { bottom: 40px; left: 0; background: #ddf365; }
+.pvm-sq--t1 { top: var(--pvm-sq-shift); left: var(--pvm-sq-inset); background: #ddf365; }
+.pvm-sq--t2 { top: var(--pvm-sq-shift); right: var(--pvm-sq-inset); background: #7451f4; }
+.pvm-sq--r1 { top: var(--pvm-sq-inset); right: var(--pvm-sq-shift); background: #ddf365; }
+.pvm-sq--r2 { bottom: var(--pvm-sq-inset); right: var(--pvm-sq-shift); background: #7451f4; }
+.pvm-sq--b1 { bottom: var(--pvm-sq-shift); left: var(--pvm-sq-inset); background: #7451f4; }
+.pvm-sq--b2 { bottom: var(--pvm-sq-shift); right: var(--pvm-sq-inset); background: #ddf365; }
+.pvm-sq--l1 { top: var(--pvm-sq-inset); left: var(--pvm-sq-shift); background: #7451f4; }
+.pvm-sq--l2 { bottom: var(--pvm-sq-inset); left: var(--pvm-sq-shift); background: #ddf365; }
 
 .pvm-card {
   position: relative;
   z-index: 1;
   height: 100%;
   box-sizing: border-box;
-  background: #eeeee8;
+  background: transparent;
   padding: 22px 24px 18px;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-radius: calc(var(--pvm-radius) - var(--pvm-frame) + 1px);
+  border-radius: inherit;
 }
 
 .pvm-kicker {
