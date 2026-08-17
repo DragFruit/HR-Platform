@@ -8,7 +8,7 @@
 
 - Показ: согласованный отпуск ≥7 дней, первый вход **после** последнего дня, окно 7 суток.
 - 5 квадратных слайдов ITMO: обложка (кот) + 4 совета из HR-статьи (не влетать, свежий взгляд, выходные, триггеры).
-- Тексты: шлифовка статьи HR под карточки (`postVacationMemoSlides.ts`).
+- Тексты: спокойные абзацы без тире (`postVacationMemoSlides.ts`).
 - localStorage `vbi-post-vacation-memo-v1`. Превью на стейдже: `?pvm=1`.
 - Файлы: `PostVacationMemo.vue`, `usePostVacationMemo.ts`, `postVacationMemo.ts`, `postVacationMemoSlides.ts`.
 

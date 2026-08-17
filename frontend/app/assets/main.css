@@ -16284,62 +16284,40 @@ button.button {
 
 .pvm-cover {
   display: block;
-  width: min(42%, 200px);
+  width: min(28%, 132px);
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
-  margin: 0 auto 8px;
+  margin: 0 auto 6px;
   flex: 0 0 auto;
 }
 
 .pvm-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  font-size: clamp(1.2rem, 3.4vw, 1.55rem);
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1.15;
+  line-height: 1.2;
+}
+
+.pvm-copy {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 12px;
 }
 
 .pvm-body {
-  margin: 10px 0 0;
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.4;
-  max-width: 32ch;
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.5;
+  max-width: 42ch;
 }
 
-.pvm-list {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0;
-}
-
-.pvm-list li {
-  position: relative;
-  margin: 0;
-  padding: 10px 0 10px 22px;
-  font-size: 0.95rem;
-  font-weight: 650;
-  line-height: 1.35;
-  border-bottom: 1px solid rgba(17, 17, 17, 0.18);
-}
-
-.pvm-list li:last-child {
-  border-bottom: 0;
-}
-
-.pvm-list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 14px;
-  width: 10px;
-  height: 10px;
-  background: #ddf365;
-  border: 1.5px solid #111;
+.pvm-body:last-child {
+  margin-bottom: 0;
 }
 
 .pvm-nav {

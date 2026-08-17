@@ -27,10 +27,9 @@
           height="320"
         />
         <h2 :id="slideTitleId" class="pvm-title">{{ slide.title }}</h2>
-        <p v-if="slide.body" class="pvm-body">{{ slide.body }}</p>
-        <ul v-if="slide.bullets?.length" class="pvm-list">
-          <li v-for="line in slide.bullets" :key="line">{{ line }}</li>
-        </ul>
+        <div class="pvm-copy">
+          <p v-for="(para, i) in slide.paragraphs" :key="i" class="pvm-body">{{ para }}</p>
+        </div>
 
         <div class="pvm-nav">
           <div class="pvm-dots" aria-hidden="true">
