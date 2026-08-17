@@ -16,6 +16,9 @@
       <template v-if="ui === 'welcome' || ui === 'collapsing'">
         <div class="pvm-welcome" :class="{ 'is-fading': ui === 'collapsing' }">
           <div class="pvm-visual pvm-visual--welcome">
+            <span class="pvm-visual__arc pvm-visual__arc--a" aria-hidden="true" />
+            <span class="pvm-visual__arc pvm-visual__arc--b" aria-hidden="true" />
+            <span class="pvm-visual__sq" aria-hidden="true" />
             <img
               v-if="welcome.coverSrc"
               :src="welcome.coverSrc"
@@ -32,7 +35,7 @@
               <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">{{ para }}</p>
             </div>
             <div class="pvm-nav pvm-nav--welcome">
-              <button class="button primary pvm-thanks" type="button" @click="onThanks">
+              <button class="pvm-thanks" type="button" @click="onThanks">
                 {{ welcome.cta }}
               </button>
             </div>

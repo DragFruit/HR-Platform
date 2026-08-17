@@ -16241,15 +16241,18 @@ button.button {
 }
 
 .pvm-stage {
-  --pvm-visual: 42%;
+  --pvm-visual: clamp(188px, 26vh, 228px);
   --pvm-radius: 28px;
   position: relative;
-  width: min(400px, 92vw, 78dvh);
-  aspect-ratio: 3 / 4;
+  display: flex;
+  flex-direction: column;
+  width: min(428px, 92vw);
+  height: min(660px, 90dvh);
   box-sizing: border-box;
-  background: #fff;
+  background: #eeeee8;
   border-radius: var(--pvm-radius);
   overflow: hidden;
+  box-shadow: 0 18px 40px rgba(10, 12, 18, 0.28);
   transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
     height 0.42s cubic-bezier(0.22, 1, 0.36, 1),
     border-radius 0.42s ease;
@@ -16266,6 +16269,7 @@ button.button {
 .pvm-welcome {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
   min-height: 0;
   transition: opacity 0.28s ease;
@@ -16279,12 +16283,64 @@ button.button {
   background: #7451f4;
 }
 
+.pvm-visual__arc {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pvm-visual__arc--a {
+  left: -72px;
+  top: -88px;
+  width: 200px;
+  height: 200px;
+  background: #8a6ff6;
+}
+
+.pvm-visual__arc--b {
+  left: -20px;
+  top: -36px;
+  width: 120px;
+  height: 120px;
+  background: #9b82f8;
+}
+
+.pvm-visual__sq {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  width: 28px;
+  height: 28px;
+  background: #ddf365;
+  z-index: 1;
+}
+
 .pvm-nav--welcome {
   justify-content: flex-end;
 }
 
 .pvm-thanks {
-  min-width: 132px;
+  min-width: 148px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  appearance: none;
+}
+
+.pvm-thanks:hover {
+  background: #ddf365;
+}
+
+.pvm-thanks:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 3px;
 }
 
 .pvm-dock-face {
@@ -16420,8 +16476,10 @@ button.button {
 .pvm-strip {
   position: relative;
   display: flex;
+  flex: 1 1 auto;
   height: 100%;
   width: 100%;
+  min-height: 0;
   transition: transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -16530,11 +16588,7 @@ button.button {
 }
 
 .pvm-geo__ribbon {
-  left: 0;
-  right: 0;
-  bottom: -18px;
-  height: 36px;
-  background: #ddf365;
+  display: none;
 }
 
 .pvm-slide {
@@ -16550,21 +16604,24 @@ button.button {
 
 .pvm-visual {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   flex: 0 0 var(--pvm-visual);
+  height: var(--pvm-visual);
   display: grid;
   place-items: center;
   min-height: 0;
+  overflow: visible;
 }
 
 .pvm-cover {
   display: block;
   width: auto;
-  height: 86%;
-  max-width: 78%;
+  height: 94%;
+  max-width: 84%;
   object-fit: contain;
   position: relative;
   z-index: 2;
+  transform: translateY(12px);
 }
 
 .pvm-body-wrap {
@@ -16574,23 +16631,16 @@ button.button {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: transparent;
-  padding: 22px 22px 16px;
-}
-
-.pvm-body-wrap::before {
-  content: '';
-  position: absolute;
-  inset: 20px 0 0;
-  background: #fff;
-  z-index: -1;
+  background: #eeeee8;
+  padding: 22px 24px 18px;
+  border-top: 10px solid #ddf365;
 }
 
 .pvm-kicker {
-  margin: 0 0 6px;
-  font-size: 0.72rem;
+  margin: 0 0 8px;
+  font-size: 0.7rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #7451f4;
 }
@@ -16598,24 +16648,25 @@ button.button {
 .pvm-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-size: clamp(1.14rem, 3.2vw, 1.4rem);
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1.2;
+  line-height: 1.22;
+  color: #111;
 }
 
 .pvm-copy {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 .pvm-text {
-  margin: 0 0 10px;
-  font-size: 0.88rem;
+  margin: 0 0 12px;
+  font-size: 0.94rem;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.58;
+  color: #202020;
 }
 
 .pvm-text:last-child {
@@ -16640,9 +16691,11 @@ button.button {
   width: 8px;
   height: 8px;
   background: rgba(17, 17, 17, 0.22);
+  transition: width 0.22s ease, background 0.22s ease;
 }
 
 .pvm-dot.is-on {
+  width: 22px;
   background: #111;
 }
 
