@@ -97,7 +97,19 @@
               {{ item.title }}
             </h2>
             <div class="pvm-copy">
-              <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">{{ para }}</p>
+              <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">
+                {{ para }}
+                <span v-if="item.id === 'fresh' && i === 0" class="pvm-desk-plant" aria-hidden="true">
+                  <svg viewBox="0 0 20 24" focusable="false">
+                    <path class="pvm-desk-plant__shift" d="M5.8 14.2h9l-1.1 8H6.9z" />
+                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 7.2 8.2 7.6 3.6c.6 2.8 2.4 5.4 2.4 9.8Z" />
+                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 4.8 9.6 3.4 5.8c1.8 2 4.4 4.2 6.6 7.6Z" />
+                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 15.2 9.6 16.6 5.8c-1.8 2-4.4 4.2-6.6 7.6Z" />
+                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 12.8 8.2 12.4 3.6c-.6 2.8-2.4 5.4-2.4 9.8Z" />
+                    <path class="pvm-desk-plant__pot" d="M5 13.2h10l-1.2 8.8H6.2z" />
+                  </svg>
+                </span>
+              </p>
             </div>
             <div class="pvm-nav">
               <div class="pvm-dots" aria-hidden="true">
@@ -121,6 +133,7 @@
                   </svg>
                 </button>
                 <button
+                  v-if="!isLast"
                   class="pvm-arrow pvm-arrow--fwd"
                   type="button"
                   :aria-label="slide.cta"
@@ -129,6 +142,9 @@
                   <svg viewBox="0 0 112 24" aria-hidden="true">
                     <path d="M8 12h88M84 6l12 6-12 6" />
                   </svg>
+                </button>
+                <button v-else class="pvm-thanks" type="button" @click="next">
+                  {{ slide.cta }}
                 </button>
               </div>
             </div>
@@ -164,6 +180,7 @@ const {
   slides,
   slide,
   index,
+  isLast,
   sayThanks,
   startReading,
   finishFly,
