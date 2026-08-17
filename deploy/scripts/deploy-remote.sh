@@ -182,6 +182,14 @@ if [[ -f "${SALES_BEST_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-sales-best-pick-due.sh'"
 fi
 
+VACATIONS_BACKUP_SCRIPT="${ROOT}/deploy/scripts/run-vacations-backup.sh"
+if [[ -f "${VACATIONS_BACKUP_SCRIPT}" ]]; then
+  echo "→ установка run-vacations-backup.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts' '${DEPLOY_PATH}/server/data/backups/vacations'"
+  "${SCP_CMD[@]}" "${VACATIONS_BACKUP_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-vacations-backup.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacations-backup.sh'"
+fi
+
 echo "→ права на server/data (процесс deploy пишет atomic tmp при логине/синке)"
 "${SSH_CMD[@]}" "${REMOTE}" "chown -R deploy:deploy '${DEPLOY_PATH}/server/data' && chmod -R u+rwX,g+rwX '${DEPLOY_PATH}/server/data'"
 

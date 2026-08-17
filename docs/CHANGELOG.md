@@ -2,6 +2,15 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-08-17
+
+### Отпуска: еженедельный снапшот `vacations.json`
+
+- Раз в неделю (вс 03:00 МСК) копия рабочего файла на диск: заявки, брони, лимиты, статусы согласования.
+- Каталог: `/var/www/vbi-hr/server/data/backups/vacations/vacations-YYYY-MM-DD.json`, хранятся 12 недель.
+- Не зависит от Nitro (прямой `cp` + проверка JSON). Timer: `vbi-hr-vacations-backup.timer`.
+- Проверка: `sudo systemctl start vbi-hr-vacations-backup.service` → файл за дату в `backups/vacations/`.
+
 ## 2026-08-15
 
 ### Демо: Алина — тест большой «Твоя команда» без Ревзиной

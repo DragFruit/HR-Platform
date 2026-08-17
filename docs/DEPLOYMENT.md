@@ -87,6 +87,21 @@ NITRO_HOST=127.0.0.1 NITRO_PORT=3300 node /var/www/vbi-hr/.output/server/index.m
 
 Управляется через **systemd**: `vbi-hr` (бой), `vbi-hr-staging` (тест). Nginx проксирует 80/443 → 3300/3301.
 
+### Бэкап отпусков
+
+Еженедельный снапшот боя: `vbi-hr-vacations-backup.timer` (вс 00:00 UTC = 03:00 МСК).
+
+```bash
+sudo cp deploy/systemd/vbi-hr-vacations-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now vbi-hr-vacations-backup.timer
+sudo systemctl start vbi-hr-vacations-backup.service   # первый снимок сразу
+ls /var/www/vbi-hr/server/data/backups/vacations/
+```
+
+Восстановить: `cp …/vacations-YYYY-MM-DD.json /var/www/vbi-hr/server/data/vacations.json && sudo systemctl restart vbi-hr`.
+
+
 ### Два стенда на одном VPS
 
 | Стенд | Ветка | Каталог | Порт | Домен (пример) |

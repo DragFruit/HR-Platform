@@ -1,0 +1,9 @@
+[Unit]
+Description=VBI HR: weekly snapshot of vacations.json
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/bin/bash /var/www/vbi-hr/deploy-scripts/run-vacations-backup.sh
