@@ -131,6 +131,13 @@ export function usePostVacationMemo() {
     void ensureNotification(requestId.value);
   };
 
+  const startReading = async () => {
+    persistDocked(requestId.value);
+    void ensureNotification(requestId.value);
+    index.value = 0;
+    ui.value = 'carousel';
+  };
+
   const finishFly = () => {
     ui.value = 'docked';
   };
@@ -239,6 +246,7 @@ export function usePostVacationMemo() {
     isLast,
     requestId,
     sayThanks,
+    startReading,
     finishFly,
     openCarousel,
     next,
