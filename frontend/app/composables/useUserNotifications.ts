@@ -10,7 +10,8 @@ export type UserNotification = {
     | 'vacation_reservation_updated'
     | 'vacation_reservation_expiring'
     | 'vacation_reservation_expiring_manager'
-    | 'idea_status_changed';
+    | 'idea_status_changed'
+    | 'post_vacation_memo';
   recipient_user_id: number;
   vacation_request_id?: number;
   employee_name: string;
@@ -99,6 +100,7 @@ export function useUserNotifications() {
   const isIdeaNotification = (item: UserNotification) => item.kind === 'idea_status_changed';
 
   const notificationLink = (item: UserNotification) => {
+    if (item.kind === 'post_vacation_memo') return '/vacations?pvm=tips';
     if (isIdeaNotification(item)) return '/ideas';
     return isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
   };
@@ -129,12 +131,17 @@ export function useUserNotifications() {
         if (item.stage_label === 'Реализация') return 'Идея взята в работу';
         if (item.stage_label === 'На рассмотрении') return 'Идея на рассмотрении';
         return 'Статус идеи обновлён';
+      case 'post_vacation_memo':
+        return 'Советы после отпуска';
       default:
         return 'Уведомление';
     }
   };
 
   const formatNotificationBody = (item: UserNotification) => {
+    if (item.kind === 'post_vacation_memo') {
+      return 'Можно открыть ещё раз, если захочется перечитать.';
+    }
     if (item.kind === 'idea_status_changed') {
       const title = item.idea_title ? `«${item.idea_title}»` : 'Ваша идея';
       const stage = item.stage_label ? `Этап: ${item.stage_label}.` : 'Этап обновлён.';
@@ -199,6 +206,7 @@ export function useUserNotifications() {
     item.kind === 'vacation_reservation_expiring_manager';
 
   const notificationActionLabel = (item: UserNotification) => {
+    if (item.kind === 'post_vacation_memo') return 'Открыть';
     if (isIdeaNotification(item)) return 'Банк идей';
     return isManagerAction(item) ? 'Согласование' : 'Открыть отпуска';
   };

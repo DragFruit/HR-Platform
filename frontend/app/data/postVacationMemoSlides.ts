@@ -1,4 +1,4 @@
-/** Квадратные слайды «с возвращением» — спокойный тон, абзацы без тире. */
+/** Слайды «с возвращением» — спокойный тон, абзацы без тире. */
 
 export type PostVacationMemoSlide = {
   id: string;
@@ -11,17 +11,25 @@ export type PostVacationMemoSlide = {
   cta: string;
 };
 
+/** Первый экран: тепло, без акцента что выход = хандра. */
+export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
+  id: 'welcome',
+  kicker: 'После отпуска',
+  title: 'С возвращением',
+  paragraphs: [
+    'Желаем спокойно войти в задачи.',
+    'Собрали несколько советов, как плавно и без хандры выйти из отпуска. Если откликнется, они будут рядом.'
+  ],
+  coverSrc: '/memos/post-vacation-cover.png',
+  cta: 'Спасибо'
+};
+
+export const POST_VACATION_DOCK = {
+  title: 'Советы после отпуска',
+  label: 'Открыть'
+} as const;
+
 export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
-  {
-    id: 'cover',
-    kicker: 'После отпуска',
-    title: 'С возвращением',
-    paragraphs: [
-      'Хандра после отпуска бывает часто. Сложно сразу вернуться к задачам. Если сейчас так же, мы подготовили несколько советов.'
-    ],
-    coverSrc: '/memos/post-vacation-cover.png',
-    cta: 'Дальше'
-  },
   {
     id: 'pace',
     title: 'Не спеши влетать в работу',
@@ -69,3 +77,6 @@ export const POST_VACATION_MEMO_MIN_DAYS = 7;
 
 /** Показывать не позже стольких суток после последнего дня отпуска. */
 export const POST_VACATION_MEMO_WINDOW_DAYS = 7;
+
+/** Сколько рабочих дней чип живёт в углу после «Спасибо». */
+export const POST_VACATION_MEMO_DOCK_WORKING_DAYS = 10;

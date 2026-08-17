@@ -86,6 +86,20 @@ export const isRuWorkingDay = (iso: string) => {
   return !isWeekendDay(d) && !isRuHoliday(iso);
 };
 
+/** Дата через N рабочих дней после `iso` (сам `iso` не считается). */
+export const addWorkingDaysIso = (iso: string, days: number): string => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime()) || days <= 0) return iso;
+  let left = days;
+  let guard = 0;
+  while (left > 0 && guard < 400) {
+    d.setDate(d.getDate() + 1);
+    guard += 1;
+    if (isRuWorkingDay(toIso(d))) left -= 1;
+  }
+  return toIso(d);
+};
+
 /**
  * Первый рабочий день месяца (код, не «на глаз»).
  * month — 1..12. Идём с 1-го числа вперёд (обычно 1 / 2 / 3).

@@ -16231,6 +16231,13 @@ button.button {
   padding: 20px 16px;
   background: rgba(10, 12, 18, 0.72);
   backdrop-filter: blur(6px);
+  transition: background 0.35s ease, backdrop-filter 0.35s ease;
+}
+
+.pvm-overlay.is-plain {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
 }
 
 .pvm-stage {
@@ -16243,6 +16250,163 @@ button.button {
   background: #fff;
   border-radius: var(--pvm-radius);
   overflow: hidden;
+  transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.42s ease;
+}
+
+.pvm-stage.is-collapse {
+  width: 280px;
+  height: 76px;
+  aspect-ratio: auto;
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.pvm-welcome {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  transition: opacity 0.28s ease;
+}
+
+.pvm-welcome.is-fading {
+  opacity: 0;
+}
+
+.pvm-visual--welcome {
+  background: #7451f4;
+}
+
+.pvm-nav--welcome {
+  justify-content: flex-end;
+}
+
+.pvm-thanks {
+  min-width: 132px;
+}
+
+.pvm-dock-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 8px 12px 8px 8px;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(221, 243, 101, 0.55) 0%, transparent 42%),
+    linear-gradient(145deg, #8b6cf8 0%, #7451f4 48%, #5a38d4 100%);
+}
+
+.pvm-dock-face__img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.pvm-dock-face__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: #fff;
+  text-align: left;
+}
+
+.pvm-dock-face__copy strong {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.pvm-dock-face__copy em {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.pvm-dock {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1080;
+  width: min(280px, calc(100vw - 32px));
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 14px 8px 8px;
+  border: 2px solid #111;
+  border-radius: 18px;
+  cursor: pointer;
+  appearance: none;
+  text-align: left;
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(221, 243, 101, 0.55) 0%, transparent 42%),
+    linear-gradient(145deg, #8b6cf8 0%, #7451f4 48%, #5a38d4 100%);
+  box-shadow: 4px 4px 0 #ddf365;
+  overflow: hidden;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pvm-dock.is-flying {
+  right: auto;
+  bottom: auto;
+  pointer-events: none;
+}
+
+.pvm-dock:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #ddf365;
+}
+
+.pvm-dock.is-flying:hover {
+  transform: none;
+}
+
+.pvm-dock__img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  transform: rotate(-8deg);
+  transition: transform 0.16s ease;
+}
+
+.pvm-dock:hover .pvm-dock__img {
+  transform: rotate(-4deg) scale(1.06);
+}
+
+.pvm-dock.is-flying:hover .pvm-dock__img {
+  transform: rotate(-8deg);
+}
+
+.pvm-dock__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pvm-dock__copy strong {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.pvm-dock__copy em {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .pvm-strip {
@@ -16258,7 +16422,7 @@ button.button {
   top: 0;
   left: 0;
   z-index: 0;
-  width: 500%;
+  width: 400%;
   height: var(--pvm-visual);
   pointer-events: none;
   overflow: visible;
@@ -16310,7 +16474,7 @@ button.button {
 }
 
 .pvm-geo__circle--b12 {
-  left: calc(20% - 110px);
+  left: calc(25% - 110px);
   top: 18px;
   width: 220px;
   height: 220px;
@@ -16318,7 +16482,7 @@ button.button {
 }
 
 .pvm-geo__circle--b23 {
-  left: calc(40% - 86px);
+  left: calc(50% - 86px);
   top: -48px;
   width: 172px;
   height: 172px;
@@ -16326,19 +16490,11 @@ button.button {
 }
 
 .pvm-geo__circle--b34 {
-  left: calc(60% - 104px);
+  left: calc(75% - 104px);
   top: 28px;
   width: 208px;
   height: 208px;
   background: #ddf365;
-}
-
-.pvm-geo__circle--b45 {
-  left: calc(80% - 96px);
-  top: -36px;
-  width: 192px;
-  height: 192px;
-  background: rgba(238, 238, 232, 0.4);
 }
 
 .pvm-geo__sq {
@@ -16348,26 +16504,21 @@ button.button {
 }
 
 .pvm-geo__sq--b12 {
-  left: calc(20% - 18px);
+  left: calc(25% - 18px);
   top: 16px;
 }
 
 .pvm-geo__sq--b23 {
-  left: calc(40% - 14px);
+  left: calc(50% - 14px);
   top: 118px;
   width: 28px;
   height: 28px;
 }
 
 .pvm-geo__sq--b34 {
-  left: calc(60% - 16px);
+  left: calc(75% - 16px);
   top: 10px;
   background: #5a38d4;
-}
-
-.pvm-geo__sq--b45 {
-  left: calc(80% - 16px);
-  top: 128px;
 }
 
 .pvm-geo__ribbon {
@@ -16552,7 +16703,11 @@ button.button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pvm-strip {
+  .pvm-strip,
+  .pvm-stage,
+  .pvm-overlay,
+  .pvm-dock,
+  .pvm-dock__img {
     transition: none;
   }
 }

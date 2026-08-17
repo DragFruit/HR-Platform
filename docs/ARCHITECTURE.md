@@ -67,7 +67,7 @@ flowchart TB
 - На сервере: `deploy/systemd/`, `deploy/nginx/`, порты 3300 (бой) / 3301 (тест).
 - **Данные на production/staging** — рабочие: `employees.json` merge (`merge-employees-seed.mjs`, сервер + overlay руководителей); `vacations.json` и `ideas.json` при деплое не перезаписываются, если файл уже на сервере.
 - **Бэкап отпусков:** еженедельный снапшот `vacations.json` → `server/data/backups/vacations/` (`vbi-hr-vacations-backup.timer`, 12 копий). Скрипт `deploy/scripts/run-vacations-backup.sh` (копия файла, без HTTP).
-- **Памятка после отпуска:** `PostVacationMemo.vue` в `app.vue`; правило в `postVacationMemo.ts`; ключ `vbi-post-vacation-memo-v1`. Превью `?pvm=1` → `sessionStorage` `vbi-pvm-preview` (`postVacationMemoPreview.ts`).
+- **Памятка после отпуска:** `PostVacationMemo.vue` в `app.vue`; правило в `postVacationMemo.ts`; ключ `vbi-post-vacation-memo-v2`. Welcome → чип 10 рабочих дней → карусель. Превью `?pvm=1`; повтор из уведомлений `?pvm=tips`. Уведомление `post_vacation_memo` (`POST /api/notifications/post-vacation-memo`).
 
 ### Битрикс24 (коробка)
 
@@ -261,11 +261,12 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | Endpoint | Назначение |
 |----------|------------|
 | `GET /api/notifications` | Уведомления текущего пользователя по отпускам |
+| `POST /api/notifications/post-vacation-memo` | Памятка после отпуска (идемпотентно на заявку) |
 | `DELETE /api/notifications/:id` | Закрыть (удалить) уведомление |
 | `PATCH /api/notifications/:id/seen` | Прочитано |
 | `PATCH /api/notifications/seen-all` | Прочитать все |
 
-Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа).
+Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа); после «Спасибо» на памятке — `post_vacation_memo`.
 
 Хранение: до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
 

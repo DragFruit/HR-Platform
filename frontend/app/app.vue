@@ -111,7 +111,7 @@
       @complete="onOnboardingComplete"
     />
 
-    <PostVacationMemo v-if="isAuthenticated && user && (!showOnboarding || pvmPreview)" />
+    <PostVacationMemo v-if="isAuthenticated && user" />
 
     <TenureCelebrationOverlay v-if="isAuthenticated && user" />
     <EmployeeVisitingCard v-if="isAuthenticated" />
@@ -148,10 +148,14 @@ const pvmPreview = computed(() => {
   void route.fullPath;
   return isPostVacationMemoPreview();
 });
-const homeLocation = () => ({
-  path: resolveHomePath(),
-  query: pvmPreview.value || String(route.query.pvm || '') === '1' ? { pvm: '1' } : {}
-});
+const homeLocation = () => {
+  const pvm = String(route.query.pvm || '');
+  const keep = pvm === 'tips' ? 'tips' : pvmPreview.value || pvm === '1' ? '1' : '';
+  return {
+    path: resolveHomePath(),
+    query: keep ? { pvm: keep } : {}
+  };
+};
 
 const isNavItemActive = (to: string) => {
   if (to === '/') return route.path === '/';
