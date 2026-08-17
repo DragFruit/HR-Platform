@@ -1,5 +1,9 @@
 import { POST_VACATION_MEMO_SLIDES } from '~/data/postVacationMemoSlides';
 import { findPostVacationMemoRequest } from '~/utils/postVacationMemo';
+import {
+  clearPostVacationMemoPreview,
+  isPostVacationMemoPreview
+} from '~/utils/postVacationMemoPreview';
 import { todayIso } from '~/utils/vacationCalendar';
 
 const STORAGE_KEY = 'vbi-post-vacation-memo-v1';
@@ -32,17 +36,14 @@ export function usePostVacationMemo() {
   const { findByUserForAuth } = useEmployees();
   const { state } = useVacations();
   const { isActive: tenureCelebrationActive } = useTenureCelebration();
-  const { isProduction } = useAppEnv();
   const route = useRoute();
 
   const index = ref(0);
   const dismissed = ref(false);
 
   const forcePreview = computed(() => {
-    if (isProduction.value) return false;
-    const q = route.query.pvm;
-    const raw = Array.isArray(q) ? q[0] : q;
-    return String(raw || '') === '1';
+    void route.fullPath;
+    return isPostVacationMemoPreview();
   });
 
   const employeeName = computed(() => {
@@ -54,7 +55,6 @@ export function usePostVacationMemo() {
 
   const eligibleRequest = computed(() => {
     if (!import.meta.client || !isAuthenticated.value || !user.value) return null;
-    if (showOnboarding.value || tenureCelebrationActive.value || dismissed.value) return null;
     if (forcePreview.value) {
       return {
         id: 0,
@@ -66,6 +66,7 @@ export function usePostVacationMemo() {
         createdAt: ''
       };
     }
+    if (showOnboarding.value || tenureCelebrationActive.value || dismissed.value) return null;
     return findPostVacationMemoRequest(
       allRequests.value,
       employeeName.value,
@@ -88,9 +89,14 @@ export function usePostVacationMemo() {
     writeSeen(user.value.id, seen);
   };
 
+  const finishPreview = () => {
+    if (forcePreview.value) clearPostVacationMemoPreview();
+  };
+
   const next = () => {
     if (isLast.value) {
       markSeen();
+      finishPreview();
       dismissed.value = true;
       index.value = 0;
       return;
@@ -100,6 +106,7 @@ export function usePostVacationMemo() {
 
   const close = () => {
     markSeen();
+    finishPreview();
     dismissed.value = true;
     index.value = 0;
   };

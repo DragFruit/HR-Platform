@@ -104,14 +104,14 @@
     <AppSiteFooter />
 
     <FirstLoginOnboarding
-      v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive"
+      v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive && !pvmPreview"
       :user-name="user.name"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
     />
 
-    <PostVacationMemo v-if="isAuthenticated && user && !showOnboarding" />
+    <PostVacationMemo v-if="isAuthenticated && user && (!showOnboarding || pvmPreview)" />
 
     <TenureCelebrationOverlay v-if="isAuthenticated && user" />
     <EmployeeVisitingCard v-if="isAuthenticated" />
@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { PLATFORM_NAME } from '~/data/platformBrand';
+import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
@@ -143,6 +144,14 @@ const showAdminNotificationsBell = computed(
 const route = useRoute();
 const router = useRouter();
 const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
+const pvmPreview = computed(() => {
+  void route.fullPath;
+  return isPostVacationMemoPreview();
+});
+const homeLocation = () => ({
+  path: resolveHomePath(),
+  query: pvmPreview.value || String(route.query.pvm || '') === '1' ? { pvm: '1' } : {}
+});
 
 const isNavItemActive = (to: string) => {
   if (to === '/') return route.path === '/';
@@ -227,7 +236,7 @@ const handleBitrixReturn = async () => {
     // Сначала снимаем экран «Завершаем вход…», bootstrap не должен его блокировать.
     finishingBitrixLogin.value = false;
     clearAuthQuery();
-    await router.replace(resolveHomePath());
+    await router.replace(homeLocation());
     await bootstrapAppData();
     return true;
   } finally {
@@ -250,7 +259,7 @@ onMounted(async () => {
 const onLoginSuccess = async () => {
   syncRoleFromAuth();
   await bootstrapAppData();
-  await router.replace(resolveHomePath());
+  await router.replace(homeLocation());
 };
 
 const onOnboardingComplete = (characterId: import('~/composables/useAvatars').AvatarCharacterId) => {
