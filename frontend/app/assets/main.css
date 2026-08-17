@@ -16367,6 +16367,14 @@ button.button {
   box-shadow: 6px 6px 0 #ddf365;
 }
 
+.pvm-dock:not(.is-flying) {
+  transform: none;
+}
+
+.pvm-dock:not(.is-flying):hover {
+  transform: translate(-2px, -2px);
+}
+
 .pvm-dock.is-flying:hover {
   transform: none;
 }

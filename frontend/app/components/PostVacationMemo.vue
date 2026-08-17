@@ -217,7 +217,18 @@ const flyToCorner = async () => {
     { duration: 720, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' }
   );
   await anim.finished.catch(() => {});
-  dockStyle.value = {};
+  dockStyle.value = {
+    left: 'auto',
+    top: 'auto',
+    right: '20px',
+    bottom: '20px',
+    width: `${width}px`,
+    height: `${height}px`,
+    transform: 'none'
+  };
+  anim.cancel();
   finishFly();
+  await nextTick();
+  dockStyle.value = {};
 };
 </script>
