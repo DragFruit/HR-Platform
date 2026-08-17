@@ -8,7 +8,7 @@
 
 - Показ: согласованный отпуск ≥7 дней, первый вход **после** последнего дня, окно 7 суток.
 - 5 квадратных слайдов ITMO: обложка (кот и хандра, без списка советов) + карточки, последняя «Если совсем не нравится».
-- Тексты: спокойные абзацы без тире (`postVacationMemoSlides.ts`).
+- Тексты: спокойные абзацы без тире (`postVacationMemoSlides.ts`). Копир: обложка про хандру, без списка советов.
 - localStorage `vbi-post-vacation-memo-v1`. Превью на стейдже: `?pvm=1`.
 - Файлы: `PostVacationMemo.vue`, `usePostVacationMemo.ts`, `postVacationMemo.ts`, `postVacationMemoSlides.ts`.
 
