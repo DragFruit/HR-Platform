@@ -16236,12 +16236,15 @@ button.button {
 .pvm-stage {
   --pvm-frame: 18px;
   --pvm-sq: 22px;
+  --pvm-radius: 32px;
   position: relative;
   width: min(560px, 92vw, 86dvh);
   aspect-ratio: 1 / 1;
   box-sizing: border-box;
   padding: var(--pvm-frame);
   background: #111;
+  border-radius: var(--pvm-radius);
+  overflow: hidden;
 }
 
 .pvm-sq {
@@ -16252,14 +16255,14 @@ button.button {
   pointer-events: none;
 }
 
-.pvm-sq--t1 { top: 0; left: 28px; background: #ddf365; }
-.pvm-sq--t2 { top: 0; right: 28px; background: #7451f4; }
-.pvm-sq--r1 { top: 28px; right: 0; background: #ddf365; }
-.pvm-sq--r2 { bottom: 28px; right: 0; background: #7451f4; }
-.pvm-sq--b1 { bottom: 0; left: 28px; background: #7451f4; }
-.pvm-sq--b2 { bottom: 0; right: 28px; background: #ddf365; }
-.pvm-sq--l1 { top: 28px; left: 0; background: #7451f4; }
-.pvm-sq--l2 { bottom: 28px; left: 0; background: #ddf365; }
+.pvm-sq--t1 { top: 0; left: 40px; background: #ddf365; }
+.pvm-sq--t2 { top: 0; right: 40px; background: #7451f4; }
+.pvm-sq--r1 { top: 40px; right: 0; background: #ddf365; }
+.pvm-sq--r2 { bottom: 40px; right: 0; background: #7451f4; }
+.pvm-sq--b1 { bottom: 0; left: 40px; background: #7451f4; }
+.pvm-sq--b2 { bottom: 0; right: 40px; background: #ddf365; }
+.pvm-sq--l1 { top: 40px; left: 0; background: #7451f4; }
+.pvm-sq--l2 { bottom: 40px; left: 0; background: #ddf365; }
 
 .pvm-card {
   position: relative;
@@ -16271,6 +16274,7 @@ button.button {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-radius: calc(var(--pvm-radius) - var(--pvm-frame) + 1px);
 }
 
 .pvm-kicker {
