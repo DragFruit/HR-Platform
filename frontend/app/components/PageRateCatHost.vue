@@ -9,6 +9,7 @@ import type { PageRatingSection } from '~/utils/pageRatingSections';
 
 const route = useRoute();
 const { startDwell, stopDwell, canShowCat, sectionForRoute } = usePageRatingGate();
+const { isOccupied } = useBottomRightSlot();
 
 const section = ref<PageRatingSection | null>(null);
 const showCat = ref(false);
@@ -18,7 +19,7 @@ const refresh = () => {
   const next = sectionForRoute(route.path);
   section.value = next;
   startDwell(next);
-  showCat.value = canShowCat(next);
+  showCat.value = canShowCat(next) && !isOccupied.value;
 };
 
 const onDone = () => {
@@ -33,11 +34,15 @@ watch(
   { immediate: true }
 );
 
+watch(isOccupied, () => {
+  showCat.value = canShowCat(section.value) && !isOccupied.value;
+});
+
 onMounted(() => {
   refresh();
   // Длительность растёт тиками — периодически перепроверяем порог 1 ч и день окна
   checkTimer = setInterval(() => {
-    showCat.value = canShowCat(section.value);
+    showCat.value = canShowCat(section.value) && !isOccupied.value;
   }, 15_000);
 });
 

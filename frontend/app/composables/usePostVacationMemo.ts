@@ -16,6 +16,7 @@ import {
   isPostVacationMemoPreview
 } from '~/utils/postVacationMemoPreview';
 import { todayIso } from '~/utils/vacationCalendar';
+import { BOTTOM_RIGHT_SLOT } from '~/composables/useBottomRightSlot';
 
 export type PvmUi = 'hidden' | 'welcome' | 'collapsing' | 'flying' | 'docked' | 'carousel';
 
@@ -187,6 +188,16 @@ export function usePostVacationMemo() {
     ui.value = 'hidden';
   };
 
+  const { claim, release } = useBottomRightSlot();
+  watch(
+    ui,
+    (next) => {
+      if (next === 'hidden') release(BOTTOM_RIGHT_SLOT.postVacationMemo);
+      else claim(BOTTOM_RIGHT_SLOT.postVacationMemo);
+    },
+    { immediate: true }
+  );
+
   watch(
     () => [
       isAuthenticated.value,
@@ -213,6 +224,10 @@ export function usePostVacationMemo() {
     },
     { immediate: true }
   );
+
+  onBeforeUnmount(() => {
+    release(BOTTOM_RIGHT_SLOT.postVacationMemo);
+  });
 
   return {
     ui,
