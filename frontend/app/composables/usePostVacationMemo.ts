@@ -93,6 +93,11 @@ export function usePostVacationMemo() {
     if (forcePreview.value) clearPostVacationMemoPreview();
   };
 
+  const prev = () => {
+    if (index.value <= 0) return;
+    index.value -= 1;
+  };
+
   const next = () => {
     if (isLast.value) {
       markSeen();
@@ -122,6 +127,7 @@ export function usePostVacationMemo() {
     slides,
     isLast,
     next,
+    prev,
     close
   };
 }

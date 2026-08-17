@@ -16377,6 +16377,66 @@ button.button {
   background: #111;
 }
 
-.pvm-cta {
+.pvm-arrows {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.pvm-arrow {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  color: #111;
+  background: #eeeee8;
+  border: 2px solid #111;
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+}
+
+.pvm-arrow svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pvm-arrow--back {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   flex: 0 0 auto;
+}
+
+.pvm-arrow--back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pvm-arrow--fwd {
+  width: 148px;
+  height: 40px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.pvm-arrow--fwd svg {
+  width: 108px;
+  height: 18px;
+}
+
+.pvm-arrow:hover {
+  background: #ddf365;
+}
+
+.pvm-arrow:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 3px;
 }

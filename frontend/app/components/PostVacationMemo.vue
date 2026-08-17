@@ -43,9 +43,29 @@
               :class="{ 'is-on': i === index }"
             />
           </div>
-          <button class="button primary pvm-cta" type="button" @click="next">
-            {{ slide.cta }}
-          </button>
+          <div class="pvm-arrows">
+            <button
+              v-if="index > 0"
+              class="pvm-arrow pvm-arrow--back"
+              type="button"
+              aria-label="Назад"
+              @click="prev"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 12H8M12 8l-4 4 4 4" />
+              </svg>
+            </button>
+            <button
+              class="pvm-arrow pvm-arrow--fwd"
+              type="button"
+              :aria-label="slide.cta"
+              @click="next"
+            >
+              <svg viewBox="0 0 112 24" aria-hidden="true">
+                <path d="M8 12h88M84 6l12 6-12 6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </article>
     </div>
@@ -53,6 +73,6 @@
 </template>
 
 <script setup lang="ts">
-const { isOpen, slide, index, slides, next } = usePostVacationMemo();
+const { isOpen, slide, index, slides, next, prev } = usePostVacationMemo();
 const slideTitleId = 'pvm-title';
 </script>
