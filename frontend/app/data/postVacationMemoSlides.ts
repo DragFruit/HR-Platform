@@ -20,7 +20,7 @@ export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
     'Надеемся, твой отпуск прошёл успешно! Пусть первые дни будут спокойными и лёгкими',
     'Собрали несколько советов о том, как вернуться к работе после отпуска и не поймать выгорание. К ним можно будет вернуться позже.'
   ],
-  coverSrc: '/memos/post-vacation-cover.png',
+  coverSrc: '/memos/post-vacation-cover-pencil.png',
   laterCta: 'Позже',
   cta: 'Прочитать'
 };
@@ -35,7 +35,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
     id: 'intro',
     title: 'Вот четыре совета',
     paragraphs: ['Как спокойно вернуться к работе после отпуска. Листай дальше.'],
-    coverSrc: '/memos/post-vacation-cover.png',
+    coverSrc: '/memos/post-vacation-cover-pencil.png',
     cta: 'Дальше'
   },
   {
