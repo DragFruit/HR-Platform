@@ -111,6 +111,8 @@
       @complete="onOnboardingComplete"
     />
 
+    <PostVacationMemo v-if="isAuthenticated && user && !showOnboarding" />
+
     <TenureCelebrationOverlay v-if="isAuthenticated && user" />
     <EmployeeVisitingCard v-if="isAuthenticated" />
     <ClientOnly>
