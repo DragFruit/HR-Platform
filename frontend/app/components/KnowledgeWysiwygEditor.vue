@@ -83,7 +83,48 @@
       :style="{ top: `${linkMenu.y}px`, left: `${linkMenu.x}px` }"
       @mousedown.prevent
     >
-      <button type="button" class="kb-link-menu__btn" @click.stop="addLinkFromMenu">Гиперссылка</button>
+      <button type="button" class="kb-link-menu__btn" @click.stop="openLinkDialog">Добавить ссылку</button>
+    </div>
+
+    <div
+      v-if="linkDialog"
+      class="kb-link-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="kb-link-dialog-title"
+      @mousedown.self="closeLinkDialog"
+    >
+      <div class="kb-link-dialog__card" @mousedown.stop>
+        <h3 id="kb-link-dialog-title" class="kb-link-dialog__title">Добавить ссылку</h3>
+        <label class="kb-link-dialog__field">
+          <span>Текст</span>
+          <input
+            v-model="linkText"
+            type="text"
+            maxlength="400"
+            autocomplete="off"
+            @keydown.enter.prevent="focusUrlField"
+          />
+        </label>
+        <label class="kb-link-dialog__field">
+          <span>URL</span>
+          <input
+            ref="urlInputRef"
+            v-model="linkHref"
+            type="text"
+            maxlength="2000"
+            autocomplete="off"
+            spellcheck="false"
+            @keydown.enter.prevent="confirmLink"
+          />
+        </label>
+        <div class="kb-link-dialog__actions">
+          <button type="button" class="kb-link-dialog__action" @click="closeLinkDialog">Отмена</button>
+          <button type="button" class="kb-link-dialog__action" :disabled="!canConfirmLink" @click="confirmLink">
+            Добавить
+          </button>
+        </div>
+      </div>
     </div>
   </Teleport>
 </template>
@@ -95,6 +136,10 @@ const model = defineModel<string>({ default: '' });
 const surfaceRef = ref<HTMLElement | null>(null);
 const openMenu = ref<'heading' | 'list' | null>(null);
 const linkMenu = ref<{ x: number; y: number } | null>(null);
+const linkDialog = ref(false);
+const linkText = ref('');
+const linkHref = ref('');
+const urlInputRef = ref<HTMLInputElement | null>(null);
 let savedRange: Range | null = null;
 let applying = false;
 
@@ -444,27 +489,69 @@ const onContextMenu = (event: MouseEvent) => {
   if (!surfaceRef.value?.contains(sel.anchorNode)) return;
   event.preventDefault();
   savedRange = sel.getRangeAt(0).cloneRange();
+  linkText.value = sel.toString();
   linkMenu.value = { x: event.clientX, y: event.clientY };
 };
 
-const addLinkFromMenu = async () => {
-  linkMenu.value = null;
-  let clip = '';
+const peekClipboard = async () => {
   try {
-    clip = (await navigator.clipboard.readText()).trim();
+    const read = navigator.clipboard?.readText;
+    if (!read) return '';
+    const raw = (await read.call(navigator.clipboard)).trim();
+    const line = raw.split(/\r?\n/)[0]?.trim() ?? '';
+    return line.slice(0, 2000);
   } catch {
-    clip = '';
+    return '';
   }
-  let href = looksLikeUrl(clip) ? clip : '';
-  if (!href) {
-    const typed = window.prompt('Адрес ссылки', clip || 'https://');
-    if (!typed?.trim()) return;
-    href = typed;
-  }
+};
+
+const focusUrlField = () => {
+  const input = urlInputRef.value;
+  if (!input) return;
+  input.focus();
+  input.select();
+};
+
+const closeLinkDialog = () => {
+  linkDialog.value = false;
+};
+
+const canConfirmLink = computed(() => Boolean(linkHref.value.trim() && linkText.value.trim()));
+
+const openLinkDialog = async () => {
+  linkMenu.value = null;
+  linkHref.value = '';
+  linkDialog.value = true;
+  await nextTick();
+  focusUrlField();
+  const href = await peekClipboard();
+  if (!href || !linkDialog.value || linkHref.value.trim()) return;
+  linkHref.value = href;
+  await nextTick();
+  focusUrlField();
+};
+
+const confirmLink = () => {
+  const href = linkHref.value.trim();
+  const text = linkText.value.trim();
+  if (!href || !text) return;
+  closeLinkDialog();
   surfaceRef.value?.focus();
   restoreSavedRange();
-  applyLink(href);
+  document.execCommand(
+    'insertHTML',
+    false,
+    `<a href="${escapeHtml(normalizeHref(href))}">${escapeHtml(text)}</a>`
+  );
   syncFromDom();
+};
+
+const onLinkDialogKeydown = (event: KeyboardEvent) => {
+  if (!linkDialog.value) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeLinkDialog();
+  }
 };
 
 const onEditorMouseDown = (event: MouseEvent) => {
@@ -529,10 +616,12 @@ onMounted(() => {
   setHtml(model.value);
   syncFromDom();
   document.addEventListener('click', onDocumentClick);
+  document.addEventListener('keydown', onLinkDialogKeydown);
   emit('ready');
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
+  document.removeEventListener('keydown', onLinkDialogKeydown);
 });
 </script>

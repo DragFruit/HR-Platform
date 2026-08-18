@@ -6572,6 +6572,86 @@ button.org-unit-head--link:hover {
   color: #fff;
 }
 
+.kb-link-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(17, 17, 17, 0.28);
+}
+
+.kb-link-dialog__card {
+  width: min(420px, 100%);
+  padding: 28px 28px 18px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(17, 17, 17, 0.18);
+}
+
+.kb-link-dialog__title {
+  margin: 0 0 22px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #111;
+}
+
+.kb-link-dialog__field {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+}
+
+.kb-link-dialog__field span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #8b8b86;
+}
+
+.kb-link-dialog__field input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #d8d8d2;
+  border-radius: 0;
+  padding: 4px 0 8px;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.kb-link-dialog__field input:focus {
+  border-bottom-color: #7451f4;
+}
+
+.kb-link-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.kb-link-dialog__action {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 10px 12px;
+  color: #7451f4;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kb-link-dialog__action:disabled {
+  color: #b8b8b2;
+  cursor: default;
+}
+
 .kb-code__body {
   padding: 8px 12px 12px;
   outline: none;
