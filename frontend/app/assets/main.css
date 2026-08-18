@@ -78,6 +78,8 @@
   --vac-reservation-stripe-b: #b48ad4;
   --brutal-list-radius: 14px;
   --transition-brutal: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  /* шапка: padding 16+16 + аватар 36 + border 1 */
+  --topbar-height: 69px;
 }
 
 *,
@@ -396,6 +398,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-height: var(--topbar-height);
   padding: 16px 28px;
   border-bottom: 1px solid var(--border-brutal);
   background-color: var(--hero-purple);
@@ -6169,6 +6172,7 @@ button.org-unit-head--link:hover {
 
 .kb-editor.card {
   overflow: visible;
+  padding-top: 0;
 }
 
 .kb-editor-list.card {
@@ -6213,14 +6217,14 @@ button.org-unit-head--link:hover {
 
 .kb-wysiwyg__bar {
   position: sticky;
-  top: 57px;
+  top: var(--topbar-height);
   z-index: 8;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: -22px -22px 8px;
-  padding: 16px 22px 12px;
+  margin: 0 -22px 8px;
+  padding: 14px 22px 12px;
   background-color: #e4e4de;
   background-image: var(--noise-url);
   background-size: 180px 180px;
