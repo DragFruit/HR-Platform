@@ -1,5 +1,5 @@
 <template>
-  <div class="kb-wysiwyg" @input="syncFromDom">
+  <div class="kb-wysiwyg" @input="syncFromDom" @mousedown.capture="onEditorMouseDown">
     <div class="kb-wysiwyg__bar" role="toolbar" aria-label="Форматирование" @mousedown.prevent>
       <div class="kb-wysiwyg__combo" @click.stop>
         <button
@@ -63,7 +63,7 @@
         data-placeholder="Текст статьи"
         spellcheck="true"
         @input="syncFromDom"
-        @keyup="syncFromDom"
+        @keydown="onSurfaceKeydown"
         @click="onSurfaceClick"
         @paste="onPaste"
         @contextmenu="onContextMenu"
@@ -119,6 +119,16 @@ const visibleText = (el: HTMLElement) =>
     .replace(/\u200b/g, '')
     .trim();
 
+const asElement = (target: EventTarget | null): Element | null =>
+  target instanceof Element ? target : (target as Node | null)?.parentElement ?? null;
+
+const selectionInside = (el: HTMLElement) => {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return false;
+  const node = sel.anchorNode;
+  return Boolean(node && el.contains(node));
+};
+
 const placeCaretIn = (el: HTMLElement) => {
   const range = document.createRange();
   range.selectNodeContents(el);
@@ -126,6 +136,15 @@ const placeCaretIn = (el: HTMLElement) => {
   const sel = window.getSelection();
   sel?.removeAllRanges();
   sel?.addRange(range);
+};
+
+const ensureTrailingParagraph = (block: HTMLElement) => {
+  const next = block.nextElementSibling;
+  if (next instanceof HTMLElement && next.tagName === 'P') return next;
+  const p = document.createElement('p');
+  p.innerHTML = '<br>';
+  block.after(p);
+  return p;
 };
 
 const replaceWithEmptyParagraph = (el: HTMLElement) => {
@@ -140,11 +159,14 @@ const pruneEmptyDecorations = () => {
   if (!root) return;
   root.querySelectorAll('[data-kb-code]').forEach((wrap) => {
     const host = wrap as HTMLElement;
+    if (selectionInside(host)) return;
     const source = (host.querySelector('pre, code') as HTMLElement | null) || host.querySelector('.kb-code__body');
     if (!source || !visibleText(source as HTMLElement)) replaceWithEmptyParagraph(host);
   });
   root.querySelectorAll('blockquote').forEach((bq) => {
-    if (!visibleText(bq as HTMLElement)) replaceWithEmptyParagraph(bq as HTMLElement);
+    const host = bq as HTMLElement;
+    if (selectionInside(host)) return;
+    if (!visibleText(host)) replaceWithEmptyParagraph(host);
   });
 };
 
@@ -176,6 +198,41 @@ const markdownToHtml = (src: string) => {
       return `<p>${inline(line).replace(/\n/g, '<br>')}</p>`;
     })
     .join('');
+};
+
+const codeTextFromBlock = (block: Element) => {
+  const pre = block.querySelector('pre') as HTMLElement | null;
+  const code = block.querySelector('code') as HTMLElement | null;
+  const body = block.querySelector('.kb-code__body') as HTMLElement | null;
+  const source = pre || code || body;
+  return source ? visibleText(source) : '';
+};
+
+const copyCodeFromButton = async (copyBtn: HTMLButtonElement) => {
+  const block = copyBtn.closest('[data-kb-code]');
+  if (!block) return;
+  const text = codeTextFromBlock(block);
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    copied = true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    copied = document.execCommand('copy');
+    ta.remove();
+  }
+  copyBtn.innerHTML = copied ? COPY_DONE_ICON : COPY_ICON;
+  copyBtn.setAttribute('aria-label', copied ? 'Скопировано' : 'Не вышло');
+  window.setTimeout(() => {
+    copyBtn.innerHTML = COPY_ICON;
+    copyBtn.setAttribute('aria-label', 'Копировать');
+  }, 1200);
 };
 
 const ensureCodeChrome = (root: HTMLElement) => {
@@ -232,13 +289,27 @@ const formatBlock = (tag: string) => {
   if (!withBrackets) document.execCommand('formatBlock', false, tag);
 };
 
+const blockNearCaret = (selector: string) => {
+  const sel = window.getSelection();
+  const node = sel?.anchorNode;
+  const el = node instanceof HTMLElement ? node : node?.parentElement;
+  if (!el) return null;
+  const inside = el.closest(selector) as HTMLElement | null;
+  if (inside) return inside;
+  const p = el.closest('p');
+  const prev = p?.previousElementSibling;
+  if (prev instanceof HTMLElement && prev.matches(selector)) return prev;
+  return null;
+};
+
 const looksLikeUrl = (value: string) => {
   const text = value.trim();
   if (!text || /\s/.test(text)) return false;
   try {
     const href = /^https?:\/\//i.test(text) ? text : `https://${text}`;
     const url = new URL(href);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    return url.hostname.includes('.');
   } catch {
     return false;
   }
@@ -299,9 +370,17 @@ const format = (
 
   if (kind === 'h2' || kind === 'h3' || kind === 'h4') {
     formatBlock(kind);
+    const heading = blockNearCaret('h2,h3,h4');
+    if (heading) ensureTrailingParagraph(heading);
   } else if (kind === 'quote') {
     const text = selectedText().trim() || 'цитата';
-    document.execCommand('insertHTML', false, `<blockquote><p>${escapeHtml(text)}</p></blockquote>`);
+    document.execCommand(
+      'insertHTML',
+      false,
+      `<blockquote><p>${escapeHtml(text)}</p></blockquote><p><br></p>`
+    );
+    const quote = blockNearCaret('blockquote');
+    if (quote) ensureTrailingParagraph(quote);
   } else if (kind === 'bold') {
     document.execCommand('bold');
   } else if (kind === 'italic') {
@@ -321,13 +400,15 @@ const format = (
       false,
       `<div class="kb-code" data-kb-code contenteditable="false"><div class="kb-code__bar"><span class="kb-code__lang">код</span>${copyButtonHtml()}</div><div class="kb-code__body" contenteditable="true"><pre><code>${escapeHtml(text)}</code></pre></div></div><p><br></p>`
     );
+    const block = blockNearCaret('[data-kb-code]');
+    if (block) ensureTrailingParagraph(block);
   }
 
   syncFromDom();
 };
 
 const onPaste = (event: ClipboardEvent) => {
-  const target = event.target as HTMLElement | null;
+  const target = asElement(event.target);
   if (target?.closest('[data-kb-code]')) {
     event.preventDefault();
     const text = event.clipboardData?.getData('text/plain') ?? '';
@@ -351,7 +432,7 @@ const onPaste = (event: ClipboardEvent) => {
 };
 
 const onContextMenu = (event: MouseEvent) => {
-  const target = event.target as HTMLElement | null;
+  const target = asElement(event.target);
   if (target?.closest('[data-kb-code]')) return;
   const sel = window.getSelection();
   if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
@@ -371,30 +452,40 @@ const addLinkFromMenu = () => {
   syncFromDom();
 };
 
-const onSurfaceClick = async (event: MouseEvent) => {
-  const target = event.target as HTMLElement | null;
+const onEditorMouseDown = (event: MouseEvent) => {
+  const copyBtn = asElement(event.target)?.closest('.kb-code__copy') as HTMLButtonElement | null;
+  if (!copyBtn) return;
+  event.preventDefault();
+  event.stopPropagation();
+  void copyCodeFromButton(copyBtn);
+};
+
+const onSurfaceKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  const target = asElement(event.target);
+  if (target?.closest('[data-kb-code]')) return;
+
+  const sel = window.getSelection();
+  if (!sel?.rangeCount || !sel.isCollapsed) return;
+  const node = sel.anchorNode;
+  const el = node instanceof HTMLElement ? node : node?.parentElement;
+  const bq = el?.closest('blockquote');
+  if (!bq || !surfaceRef.value?.contains(bq)) return;
+
+  const line = (el?.closest('p') as HTMLElement | null) || (bq as HTMLElement);
+  if (visibleText(line)) return;
+
+  event.preventDefault();
+  const p = ensureTrailingParagraph(bq as HTMLElement);
+  if (line !== bq && line.parentElement === bq && bq.childElementCount > 1) line.remove();
+  placeCaretIn(p);
+  syncFromDom();
+};
+
+const onSurfaceClick = (event: MouseEvent) => {
+  const target = asElement(event.target);
   if (!target) return;
   linkMenu.value = null;
-
-  const copyBtn = target.closest('.kb-code__copy') as HTMLButtonElement | null;
-  if (copyBtn) {
-    event.preventDefault();
-    event.stopPropagation();
-    const block = copyBtn.closest('[data-kb-code]');
-    const text = block?.querySelector('pre')?.innerText ?? '';
-    try {
-      await navigator.clipboard.writeText(text);
-      copyBtn.innerHTML = COPY_DONE_ICON;
-      copyBtn.setAttribute('aria-label', 'Скопировано');
-      window.setTimeout(() => {
-        copyBtn.innerHTML = COPY_ICON;
-        copyBtn.setAttribute('aria-label', 'Копировать');
-      }, 1200);
-    } catch {
-      copyBtn.setAttribute('aria-label', 'Не вышло');
-    }
-    return;
-  }
 
   const spoiler = target.closest('.kb-spoiler') as HTMLElement | null;
   if (spoiler && !spoiler.classList.contains('is-open')) {
