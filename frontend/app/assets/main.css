@@ -6155,13 +6155,22 @@ button.org-unit-head--link:hover {
 .kb-editor-list {
   width: 100%;
   max-width: none;
-  overflow: visible;
 }
 
-.kb-editor {
-  border: 2px solid #111;
-  box-shadow: 4px 4px 0 #ddf365;
-  background: #eeeee8;
+.kb-editor.card,
+.kb-editor-list.card {
+  border: 0;
+  border-radius: 36px;
+  background-color: #e4e4de;
+  background-image: var(--noise-url);
+  background-size: 180px 180px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.kb-editor.card::before,
+.kb-editor-list.card::before {
+  opacity: 0;
 }
 
 .kb-editor__form {
@@ -6179,8 +6188,8 @@ button.org-unit-head--link:hover {
 .kb-editor__hint {
   margin: 0;
   font-size: 0.86rem;
-  font-weight: 700;
-  color: #111;
+  font-weight: 600;
+  color: rgba(17, 17, 17, 0.55);
 }
 
 .kb-editor__actions {
@@ -6193,35 +6202,26 @@ button.org-unit-head--link:hover {
   display: inline-flex;
   align-items: center;
   height: 28px;
-  padding: 0 10px;
-  border: 2px solid #111;
+  padding: 0 12px;
+  border: 0;
   border-radius: 999px;
-  background: #fff;
+  background: #111;
+  color: #fff;
   font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.kb-editor__pill[data-status='review'] {
-  background: #7451f4;
-  color: #fff;
-  box-shadow: 2px 2px 0 #ddf365;
 }
 
 .kb-editor__pill[data-status='published'] {
   background: #ddf365;
   color: #111;
-  box-shadow: 2px 2px 0 #111;
 }
 
 .kb-wysiwyg {
   width: 100%;
-  border: 2px solid #111;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 3px 3px 0 #111;
-  overflow: clip;
+  border: 0;
+  background: transparent;
 }
 
 .kb-wysiwyg__bar {
@@ -6230,44 +6230,44 @@ button.org-unit-head--link:hover {
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px max(12px, calc((100% - 720px) / 2));
-  background: #ddf365;
-  border-bottom: 2px solid #111;
+  gap: 8px;
+  padding: 4px 0 16px;
+  background-color: #e4e4de;
+  background-image: var(--noise-url);
+  background-size: 180px 180px;
 }
 
 .kb-wysiwyg__btn {
   appearance: none;
   height: 32px;
-  padding: 0 10px;
-  border: 2px solid #111;
-  border-radius: 8px;
+  padding: 0 14px;
+  border: 1px solid #111;
+  border-radius: 999px;
   background: #fff;
   color: #111;
-  box-shadow: 2px 2px 0 #111;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
 }
 
 .kb-wysiwyg__btn:hover {
-  background: #eeeee8;
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 #111;
+  background: #111;
+  color: #fff;
 }
 
 .kb-wysiwyg__sep {
-  width: 2px;
+  width: 1px;
   align-self: stretch;
-  margin: 4px 2px;
-  background: #111;
+  margin: 6px 2px;
+  background: rgba(17, 17, 17, 0.16);
 }
 
 .kb-wysiwyg__column {
   width: min(720px, 100%);
-  margin: 0 auto;
-  padding: 18px 24px 8px;
+  margin: 0;
+  padding: 0;
 }
 
 .kb-editor__title,
@@ -6308,8 +6308,7 @@ button.org-unit-head--link:hover {
 .kb-editor__title:focus-visible,
 .kb-editor__lead:focus-visible,
 .kb-wysiwyg__surface:focus-visible {
-  outline: 2px solid #7451f4;
-  outline-offset: 2px;
+  outline: none;
 }
 
 .kb-wysiwyg__surface {
@@ -6353,17 +6352,15 @@ button.org-unit-head--link:hover {
 }
 
 .kb-wysiwyg__surface ul li::marker {
-  color: #7451f4;
+  color: #111;
 }
 
 .kb-wysiwyg__surface blockquote {
   margin: 0 0 0.85em;
-  padding: 10px 12px;
-  border: 2px solid #111;
-  border-left-width: 8px;
-  border-left-color: #7451f4;
-  background: #eeeee8;
-  box-shadow: 3px 3px 0 #ddf365;
+  padding: 2px 0 2px 16px;
+  border: 0;
+  border-left: 2px solid rgba(17, 17, 17, 0.22);
+  background: transparent;
 }
 
 .kb-wysiwyg__surface a {
@@ -6401,11 +6398,10 @@ button.org-unit-head--link:hover {
   position: relative;
   margin: 12px 0;
   overflow: hidden;
-  border: 2px solid #111;
-  border-radius: 12px;
+  border: 0;
+  border-radius: 24px;
   background: #111;
   color: #eeeee8;
-  box-shadow: 3px 3px 0 #7451f4;
 }
 
 .kb-code__bar {
@@ -6413,33 +6409,35 @@ button.org-unit-head--link:hover {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px 0 12px;
+  padding: 10px 12px 0 16px;
 }
 
 .kb-code__lang {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #ddf365;
+  color: rgba(238, 238, 232, 0.45);
 }
 
 .kb-code__copy {
   appearance: none;
   height: 26px;
-  padding: 0 8px;
-  border: 2px solid #111;
-  border-radius: 6px;
-  background: #ddf365;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
   color: #111;
   font: inherit;
   font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
 .kb-code__copy:hover {
-  background: #fff;
+  background: #ddf365;
 }
 
 .kb-code__body {
@@ -6472,16 +6470,15 @@ button.org-unit-head--link:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 14px 16px;
-  border: 2px solid #111;
-  border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 24px;
   background: #fff;
-  box-shadow: 3px 3px 0 #111;
 }
 
 .kb-queue__item.is-editing {
-  background: #eeeee8;
-  box-shadow: 3px 3px 0 #ddf365;
+  border-color: #111;
+  background: #fff;
 }
 
 .kb-queue__main {
