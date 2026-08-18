@@ -1,92 +1,52 @@
 <template>
-  <section class="card section-card">
-    <div class="section-head row">
-      <div>
-        <h2 class="section-title">База знаний</h2>
-        <p class="muted">
-          Редактор контента для теста шаблонов статей и RAG-структуры. Здесь только CRUD по статьям, без поиска.
-        </p>
-      </div>
-      <NuxtLink to="/knowledge" class="button ghost">Открыть пользовательский раздел</NuxtLink>
-    </div>
-  </section>
-
-  <section class="card section-card">
-    <div class="section-head row">
-      <h3 class="section-title">{{ editingId ? 'Редактирование статьи' : 'Новая статья' }}</h3>
-      <button
-        v-if="editingId"
-        type="button"
-        class="button ghost"
-        @click="resetForm"
-      >
-        Сбросить
-      </button>
-    </div>
-
-    <form class="ideas-create-form" @submit.prevent="saveArticle">
-      <label class="ideas-create-field">
-        <span>Заголовок</span>
-        <input v-model.trim="form.title" type="text" maxlength="140" required />
-      </label>
-
-      <label class="ideas-create-field">
-        <span>Кратко (summary)</span>
-        <textarea
-          v-model.trim="form.summary"
-          rows="2"
-          maxlength="320"
-          placeholder="Короткое резюме статьи"
-        />
-      </label>
-
-      <label class="ideas-create-field">
-        <span>Теги (через запятую)</span>
-        <input
-          v-model.trim="tagsDraft"
-          type="text"
-          maxlength="300"
-          placeholder="например: Bitrix, Отпуска, HR"
-        />
-      </label>
-
-      <label class="ideas-create-field">
-        <span>Статус</span>
-        <select v-model="form.status">
+  <section class="card section-card kb-habr">
+    <form class="kb-habr__form" @submit.prevent="saveArticle">
+      <div class="kb-habr__meta">
+        <select v-model="form.status" class="kb-habr__status" aria-label="Статус">
           <option value="draft">Черновик</option>
           <option value="published">Опубликовано</option>
         </select>
-      </label>
-
-      <label class="ideas-create-field">
-        <span>Текст статьи</span>
-        <div class="kb-editor-tools" role="group" aria-label="Инструменты редактора">
-          <button type="button" class="button ghost" @click="insertSnippet('h2')">H2</button>
-          <button type="button" class="button ghost" @click="insertSnippet('bold')">Жирный</button>
-          <button type="button" class="button ghost" @click="insertSnippet('list')">Список</button>
-          <button type="button" class="button ghost" @click="insertSnippet('link')">Ссылка</button>
-          <button type="button" class="button ghost" @click="insertSnippet('note')">Заметка</button>
-        </div>
-        <textarea
-          ref="bodyRef"
-          v-model="form.body"
-          rows="14"
-          required
-          placeholder="Пишите статью в Markdown: заголовки, списки, ссылки."
+        <input
+          v-model.trim="tagsDraft"
+          class="kb-habr__tags"
+          type="text"
+          maxlength="300"
+          placeholder="Теги через запятую"
+          aria-label="Теги"
         />
-      </label>
+        <div class="kb-habr__actions">
+          <button v-if="editingId" type="button" class="button ghost" :disabled="saving" @click="resetForm">
+            Отмена
+          </button>
+          <button type="submit" class="button primary" :disabled="saving">
+            {{ editingId ? 'Сохранить' : 'Сохранить статью' }}
+          </button>
+        </div>
+      </div>
+
+      <input
+        v-model.trim="form.title"
+        class="kb-habr__title"
+        type="text"
+        maxlength="140"
+        required
+        placeholder="Заголовок"
+        aria-label="Заголовок"
+      />
+
+      <textarea
+        v-model.trim="form.summary"
+        class="kb-habr__lead"
+        rows="2"
+        maxlength="320"
+        placeholder="Вводный абзац"
+        aria-label="Вводный абзац"
+      />
+
+      <KnowledgeWysiwygEditor :key="editingId || 'new'" v-model="form.body" />
 
       <p v-if="errorText" class="gift-error">{{ errorText }}</p>
       <p v-if="okText" class="success-note">{{ okText }}</p>
-
-      <div class="row gap-8">
-        <button type="submit" class="button primary" :disabled="saving">
-          {{ editingId ? 'Сохранить изменения' : 'Создать статью' }}
-        </button>
-        <button v-if="editingId" type="button" class="button ghost" :disabled="saving" @click="resetForm">
-          Отмена
-        </button>
-      </div>
     </form>
   </section>
 
@@ -95,7 +55,7 @@
       <h3 class="section-title">Статьи ({{ articles.length }})</h3>
     </div>
 
-    <p v-if="!articles.length" class="muted state-box compact-state">Пока нет статей. Создай первую черновую запись.</p>
+    <p v-if="!articles.length" class="muted state-box compact-state">Пока нет статей. Напиши первую выше.</p>
 
     <ul v-else class="ideas-bank-list">
       <li v-for="article in articles" :key="article.id" class="ideas-bank-card ideas-bank-card--admin">
@@ -124,7 +84,6 @@ import type { AdminKnowledgeArticle, AdminKnowledgeArticleStatus } from '~/compo
 
 const { articles, hydrate, createArticle, updateArticle, deleteArticle, statusLabel } = useAdminKnowledge();
 
-const bodyRef = ref<HTMLTextAreaElement | null>(null);
 const editingId = ref<string | null>(null);
 const saving = ref(false);
 const errorText = ref('');
@@ -150,6 +109,13 @@ const parseTags = () =>
     .filter(Boolean)
     .slice(0, 20);
 
+const bodyPlainText = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const resetForm = () => {
   editingId.value = null;
   form.title = '';
@@ -170,7 +136,7 @@ const startEdit = (article: AdminKnowledgeArticle) => {
   tagsDraft.value = article.tags.join(', ');
   errorText.value = '';
   okText.value = '';
-  nextTick(() => bodyRef.value?.focus());
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const saveArticle = async () => {
@@ -178,6 +144,10 @@ const saveArticle = async () => {
   errorText.value = '';
   okText.value = '';
   try {
+    if (bodyPlainText(form.body).length < 20) {
+      errorText.value = 'Текст статьи: минимум 20 символов';
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       summary: form.summary.trim(),
@@ -219,34 +189,6 @@ const removeArticle = async (id: string) => {
         : '';
     errorText.value = message || 'Не удалось удалить статью';
   }
-};
-
-type SnippetType = 'h2' | 'bold' | 'list' | 'link' | 'note';
-
-const snippets: Record<SnippetType, string> = {
-  h2: '\n## Новый раздел\n',
-  bold: '**ключевая мысль**',
-  list: '\n- Пункт 1\n- Пункт 2\n',
-  link: '[Текст ссылки](https://)',
-  note: '\n> Важно: добавь пояснение для команды.\n'
-};
-
-const insertSnippet = (type: SnippetType) => {
-  const field = bodyRef.value;
-  const snippet = snippets[type];
-  if (!field) {
-    form.body = `${form.body}${snippet}`;
-    return;
-  }
-
-  const start = field.selectionStart ?? form.body.length;
-  const end = field.selectionEnd ?? form.body.length;
-  form.body = `${form.body.slice(0, start)}${snippet}${form.body.slice(end)}`;
-  nextTick(() => {
-    const cursor = start + snippet.length;
-    field.focus();
-    field.setSelectionRange(cursor, cursor);
-  });
 };
 
 const formatDateTime = (iso: string) =>

@@ -21,10 +21,12 @@ export default defineEventHandler(async (event) => {
     ? payload.tags.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];
 
+  const plain = body.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+
   if (title.length < 3) {
     throw createError({ statusCode: 400, statusMessage: 'Заголовок: минимум 3 символа' });
   }
-  if (body.length < 20) {
+  if (plain.length < 20) {
     throw createError({ statusCode: 400, statusMessage: 'Текст статьи: минимум 20 символов' });
   }
 
