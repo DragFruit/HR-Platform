@@ -1,21 +1,13 @@
 <template>
   <div class="kb-admin-page">
-    <section class="card section-card kb-habr">
-      <form class="kb-habr__form" @submit.prevent="saveArticle">
-        <div class="kb-habr__meta">
-          <select v-model="form.status" class="kb-habr__status" aria-label="Статус">
-            <option value="draft">Черновик</option>
-            <option value="published">Опубликовано</option>
-          </select>
-          <input
-            v-model="tagsDraft"
-            class="kb-habr__tags"
-            type="text"
-            maxlength="300"
-            placeholder="Теги через запятую"
-            aria-label="Теги"
-          />
-          <div class="kb-habr__actions">
+    <section class="card section-card kb-editor">
+      <form class="kb-editor__form" @submit.prevent="saveArticle">
+        <div class="kb-editor__top">
+          <span v-if="editingId" class="kb-editor__pill" :data-status="form.status">
+            {{ statusLabel(form.status) }}
+          </span>
+          <p v-else class="kb-editor__hint">После сохранения статья уйдёт руководителю на проверку</p>
+          <div class="kb-editor__actions">
             <button v-if="editingId" type="button" class="button ghost" :disabled="saving" @click="resetForm">
               Новая
             </button>
@@ -25,36 +17,33 @@
           </div>
         </div>
 
-        <div class="kb-habr__column">
+        <KnowledgeWysiwygEditor :key="editingId || 'new'" v-model="form.body" @ready="onEditorReady">
           <input
             v-model="form.title"
-            class="kb-habr__title"
+            class="kb-editor__title"
             type="text"
             maxlength="140"
             required
             placeholder="Заголовок"
             aria-label="Заголовок"
           />
-
           <textarea
             ref="leadRef"
             v-model="form.summary"
-            class="kb-habr__lead"
+            class="kb-editor__lead"
             rows="1"
             maxlength="320"
             placeholder="Вводный абзац"
             aria-label="Вводный абзац"
           />
-        </div>
-
-        <KnowledgeWysiwygEditor :key="editingId || 'new'" v-model="form.body" @ready="onEditorReady" />
+        </KnowledgeWysiwygEditor>
 
         <p v-if="errorText" class="gift-error">{{ errorText }}</p>
         <p v-if="okText" class="success-note">{{ okText }}</p>
       </form>
     </section>
 
-    <section class="card section-card kb-habr-list">
+    <section class="card section-card kb-editor-list">
       <div class="section-head row">
         <h3 class="section-title">Статьи ({{ articles.length }})</h3>
       </div>
@@ -63,29 +52,39 @@
       <p v-else-if="!hydrated" class="muted state-box compact-state">Загружаю статьи…</p>
       <p v-else-if="!articles.length" class="muted state-box compact-state">Пока нет статей. Напиши первую выше.</p>
 
-      <ul v-else class="ideas-bank-list">
+      <ul v-else class="kb-queue">
         <li
           v-for="article in articles"
           :key="article.id"
-          class="ideas-bank-card ideas-bank-card--admin"
+          class="kb-queue__item"
           :class="{ 'is-editing': article.id === editingId }"
         >
-          <div class="ideas-bank-card__main">
-            <div class="ideas-bank-card__tags">
-              <span class="ideas-chip ideas-chip--accent">{{ statusLabel(article.status) }}</span>
-              <span class="ideas-chip">{{ formatDateTime(article.updatedAt) }}</span>
-              <span v-for="tag in article.tags" :key="`${article.id}-${tag}`" class="ideas-chip">{{ tag }}</span>
+          <div class="kb-queue__main">
+            <div class="kb-queue__meta">
+              <span class="kb-editor__pill" :data-status="article.status">{{ statusLabel(article.status) }}</span>
+              <span class="kb-queue__date">{{ formatDateTime(article.updatedAt) }}</span>
             </div>
-            <h3 class="ideas-bank-card__title">{{ article.title }}</h3>
-            <p v-if="article.summary" class="ideas-bank-card__text muted">{{ article.summary }}</p>
+            <h3 class="kb-queue__title">{{ article.title }}</h3>
+            <p v-if="article.summary" class="kb-queue__text muted">{{ article.summary }}</p>
             <p class="soft">Автор: {{ article.authorName }}</p>
           </div>
 
-          <div class="ideas-bank-card__admin-actions">
+          <div class="kb-queue__actions">
+            <button
+              v-if="article.status === 'review'"
+              type="button"
+              class="button primary"
+              :disabled="publishingId === article.id"
+              @click="publishArticle(article)"
+            >
+              {{ publishingId === article.id ? 'Публикую…' : 'Опубликовать' }}
+            </button>
             <button type="button" class="button ghost" @click="startEdit(article)">
               {{ article.id === editingId ? 'В работе' : 'Редактировать' }}
             </button>
-            <button type="button" class="button ghost ideas-bank-delete" @click="removeArticle(article.id)">Удалить</button>
+            <button type="button" class="button ghost ideas-bank-delete" @click="removeArticle(article.id)">
+              Удалить
+            </button>
           </div>
         </li>
       </ul>
@@ -101,10 +100,10 @@ const { articles, hydrated, hydrate, createArticle, updateArticle, deleteArticle
 
 const editingId = ref<string | null>(null);
 const saving = ref(false);
+const publishingId = ref<string | null>(null);
 const errorText = ref('');
 const okText = ref('');
 const loadError = ref('');
-const tagsDraft = ref('');
 const leadRef = ref<HTMLTextAreaElement | null>(null);
 let savedSnapshot = '';
 
@@ -113,19 +112,14 @@ const form = reactive<{
   summary: string;
   body: string;
   status: AdminKnowledgeArticleStatus;
+  tags: string[];
 }>({
   title: '',
   summary: '',
   body: '',
-  status: 'draft'
+  status: 'review',
+  tags: []
 });
-
-const parseTags = () =>
-  tagsDraft.value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 20);
 
 const bodyPlainText = (html: string) =>
   html
@@ -148,9 +142,7 @@ const formSnapshot = () =>
   JSON.stringify({
     title: form.title,
     summary: form.summary,
-    body: form.body,
-    status: form.status,
-    tags: tagsDraft.value
+    body: form.body
   });
 
 const markClean = () => {
@@ -181,14 +173,18 @@ const resizeLead = () => {
   el.style.height = `${Math.max(el.scrollHeight, 36)}px`;
 };
 
-const resetForm = () => {
-  if (!confirmDiscard()) return;
+const blankForm = () => {
   editingId.value = null;
   form.title = '';
   form.summary = '';
   form.body = '';
-  form.status = 'draft';
-  tagsDraft.value = '';
+  form.status = 'review';
+  form.tags = [];
+};
+
+const resetForm = () => {
+  if (!confirmDiscard()) return;
+  blankForm();
   errorText.value = '';
   okText.value = '';
   markClean();
@@ -201,7 +197,7 @@ const fillForm = (article: AdminKnowledgeArticle) => {
   form.summary = article.summary;
   form.body = article.body;
   form.status = article.status;
-  tagsDraft.value = article.tags.join(', ');
+  form.tags = [...article.tags];
   errorText.value = '';
   nextTick(resizeLead);
 };
@@ -222,6 +218,14 @@ const onEditorReady = () => {
   nextTick(resizeLead);
 };
 
+const articlePayload = (status: AdminKnowledgeArticleStatus) => ({
+  title: form.title.trim(),
+  summary: form.summary.trim(),
+  body: sanitizeBody(form.body),
+  tags: form.tags,
+  status
+});
+
 const saveArticle = async () => {
   saving.value = true;
   errorText.value = '';
@@ -237,28 +241,42 @@ const saveArticle = async () => {
       errorText.value = 'Текст статьи: минимум 20 символов';
       return;
     }
-    const payload = {
-      title,
-      summary: form.summary.trim(),
-      body,
-      tags: parseTags(),
-      status: form.status
-    };
-    const wasNew = !editingId.value;
+    const payload = articlePayload('review');
     if (editingId.value) {
       const article = await updateArticle(editingId.value, payload);
       fillForm(article);
-      okText.value = 'Статья обновлена';
+      okText.value = 'Сохранено, на проверке';
     } else {
       const article = await createArticle(payload);
       fillForm(article);
-      okText.value = 'Статья создана';
+      okText.value = 'Отправлено на проверку';
     }
-    if (!wasNew) nextTick(markClean);
+    nextTick(markClean);
   } catch (error: unknown) {
     errorText.value = apiErrorMessage(error, 'Не удалось сохранить статью');
   } finally {
     saving.value = false;
+  }
+};
+
+const publishArticle = async (article: AdminKnowledgeArticle) => {
+  publishingId.value = article.id;
+  errorText.value = '';
+  okText.value = '';
+  try {
+    const updated = await updateArticle(article.id, {
+      title: article.title,
+      summary: article.summary,
+      body: article.body,
+      tags: article.tags,
+      status: 'published'
+    });
+    if (editingId.value === article.id) fillForm(updated);
+    okText.value = 'Статья опубликована';
+  } catch (error: unknown) {
+    errorText.value = apiErrorMessage(error, 'Не удалось опубликовать статью');
+  } finally {
+    publishingId.value = null;
   }
 };
 
@@ -269,12 +287,7 @@ const removeArticle = async (id: string) => {
   try {
     await deleteArticle(id);
     if (editingId.value === id) {
-      editingId.value = null;
-      form.title = '';
-      form.summary = '';
-      form.body = '';
-      form.status = 'draft';
-      tagsDraft.value = '';
+      blankForm();
       markClean();
       nextTick(resizeLead);
     }

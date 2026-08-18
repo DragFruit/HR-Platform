@@ -6,7 +6,6 @@ type CreateArticleBody = {
   summary?: string;
   body?: string;
   tags?: string[];
-  status?: 'draft' | 'published';
 };
 
 export default defineEventHandler(async (event) => {
@@ -16,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const title = String(payload.title || '').trim();
   const summary = String(payload.summary || '').trim();
   const body = String(payload.body || '').trim();
-  const status = payload.status === 'published' ? 'published' : 'draft';
+  const status = 'review' as const;
   const tags = Array.isArray(payload.tags)
     ? payload.tags.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];

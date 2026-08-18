@@ -1,5 +1,5 @@
 <template>
-  <div class="kb-wysiwyg">
+  <div class="kb-wysiwyg" @input="syncFromDom">
     <div class="kb-wysiwyg__bar" role="toolbar" aria-label="Форматирование" @mousedown.prevent>
       <button type="button" class="kb-wysiwyg__btn" title="Заголовок" @click="format('h2')">H2</button>
       <button type="button" class="kb-wysiwyg__btn" title="Подзаголовок" @click="format('h3')">H3</button>
@@ -18,19 +18,23 @@
       <button type="button" class="kb-wysiwyg__btn" title="Блок кода" @click="format('code')">Код</button>
     </div>
 
-    <div
-      ref="surfaceRef"
-      class="kb-wysiwyg__surface"
-      contenteditable="true"
-      role="textbox"
-      aria-multiline="true"
-      aria-label="Текст статьи"
-      data-placeholder="Текст статьи"
-      spellcheck="true"
-      @input="syncFromDom"
-      @click="onSurfaceClick"
-      @paste="onPaste"
-    />
+    <div class="kb-wysiwyg__column">
+      <slot />
+      <div
+        ref="surfaceRef"
+        class="kb-wysiwyg__surface"
+        contenteditable="true"
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Текст статьи"
+        data-placeholder="Текст статьи"
+        spellcheck="true"
+        @input="syncFromDom"
+        @keyup="syncFromDom"
+        @click="onSurfaceClick"
+        @paste="onPaste"
+      />
+    </div>
   </div>
 </template>
 
@@ -51,6 +55,41 @@ const isEmptyHtml = (html: string) => {
     .replace(/<[^>]+>/g, '')
     .trim();
   return !text;
+};
+
+const visibleText = (el: HTMLElement) =>
+  (el.innerText || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\u200b/g, '')
+    .trim();
+
+const placeCaretIn = (el: HTMLElement) => {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+};
+
+const replaceWithEmptyParagraph = (el: HTMLElement) => {
+  const p = document.createElement('p');
+  p.innerHTML = '<br>';
+  el.replaceWith(p);
+  placeCaretIn(p);
+};
+
+const pruneEmptyDecorations = () => {
+  const root = surfaceRef.value;
+  if (!root) return;
+  root.querySelectorAll('[data-kb-code]').forEach((wrap) => {
+    const host = wrap as HTMLElement;
+    const source = (host.querySelector('pre, code') as HTMLElement | null) || host.querySelector('.kb-code__body');
+    if (!source || !visibleText(source as HTMLElement)) replaceWithEmptyParagraph(host);
+  });
+  root.querySelectorAll('blockquote').forEach((bq) => {
+    if (!visibleText(bq as HTMLElement)) replaceWithEmptyParagraph(bq as HTMLElement);
+  });
 };
 
 const markdownToHtml = (src: string) => {
@@ -94,6 +133,10 @@ const ensureCodeChrome = (root: HTMLElement) => {
     const host = document.createElement('div');
     host.className = 'kb-code__body';
     host.contentEditable = 'true';
+    if (!host.dataset.kbBound) {
+      host.dataset.kbBound = '1';
+      host.addEventListener('input', () => syncFromDom());
+    }
     pre.replaceWith(wrap);
     wrap.appendChild(host);
     host.appendChild(pre);
@@ -107,6 +150,7 @@ const setHtml = (html: string) => {
   const next = markdownToHtml(html);
   if (el.innerHTML !== next) el.innerHTML = next;
   ensureCodeChrome(el);
+  pruneEmptyDecorations();
   applying = false;
 };
 
@@ -115,6 +159,7 @@ const syncFromDom = () => {
   const el = surfaceRef.value;
   if (!el) return;
   ensureCodeChrome(el);
+  pruneEmptyDecorations();
   model.value = isEmptyHtml(el.innerHTML) ? '' : el.innerHTML;
 };
 
@@ -157,7 +202,8 @@ const format = (
   if (kind === 'h2' || kind === 'h3') {
     formatBlock(kind);
   } else if (kind === 'quote') {
-    formatBlock('blockquote');
+    const text = selectedText().trim() || 'цитата';
+    document.execCommand('insertHTML', false, `<blockquote><p>${escapeHtml(text)}</p></blockquote>`);
   } else if (kind === 'bold') {
     document.execCommand('bold');
   } else if (kind === 'italic') {

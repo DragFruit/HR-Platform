@@ -2,7 +2,10 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
 
-export type KnowledgeArticleStatus = 'draft' | 'published';
+export type KnowledgeArticleStatus = 'review' | 'published';
+
+export const normalizeKnowledgeArticleStatus = (value: unknown): KnowledgeArticleStatus =>
+  value === 'published' ? 'published' : 'review';
 
 export type KnowledgeArticle = {
   id: string;
@@ -30,8 +33,7 @@ export const defaultKnowledgeArticlesState = (): KnowledgeArticlesState => ({
 
 const toIso = () => new Date().toISOString();
 
-const normalizeStatus = (value: unknown): KnowledgeArticleStatus =>
-  value === 'published' ? 'published' : 'draft';
+const normalizeStatus = normalizeKnowledgeArticleStatus;
 
 const normalizeTags = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];

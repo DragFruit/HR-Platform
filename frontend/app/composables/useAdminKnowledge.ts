@@ -1,4 +1,4 @@
-export type AdminKnowledgeArticleStatus = 'draft' | 'published';
+export type AdminKnowledgeArticleStatus = 'review' | 'published';
 
 export type AdminKnowledgeArticle = {
   id: string;
@@ -25,7 +25,7 @@ type UpsertInput = {
 };
 
 const STATUS_LABELS: Record<AdminKnowledgeArticleStatus, string> = {
-  draft: 'Черновик',
+  review: 'На проверке',
   published: 'Опубликовано'
 };
 
@@ -82,7 +82,7 @@ export function useAdminKnowledge() {
     applyPayload(payload);
   };
 
-  const statusLabel = (status: AdminKnowledgeArticleStatus) => STATUS_LABELS[status];
+  const statusLabel = (status: AdminKnowledgeArticleStatus) => STATUS_LABELS[status] || STATUS_LABELS.review;
 
   return {
     articles,
