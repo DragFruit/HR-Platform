@@ -5849,6 +5849,11 @@ button.org-unit-head--link:hover {
   background: #fff;
 }
 
+.ideas-bank-card.is-editing {
+  box-shadow: inset 0 0 0 2px #7451f4;
+  background: #f6f2ff;
+}
+
 .ideas-bank-card__main {
   min-width: 0;
 }
@@ -6151,13 +6156,31 @@ button.org-unit-head--link:hover {
   padding: 0 12px;
 }
 
+.kb-admin-page {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.kb-habr,
+.kb-habr-list {
+  width: 100%;
+  max-width: none;
+}
+
 .kb-habr {
-  max-width: 820px;
+  overflow: visible;
 }
 
 .kb-habr__form {
   display: grid;
   gap: 8px;
+}
+
+.kb-habr__column {
+  width: min(720px, 100%);
+  margin: 0 auto;
 }
 
 .kb-habr__meta {
@@ -6214,7 +6237,9 @@ button.org-unit-head--link:hover {
 }
 
 .kb-habr__lead {
-  min-height: 2.6em;
+  display: block;
+  min-height: 2.2em;
+  overflow: hidden;
   resize: none;
   font-size: 1.05rem;
   line-height: 1.45;
@@ -6236,11 +6261,12 @@ button.org-unit-head--link:hover {
 }
 
 .kb-wysiwyg {
+  width: 100%;
   margin-top: 8px;
   border: 2px solid #111;
   border-radius: 16px;
   background: #fff;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .kb-wysiwyg__bar {
@@ -6250,7 +6276,7 @@ button.org-unit-head--link:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 8px 10px;
+  padding: 8px max(10px, calc((100% - 720px) / 2));
   background: #f4f4ef;
   border-bottom: 2px solid #111;
 }
@@ -6284,7 +6310,7 @@ button.org-unit-head--link:hover {
 
 .kb-wysiwyg__surface {
   min-height: 420px;
-  padding: 18px 20px 28px;
+  padding: 22px max(24px, calc((100% - 720px) / 2)) 40px;
   font-size: 1.05rem;
   line-height: 1.65;
   outline: none;

@@ -1,5 +1,5 @@
 import { requireRole } from '../../../utils/requireRole';
-import { mutateKnowledgeArticles } from '../../../utils/knowledgeArticlesStore';
+import { mutateKnowledgeArticles, type KnowledgeArticle } from '../../../utils/knowledgeArticlesStore';
 
 type PatchArticleBody = {
   title?: string;
@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date().toISOString();
+  let updatedArticle: KnowledgeArticle | null = null;
   const next = await mutateKnowledgeArticles((state) => {
     const index = state.articles.findIndex((item) => item.id === articleId);
     if (index < 0) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
@@ -47,10 +48,12 @@ export default defineEventHandler(async (event) => {
       updatedAt: now,
       authorName: session.name || session.email || state.articles[index].authorName
     };
+    updatedArticle = updated;
     const articles = [...state.articles];
     articles[index] = updated;
     return { ...state, articles };
   });
 
-  return { articles: next.articles };
+  if (!updatedArticle) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
+  return { article: updatedArticle, articles: next.articles };
 });

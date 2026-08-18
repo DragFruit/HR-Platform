@@ -29,11 +29,13 @@
       spellcheck="true"
       @input="syncFromDom"
       @click="onSurfaceClick"
+      @paste="onPaste"
     />
   </div>
 </template>
 
 <script setup lang="ts">
+const emit = defineEmits<{ ready: [] }>();
 const model = defineModel<string>({ default: '' });
 
 const surfaceRef = ref<HTMLElement | null>(null);
@@ -118,6 +120,33 @@ const syncFromDom = () => {
 
 const selectedText = () => window.getSelection()?.toString() ?? '';
 
+const formatBlock = (tag: string) => {
+  const withBrackets = document.execCommand('formatBlock', false, `<${tag}>`);
+  if (!withBrackets) document.execCommand('formatBlock', false, tag);
+};
+
+const wrapSpoiler = () => {
+  const sel = window.getSelection();
+  const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+  if (range && !range.collapsed) {
+    try {
+      const span = document.createElement('span');
+      span.className = 'kb-spoiler';
+      span.dataset.kbSpoiler = '';
+      range.surroundContents(span);
+      return;
+    } catch {
+      /* пересечение блоков — вставляем плоский текст */
+    }
+  }
+  const text = selectedText().trim() || 'скрытый текст';
+  document.execCommand(
+    'insertHTML',
+    false,
+    `<span class="kb-spoiler" data-kb-spoiler>${escapeHtml(text)}</span>&nbsp;`
+  );
+};
+
 const format = (
   kind: 'h2' | 'h3' | 'bold' | 'italic' | 'quote' | 'ul' | 'ol' | 'link' | 'spoiler' | 'code'
 ) => {
@@ -126,9 +155,9 @@ const format = (
   el.focus();
 
   if (kind === 'h2' || kind === 'h3') {
-    document.execCommand('formatBlock', false, kind);
+    formatBlock(kind);
   } else if (kind === 'quote') {
-    document.execCommand('formatBlock', false, 'blockquote');
+    formatBlock('blockquote');
   } else if (kind === 'bold') {
     document.execCommand('bold');
   } else if (kind === 'italic') {
@@ -139,14 +168,9 @@ const format = (
     document.execCommand('insertOrderedList');
   } else if (kind === 'link') {
     const href = window.prompt('Адрес ссылки', 'https://');
-    if (href) document.execCommand('createLink', false, href.trim());
+    if (href?.trim()) document.execCommand('createLink', false, href.trim());
   } else if (kind === 'spoiler') {
-    const text = selectedText().trim() || 'скрытый текст';
-    document.execCommand(
-      'insertHTML',
-      false,
-      `<span class="kb-spoiler" data-kb-spoiler>${escapeHtml(text)}</span>&nbsp;`
-    );
+    wrapSpoiler();
   } else if (kind === 'code') {
     const text = selectedText() || 'код';
     document.execCommand(
@@ -159,6 +183,16 @@ const format = (
   syncFromDom();
 };
 
+const onPaste = (event: ClipboardEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest('[data-kb-code]')) {
+    event.preventDefault();
+    const text = event.clipboardData?.getData('text/plain') ?? '';
+    document.execCommand('insertText', false, text);
+    syncFromDom();
+  }
+};
+
 const onSurfaceClick = async (event: MouseEvent) => {
   const target = event.target as HTMLElement | null;
   if (!target) return;
@@ -166,6 +200,7 @@ const onSurfaceClick = async (event: MouseEvent) => {
   const copyBtn = target.closest('.kb-code__copy') as HTMLButtonElement | null;
   if (copyBtn) {
     event.preventDefault();
+    event.stopPropagation();
     const block = copyBtn.closest('[data-kb-code]');
     const text = block?.querySelector('pre')?.innerText ?? '';
     try {
@@ -200,5 +235,7 @@ watch(
 
 onMounted(() => {
   setHtml(model.value);
+  syncFromDom();
+  emit('ready');
 });
 </script>

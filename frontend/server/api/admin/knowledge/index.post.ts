@@ -1,5 +1,5 @@
 import { requireRole } from '../../../utils/requireRole';
-import { mutateKnowledgeArticles } from '../../../utils/knowledgeArticlesStore';
+import { mutateKnowledgeArticles, type KnowledgeArticle } from '../../../utils/knowledgeArticlesStore';
 
 type CreateArticleBody = {
   title?: string;
@@ -31,6 +31,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date().toISOString();
+  let created: KnowledgeArticle | null = null;
   const next = await mutateKnowledgeArticles((state) => {
     const article = {
       id: `kb-${state.nextId}`,
@@ -43,11 +44,13 @@ export default defineEventHandler(async (event) => {
       updatedAt: now,
       authorName: session.name || session.email || 'Администратор'
     };
+    created = article;
     return {
       articles: [article, ...state.articles],
       nextId: state.nextId + 1
     };
   });
 
-  return { articles: next.articles };
+  if (!created) throw createError({ statusCode: 500, statusMessage: 'Не удалось создать статью' });
+  return { article: created, articles: next.articles };
 });

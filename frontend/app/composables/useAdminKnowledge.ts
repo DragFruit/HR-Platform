@@ -39,6 +39,12 @@ export function useAdminKnowledge() {
       : [];
   };
 
+  const requireArticle = (payload: AdminKnowledgePayload & { article?: AdminKnowledgeArticle }) => {
+    const article = payload.article ?? articles.value[0];
+    if (!article) throw new Error('Сервер не вернул статью');
+    return article;
+  };
+
   const hydrate = async () => {
     const payload = await $fetch<AdminKnowledgePayload>('/api/admin/knowledge');
     applyPayload(payload);
@@ -46,19 +52,27 @@ export function useAdminKnowledge() {
   };
 
   const createArticle = async (input: UpsertInput) => {
-    const payload = await $fetch<AdminKnowledgePayload>('/api/admin/knowledge', {
-      method: 'POST',
-      body: input
-    });
+    const payload = await $fetch<AdminKnowledgePayload & { article: AdminKnowledgeArticle }>(
+      '/api/admin/knowledge',
+      {
+        method: 'POST',
+        body: input
+      }
+    );
     applyPayload(payload);
+    return requireArticle(payload);
   };
 
   const updateArticle = async (id: string, input: UpsertInput) => {
-    const payload = await $fetch<AdminKnowledgePayload>(`/api/admin/knowledge/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: input
-    });
+    const payload = await $fetch<AdminKnowledgePayload & { article: AdminKnowledgeArticle }>(
+      `/api/admin/knowledge/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: input
+      }
+    );
     applyPayload(payload);
+    return requireArticle(payload);
   };
 
   const deleteArticle = async (id: string) => {
