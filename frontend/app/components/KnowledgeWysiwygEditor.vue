@@ -83,7 +83,14 @@
       :style="{ top: `${linkMenu.y}px`, left: `${linkMenu.x}px` }"
       @mousedown.prevent
     >
-      <button type="button" class="kb-link-menu__btn" @click.stop="openLinkDialog">Добавить ссылку</button>
+      <button
+        type="button"
+        class="kb-link-menu__btn"
+        @pointerdown.stop="beginClipboardPeek"
+        @click.stop="openLinkDialog"
+      >
+        Добавить ссылку
+      </button>
     </div>
 
     <div
@@ -481,28 +488,45 @@ const onPaste = (event: ClipboardEvent) => {
   syncFromDom();
 };
 
+let clipPeek: Promise<string> = Promise.resolve('');
+
+const urlFromClipboard = (raw: string) => {
+  const line = raw.trim().split(/\r?\n/)[0]?.trim() ?? '';
+  if (!line || line.length > 2000) return '';
+  if (/^https?:\/\//i.test(line) || looksLikeUrl(line)) return line;
+  return '';
+};
+
+const peekClipboard = () => {
+  try {
+    const read = navigator.clipboard?.readText;
+    if (!read || !window.isSecureContext) return Promise.resolve('');
+    return read.call(navigator.clipboard).then(urlFromClipboard).catch(() => '');
+  } catch {
+    return Promise.resolve('');
+  }
+};
+
+const beginClipboardPeek = () => {
+  clipPeek = peekClipboard();
+};
+
+const captureLinkSelection = () => {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return false;
+  if (!surfaceRef.value?.contains(sel.anchorNode)) return false;
+  savedRange = sel.getRangeAt(0).cloneRange();
+  linkText.value = sel.toString();
+  return true;
+};
+
 const onContextMenu = (event: MouseEvent) => {
   const target = asElement(event.target);
   if (target?.closest('[data-kb-code]')) return;
-  const sel = window.getSelection();
-  if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
-  if (!surfaceRef.value?.contains(sel.anchorNode)) return;
+  if (!captureLinkSelection()) return;
   event.preventDefault();
-  savedRange = sel.getRangeAt(0).cloneRange();
-  linkText.value = sel.toString();
+  beginClipboardPeek();
   linkMenu.value = { x: event.clientX, y: event.clientY };
-};
-
-const peekClipboard = async () => {
-  try {
-    const read = navigator.clipboard?.readText;
-    if (!read) return '';
-    const raw = (await read.call(navigator.clipboard)).trim();
-    const line = raw.split(/\r?\n/)[0]?.trim() ?? '';
-    return line.slice(0, 2000);
-  } catch {
-    return '';
-  }
 };
 
 const focusUrlField = () => {
@@ -519,14 +543,14 @@ const closeLinkDialog = () => {
 const canConfirmLink = computed(() => Boolean(linkHref.value.trim() && linkText.value.trim()));
 
 const openLinkDialog = async () => {
+  const fromThisGesture = peekClipboard();
+  const fromEarlier = clipPeek;
+  clipPeek = Promise.resolve('');
   linkMenu.value = null;
-  linkHref.value = '';
-  linkDialog.value = true;
-  await nextTick();
-  focusUrlField();
-  const href = await peekClipboard();
-  if (!href || !linkDialog.value || linkHref.value.trim()) return;
+  const href = (await fromThisGesture) || (await fromEarlier);
+  if (!linkText.value.trim() && !captureLinkSelection()) return;
   linkHref.value = href;
+  linkDialog.value = true;
   await nextTick();
   focusUrlField();
 };
@@ -563,6 +587,14 @@ const onEditorMouseDown = (event: MouseEvent) => {
 };
 
 const onSurfaceKeydown = (event: KeyboardEvent) => {
+  if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+    if (!captureLinkSelection()) return;
+    event.preventDefault();
+    beginClipboardPeek();
+    void openLinkDialog();
+    return;
+  }
+
   if (event.key !== 'Enter' || event.shiftKey) return;
   const target = asElement(event.target);
   if (target?.closest('[data-kb-code]')) return;
