@@ -1,6 +1,6 @@
 import type { VacationRequest, VacationStoreState } from './vacationsStore';
 import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
-import { isBitrixWebhookConfigured } from './bitrixConfig';
+import { isBitrixWebhookConfigured, getBitrixWebhookUrl } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
 import { getBitrixServiceAccessToken, hasBitrixOAuthServiceToken } from './bitrixOAuthServiceToken';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
@@ -507,6 +507,49 @@ const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): 
   }
 
   return false;
+};
+
+const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
+  const iblockId = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    throw new Error('Не задан BITRIX_ABSENCE_IBLOCK_ID');
+  }
+  await bitrixVacationRest<boolean>('lists.element.delete', {
+    IBLOCK_TYPE_ID: absenceIblockTypeId(),
+    IBLOCK_ID: iblockId,
+    ELEMENT_ID: absenceId
+  });
+};
+
+const webhookOwnerUserId = (): number | null => {
+  const match = getBitrixWebhookUrl().match(/\/rest\/(\d+)\//);
+  const id = Number(match?.[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
+const deleteViaCalendarEvent = async (eventId: number): Promise<void> => {
+  const ownerUserId = webhookOwnerUserId();
+  if (!ownerUserId) {
+    throw new Error('Не удалось определить владельца вебхука для calendar.event.delete');
+  }
+  await bitrixVacationRest<boolean>('calendar.event.delete', {
+    type: 'user',
+    ownerId: ownerUserId,
+    id: eventId
+  });
+};
+
+/** Снять отметку об отпуске в Bitrix при удалении/отмене заявки. */
+export const removeVacationAbsenceFromBitrix = async (request: VacationRequest): Promise<void> => {
+  const absenceId = Number(request.bitrix_absence_id);
+  if (!Number.isFinite(absenceId) || absenceId <= 0) return;
+
+  if (String(request.bitrix_sync_method || '').startsWith('calendar.event.add')) {
+    await deleteViaCalendarEvent(absenceId);
+    return;
+  }
+
+  await deleteViaAbsenceIblock(absenceId);
 };
 
 /** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */
