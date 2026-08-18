@@ -1,17 +1,50 @@
 <template>
   <div class="kb-wysiwyg" @input="syncFromDom">
     <div class="kb-wysiwyg__bar" role="toolbar" aria-label="Форматирование" @mousedown.prevent>
-      <button type="button" class="kb-wysiwyg__btn" title="Заголовок" @click="format('h2')">H2</button>
-      <button type="button" class="kb-wysiwyg__btn" title="Подзаголовок" @click="format('h3')">H3</button>
-      <span class="kb-wysiwyg__sep" />
+      <div class="kb-wysiwyg__combo" @click.stop>
+        <button
+          type="button"
+          class="kb-wysiwyg__btn"
+          :class="{ 'is-open': openMenu === 'heading' }"
+          title="Заголовок"
+          aria-haspopup="listbox"
+          :aria-expanded="openMenu === 'heading'"
+          @click="toggleMenu('heading')"
+        >
+          Заголовок
+        </button>
+        <div v-if="openMenu === 'heading'" class="kb-wysiwyg__drop" role="listbox">
+          <button type="button" class="kb-wysiwyg__drop-item" @click="format('h2')">H2</button>
+          <button type="button" class="kb-wysiwyg__drop-item" @click="format('h3')">H3</button>
+          <button type="button" class="kb-wysiwyg__drop-item" @click="format('h4')">H4</button>
+        </div>
+      </div>
+
       <button type="button" class="kb-wysiwyg__btn" title="Жирный" @click="format('bold')"><strong>B</strong></button>
-      <button type="button" class="kb-wysiwyg__btn" title="Курсив" @click="format('italic')"><em>I</em></button>
+      <button type="button" class="kb-wysiwyg__btn kb-wysiwyg__btn--italic" title="Курсив" @click="format('italic')">
+        <em>к</em>
+      </button>
+      <button type="button" class="kb-wysiwyg__btn" title="Подчёркивание" @click="format('underline')"><u>U</u></button>
       <button type="button" class="kb-wysiwyg__btn" title="Цитата" @click="format('quote')">« »</button>
-      <span class="kb-wysiwyg__sep" />
-      <button type="button" class="kb-wysiwyg__btn" title="Список" @click="format('ul')">• Список</button>
-      <button type="button" class="kb-wysiwyg__btn" title="Нумерация" @click="format('ol')">1.</button>
-      <button type="button" class="kb-wysiwyg__btn" title="Ссылка" @click="format('link')">Ссылка</button>
-      <span class="kb-wysiwyg__sep" />
+
+      <div class="kb-wysiwyg__combo" @click.stop>
+        <button
+          type="button"
+          class="kb-wysiwyg__btn"
+          :class="{ 'is-open': openMenu === 'list' }"
+          title="Список"
+          aria-haspopup="listbox"
+          :aria-expanded="openMenu === 'list'"
+          @click="toggleMenu('list')"
+        >
+          Список
+        </button>
+        <div v-if="openMenu === 'list'" class="kb-wysiwyg__drop" role="listbox">
+          <button type="button" class="kb-wysiwyg__drop-item" @click="format('ul')">• Точка</button>
+          <button type="button" class="kb-wysiwyg__drop-item" @click="format('ol')">1. Нумерация</button>
+        </div>
+      </div>
+
       <button type="button" class="kb-wysiwyg__btn" title="Спойлер как в Telegram" @click="format('spoiler')">
         Спойлер
       </button>
@@ -33,9 +66,21 @@
         @keyup="syncFromDom"
         @click="onSurfaceClick"
         @paste="onPaste"
+        @contextmenu="onContextMenu"
       />
     </div>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="linkMenu"
+      class="kb-link-menu"
+      :style="{ top: `${linkMenu.y}px`, left: `${linkMenu.x}px` }"
+      @mousedown.prevent
+    >
+      <button type="button" class="kb-link-menu__btn" @click.stop="addLinkFromMenu">Гиперссылка</button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -43,7 +88,18 @@ const emit = defineEmits<{ ready: [] }>();
 const model = defineModel<string>({ default: '' });
 
 const surfaceRef = ref<HTMLElement | null>(null);
+const openMenu = ref<'heading' | 'list' | null>(null);
+const linkMenu = ref<{ x: number; y: number } | null>(null);
+let savedRange: Range | null = null;
 let applying = false;
+
+const COPY_ICON =
+  '<svg class="kb-code__icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8.2" height="8.2" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.2 5.2V3.6A1.4 1.4 0 0 0 8.8 2.2H3.6A1.4 1.4 0 0 0 2.2 3.6v5.2A1.4 1.4 0 0 0 3.6 10.2h1.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+const COPY_DONE_ICON =
+  '<svg class="kb-code__icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8.4 6.4 11.6 12.8 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const copyButtonHtml = () =>
+  `<button type="button" class="kb-code__copy" aria-label="Копировать">${COPY_ICON}</button>`;
 
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -95,7 +151,7 @@ const pruneEmptyDecorations = () => {
 const markdownToHtml = (src: string) => {
   const raw = src.trim();
   if (!raw) return '<p><br></p>';
-  if (/<(p|h[1-3]|div|ul|ol|blockquote|span|pre|strong|em)\b/i.test(raw)) return src;
+  if (/<(p|h[1-4]|div|ul|ol|blockquote|span|pre|strong|em|u)\b/i.test(raw)) return src;
 
   const inline = (value: string) =>
     escapeHtml(value)
@@ -106,6 +162,7 @@ const markdownToHtml = (src: string) => {
     .split(/\n{2,}/)
     .map((block) => {
       const line = block.trim();
+      if (line.startsWith('#### ')) return `<h4>${inline(line.slice(5))}</h4>`;
       if (line.startsWith('### ')) return `<h3>${inline(line.slice(4))}</h3>`;
       if (line.startsWith('## ')) return `<h2>${inline(line.slice(3))}</h2>`;
       if (line.startsWith('> ')) return `<blockquote><p>${inline(line.replace(/^>\s?/gm, ''))}</p></blockquote>`;
@@ -128,8 +185,7 @@ const ensureCodeChrome = (root: HTMLElement) => {
     wrap.className = 'kb-code';
     wrap.dataset.kbCode = '';
     wrap.contentEditable = 'false';
-    wrap.innerHTML =
-      '<div class="kb-code__bar"><span class="kb-code__lang">код</span><button type="button" class="kb-code__copy">Копировать</button></div>';
+    wrap.innerHTML = `<div class="kb-code__bar"><span class="kb-code__lang">код</span>${copyButtonHtml()}</div>`;
     const host = document.createElement('div');
     host.className = 'kb-code__body';
     host.contentEditable = 'true';
@@ -140,6 +196,12 @@ const ensureCodeChrome = (root: HTMLElement) => {
     pre.replaceWith(wrap);
     wrap.appendChild(host);
     host.appendChild(pre);
+  });
+  root.querySelectorAll('.kb-code__copy').forEach((btn) => {
+    const button = btn as HTMLButtonElement;
+    if (button.querySelector('svg')) return;
+    button.innerHTML = COPY_ICON;
+    button.setAttribute('aria-label', 'Копировать');
   });
 };
 
@@ -170,6 +232,37 @@ const formatBlock = (tag: string) => {
   if (!withBrackets) document.execCommand('formatBlock', false, tag);
 };
 
+const looksLikeUrl = (value: string) => {
+  const text = value.trim();
+  if (!text || /\s/.test(text)) return false;
+  try {
+    const href = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+    const url = new URL(href);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const normalizeHref = (value: string) => {
+  const text = value.trim();
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+};
+
+const restoreSavedRange = () => {
+  if (!savedRange) return false;
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(savedRange);
+  return true;
+};
+
+const applyLink = (raw: string) => {
+  const href = normalizeHref(raw);
+  if (!href) return;
+  document.execCommand('createLink', false, href);
+};
+
 const wrapSpoiler = () => {
   const sel = window.getSelection();
   const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
@@ -192,14 +285,19 @@ const wrapSpoiler = () => {
   );
 };
 
+const toggleMenu = (kind: 'heading' | 'list') => {
+  openMenu.value = openMenu.value === kind ? null : kind;
+};
+
 const format = (
-  kind: 'h2' | 'h3' | 'bold' | 'italic' | 'quote' | 'ul' | 'ol' | 'link' | 'spoiler' | 'code'
+  kind: 'h2' | 'h3' | 'h4' | 'bold' | 'italic' | 'underline' | 'quote' | 'ul' | 'ol' | 'spoiler' | 'code'
 ) => {
   const el = surfaceRef.value;
   if (!el) return;
   el.focus();
+  openMenu.value = null;
 
-  if (kind === 'h2' || kind === 'h3') {
+  if (kind === 'h2' || kind === 'h3' || kind === 'h4') {
     formatBlock(kind);
   } else if (kind === 'quote') {
     const text = selectedText().trim() || 'цитата';
@@ -208,13 +306,12 @@ const format = (
     document.execCommand('bold');
   } else if (kind === 'italic') {
     document.execCommand('italic');
+  } else if (kind === 'underline') {
+    document.execCommand('underline');
   } else if (kind === 'ul') {
     document.execCommand('insertUnorderedList');
   } else if (kind === 'ol') {
     document.execCommand('insertOrderedList');
-  } else if (kind === 'link') {
-    const href = window.prompt('Адрес ссылки', 'https://');
-    if (href?.trim()) document.execCommand('createLink', false, href.trim());
   } else if (kind === 'spoiler') {
     wrapSpoiler();
   } else if (kind === 'code') {
@@ -222,7 +319,7 @@ const format = (
     document.execCommand(
       'insertHTML',
       false,
-      `<div class="kb-code" data-kb-code contenteditable="false"><div class="kb-code__bar"><span class="kb-code__lang">код</span><button type="button" class="kb-code__copy">Копировать</button></div><div class="kb-code__body" contenteditable="true"><pre><code>${escapeHtml(text)}</code></pre></div></div><p><br></p>`
+      `<div class="kb-code" data-kb-code contenteditable="false"><div class="kb-code__bar"><span class="kb-code__lang">код</span>${copyButtonHtml()}</div><div class="kb-code__body" contenteditable="true"><pre><code>${escapeHtml(text)}</code></pre></div></div><p><br></p>`
     );
   }
 
@@ -236,12 +333,48 @@ const onPaste = (event: ClipboardEvent) => {
     const text = event.clipboardData?.getData('text/plain') ?? '';
     document.execCommand('insertText', false, text);
     syncFromDom();
+    return;
   }
+
+  const pasted = event.clipboardData?.getData('text/plain') ?? '';
+  if (!looksLikeUrl(pasted)) return;
+
+  event.preventDefault();
+  const href = normalizeHref(pasted);
+  const sel = window.getSelection();
+  if (sel && !sel.isCollapsed && sel.toString().trim()) {
+    applyLink(href);
+  } else {
+    document.execCommand('insertHTML', false, `<a href="${escapeHtml(href)}">${escapeHtml(pasted.trim())}</a>`);
+  }
+  syncFromDom();
+};
+
+const onContextMenu = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest('[data-kb-code]')) return;
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+  if (!surfaceRef.value?.contains(sel.anchorNode)) return;
+  event.preventDefault();
+  savedRange = sel.getRangeAt(0).cloneRange();
+  linkMenu.value = { x: event.clientX, y: event.clientY };
+};
+
+const addLinkFromMenu = () => {
+  const href = window.prompt('Адрес ссылки', 'https://');
+  linkMenu.value = null;
+  if (!href?.trim()) return;
+  surfaceRef.value?.focus();
+  restoreSavedRange();
+  applyLink(href);
+  syncFromDom();
 };
 
 const onSurfaceClick = async (event: MouseEvent) => {
   const target = event.target as HTMLElement | null;
   if (!target) return;
+  linkMenu.value = null;
 
   const copyBtn = target.closest('.kb-code__copy') as HTMLButtonElement | null;
   if (copyBtn) {
@@ -251,12 +384,14 @@ const onSurfaceClick = async (event: MouseEvent) => {
     const text = block?.querySelector('pre')?.innerText ?? '';
     try {
       await navigator.clipboard.writeText(text);
-      copyBtn.textContent = 'Скопировано';
+      copyBtn.innerHTML = COPY_DONE_ICON;
+      copyBtn.setAttribute('aria-label', 'Скопировано');
       window.setTimeout(() => {
-        copyBtn.textContent = 'Копировать';
+        copyBtn.innerHTML = COPY_ICON;
+        copyBtn.setAttribute('aria-label', 'Копировать');
       }, 1200);
     } catch {
-      copyBtn.textContent = 'Не вышло';
+      copyBtn.setAttribute('aria-label', 'Не вышло');
     }
     return;
   }
@@ -266,6 +401,11 @@ const onSurfaceClick = async (event: MouseEvent) => {
     event.preventDefault();
     spoiler.classList.add('is-open');
   }
+};
+
+const onDocumentClick = () => {
+  openMenu.value = null;
+  linkMenu.value = null;
 };
 
 watch(
@@ -282,6 +422,11 @@ watch(
 onMounted(() => {
   setHtml(model.value);
   syncFromDom();
+  document.addEventListener('click', onDocumentClick);
   emit('ready');
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick);
 });
 </script>

@@ -6252,7 +6252,56 @@ button.org-unit-head--link:hover {
   cursor: pointer;
 }
 
-.kb-wysiwyg__btn:hover {
+.kb-wysiwyg__btn:hover,
+.kb-wysiwyg__btn.is-open {
+  background: #111;
+  color: #fff;
+}
+
+.kb-wysiwyg__btn--italic em {
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.kb-wysiwyg__btn u {
+  text-underline-offset: 2px;
+}
+
+.kb-wysiwyg__combo {
+  position: relative;
+}
+
+.kb-wysiwyg__drop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.kb-wysiwyg__drop-item {
+  appearance: none;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-wysiwyg__drop-item:hover {
   background: #111;
   color: #fff;
 }
@@ -6327,7 +6376,8 @@ button.org-unit-head--link:hover {
 }
 
 .kb-wysiwyg__surface h2,
-.kb-wysiwyg__surface h3 {
+.kb-wysiwyg__surface h3,
+.kb-wysiwyg__surface h4 {
   margin: 1.1em 0 0.4em;
   font-family: var(--font-display);
   line-height: 1.2;
@@ -6339,6 +6389,10 @@ button.org-unit-head--link:hover {
 
 .kb-wysiwyg__surface h3 {
   font-size: 1.12rem;
+}
+
+.kb-wysiwyg__surface h4 {
+  font-size: 1rem;
 }
 
 .kb-wysiwyg__surface p {
@@ -6371,16 +6425,51 @@ button.org-unit-head--link:hover {
   text-underline-offset: 2px;
 }
 
+.kb-wysiwyg__surface u {
+  text-underline-offset: 2px;
+}
+
 .kb-spoiler {
   display: inline;
   padding: 0 3px;
   border-radius: 4px;
   cursor: pointer;
-  background-color: #111;
+  background-color: #242424;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.58) 0.7px, transparent 1.15px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0.6px, transparent 1.05px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.28) 0.5px, transparent 0.95px);
+  background-size: 7px 7px, 11px 9px, 5px 6px;
   color: transparent !important;
   user-select: none;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  animation: kb-spoiler-flicker 0.32s steps(3) infinite;
+}
+
+@keyframes kb-spoiler-flicker {
+  0% {
+    background-position: 0 0, 4px 2px, 2px 5px;
+    filter: brightness(1);
+  }
+  33% {
+    background-position: 5px 3px, 0 7px, 4px 1px;
+    filter: brightness(1.18);
+  }
+  66% {
+    background-position: 2px 6px, 7px 0, 0 3px;
+    filter: brightness(0.92);
+  }
+  100% {
+    background-position: 0 0, 4px 2px, 2px 5px;
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-spoiler {
+    animation: none;
+  }
 }
 
 .kb-spoiler:not(.is-open) * {
@@ -6422,22 +6511,55 @@ button.org-unit-head--link:hover {
 
 .kb-code__copy {
   appearance: none;
-  height: 26px;
-  padding: 0 12px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 999px;
-  background: #fff;
-  color: #111;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.12);
+  color: #eeeee8;
   cursor: pointer;
 }
 
 .kb-code__copy:hover {
   background: #ddf365;
+  color: #111;
+}
+
+.kb-code__icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.kb-link-menu {
+  position: fixed;
+  z-index: 80;
+  padding: 6px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.kb-link-menu__btn {
+  appearance: none;
+  margin: 0;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kb-link-menu__btn:hover {
+  background: #111;
+  color: #fff;
 }
 
 .kb-code__body {
