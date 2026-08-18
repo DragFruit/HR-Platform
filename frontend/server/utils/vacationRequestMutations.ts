@@ -146,7 +146,7 @@ export async function createVacationRequest(
     }
     assertYearMatchesStart(body.year, body.start);
     yearFromIsoDate(body.end);
-    if (employee) {
+    if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
     request.id = state.nextRequestId++;
@@ -269,7 +269,7 @@ export async function patchVacationRequest(
       }
     }
 
-    if (owner && changesDates) {
+    if (owner && changesDates && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(
         state,
         owner,
