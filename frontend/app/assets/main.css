@@ -6165,6 +6165,13 @@ button.org-unit-head--link:hover {
   background-image: var(--noise-url);
   background-size: 180px 180px;
   box-shadow: none;
+}
+
+.kb-editor.card {
+  overflow: visible;
+}
+
+.kb-editor-list.card {
   overflow: hidden;
 }
 
@@ -6176,26 +6183,6 @@ button.org-unit-head--link:hover {
 .kb-editor__form {
   display: grid;
   gap: 12px;
-}
-
-.kb-editor__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.kb-editor__hint {
-  margin: 0;
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: rgba(17, 17, 17, 0.55);
-}
-
-.kb-editor__actions {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
 }
 
 .kb-editor__pill {
@@ -6226,15 +6213,40 @@ button.org-unit-head--link:hover {
 
 .kb-wysiwyg__bar {
   position: sticky;
-  top: 0;
-  z-index: 2;
+  top: 57px;
+  z-index: 8;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  padding: 4px 0 16px;
+  margin: -22px -22px 8px;
+  padding: 16px 22px 12px;
   background-color: #e4e4de;
   background-image: var(--noise-url);
   background-size: 180px 180px;
+}
+
+.kb-wysiwyg__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kb-wysiwyg__bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.kb-wysiwyg__bar-end .button {
+  height: 32px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .kb-wysiwyg__btn {

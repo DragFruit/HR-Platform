@@ -1,6 +1,7 @@
 <template>
   <div class="kb-wysiwyg" @input="syncFromDom" @mousedown.capture="onEditorMouseDown">
     <div class="kb-wysiwyg__bar" role="toolbar" aria-label="Форматирование" @mousedown.prevent>
+      <div class="kb-wysiwyg__tools">
       <div class="kb-wysiwyg__combo" @click.stop>
         <button
           type="button"
@@ -49,6 +50,10 @@
         Спойлер
       </button>
       <button type="button" class="kb-wysiwyg__btn" title="Блок кода" @click="format('code')">Код</button>
+      </div>
+      <div class="kb-wysiwyg__bar-end">
+        <slot name="bar-end" />
+      </div>
     </div>
 
     <div class="kb-wysiwyg__column">
@@ -442,10 +447,20 @@ const onContextMenu = (event: MouseEvent) => {
   linkMenu.value = { x: event.clientX, y: event.clientY };
 };
 
-const addLinkFromMenu = () => {
-  const href = window.prompt('Адрес ссылки', 'https://');
+const addLinkFromMenu = async () => {
   linkMenu.value = null;
-  if (!href?.trim()) return;
+  let clip = '';
+  try {
+    clip = (await navigator.clipboard.readText()).trim();
+  } catch {
+    clip = '';
+  }
+  let href = looksLikeUrl(clip) ? clip : '';
+  if (!href) {
+    const typed = window.prompt('Адрес ссылки', clip || 'https://');
+    if (!typed?.trim()) return;
+    href = typed;
+  }
   surfaceRef.value?.focus();
   restoreSavedRange();
   applyLink(href);

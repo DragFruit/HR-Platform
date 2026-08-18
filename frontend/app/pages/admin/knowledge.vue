@@ -2,22 +2,18 @@
   <div class="kb-admin-page">
     <section class="card section-card kb-editor">
       <form class="kb-editor__form" @submit.prevent="saveArticle">
-        <div class="kb-editor__top">
-          <span v-if="editingId" class="kb-editor__pill" :data-status="form.status">
-            {{ statusLabel(form.status) }}
-          </span>
-          <p v-else class="kb-editor__hint">После сохранения статья уйдёт руководителю на проверку</p>
-          <div class="kb-editor__actions">
+        <KnowledgeWysiwygEditor :key="editingId || 'new'" v-model="form.body" @ready="onEditorReady">
+          <template #bar-end>
+            <span v-if="editingId" class="kb-editor__pill" :data-status="form.status">
+              {{ statusLabel(form.status) }}
+            </span>
             <button v-if="editingId" type="button" class="button ghost" :disabled="saving" @click="resetForm">
               Новая
             </button>
             <button type="submit" class="button primary" :disabled="saving">
               {{ saving ? 'Сохраняю…' : 'Сохранить' }}
             </button>
-          </div>
-        </div>
-
-        <KnowledgeWysiwygEditor :key="editingId || 'new'" v-model="form.body" @ready="onEditorReady">
+          </template>
           <input
             v-model="form.title"
             class="kb-editor__title"
