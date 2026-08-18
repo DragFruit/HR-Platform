@@ -7,6 +7,7 @@ import {
 import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix, removeVacationAbsenceFromBitrix } from './bitrixVacationAbsence';
 import { createBitrixVacationAbsenceFailedNotification } from './adminNotificationsStore';
+import type { SessionUser } from './credentials';
 import { findEmployeeByName } from './employeesStore';
 import {
   notifyVacationRequestCreated,
@@ -88,7 +89,8 @@ const assertGroupLeadVacationOverlap = (
 };
 
 export async function createVacationRequest(
-  body: CreateVacationRequestBody
+  body: CreateVacationRequestBody,
+  session: SessionUser
 ): Promise<VacationStoreState> {
   const employee = await findEmployeeByName(body.employee);
   const yearKey = String(body.year);
@@ -115,7 +117,7 @@ export async function createVacationRequest(
     }
     assertYearMatchesStart(body.year, body.start);
     yearFromIsoDate(body.end);
-    if (employee) {
+    if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
     request.id = state.nextRequestId++;
@@ -134,7 +136,8 @@ export async function createVacationRequest(
 
 export async function patchVacationRequest(
   id: number,
-  patch: PatchVacationRequestBody
+  patch: PatchVacationRequestBody,
+  session: SessionUser
 ): Promise<VacationStoreState> {
   let previousRequest: VacationRequest | null = null;
   let nextRequest: VacationRequest | null = null;
@@ -166,7 +169,11 @@ export async function patchVacationRequest(
     }
 
     const employee = await findEmployeeByName(found.item.employee);
-    if (employee && (patch.start !== undefined || patch.end !== undefined)) {
+    if (
+      employee &&
+      (patch.start !== undefined || patch.end !== undefined) &&
+      session.role !== 'admin'
+    ) {
       assertGroupLeadVacationOverlap(
         state,
         employee,

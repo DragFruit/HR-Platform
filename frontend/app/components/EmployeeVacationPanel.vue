@@ -220,6 +220,7 @@ const onUiModeChange = (mode: 'manager' | 'employee') => {
 };
 
 const { user } = useAuth();
+const { isAdmin } = usePermissions();
 const {
   findByUserForAuth,
   directReports,
@@ -621,7 +622,7 @@ const submitRequest = async () => {
     };
     return;
   }
-  if (formGroupLeadOverlapDetails.value.length) {
+  if (formGroupLeadOverlapDetails.value.length && !isAdmin.value) {
     formError.value = {
       title: 'Пересечение с отпуском другого групхеда',
       text: GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE

@@ -5,7 +5,7 @@ import {
 } from '../../utils/vacationRequestMutations';
 
 export default defineEventHandler(async (event) => {
-  await requireVbiSession(event);
+  const session = await requireVbiSession(event);
   const body = await readBody<CreateVacationRequestBody>(event);
 
   if (
@@ -21,5 +21,5 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Дата окончания раньше начала' });
   }
 
-  return createVacationRequest(body);
+  return createVacationRequest(body, session);
 });

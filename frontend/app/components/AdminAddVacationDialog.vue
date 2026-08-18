@@ -145,8 +145,10 @@ const submit = async () => {
     emit('added');
     emit('update:open', false);
     resetForm();
-  } catch {
-    formError.value = 'Ошибка сохранения. Попробуйте ещё раз.';
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }; statusMessage?: string; message?: string };
+    formError.value =
+      err.data?.statusMessage || err.statusMessage || err.message || 'Ошибка сохранения. Попробуйте ещё раз.';
   } finally {
     submitting.value = false;
   }
