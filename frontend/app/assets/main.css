@@ -6139,6 +6139,25 @@ button.org-unit-head--link:hover {
   outline-offset: 1px;
 }
 
+.kb-editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.kb-editor-tools .button {
+  height: 34px;
+  padding: 0 12px;
+}
+
+.success-note {
+  margin: 0;
+  color: #21593b;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
 .ideas-attach {
   display: flex;
   flex-wrap: wrap;

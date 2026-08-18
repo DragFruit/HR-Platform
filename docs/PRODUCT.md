@@ -432,6 +432,7 @@
 ## 10. База знаний
 
 Страницы: `/knowledge` (поиск), `/knowledge/:id` (статья). Сейчас сид в `knowledgeBaseCatalog.ts`, живого RAG нет.
+Для подготовки миграции вики и теста шаблонов добавлена админ-страница `/admin/knowledge` (CRUD статей, без поиска), данные пишутся в `server/data/knowledge-articles.json`.
 
 ### 10.1. Два режима
 

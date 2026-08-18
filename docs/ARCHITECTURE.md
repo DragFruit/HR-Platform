@@ -133,6 +133,7 @@ flowchart TB
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue` (календарь + очередь согласования)
 - `admin/how-it-looks.vue` — превью как у руководителя; на бое с замком после выката рук-ам
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
+- `admin/knowledge.vue` — редактор базы знаний для миграции (создать/редактировать/удалить, markdown-тулбар). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` → `server/data/knowledge-articles.json`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
 - `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
