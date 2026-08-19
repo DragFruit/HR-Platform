@@ -1,5 +1,3 @@
-import { findKnowledgeCard } from '~/data/knowledgeBaseCatalog';
-
 export type PlatformRole = 'employee' | 'admin';
 
 export type NavItem = {
@@ -126,10 +124,6 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/ideas') || route.path.startsWith('/admin/ideas')) {
       return 'Банк идей';
-    }
-    if (route.path.startsWith('/knowledge/')) {
-      const id = route.path.slice('/knowledge/'.length).split('/')[0] ?? '';
-      return findKnowledgeCard(id)?.title ?? 'База знаний';
     }
     if (route.path.startsWith('/knowledge')) {
       return 'База знаний';
