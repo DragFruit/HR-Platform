@@ -10,10 +10,16 @@
     <header class="kb-article__head">
       <span v-if="card.category" class="kb-article__badge">{{ card.category }}</span>
       <h2 class="kb-article__title">{{ card.title }}</h2>
-      <p v-if="card.author" class="kb-article__meta muted">Автор: {{ card.author }}</p>
+      <p v-if="card.author || card.publishedAt" class="kb-article__meta muted">
+        <span v-if="card.author">{{ card.author }}</span>
+        <span v-if="card.author && card.publishedAt"> · </span>
+        <span v-if="card.publishedAt">{{ card.publishedAt }}</span>
+      </p>
     </header>
 
-    <div class="kb-article__body">
+    <div v-if="card.bodyHtml" class="kb-prose" v-html="card.bodyHtml" />
+
+    <div v-else class="kb-prose">
       <p v-for="(paragraph, idx) in card.body ?? [card.description]" :key="idx">
         {{ paragraph }}
       </p>

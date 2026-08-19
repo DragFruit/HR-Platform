@@ -18,7 +18,7 @@ export type KnowledgeAiAnswer = {
   citations: KnowledgeAiCite[];
 };
 
-const FALLBACK_IDS = ['kb-handbook', 'kb-vacations'] as const;
+const FALLBACK_IDS = ['kb-30878'] as const;
 
 const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
   id: card.id,
