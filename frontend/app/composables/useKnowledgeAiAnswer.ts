@@ -1,4 +1,4 @@
-import { findKnowledgeCard, knowledgeArticles, type KnowledgeCard } from '~/data/knowledgeBaseCatalog';
+import type { KnowledgeCard } from '~/data/knowledgeBaseCatalog';
 import { parseKnowledgeQuery, searchKnowledgeArticles, emptyKnowledgeFilters } from '~/utils/knowledgeSearch';
 
 /** Ответ ИИ без ссылок на статьи запрещён. Не обходить и не рендерить в обход хука. */
@@ -25,8 +25,8 @@ const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
   title: card.title
 });
 
-const pickSourceCards = (question: string): KnowledgeCard[] => {
-  const ranked = searchKnowledgeArticles(knowledgeArticles(), question, emptyKnowledgeFilters());
+const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] => {
+  const ranked = searchKnowledgeArticles(pool, question, emptyKnowledgeFilters());
   if (ranked.length) {
     return ranked.slice(0, 3).map((hit) => hit.card);
   }
@@ -34,11 +34,12 @@ const pickSourceCards = (question: string): KnowledgeCard[] => {
   const parsed = parseKnowledgeQuery(question);
   const loose = parsed.soft[0] ?? parsed.exact[0] ?? parsed.phrases[0] ?? '';
   if (loose) {
-    const again = searchKnowledgeArticles(knowledgeArticles(), loose, emptyKnowledgeFilters());
+    const again = searchKnowledgeArticles(pool, loose, emptyKnowledgeFilters());
     if (again.length) return again.slice(0, 2).map((hit) => hit.card);
   }
 
-  return FALLBACK_IDS.map((id) => findKnowledgeCard(id)).filter((card): card is KnowledgeCard => Boolean(card));
+  const fallback = FALLBACK_IDS.map((id) => pool.find((c) => c.id === id)).filter((c): c is KnowledgeCard => Boolean(c));
+  return fallback.length ? fallback : pool.slice(0, 1);
 };
 
 const buildParts = (question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
@@ -92,8 +93,10 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
 }
 
 export function useKnowledgeAiAnswer() {
+  const { articles } = useKnowledgeArticles();
+
   const answerQuestion = (question: string): KnowledgeAiAnswer => {
-    const cards = pickSourceCards(question);
+    const cards = pickSourceCards(question, articles.value);
     if (!cards.length) {
       throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
     }

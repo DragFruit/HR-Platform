@@ -34,9 +34,11 @@
 </template>
 
 <script setup lang="ts">
-import { findKnowledgeCard } from '~/data/knowledgeBaseCatalog';
-
 const route = useRoute();
+const { hydrate, findArticle } = useKnowledgeArticles();
+
 const id = computed(() => String(route.params.id ?? ''));
-const card = computed(() => findKnowledgeCard(id.value));
+const card = computed(() => findArticle(id.value));
+
+onMounted(() => hydrate());
 </script>

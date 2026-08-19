@@ -1,4 +1,3 @@
-import { knowledgeArticles } from '~/data/knowledgeBaseCatalog';
 import {
   emptyKnowledgeFilters,
   KNOWLEDGE_PAGE_SIZE,
@@ -13,15 +12,17 @@ const committedFilters = ref<KnowledgeSearchFilters>(emptyKnowledgeFilters());
 const hasSearched = ref(false);
 const visibleCount = ref(KNOWLEDGE_PAGE_SIZE);
 
-const hits = computed(() => {
-  if (!hasSearched.value) return [];
-  return searchKnowledgeArticles(knowledgeArticles(), committedQuery.value, committedFilters.value);
-});
-
-const visibleHits = computed(() => hits.value.slice(0, visibleCount.value));
-const hasMore = computed(() => visibleCount.value < hits.value.length);
-
 export function useKnowledgeSearch() {
+  const { articles } = useKnowledgeArticles();
+
+  const hits = computed(() => {
+    if (!hasSearched.value) return [];
+    return searchKnowledgeArticles(articles.value, committedQuery.value, committedFilters.value);
+  });
+
+  const visibleHits = computed(() => hits.value.slice(0, visibleCount.value));
+  const hasMore = computed(() => visibleCount.value < hits.value.length);
+
   const runSearch = () => {
     committedQuery.value = draftQuery.value.trim();
     committedFilters.value = { ...draftFilters.value };

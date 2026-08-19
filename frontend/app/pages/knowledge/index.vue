@@ -237,6 +237,8 @@ const KB_FILTERS_ENABLED = false;
 
 type SearchMode = 'classic' | 'ai';
 
+const { hydrate: hydrateArticles } = useKnowledgeArticles();
+
 const {
   draftQuery,
   draftFilters,
@@ -358,6 +360,7 @@ watch([hasMore, visibleHits, mode], async () => {
 });
 
 onMounted(() => {
+  hydrateArticles();
   hydrate();
   document.addEventListener('pointerdown', onDocPointer);
   document.addEventListener('keydown', onDocKey);

@@ -13,6 +13,7 @@ export type KnowledgeArticle = {
   summary: string;
   body: string;
   tags: string[];
+  breadcrumbs: string[];
   status: KnowledgeArticleStatus;
   createdAt: string;
   updatedAt: string;
@@ -62,6 +63,7 @@ const normalizeArticle = (raw: Partial<KnowledgeArticle>): KnowledgeArticle | nu
     summary,
     body,
     tags: normalizeTags(raw.tags),
+    breadcrumbs: normalizeTags((raw as Record<string, unknown>).breadcrumbs),
     status: normalizeStatus(raw.status),
     createdAt,
     updatedAt,
