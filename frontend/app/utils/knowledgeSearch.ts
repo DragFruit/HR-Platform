@@ -36,6 +36,68 @@ export const hasActiveKnowledgeFilters = (filters: KnowledgeSearchFilters) =>
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/* ── Транслит: кириллица ↔ латиница ── */
+const CYR_TO_LAT: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',
+  к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',
+  х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'
+};
+const LAT_TO_CYR: Record<string, string> = {};
+for (const [c, l] of Object.entries(CYR_TO_LAT)) {
+  if (l && !LAT_TO_CYR[l]) LAT_TO_CYR[l] = c;
+}
+LAT_TO_CYR['zh'] = 'ж'; LAT_TO_CYR['kh'] = 'х'; LAT_TO_CYR['ts'] = 'ц';
+LAT_TO_CYR['ch'] = 'ч'; LAT_TO_CYR['sh'] = 'ш'; LAT_TO_CYR['shch'] = 'щ';
+LAT_TO_CYR['yu'] = 'ю'; LAT_TO_CYR['ya'] = 'я'; LAT_TO_CYR['yo'] = 'ё';
+
+const cyrToLat = (s: string) => s.replace(/./g, (c) => CYR_TO_LAT[c] ?? c);
+
+const latToCyr = (s: string) => {
+  let result = '';
+  let i = 0;
+  while (i < s.length) {
+    const four = s.slice(i, i + 4).toLowerCase();
+    const three = s.slice(i, i + 3).toLowerCase();
+    const two = s.slice(i, i + 2).toLowerCase();
+    if (LAT_TO_CYR[four]) { result += LAT_TO_CYR[four]; i += 4; }
+    else if (LAT_TO_CYR[three]) { result += LAT_TO_CYR[three]; i += 3; }
+    else if (LAT_TO_CYR[two]) { result += LAT_TO_CYR[two]; i += 2; }
+    else if (LAT_TO_CYR[s[i].toLowerCase()]) { result += LAT_TO_CYR[s[i].toLowerCase()]!; i += 1; }
+    else { result += s[i]; i += 1; }
+  }
+  return result;
+};
+
+/* ── Раскладка: QWERTY ↔ ЙЦУКЕН (набрал не в той раскладке) ── */
+const EN_KEYS = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`QWERTYUIOP{}ASDFGHJKL:\"ZXCVBNM<>~";
+const RU_KEYS = "йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ";
+const EN_TO_RU: Record<string, string> = {};
+const RU_TO_EN: Record<string, string> = {};
+for (let i = 0; i < EN_KEYS.length; i++) {
+  EN_TO_RU[EN_KEYS[i]] = RU_KEYS[i];
+  RU_TO_EN[RU_KEYS[i]] = EN_KEYS[i];
+}
+const swapLayoutToRu = (s: string) => s.replace(/./g, (c) => EN_TO_RU[c] ?? c);
+const swapLayoutToEn = (s: string) => s.replace(/./g, (c) => RU_TO_EN[c] ?? c);
+
+const isCyrillic = (s: string) => /[а-яё]/i.test(s);
+const isLatin = (s: string) => /[a-z]/i.test(s);
+
+/** Все варианты написания токена для нечёткого поиска */
+const expandToken = (token: string): string[] => {
+  const low = token.toLowerCase();
+  const variants = new Set<string>([low]);
+  if (isCyrillic(low)) {
+    variants.add(cyrToLat(low));
+    variants.add(swapLayoutToEn(low));
+  }
+  if (isLatin(low)) {
+    variants.add(latToCyr(low));
+    variants.add(swapLayoutToRu(low));
+  }
+  return [...variants];
+};
+
 const hasExactWord = (hay: string, word: string) => {
   const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(word)}(?![\\p{L}\\p{N}_])`, 'iu');
   return re.test(hay);
@@ -93,47 +155,56 @@ export function parseKnowledgeQuery(raw: string): ParsedKnowledgeQuery {
   return { phrases, exact, orGroups, soft };
 }
 
+const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ');
+
 const articleText = (card: KnowledgeCard) =>
-  [card.title, card.description, card.category, card.author ?? '', ...(card.body ?? [])].join('\n');
+  [card.title, card.description, card.category, card.author ?? '', ...(card.body ?? []), stripHtml(card.bodyHtml ?? '')].join('\n');
+
+const hayIncludesAny = (hayLower: string, token: string) =>
+  expandToken(token).some((v) => hayLower.includes(v));
+
+const hayExactAny = (hay: string, token: string) =>
+  expandToken(token).some((v) => hasExactWord(hay, v));
 
 const matchesRequired = (card: KnowledgeCard, parsed: ParsedKnowledgeQuery) => {
   const hay = articleText(card);
   const hayLower = hay.toLowerCase();
 
   for (const phrase of parsed.phrases) {
-    if (!hayLower.includes(phrase.toLowerCase())) return false;
+    if (!expandToken(phrase).some((v) => hayLower.includes(v))) return false;
   }
   for (const word of parsed.exact) {
-    if (!hasExactWord(hay, word)) return false;
+    if (!hayExactAny(hay, word)) return false;
   }
   for (const group of parsed.orGroups) {
-    const ok = group.some((word) => hayLower.includes(word.toLowerCase()));
+    const ok = group.some((word) => hayIncludesAny(hayLower, word));
     if (!ok) return false;
   }
   return true;
 };
 
+const anyIncludes = (hay: string, token: string) =>
+  expandToken(token).some((v) => hay.includes(v));
+
 const scoreCard = (card: KnowledgeCard, parsed: ParsedKnowledgeQuery) => {
   const title = card.title.toLowerCase();
-  const body = [card.description, ...(card.body ?? [])].join('\n').toLowerCase();
+  const body = [card.description, ...(card.body ?? []), stripHtml(card.bodyHtml ?? '')].join('\n').toLowerCase();
   let score = 0;
 
   for (const phrase of parsed.phrases) {
-    const needle = phrase.toLowerCase();
-    if (title.includes(needle)) score += 12;
-    else if (body.includes(needle)) score += 6;
+    if (anyIncludes(title, phrase)) score += 12;
+    else if (anyIncludes(body, phrase)) score += 6;
   }
   for (const word of parsed.exact) {
-    if (hasExactWord(card.title, word)) score += 10;
+    if (hayExactAny(card.title, word)) score += 10;
     else score += 5;
   }
   for (const word of parsed.soft) {
-    const needle = word.toLowerCase();
-    if (title.includes(needle)) score += 5;
-    else if (body.includes(needle)) score += 2;
+    if (anyIncludes(title, word)) score += 5;
+    else if (anyIncludes(body, word)) score += 2;
   }
   for (const group of parsed.orGroups) {
-    if (group.some((word) => title.includes(word.toLowerCase()))) score += 5;
+    if (group.some((w) => anyIncludes(title, w))) score += 5;
     else score += 2;
   }
   return score;
