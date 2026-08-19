@@ -26,6 +26,9 @@
         <em>к</em>
       </button>
       <button type="button" class="kb-wysiwyg__btn" title="Подчёркивание" @click="format('underline')"><u>U</u></button>
+      <button type="button" class="kb-wysiwyg__btn" title="Зачёркнутый" @click="format('strike')">
+        <s>S</s>
+      </button>
       <button type="button" class="kb-wysiwyg__btn" title="Цитата" @click="format('quote')">« »</button>
 
       <div class="kb-wysiwyg__combo" @click.stop>
@@ -230,7 +233,7 @@ const pruneEmptyDecorations = () => {
 const markdownToHtml = (src: string) => {
   const raw = src.trim();
   if (!raw) return '<p><br></p>';
-  if (/<(p|h[1-4]|div|ul|ol|blockquote|span|pre|strong|em|u)\b/i.test(raw)) return src;
+  if (/<(p|h[1-4]|div|ul|ol|blockquote|span|pre|strong|em|u|s|del|strike)\b/i.test(raw)) return src;
 
   const inline = (value: string) =>
     escapeHtml(value)
@@ -418,7 +421,19 @@ const toggleMenu = (kind: 'heading' | 'list') => {
 };
 
 const format = (
-  kind: 'h2' | 'h3' | 'h4' | 'bold' | 'italic' | 'underline' | 'quote' | 'ul' | 'ol' | 'spoiler' | 'code'
+  kind:
+    | 'h2'
+    | 'h3'
+    | 'h4'
+    | 'bold'
+    | 'italic'
+    | 'underline'
+    | 'strike'
+    | 'quote'
+    | 'ul'
+    | 'ol'
+    | 'spoiler'
+    | 'code'
 ) => {
   const el = surfaceRef.value;
   if (!el) return;
@@ -444,6 +459,9 @@ const format = (
     document.execCommand('italic');
   } else if (kind === 'underline') {
     document.execCommand('underline');
+  } else if (kind === 'strike') {
+    // Стандартный тег зачёркивания (обычно <strike> или <s>)
+    document.execCommand('strikeThrough');
   } else if (kind === 'ul') {
     document.execCommand('insertUnorderedList');
   } else if (kind === 'ol') {

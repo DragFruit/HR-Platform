@@ -16852,6 +16852,14 @@ button.button {
   color: #111;
 }
 
+.kb-prose s,
+.kb-prose del,
+.kb-prose strike {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #111;
+}
+
 .kb-figure {
   margin: 8px 0;
   display: grid;
