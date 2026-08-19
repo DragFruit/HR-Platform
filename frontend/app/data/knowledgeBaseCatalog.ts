@@ -20,6 +20,8 @@ export type KnowledgeCard = {
   body?: string[];
   /** HTML-контент статьи (приоритет над body) */
   bodyHtml?: string;
+  /** Путь в иерархии регламентов (хлебные крошки) */
+  breadcrumbs?: string[];
   type?: KnowledgeArticleType;
   publishedAt?: string;
   visibility?: KnowledgeVisibility;
@@ -34,6 +36,7 @@ export const knowledgeBaseCards: KnowledgeCard[] = [
   {
     id: 'kb-30878',
     category: 'CRM',
+    breadcrumbs: ['Общие по компании', 'AFINA CRM', 'Регламенты'],
     title: 'Указание сайтов клиента в карточке проекта AFINA',
     description:
       'Как правильно заполнить сайты клиента в карточке проекта CRM — ответственные, порядок действий и поля.',

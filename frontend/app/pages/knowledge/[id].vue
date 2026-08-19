@@ -8,7 +8,13 @@
     <NuxtLink to="/knowledge" class="kb-article__back">← Все материалы</NuxtLink>
 
     <header class="kb-article__head">
-      <span v-if="card.category" class="kb-article__badge">{{ card.category }}</span>
+      <nav v-if="card.breadcrumbs?.length" class="kb-article__crumbs">
+        <template v-for="(crumb, i) in card.breadcrumbs" :key="i">
+          <span class="kb-article__crumb">{{ crumb }}</span>
+          <span v-if="i < card.breadcrumbs.length - 1" class="kb-article__crumb-sep">/</span>
+        </template>
+      </nav>
+      <span v-else-if="card.category" class="kb-article__badge">{{ card.category }}</span>
       <h2 class="kb-article__title">{{ card.title }}</h2>
       <p v-if="card.author || card.publishedAt" class="kb-article__meta muted">
         <span v-if="card.author">{{ card.author }}</span>
