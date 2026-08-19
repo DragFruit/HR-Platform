@@ -124,8 +124,12 @@ for seed in adaptation-track.json employees.json vacations.json ideas.json org-s
     continue
   fi
 
-  if [[ "${seed}" == "knowledge-articles.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
-    echo "→ skip ${seed} (статьи базы знаний остаются с сервера)"
+  if [[ "${seed}" == "knowledge-articles.json" ]]; then
+    INCOMING="${REMOTE_DATA}/.knowledge-articles-incoming.json"
+    MERGE_KB_SCRIPT="${ROOT}/deploy/scripts/merge-knowledge-articles-seed.mjs"
+    "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${INCOMING}"
+    "${SCP_CMD[@]}" "${MERGE_KB_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/merge-knowledge-articles-seed.mjs"
+    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-knowledge-articles-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' && rm -f '${INCOMING}'"
     continue
   fi
 
