@@ -1,8 +1,10 @@
 import type { KnowledgeCard } from '~/data/knowledgeBaseCatalog';
 import {
   detectKbAiChitchat,
+  detectKbAiClarify,
   detectKbAiOfftopic,
   KB_AI_CHITCHAT_REPLY,
+  KB_AI_CLARIFY_REPLY,
   KB_AI_OFFTOPIC_REPLY,
   parseKbAiModelReply
 } from '~/utils/knowledgeAiIntent';
@@ -10,7 +12,7 @@ import { pickKnowledgeCardsForAi } from '~/utils/knowledgeSearch';
 
 /**
  * Для ответов по статьям цитаты обязательны.
- * Исключение: chitchat / offtopic — без ссылок на статьи.
+ * Исключение: chitchat / offtopic / clarify — без ссылок на статьи.
  */
 export const KB_AI_CITE_REQUIRED = true;
 
@@ -26,8 +28,8 @@ export type KnowledgeAiPart =
 export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
   citations: KnowledgeAiCite[];
-  /** chitchat/offtopic — без «Ещё по теме» */
-  mode?: 'kb' | 'chitchat' | 'offtopic';
+  /** Без «Ещё по теме» */
+  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify';
 };
 
 const FALLBACK_IDS = ['kb-30878'] as const;
@@ -39,7 +41,7 @@ const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
 
 const textOnlyAnswer = (
   text: string,
-  mode: 'chitchat' | 'offtopic'
+  mode: 'chitchat' | 'offtopic' | 'clarify'
 ): KnowledgeAiAnswer => ({
   parts: [{ type: 'text', value: text }],
   citations: [],
@@ -106,7 +108,7 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
   if (!KB_AI_CITE_REQUIRED) {
     throw new Error('KB_AI_CITE_REQUIRED нельзя выключать');
   }
-  if (answer.mode === 'chitchat' || answer.mode === 'offtopic') {
+  if (answer.mode === 'chitchat' || answer.mode === 'offtopic' || answer.mode === 'clarify') {
     return answer;
   }
   const inline = answer.parts.filter((part) => part.type === 'cite');
@@ -128,6 +130,9 @@ export function useKnowledgeAiAnswer() {
   const answerQuestion = async (question: string): Promise<KnowledgeAiAnswer> => {
     if (detectKbAiChitchat(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
+    }
+    if (detectKbAiClarify(question)) {
+      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CLARIFY_REPLY, 'clarify'));
     }
     if (detectKbAiOfftopic(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
@@ -156,6 +161,9 @@ export function useKnowledgeAiAnswer() {
         }
         if (parsed.intent === 'offtopic') {
           return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_OFFTOPIC_REPLY, 'offtopic'));
+        }
+        if (parsed.intent === 'clarify') {
+          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CLARIFY_REPLY, 'clarify'));
         }
         parts = buildPartsFromModel(parsed.text, cards);
         mode = 'kb';
