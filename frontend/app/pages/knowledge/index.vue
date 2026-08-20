@@ -7,22 +7,22 @@
         <button
           type="button"
           class="kb-mode"
-          :class="{ 'is-on': mode === 'classic' }"
-          role="tab"
-          :aria-selected="mode === 'classic'"
-          @click="setMode('classic')"
-        >
-          Поиск
-        </button>
-        <button
-          type="button"
-          class="kb-mode"
           :class="{ 'is-on': mode === 'ai' }"
           role="tab"
           :aria-selected="mode === 'ai'"
           @click="setMode('ai')"
         >
           Спросить ИИ
+        </button>
+        <button
+          type="button"
+          class="kb-mode"
+          :class="{ 'is-on': mode === 'classic' }"
+          role="tab"
+          :aria-selected="mode === 'classic'"
+          @click="setMode('classic')"
+        >
+          Поиск
         </button>
       </div>
 
@@ -265,7 +265,7 @@ const { messages, error: aiError, pending: aiPending, hydrate, send } = useKnowl
 
 const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей'];
 
-const mode = ref<SearchMode>('classic');
+const mode = ref<SearchMode>('ai');
 const filterOpen = ref(false);
 const aiDraft = ref('');
 const resultsRef = ref<HTMLElement | null>(null);
