@@ -1,5 +1,5 @@
 import type { KnowledgeCard } from '~/data/knowledgeBaseCatalog';
-import { parseKnowledgeQuery, searchKnowledgeArticles, emptyKnowledgeFilters } from '~/utils/knowledgeSearch';
+import { pickKnowledgeCardsForAi } from '~/utils/knowledgeSearch';
 
 /** Ответ ИИ без ссылок на статьи запрещён. Не обходить и не рендерить в обход хука. */
 export const KB_AI_CITE_REQUIRED = true;
@@ -26,17 +26,8 @@ const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
 });
 
 const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] => {
-  const ranked = searchKnowledgeArticles(pool, question, emptyKnowledgeFilters());
-  if (ranked.length) {
-    return ranked.slice(0, 3).map((hit) => hit.card);
-  }
-
-  const parsed = parseKnowledgeQuery(question);
-  const loose = parsed.soft[0] ?? parsed.exact[0] ?? parsed.phrases[0] ?? '';
-  if (loose) {
-    const again = searchKnowledgeArticles(pool, loose, emptyKnowledgeFilters());
-    if (again.length) return again.slice(0, 2).map((hit) => hit.card);
-  }
+  const picked = pickKnowledgeCardsForAi(pool, question, 3);
+  if (picked.length) return picked;
 
   const fallback = FALLBACK_IDS.map((id) => pool.find((c) => c.id === id)).filter((c): c is KnowledgeCard => Boolean(c));
   return fallback.length ? fallback : pool.slice(0, 1);

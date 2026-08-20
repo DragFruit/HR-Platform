@@ -275,3 +275,53 @@ export function searchKnowledgeArticles(
     return (b.card.publishedAt ?? '').localeCompare(a.card.publishedAt ?? '');
   });
 }
+
+const AI_SOFT_STOP = new Set(['и', 'в', 'на', 'по', 'для', 'как', 'что', 'это', 'или', 'из', 'к', 'о', 'об', 'а', 'но']);
+
+/** Сколько «смысловых» слов запроса реально встречаются в статье (с учётом транслита/раскладки). */
+export function countSoftTokenMatches(card: KnowledgeCard, softTokens: string[]): number {
+  const hayLower = articleText(card).toLowerCase();
+  let n = 0;
+  for (const raw of softTokens) {
+    const token = raw.trim().toLowerCase();
+    if (!token || AI_SOFT_STOP.has(token) || token.length < 2) continue;
+    if (hayIncludesAny(hayLower, token)) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Отбор статей для чата ИИ: строже обычного поиска страницы.
+ * Обычный поиск поднимает всё, где есть хоть одно слово («контакты» в регламенте SEO) —
+ * для контекста модели оставляем только хиты с несколькими совпадениями / сильным score.
+ */
+export function pickKnowledgeCardsForAi(cards: KnowledgeCard[], question: string, limit = 3): KnowledgeCard[] {
+  const ranked = searchKnowledgeArticles(cards, question, emptyKnowledgeFilters());
+  const parsed = parseKnowledgeQuery(question);
+  const softMeaningful = parsed.soft
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length >= 2 && !AI_SOFT_STOP.has(t));
+
+  const minTokenHits =
+    softMeaningful.length <= 1 ? 1 : Math.min(softMeaningful.length, Math.max(2, Math.ceil(softMeaningful.length * 0.6)));
+  /** Одно «контакты» в теле даёт ~2; совпадение в заголовке ≥5. */
+  const minScore = softMeaningful.length <= 1 ? 2 : 5;
+
+  const strict = ranked.filter((hit) => {
+    if (hit.score < minScore) return false;
+    if (softMeaningful.length <= 1) return true;
+    return countSoftTokenMatches(hit.card, softMeaningful) >= minTokenHits;
+  });
+
+  if (strict.length) {
+    return strict.slice(0, limit).map((hit) => hit.card);
+  }
+
+  // Мягкий откат: только лучший хит, и только если он не «одно слово в хвосте статьи»
+  const top = ranked[0];
+  if (top && top.score >= 5) {
+    return [top.card];
+  }
+
+  return [];
+}
