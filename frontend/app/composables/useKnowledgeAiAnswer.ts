@@ -42,36 +42,24 @@ const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard
   return fallback.length ? fallback : pool.slice(0, 1);
 };
 
-const buildParts = (question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
+/** Текст ответа + пустая строка + «Ещё по теме:» и кликабельные статьи через запятую. */
+const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cards: KnowledgeCard[]) => {
+  if (!cards.length) return;
+  parts.push({ type: 'text', value: '\n\nЕщё по теме: ' });
+  cards.forEach((card, idx) => {
+    if (idx > 0) parts.push({ type: 'text', value: ', ' });
+    parts.push({ type: 'cite', id: card.id, title: card.title });
+  });
+};
+
+const buildParts = (_question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
   const first = cards[0];
   if (!first) {
     throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
   }
   const lead = first.body?.[0] ?? first.description ?? 'В базе есть материал по этому вопросу.';
-  const parts: KnowledgeAiPart[] = [
-    { type: 'text', value: `${lead.replace(/\s+$/, '')} Это разобрано в ` },
-    { type: 'cite', id: first.id, title: first.title }
-  ];
-
-  if (cards[1]) {
-    parts.push({ type: 'text', value: '. Ещё по теме — ' });
-    parts.push({ type: 'cite', id: cards[1].id, title: cards[1].title });
-  }
-  if (cards[2]) {
-    parts.push({ type: 'text', value: ' и ' });
-    parts.push({ type: 'cite', id: cards[2].id, title: cards[2].title });
-  }
-
-  const q = question.trim();
-  if (q) {
-    parts.push({
-      type: 'text',
-      value: `. Если нужно уточнение по «${q}» — открой статью, там полный текст.`
-    });
-  } else {
-    parts.push({ type: 'text', value: '.' });
-  }
-
+  const parts: KnowledgeAiPart[] = [{ type: 'text', value: lead.replace(/\s+$/, '') }];
+  appendRelatedTopicCites(parts, cards);
   return parts;
 };
 
@@ -90,34 +78,13 @@ const buildContextFromCards = (cards: KnowledgeCard[]) => {
   return joined.length > 12000 ? `${joined.slice(0, 12000)}\n\n[обрезано]` : joined;
 };
 
-const buildPartsFromModel = (modelAnswer: string, question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
-  const first = cards[0];
-  if (!first) throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
+const buildPartsFromModel = (modelAnswer: string, _question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
+  if (!cards[0]) throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
 
   const parts: KnowledgeAiPart[] = [
     { type: 'text', value: modelAnswer.trim() || leadFallback(cards) }
   ];
-
-  const second = cards[1];
-  if (second) {
-    parts.push({ type: 'text', value: ' Ещё по теме — ' });
-  }
-  parts.push({ type: 'cite', id: first.id, title: first.title });
-
-  if (second) parts.push({ type: 'cite', id: second.id, title: second.title });
-
-  if (cards[2]) {
-    parts.push({ type: 'text', value: ' и ' });
-    parts.push({ type: 'cite', id: cards[2].id, title: cards[2].title });
-  }
-
-  const q = question.trim();
-  if (q) {
-    parts.push({ type: 'text', value: ` Если нужно уточнение по «${q}» — открой статью, там полный текст.` });
-  } else {
-    parts.push({ type: 'text', value: '.' });
-  }
-
+  appendRelatedTopicCites(parts, cards);
   return parts;
 };
 

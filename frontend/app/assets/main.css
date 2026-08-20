@@ -6225,7 +6225,7 @@ button.org-unit-head--link:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 0 -22px 8px;
+  margin: 0 0 8px;
   padding: 14px 22px 12px;
   background-color: #e4e4de;
   background-image: var(--noise-url);
@@ -6246,6 +6246,8 @@ button.org-unit-head--link:hover {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  padding-right: 22px;
+  box-sizing: border-box;
 }
 
 .kb-wysiwyg__bar-end .button {
@@ -6384,6 +6386,9 @@ button.org-unit-head--link:hover {
   font-size: 1.05rem;
   line-height: 1.65;
   outline: none;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .kb-wysiwyg__surface:has(> p:only-child:empty)::before,
@@ -6576,6 +6581,53 @@ button.org-unit-head--link:hover {
 .kb-link-menu__btn:hover {
   background: #111;
   color: #fff;
+}
+
+/* --- Image resize in editor --- */
+.kb-img-wrap {
+  display: inline-block;
+  position: relative;
+  line-height: 0;
+  vertical-align: bottom;
+  max-width: 100%;
+}
+.kb-img-wrap--active {
+  outline: 2px solid var(--color-accent, #7451f4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.kb-img-resize-handle {
+  display: none;
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent, #7451f4);
+  border: 2px solid #fff;
+  border-radius: 2px;
+  cursor: nwse-resize;
+  z-index: 2;
+}
+.kb-img-wrap--active .kb-img-resize-handle {
+  display: block;
+}
+.kb-img--selected {
+  cursor: nwse-resize;
+}
+.kb-img-resize-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  cursor: nwse-resize;
+}
+.kb-wysiwyg__surface img {
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .kb-link-dialog {
@@ -15677,6 +15729,7 @@ button.button {
 
 .kb-bubble__text {
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .kb-cite {
@@ -16826,6 +16879,9 @@ button.button {
 .kb-prose {
   display: grid;
   gap: 14px;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .kb-prose p {
@@ -16850,6 +16906,12 @@ button.button {
 
 .kb-prose a:hover {
   color: #111;
+}
+
+.kb-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
 }
 
 .kb-prose s,
