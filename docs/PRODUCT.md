@@ -283,7 +283,7 @@
 
 Выдача ключа: `POST /api/vpn/keys` `{ kind: "wireguard" | "amnezia" }` (нужна сессия). Создаёт пир в wg-easy только если лимит не исчерпан; иначе возвращает уже выданные конфиги+QR. Удаление пиров из платформы не делается.
 
-Имена в админке (Бельгия / Ahost): WireGuard и 1-й AmneziaWG — `Фамилия_Belg_Ahost`; 2-й AmneziaWG — `Фамилия_Belg_Ahost_2`.
+Имена в админке (Бельгия): WireGuard — `Фамилия_Belg_Aeza`; AmneziaWG — `Фамилия_Belg_Ahost`, второй — `Фамилия_Belg_Ahost_2`.
 Фамилия: Bitrix «Фамилия Имя» → первое слово; демо «Имя Фамилия» (…Тестов/а) → последнее.
 
 Админские панели и запрет удалять чужие пиры — rule `.cursor/rules/vpn-key-limits.mdc`, константы `frontend/app/data/vpnLimits.ts`. Env: `WG_EASY_*`, `AWG_EASY_*` (см. `.env.example`).

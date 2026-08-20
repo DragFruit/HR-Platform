@@ -4,10 +4,10 @@
 
 ## 2026-08-20
 
-### VPN: Бельгия Ahost (`188.190.10.62`) — AmneziaWG
+### VPN: Бельгия Ahost (`188.190.10.62`)
 
-- AmneziaWG: `http://188.190.10.62:51821` (пароль в env `AWG_EASY_*`). WireGuard рядом (`:51831`) ещё поднимаем — пока `WG_EASY_PASSWORD` пустой.
-- Имена пиров: `Фамилия_Belg_Ahost` / `Фамилия_Belg_Ahost_2`.
+- AmneziaWG: `http://188.190.10.62:51821` (UDP 51820). WireGuard: `http://188.190.10.62:51831` (UDP 51830).
+- Имена: WireGuard `Фамилия_Belg_Aeza`; AmneziaWG `Фамилия_Belg_Ahost` / `_2`.
 - Ключи, ошибочно выданные на Париж `193.233.133.241`, перенесены на Бельгию и удалены с Парижа; учёт в `vpn-keys.json` обновлён.
 - Env: `WG_EASY_*`, `AWG_EASY_*`. Файлы: `vpnKeysStore.ts`, `wgEasyClient.ts`, rule `vpn-key-limits.mdc`.
 - Важно: у кого уже скачан конфиг с Парижа — нужно заново скачать из `/vpn` (новые ключи на Бельгии).

@@ -92,7 +92,7 @@ export async function removeVpnKeysByIds(ids: string[]): Promise<number> {
 
 /**
  * Имя пира в wg-easy:
- * - WireGuard: LastName_Belg_Ahost
+ * - WireGuard: LastName_Belg_Aeza
  * - AmneziaWG: LastName_Belg_Ahost, второй — LastName_Belg_Ahost_2
  *
  * LastName — фамилия в латинице (ASCII), чтобы имя peer'а/конфига не ломалось на русских символах.
@@ -106,7 +106,7 @@ export function buildVpnClientName(
 ): string {
   const surname = extractSurname(displayName, authSource) || 'User';
   if (kind === 'wireguard') {
-    return `${surname}_Belg_Ahost`.slice(0, 64);
+    return `${surname}_Belg_Aeza`.slice(0, 64);
   }
   const base = `${surname}_Belg_Ahost`;
   const withSlot = slot > 1 ? `${base}_2` : base;
