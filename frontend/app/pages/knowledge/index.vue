@@ -48,7 +48,7 @@
           autocomplete="off"
           aria-label="Спросить ИИ"
         />
-        <button type="submit" class="kb-seek__go">Спросить</button>
+        <button type="submit" class="kb-seek__go" :disabled="aiPending">Спросить</button>
       </form>
 
       <div v-if="KB_FILTERS_ENABLED && mode === 'classic'" class="kb-filters" role="group" aria-label="Быстрые фильтры">
@@ -222,7 +222,18 @@
               </template>
             </p>
           </article>
+          <div
+            v-if="aiPending"
+            class="kb-bubble kb-bubble--bot kb-typing"
+            role="status"
+            aria-label="ИИ ищет ответ"
+          >
+            <span class="kb-typing__dot" />
+            <span class="kb-typing__dot" />
+            <span class="kb-typing__dot" />
+          </div>
           <p v-if="aiError" class="kb-empty muted" role="alert">{{ aiError }}</p>
+          <div ref="threadEndRef" class="kb-thread__end" aria-hidden="true" />
         </div>
       </div>
     </div>
@@ -250,7 +261,7 @@ const {
   loadMore
 } = useKnowledgeSearch();
 
-const { messages, error: aiError, hydrate, send } = useKnowledgeAiChat();
+const { messages, error: aiError, pending: aiPending, hydrate, send } = useKnowledgeAiChat();
 
 const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей'];
 
@@ -260,6 +271,7 @@ const aiDraft = ref('');
 const resultsRef = ref<HTMLElement | null>(null);
 const sentinelRef = ref<HTMLElement | null>(null);
 const threadRef = ref<HTMLElement | null>(null);
+const threadEndRef = ref<HTMLElement | null>(null);
 const filterPopRef = ref<HTMLElement | null>(null);
 
 const authors = knowledgeAuthors();
@@ -328,16 +340,30 @@ const onClassicSubmit = () => {
 
 const onAiSubmit = () => {
   const text = aiDraft.value;
+  if (!text.trim() || aiPending.value) return;
   aiDraft.value = '';
-  send(text);
-  nextTick(() => scrollThread());
+  void send(text);
 };
 
-const scrollThread = () => {
+const scrollThread = async () => {
+  await nextTick();
   const el = threadRef.value;
-  if (!el) return;
-  el.scrollTop = el.scrollHeight;
+  if (el) el.scrollTop = el.scrollHeight;
+  threadEndRef.value?.scrollIntoView({ block: 'end', behavior: 'auto' });
+  // второй кадр — высота пузыря/лоадера уже в layout
+  requestAnimationFrame(() => {
+    if (el) el.scrollTop = el.scrollHeight;
+    threadEndRef.value?.scrollIntoView({ block: 'end', behavior: 'auto' });
+  });
 };
+
+watch(
+  [() => messages.value.length, aiPending, aiError],
+  async () => {
+    if (mode.value !== 'ai') return;
+    await scrollThread();
+  }
+);
 
 let observer: IntersectionObserver | null = null;
 

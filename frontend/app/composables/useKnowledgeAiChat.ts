@@ -44,6 +44,7 @@ export function useKnowledgeAiChat() {
   const { answerQuestion } = useKnowledgeAiAnswer();
   const messages = ref<KnowledgeChatMessage[]>([]);
   const error = ref('');
+  const pending = ref(false);
 
   const persist = () => writeStore(messages.value);
 
@@ -53,7 +54,7 @@ export function useKnowledgeAiChat() {
 
   const send = async (raw: string) => {
     const text = raw.trim();
-    if (!text) return;
+    if (!text || pending.value) return;
     error.value = '';
 
     messages.value.push({
@@ -63,6 +64,7 @@ export function useKnowledgeAiChat() {
       createdAt: Date.now()
     });
 
+    pending.value = true;
     try {
       const answer = await answerQuestion(text);
       messages.value.push({
@@ -73,6 +75,8 @@ export function useKnowledgeAiChat() {
       });
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Не удалось ответить';
+    } finally {
+      pending.value = false;
     }
 
     persist();
@@ -81,6 +85,7 @@ export function useKnowledgeAiChat() {
   return {
     messages,
     error,
+    pending,
     hydrate,
     send
   };
