@@ -32,8 +32,6 @@ export type KnowledgeAiAnswer = {
   mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify';
 };
 
-const FALLBACK_IDS = ['kb-30878'] as const;
-
 const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
   id: card.id,
   title: card.title
@@ -48,13 +46,9 @@ const textOnlyAnswer = (
   mode
 });
 
-const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] => {
-  const picked = pickKnowledgeCardsForAi(pool, question, 3);
-  if (picked.length) return picked;
-
-  const fallback = FALLBACK_IDS.map((id) => pool.find((c) => c.id === id)).filter((c): c is KnowledgeCard => Boolean(c));
-  return fallback.length ? fallback : pool.slice(0, 1);
-};
+/** Только релевантные хиты. Без запасной «рандомной» статьи — иначе «мяу» тянет AFINA. */
+const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] =>
+  pickKnowledgeCardsForAi(pool, question, 3);
 
 /** Текст ответа + пустая строка + «Ещё по теме:» и кликабельные статьи через запятую. */
 const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cards: KnowledgeCard[]) => {
@@ -140,7 +134,8 @@ export function useKnowledgeAiAnswer() {
 
     const cards = pickSourceCards(question, articles.value);
     if (!cards.length) {
-      throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
+      // Нет релевантных статей — как оффтоп/бессмыслица, без выдуманного контекста
+      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
     }
 
     const citations = cards.map(asCite);
