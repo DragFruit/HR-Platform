@@ -4,9 +4,14 @@
 
 ## 2026-08-20
 
+### База знаний: убраны пустые разделы меню Bitrix
+
+- Из сида удалены `kb-2890` / `kb-2982` (пустой `<h2>`, не статьи) — в UI было 177 из‑за фильтра `title`.
+- Migrate пропускает такие записи. В сиде теперь **177** статей.
+
 ### База знаний: полный перенос статей из Bitrix `/devs/`
 
-- Скрапинг дерева меню `/devs/` (179 статей) → `knowledge-articles.json` + картинки в `frontend/public/knowledge/article-*/`.
+- Скрапинг дерева меню `/devs/` → `knowledge-articles.json` + картинки в `frontend/public/knowledge/article-*/` (после чистки пустых разделов — 177).
 - Скрипты: `scripts/bitrix/scrape-devs-articles.mjs` (все ссылки из меню / `--only-missing`), `migrate-devs-to-knowledge.mjs` (body без chrome, локальные PNG).
 - На **проде** раздел `/knowledge` по-прежнему с замком (`LAUNCH_SCOPE=vacations`); данные и код уже на бой для открытия позже.
 - Проверка на стейдже (`:8080`): `/knowledge` — ~179 статей, картинки открываются.

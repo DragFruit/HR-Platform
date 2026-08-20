@@ -196,6 +196,10 @@ async function migrate() {
 
     const html = readFileSync(join(scrapeDir, file), 'utf8');
     const title = extractTitleFromDevsHtml(html);
+    if (!title || title === 'Без названия') {
+      console.log(`Пропуск ${kbId}: пустой заголовок (раздел меню, не статья)`);
+      continue;
+    }
     const breadcrumbs = extractBreadcrumbsFromDevsHtml(html, devsIdNum);
 
     let body = extractBodyFromDevsHtml(html);

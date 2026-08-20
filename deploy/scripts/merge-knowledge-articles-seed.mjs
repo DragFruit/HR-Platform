@@ -77,6 +77,10 @@ const incomingById = new Map(
 
 for (const targetArticle of t.articles) {
   const id = String(targetArticle?.id ?? '').trim();
+  // Drop Bitrix menu stubs / broken rows without title (API ignores them anyway).
+  if (!String(targetArticle?.title ?? '').trim()) {
+    continue;
+  }
   const incomingArticle = id ? incomingById.get(id) : undefined;
   if (!incomingArticle) {
     merged.push(targetArticle);
@@ -99,9 +103,12 @@ for (const targetArticle of t.articles) {
   }
 }
 
+let prunedEmptyTitle = t.articles.length - merged.length;
+
 for (const incomingArticle of i.articles) {
   const id = String(incomingArticle?.id ?? '').trim();
   if (!id) continue;
+  if (!String(incomingArticle?.title ?? '').trim()) continue;
   if (targetById.has(id)) continue;
   merged.push({
     ...incomingArticle,
@@ -114,4 +121,6 @@ for (const incomingArticle of i.articles) {
 const nextId = Math.max(t.nextId, i.nextId);
 
 await writeFile(targetPath, `${JSON.stringify({ articles: merged, nextId }, null, 2)}\n`, 'utf8');
-console.log(`knowledge articles merged: added ${added}, refreshed body ${refreshedBody}`);
+console.log(
+  `knowledge articles merged: added ${added}, refreshed body ${refreshedBody}, pruned empty title ${Math.max(0, prunedEmptyTitle)}`
+);
