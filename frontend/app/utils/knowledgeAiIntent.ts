@@ -10,16 +10,23 @@ export type KnowledgeAiIntent = 'chitchat' | 'offtopic' | 'kb';
 const CHITCHAT_RE =
   /^(спасибо|благодарю|благодар|отлично|супер|класс|круто|огонь|топ|ок|окей|ладно|понял[аи]?|понятно|ясно|хорошо|замечательно|прекрасно|отлично[\s,]*спасибо|спасибо[\s,]*большое|вс[её]\s*(понятно|ясно|супер|отлично)|👍|🙏|❤️|😘)+[!?.…\s]*$/iu;
 
-/**
- * Быстрый локальный детект «спасибо / отлично» без вызова модели.
- * Сомневаемся → null (решит модель по префиксу).
- */
+/** Явный оффтоп — без вызова модели и без подтягивания статей. */
+const OFFTOPIC_RE =
+  /\b(погод[аеуы]|температур|прогноз\s+погоды|новост|анекдот|рецепт|футбол|хоккей|курс\s+(доллар|евро)|что\s+ты\s+(любишь|умеешь|думаешь)|кто\s+ты\b|как\s+тебя\s+зовут|расскажи\s+о\s+себе|посоветуй\s+(книг|фильм)|что\s+почитать)\b/i;
+
+/** Быстрый локальный детект «спасибо / отлично» без вызова модели. */
 export function detectKbAiChitchat(raw: string): boolean {
   const t = raw.trim().replace(/\s+/g, ' ');
   if (!t || t.length > 72) return false;
   if (/[?]/.test(t)) return false;
   if (t.split(/\s+/).length > 8) return false;
   return CHITCHAT_RE.test(t);
+}
+
+export function detectKbAiOfftopic(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  return OFFTOPIC_RE.test(t);
 }
 
 /** Префиксы, которые просим у модели в system prompt. */
