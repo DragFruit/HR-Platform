@@ -4,6 +4,13 @@
 
 ## 2026-08-20
 
+### База знаний: полный перенос статей из Bitrix `/devs/`
+
+- Скрапинг дерева меню `/devs/` (179 статей) → `knowledge-articles.json` + картинки в `frontend/public/knowledge/article-*/`.
+- Скрипты: `scripts/bitrix/scrape-devs-articles.mjs` (все ссылки из меню / `--only-missing`), `migrate-devs-to-knowledge.mjs` (body без chrome, локальные PNG).
+- На **проде** раздел `/knowledge` по-прежнему с замком (`LAUNCH_SCOPE=vacations`); данные и код уже на бой для открытия позже.
+- Проверка на стейдже (`:8080`): `/knowledge` — ~179 статей, картинки открываются.
+
 ### База знаний: починка картинок в статьях
 
 - **Причина:** после миграции HTML ссылался на `/knowledge/article-*/…`, но папки с PNG лежали только локально (untracked) и не попали в git → на стейдже 404. Merge сида не перезаписывал `body` у уже существующих статей.

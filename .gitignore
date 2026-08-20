@@ -31,6 +31,9 @@ deploy/env/*.env
 .prod-import/
 .prod-vacations.json
 
+# Временные HTML скрапы Bitrix /devs/ (migrate читает локально)
+scripts/bitrix/tmp/
+
 # Руководители сотрудников — runtime на сервере, не из репозитория
 frontend/server/data/employee-managers.json
 frontend/server/data/admin-notifications.json

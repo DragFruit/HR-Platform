@@ -125,7 +125,7 @@ flowchart TB
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
 - `knowledge/index.vue` — поиск / чат ИИ; `knowledge/[id].vue` — статья. Сид `data/knowledgeBaseCatalog.ts`. Поиск: `utils/knowledgeSearch.ts`, `useKnowledgeSearch`. ИИ: `useKnowledgeAiAnswer` + `POST /api/knowledge/yandex-ask`, `useKnowledgeAiChat`. Оценка страницы: `POST /api/knowledge/feedback` → админ-уведомление `page_feedback` + imbot Драго. Подсказки: `knowledgeSearchPhrases.ts`.
-- Картинки статей: HTML `src="/knowledge/article-{bitrixId}/…"` → файлы в `frontend/public/knowledge/article-*/` **обязательно в git** вместе с `server/data/knowledge-articles.json`. Деплой: `merge-knowledge-articles-seed.mjs` не затирает админские правки целиком, но обновляет `body`/`coverImage`, если сид несёт локальные `/knowledge/article-…` или на сервере остался Bitrix-chrome `/devs/asset/`.
+- Картинки статей: HTML `src="/knowledge/article-{bitrixId}/…"` → файлы в `frontend/public/knowledge/article-*/` **обязательно в git** вместе с `server/data/knowledge-articles.json`. Деплой: `merge-knowledge-articles-seed.mjs` не затирает админские правки целиком, но обновляет `body`/`coverImage`, если сид несёт локальные `/knowledge/article-…` или на сервере остался Bitrix-chrome `/devs/asset/`. Перенос из Bitrix: `scripts/bitrix/scrape-devs-articles.mjs` → `migrate-devs-to-knowledge.mjs` (временные HTML в `scripts/bitrix/tmp/`, в git не кладём).
 
 ### Админ
 
