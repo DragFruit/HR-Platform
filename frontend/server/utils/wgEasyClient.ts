@@ -20,12 +20,12 @@ type PanelConfig = {
 function panelConfig(panel: WgEasyPanel): PanelConfig {
   if (panel === 'wireguard') {
     return {
-      baseUrl: String(process.env.WG_EASY_URL || 'http://193.233.133.241:51831').replace(/\/$/, ''),
+      baseUrl: String(process.env.WG_EASY_URL || 'http://188.190.10.62:51831').replace(/\/$/, ''),
       password: String(process.env.WG_EASY_PASSWORD || '').trim()
     };
   }
   return {
-    baseUrl: String(process.env.AWG_EASY_URL || 'http://193.233.133.241:51821').replace(/\/$/, ''),
+    baseUrl: String(process.env.AWG_EASY_URL || 'http://188.190.10.62:51821').replace(/\/$/, ''),
     password: String(process.env.AWG_EASY_PASSWORD || '').trim()
   };
 }
