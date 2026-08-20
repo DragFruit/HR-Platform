@@ -129,6 +129,9 @@ export function useKnowledgeAiAnswer() {
     if (detectKbAiChitchat(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
     }
+    if (detectKbAiOfftopic(question)) {
+      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
+    }
 
     const cards = pickSourceCards(question, articles.value);
     if (!cards.length) {
