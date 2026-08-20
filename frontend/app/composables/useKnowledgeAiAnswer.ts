@@ -1,7 +1,17 @@
 import type { KnowledgeCard } from '~/data/knowledgeBaseCatalog';
+import {
+  detectKbAiChitchat,
+  detectKbAiOfftopic,
+  KB_AI_CHITCHAT_REPLY,
+  KB_AI_OFFTOPIC_REPLY,
+  parseKbAiModelReply
+} from '~/utils/knowledgeAiIntent';
 import { pickKnowledgeCardsForAi } from '~/utils/knowledgeSearch';
 
-/** Ответ ИИ без ссылок на статьи запрещён. Не обходить и не рендерить в обход хука. */
+/**
+ * Для ответов по статьям цитаты обязательны.
+ * Исключение: chitchat / offtopic — без ссылок на статьи.
+ */
 export const KB_AI_CITE_REQUIRED = true;
 
 export type KnowledgeAiCite = {
@@ -16,6 +26,8 @@ export type KnowledgeAiPart =
 export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
   citations: KnowledgeAiCite[];
+  /** chitchat/offtopic — без «Ещё по теме» */
+  mode?: 'kb' | 'chitchat' | 'offtopic';
 };
 
 const FALLBACK_IDS = ['kb-30878'] as const;
@@ -23,6 +35,15 @@ const FALLBACK_IDS = ['kb-30878'] as const;
 const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
   id: card.id,
   title: card.title
+});
+
+const textOnlyAnswer = (
+  text: string,
+  mode: 'chitchat' | 'offtopic'
+): KnowledgeAiAnswer => ({
+  parts: [{ type: 'text', value: text }],
+  citations: [],
+  mode
 });
 
 const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] => {
@@ -69,7 +90,7 @@ const buildContextFromCards = (cards: KnowledgeCard[]) => {
   return joined.length > 12000 ? `${joined.slice(0, 12000)}\n\n[обрезано]` : joined;
 };
 
-const buildPartsFromModel = (modelAnswer: string, _question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
+const buildPartsFromModel = (modelAnswer: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
   if (!cards[0]) throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
 
   const parts: KnowledgeAiPart[] = [
@@ -84,6 +105,9 @@ const leadFallback = (cards: KnowledgeCard[]) => cards[0]?.description ?? 'В б
 export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): KnowledgeAiAnswer {
   if (!KB_AI_CITE_REQUIRED) {
     throw new Error('KB_AI_CITE_REQUIRED нельзя выключать');
+  }
+  if (answer.mode === 'chitchat' || answer.mode === 'offtopic') {
+    return answer;
   }
   const inline = answer.parts.filter((part) => part.type === 'cite');
   if (!inline.length || !answer.citations.length) {
@@ -102,15 +126,18 @@ export function useKnowledgeAiAnswer() {
   const { articles } = useKnowledgeArticles();
 
   const answerQuestion = async (question: string): Promise<KnowledgeAiAnswer> => {
+    if (detectKbAiChitchat(question)) {
+      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
+    }
+
     const cards = pickSourceCards(question, articles.value);
     if (!cards.length) {
       throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
     }
 
     const citations = cards.map(asCite);
-
-    // Фоллбек: прежняя “шаблонная” логика (без внешнего LLM).
     let parts = buildParts(question, cards);
+    let mode: KnowledgeAiAnswer['mode'] = 'kb';
 
     try {
       const context = buildContextFromCards(cards);
@@ -120,14 +147,21 @@ export function useKnowledgeAiAnswer() {
       });
 
       if (resp?.answer?.trim()) {
-        parts = buildPartsFromModel(resp.answer, question, cards);
+        const parsed = parseKbAiModelReply(resp.answer);
+        if (parsed.intent === 'chitchat') {
+          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CHITCHAT_REPLY, 'chitchat'));
+        }
+        if (parsed.intent === 'offtopic') {
+          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_OFFTOPIC_REPLY, 'offtopic'));
+        }
+        parts = buildPartsFromModel(parsed.text, cards);
+        mode = 'kb';
       }
     } catch (err) {
-      // не ломаем чат, если LLM недоступен — остаётся шаблонный ответ
       console.warn('[knowledge-ai] yandex-ask failed, using template answer', err);
     }
 
-    return assertKnowledgeAiCitations({ parts, citations });
+    return assertKnowledgeAiCitations({ parts, citations, mode });
   };
 
   return { answerQuestion };
