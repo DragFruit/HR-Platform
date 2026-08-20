@@ -4,13 +4,19 @@
 
 ## 2026-08-20
 
+### База знаний: Yandex GPT выкачен на стейдж
+
+- Endpoint `POST /api/knowledge/yandex-ask` + `yandexGpt.ts`; чат «Спросить ИИ» зовёт модель, при ошибке — шаблонный ответ.
+- Env: `YANDEX_GPT_FOLDER_ID`, `YANDEX_GPT_API_KEY` (или IAM), опционально `YANDEX_GPT_MODEL_URI`.
+- Проверка: `/knowledge` на `:8080` → «Спросить ИИ».
+
 ### VPN: Бельгия Ahost (`188.190.10.62`)
 
 - AmneziaWG: `http://188.190.10.62:51821` (UDP 51820). WireGuard: `http://188.190.10.62:51831` (UDP 51830).
-- Имена: WireGuard `Фамилия_Belg_Aeza`; AmneziaWG `Фамилия_Belg_Ahost` / `_2`.
-- Ключи, ошибочно выданные на Париж `193.233.133.241`, перенесены на Бельгию и удалены с Парижа; учёт в `vpn-keys.json` обновлён.
+- Хостинг — **Ahost**. Из Vibe выдаём только с этого сервера.
+- Имена пиров: WireGuard и AmneziaWG — `Фамилия_Belg_Ahost`; второй Amnezia — `_2`.
+- Миграция ключей на Бельгию; учёт в `vpn-keys.json` обновлён. Кому нужен свежий конфиг — заново скачать из `/vpn`.
 - Env: `WG_EASY_*`, `AWG_EASY_*`. Файлы: `vpnKeysStore.ts`, `wgEasyClient.ts`, rule `vpn-key-limits.mdc`.
-- Важно: у кого уже скачан конфиг с Парижа — нужно заново скачать из `/vpn` (новые ключи на Бельгии).
 
 ## 2026-08-19
 

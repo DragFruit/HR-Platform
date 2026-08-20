@@ -75,6 +75,54 @@ const buildParts = (question: string, cards: KnowledgeCard[]): KnowledgeAiPart[]
   return parts;
 };
 
+const buildContextFromCards = (cards: KnowledgeCard[]) => {
+  const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ');
+
+  const chunks = cards.map((card, idx) => {
+    const fromBody = (card.body ?? []).join('\n');
+    const fromHtml = card.bodyHtml ?? '';
+    const text = [fromBody, stripHtml(fromHtml)].filter(Boolean).join('\n').trim();
+    const limited = text.length > 4000 ? `${text.slice(0, 4000)}\n\n[обрезано]` : text;
+    return `[${idx + 1}] ${card.title}\n${limited}`;
+  });
+
+  const joined = chunks.join('\n\n');
+  return joined.length > 12000 ? `${joined.slice(0, 12000)}\n\n[обрезано]` : joined;
+};
+
+const buildPartsFromModel = (modelAnswer: string, question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
+  const first = cards[0];
+  if (!first) throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
+
+  const parts: KnowledgeAiPart[] = [
+    { type: 'text', value: modelAnswer.trim() || leadFallback(cards) }
+  ];
+
+  const second = cards[1];
+  if (second) {
+    parts.push({ type: 'text', value: ' Ещё по теме — ' });
+  }
+  parts.push({ type: 'cite', id: first.id, title: first.title });
+
+  if (second) parts.push({ type: 'cite', id: second.id, title: second.title });
+
+  if (cards[2]) {
+    parts.push({ type: 'text', value: ' и ' });
+    parts.push({ type: 'cite', id: cards[2].id, title: cards[2].title });
+  }
+
+  const q = question.trim();
+  if (q) {
+    parts.push({ type: 'text', value: ` Если нужно уточнение по «${q}» — открой статью, там полный текст.` });
+  } else {
+    parts.push({ type: 'text', value: '.' });
+  }
+
+  return parts;
+};
+
+const leadFallback = (cards: KnowledgeCard[]) => cards[0]?.description ?? 'В базе есть материал по этому вопросу.';
+
 export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): KnowledgeAiAnswer {
   if (!KB_AI_CITE_REQUIRED) {
     throw new Error('KB_AI_CITE_REQUIRED нельзя выключать');
@@ -95,14 +143,32 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
 export function useKnowledgeAiAnswer() {
   const { articles } = useKnowledgeArticles();
 
-  const answerQuestion = (question: string): KnowledgeAiAnswer => {
+  const answerQuestion = async (question: string): Promise<KnowledgeAiAnswer> => {
     const cards = pickSourceCards(question, articles.value);
     if (!cards.length) {
       throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
     }
 
     const citations = cards.map(asCite);
-    const parts = buildParts(question, cards);
+
+    // Фоллбек: прежняя “шаблонная” логика (без внешнего LLM).
+    let parts = buildParts(question, cards);
+
+    try {
+      const context = buildContextFromCards(cards);
+      const resp = await $fetch<{ answer: string }>('/api/knowledge/yandex-ask', {
+        method: 'POST',
+        body: { question, context }
+      });
+
+      if (resp?.answer?.trim()) {
+        parts = buildPartsFromModel(resp.answer, question, cards);
+      }
+    } catch (err) {
+      // не ломаем чат, если LLM недоступен — остаётся шаблонный ответ
+      console.warn('[knowledge-ai] yandex-ask failed, using template answer', err);
+    }
+
     return assertKnowledgeAiCitations({ parts, citations });
   };
 

@@ -51,7 +51,7 @@ export function useKnowledgeAiChat() {
     messages.value = readStore();
   };
 
-  const send = (raw: string) => {
+  const send = async (raw: string) => {
     const text = raw.trim();
     if (!text) return;
     error.value = '';
@@ -64,7 +64,7 @@ export function useKnowledgeAiChat() {
     });
 
     try {
-      const answer = answerQuestion(text);
+      const answer = await answerQuestion(text);
       messages.value.push({
         id: newId(),
         from: 'bot',
