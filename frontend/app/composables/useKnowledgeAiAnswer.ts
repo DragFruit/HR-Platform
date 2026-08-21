@@ -1,4 +1,3 @@
-import type { KnowledgeCard } from '~/data/knowledgeBaseCatalog';
 import {
   detectKbAiChitchat,
   detectKbAiClarify,
@@ -8,7 +7,6 @@ import {
   KB_AI_OFFTOPIC_REPLY,
   parseKbAiModelReply
 } from '~/utils/knowledgeAiIntent';
-import { pickKnowledgeCardsForAi } from '~/utils/knowledgeSearch';
 
 /**
  * Для ответов по статьям цитаты обязательны.
@@ -32,11 +30,6 @@ export type KnowledgeAiAnswer = {
   mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify';
 };
 
-const asCite = (card: KnowledgeCard): KnowledgeAiCite => ({
-  id: card.id,
-  title: card.title
-});
-
 const textOnlyAnswer = (
   text: string,
   mode: 'chitchat' | 'offtopic' | 'clarify'
@@ -46,57 +39,15 @@ const textOnlyAnswer = (
   mode
 });
 
-/** Только релевантные хиты. Без запасной «рандомной» статьи — иначе «мяу» тянет AFINA. */
-const pickSourceCards = (question: string, pool: KnowledgeCard[]): KnowledgeCard[] =>
-  pickKnowledgeCardsForAi(pool, question, 3);
-
 /** Текст ответа + пустая строка + «Ещё по теме:» и кликабельные статьи через запятую. */
-const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cards: KnowledgeCard[]) => {
-  if (!cards.length) return;
+const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cites: KnowledgeAiCite[]) => {
+  if (!cites.length) return;
   parts.push({ type: 'text', value: '\n\nЕщё по теме: ' });
-  cards.forEach((card, idx) => {
+  cites.forEach((cite, idx) => {
     if (idx > 0) parts.push({ type: 'text', value: ', ' });
-    parts.push({ type: 'cite', id: card.id, title: card.title });
+    parts.push({ type: 'cite', id: cite.id, title: cite.title });
   });
 };
-
-const buildParts = (_question: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
-  const first = cards[0];
-  if (!first) {
-    throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
-  }
-  const lead = first.body?.[0] ?? first.description ?? 'В базе есть материал по этому вопросу.';
-  const parts: KnowledgeAiPart[] = [{ type: 'text', value: lead.replace(/\s+$/, '') }];
-  appendRelatedTopicCites(parts, cards);
-  return parts;
-};
-
-const buildContextFromCards = (cards: KnowledgeCard[]) => {
-  const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ');
-
-  const chunks = cards.map((card, idx) => {
-    const fromBody = (card.body ?? []).join('\n');
-    const fromHtml = card.bodyHtml ?? '';
-    const text = [fromBody, stripHtml(fromHtml)].filter(Boolean).join('\n').trim();
-    const limited = text.length > 4000 ? `${text.slice(0, 4000)}\n\n[обрезано]` : text;
-    return `[${idx + 1}] ${card.title}\n${limited}`;
-  });
-
-  const joined = chunks.join('\n\n');
-  return joined.length > 12000 ? `${joined.slice(0, 12000)}\n\n[обрезано]` : joined;
-};
-
-const buildPartsFromModel = (modelAnswer: string, cards: KnowledgeCard[]): KnowledgeAiPart[] => {
-  if (!cards[0]) throw new Error('KB_AI_CITE_REQUIRED: нет статей, ответ строить нельзя');
-
-  const parts: KnowledgeAiPart[] = [
-    { type: 'text', value: modelAnswer.trim() || leadFallback(cards) }
-  ];
-  appendRelatedTopicCites(parts, cards);
-  return parts;
-};
-
-const leadFallback = (cards: KnowledgeCard[]) => cards[0]?.description ?? 'В базе есть материал по этому вопросу.';
 
 export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): KnowledgeAiAnswer {
   if (!KB_AI_CITE_REQUIRED) {
@@ -118,9 +69,13 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
   return answer;
 }
 
-export function useKnowledgeAiAnswer() {
-  const { articles } = useKnowledgeArticles();
+type YandexAskResponse = {
+  answer?: string;
+  citations?: KnowledgeAiCite[];
+  found?: boolean;
+};
 
+export function useKnowledgeAiAnswer() {
   const answerQuestion = async (question: string): Promise<KnowledgeAiAnswer> => {
     if (detectKbAiChitchat(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
@@ -132,42 +87,52 @@ export function useKnowledgeAiAnswer() {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
     }
 
-    const cards = pickSourceCards(question, articles.value);
-    if (!cards.length) {
-      // Нет релевантных статей — как оффтоп/бессмыслица, без выдуманного контекста
-      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
-    }
-
-    const citations = cards.map(asCite);
-    let parts = buildParts(question, cards);
-    let mode: KnowledgeAiAnswer['mode'] = 'kb';
-
     try {
-      const context = buildContextFromCards(cards);
-      const resp = await $fetch<{ answer: string }>('/api/knowledge/yandex-ask', {
+      const resp = await $fetch<YandexAskResponse>('/api/knowledge/yandex-ask', {
         method: 'POST',
-        body: { question, context }
+        body: { question }
       });
 
-      if (resp?.answer?.trim()) {
-        const parsed = parseKbAiModelReply(resp.answer);
-        if (parsed.intent === 'chitchat') {
-          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CHITCHAT_REPLY, 'chitchat'));
-        }
-        if (parsed.intent === 'offtopic') {
-          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_OFFTOPIC_REPLY, 'offtopic'));
-        }
-        if (parsed.intent === 'clarify') {
-          return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CLARIFY_REPLY, 'clarify'));
-        }
-        parts = buildPartsFromModel(parsed.text, cards);
-        mode = 'kb';
-      }
-    } catch (err) {
-      console.warn('[knowledge-ai] yandex-ask failed, using template answer', err);
-    }
+      const citations = (resp.citations ?? [])
+        .map((c) => ({ id: String(c.id || '').trim(), title: String(c.title || '').trim() }))
+        .filter((c) => c.id && c.title);
 
-    return assertKnowledgeAiCitations({ parts, citations, mode });
+      if (resp.found === false || !citations.length) {
+        const text =
+          resp.answer?.trim() ||
+          'В базе знаний не нашлось подходящих материалов по этому вопросу. Попробуйте переформулировать или откройте вкладку «Поиск».';
+        // Нет подходящих статей — не offtopic («только по БЗ»), а честный «не нашли»
+        return assertKnowledgeAiCitations(textOnlyAnswer(text, 'offtopic'));
+      }
+
+      const rawAnswer = String(resp.answer || '').trim();
+      if (!rawAnswer) {
+        throw new Error('empty yandex answer');
+      }
+
+      const parsed = parseKbAiModelReply(rawAnswer);
+      if (parsed.intent === 'chitchat') {
+        return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CHITCHAT_REPLY, 'chitchat'));
+      }
+      if (parsed.intent === 'offtopic') {
+        return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_OFFTOPIC_REPLY, 'offtopic'));
+      }
+      if (parsed.intent === 'clarify') {
+        return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CLARIFY_REPLY, 'clarify'));
+      }
+
+      const parts: KnowledgeAiPart[] = [{ type: 'text', value: parsed.text }];
+      appendRelatedTopicCites(parts, citations);
+      return assertKnowledgeAiCitations({ parts, citations, mode: 'kb' });
+    } catch (err) {
+      console.warn('[knowledge-ai] yandex-ask failed', err);
+      return assertKnowledgeAiCitations(
+        textOnlyAnswer(
+          'Сейчас не удалось получить ответ от помощника. Попробуйте ещё раз чуть позже или воспользуйтесь вкладкой «Поиск».',
+          'clarify'
+        )
+      );
+    }
   };
 
   return { answerQuestion };

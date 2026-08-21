@@ -51,5 +51,7 @@ export default defineEventHandler(async (event) => {
   });
 
   if (!created) throw createError({ statusCode: 500, statusMessage: 'Не удалось создать статью' });
+  const { scheduleKnowledgeRagRebuild } = await import('../../../utils/knowledgeRag');
+  scheduleKnowledgeRagRebuild();
   return { article: created, articles: next.articles };
 });

@@ -15,5 +15,7 @@ export default defineEventHandler(async (event) => {
     };
   });
 
+  const { scheduleKnowledgeRagRebuild } = await import('../../../utils/knowledgeRag');
+  scheduleKnowledgeRagRebuild();
   return { articles: next.articles };
 });

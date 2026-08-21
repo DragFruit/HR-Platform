@@ -135,7 +135,7 @@ export async function yandexChatAnswer(
   ].join('\n');
 
   const user = ctx
-    ? `Сообщение пользователя: ${q}\n\nКонтекст базы знаний (если тип 3):\n${safeCtx}\n\nОтвет:`
+    ? `Сообщение пользователя: ${q}\n\nКонтекст базы знаний (для обычного ответа по базе):\n${safeCtx}\n\nОтвет:`
     : `Сообщение пользователя: ${q}\n\nКонтекст базы знаний: (пусто)\n\nОтвет:`;
 
   const headers: Record<string, string> = {

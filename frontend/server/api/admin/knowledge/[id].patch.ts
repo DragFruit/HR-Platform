@@ -59,5 +59,7 @@ export default defineEventHandler(async (event) => {
   });
 
   if (!updatedArticle) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
+  const { scheduleKnowledgeRagRebuild } = await import('../../../utils/knowledgeRag');
+  scheduleKnowledgeRagRebuild();
   return { article: updatedArticle, articles: next.articles };
 });
