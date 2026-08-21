@@ -7,7 +7,8 @@ export type AdminNotificationKind =
   | 'vpn_peer_delete_failed'
   | 'sales_best_pick_due'
   | 'page_feedback'
-  | 'knowledge_ai_degraded';
+  | 'knowledge_ai_degraded'
+  | 'bitrix_notify_failed';
 
 export type AdminNotification = {
   id: string;
@@ -116,6 +117,9 @@ export function useAdminNotifications() {
     if (item.kind === 'knowledge_ai_degraded') {
       return 'ИИ базы знаний: сбой Yandex';
     }
+    if (item.kind === 'bitrix_notify_failed') {
+      return 'Bitrix: колокольчик не создан';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
@@ -161,6 +165,14 @@ export function useAdminNotifications() {
         (q ? ` Вопрос: «${q}».` : '')
       );
     }
+    if (item.kind === 'bitrix_notify_failed') {
+      return (
+        `Согласующему «${item.employee_name}» (Bitrix id ${item.bitrix_user_id ?? '—'}) ` +
+        `не ушёл колокольчик в Bitrix. В Vibe уведомление есть. ` +
+        `${item.error_message || ''} ` +
+        `Нужен мост vbihr|vacation или проверка учётки на crm.vbi.ru (см. docs/BITRIX.md).`
+      ).trim();
+    }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
   };
@@ -187,6 +199,7 @@ export function useAdminNotifications() {
     if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
     if (item.kind === 'page_feedback') return pageFeedbackLabel(item.page);
     if (item.kind === 'knowledge_ai_degraded') return 'База знаний';
+    if (item.kind === 'bitrix_notify_failed') return 'Отпуска';
     return 'Справочник';
   };
 
@@ -201,6 +214,7 @@ export function useAdminNotifications() {
     if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
     if (item.kind === 'page_feedback') return item.page || '/knowledge';
     if (item.kind === 'knowledge_ai_degraded') return '/admin/knowledge';
+    if (item.kind === 'bitrix_notify_failed') return '/admin/vacations';
     return '/admin/employees';
   };
 

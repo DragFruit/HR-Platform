@@ -12,7 +12,8 @@ export type AdminNotificationKind =
   | 'vpn_peer_delete_failed'
   | 'sales_best_pick_due'
   | 'page_feedback'
-  | 'knowledge_ai_degraded';
+  | 'knowledge_ai_degraded'
+  | 'bitrix_notify_failed';
 
 export type AdminNotification = {
   id: string;
@@ -402,6 +403,31 @@ export async function createKnowledgeAiDegradedNotification(input: {
     error_message: input.error_message,
     page: '/knowledge',
     comment: input.question ? input.question.slice(0, 200) : '',
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+/** Bitrix не создал колокольчик согласующему (timestamp вместо ID / ошибка bridge). */
+export async function createBitrixNotifyFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  bitrix_user_id: number;
+  error_message: string;
+  vacation_request_id?: number;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'bitrix_notify_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    bitrix_user_id: input.bitrix_user_id,
+    error_message: input.error_message,
+    vacation_request_id: input.vacation_request_id,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

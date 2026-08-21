@@ -381,4 +381,18 @@ export async function notifyBitrixVacationApprover(
   await appendNotifyLog(
     `FAIL #${request.id} → user ${bitrixUserId}: ${notifyResult.error ?? 'unknown'}`
   );
+
+  // В платформе колокольчик у согласующего уже есть; админу — сигнал, что в Bitrix не ушло
+  try {
+    const { createBitrixNotifyFailedNotification } = await import('./adminNotificationsStore');
+    await createBitrixNotifyFailedNotification({
+      employee_id: 0,
+      employee_name: approverName,
+      bitrix_user_id: bitrixUserId,
+      error_message: notifyResult.error || 'Bitrix не создал уведомление',
+      vacation_request_id: request.id
+    });
+  } catch (err) {
+    console.warn('[bitrixVacationNotify] admin alert failed', err);
+  }
 }

@@ -4,13 +4,14 @@ import {
   detectKbAiOfftopic,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_CLARIFY_REPLY,
+  KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
   parseKbAiModelReply
 } from '~/utils/knowledgeAiIntent';
 
 /**
  * Для ответов по статьям цитаты обязательны.
- * Исключение: chitchat / offtopic / clarify — без ссылок на статьи.
+ * Исключение: chitchat / offtopic / clarify / not_found — без ссылок на статьи.
  */
 export const KB_AI_CITE_REQUIRED = true;
 
@@ -27,7 +28,7 @@ export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
   citations: KnowledgeAiCite[];
   /** Без «Ещё по теме» */
-  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify';
+  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify' | 'not_found';
 };
 
 export type KnowledgeAiHistoryTurn = {
@@ -37,7 +38,7 @@ export type KnowledgeAiHistoryTurn = {
 
 const textOnlyAnswer = (
   text: string,
-  mode: 'chitchat' | 'offtopic' | 'clarify'
+  mode: 'chitchat' | 'offtopic' | 'clarify' | 'not_found'
 ): KnowledgeAiAnswer => ({
   parts: [{ type: 'text', value: text }],
   citations: [],
@@ -57,7 +58,12 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
   if (!KB_AI_CITE_REQUIRED) {
     throw new Error('KB_AI_CITE_REQUIRED нельзя выключать');
   }
-  if (answer.mode === 'chitchat' || answer.mode === 'offtopic' || answer.mode === 'clarify') {
+  if (
+    answer.mode === 'chitchat' ||
+    answer.mode === 'offtopic' ||
+    answer.mode === 'clarify' ||
+    answer.mode === 'not_found'
+  ) {
     return answer;
   }
   const inline = answer.parts.filter((part) => part.type === 'cite');
@@ -106,10 +112,9 @@ export function useKnowledgeAiAnswer() {
         .filter((c) => c.id && c.title);
 
       if (resp.found === false || !citations.length) {
-        const text =
-          resp.answer?.trim() ||
-          'В базе знаний не нашлось подходящих материалов по этому вопросу. Попробуйте переформулировать или откройте вкладку «Поиск».';
-        return assertKnowledgeAiCitations(textOnlyAnswer(text, 'offtopic'));
+        // Не offtopic: рабочий вопрос без статьи — явное «нет в базе» + приглашение дописать
+        const text = resp.answer?.trim() || KB_AI_NOT_FOUND_REPLY;
+        return assertKnowledgeAiCitations(textOnlyAnswer(text, 'not_found'));
       }
 
       const rawAnswer = String(resp.answer || '').trim();

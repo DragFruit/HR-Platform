@@ -68,16 +68,17 @@ export default defineEventHandler(async (event) => {
 
   try {
     const retrieved = await retrieveKnowledgeDetailed(question, { viewer });
-    if (!retrieved.hits.length) {
-      return {
-        answer:
-          'В базе знаний не нашлось подходящих материалов по этому вопросу. Попробуйте переформулировать или откройте вкладку «Поиск».',
-        citations: [] as YandexAskCitation[],
-        found: false,
-        ambiguous: false,
-        degraded: false
-      };
-    }
+  if (!retrieved.hits.length) {
+    return {
+      answer:
+        'В базе знаний пока нет материала по этому вопросу.\n\n' +
+        'Если тема нужна команде — можно дописать статью самим (Админ → База знаний) или написать HR, что не хватает знаний по этой теме. Мы добавим.',
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false
+    };
+  }
 
     if (retrieved.ambiguous && retrieved.branches.length >= 2) {
       const context = buildRagAmbiguousContext(retrieved.branches);
