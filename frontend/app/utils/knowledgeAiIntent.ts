@@ -33,9 +33,12 @@ const OFFTOPIC_ANSWER_RE =
 const RUDE_RE =
   /(долбо[её]б|долба[её]б|идиот|дебил|туп(ой|ая|ица)|ху[йяе]|хер|блять|бляд|сука|пизд|ебан|ёбан|мудак|говно|заткни|чмо|мраз|тварь|нахуй|пош[её]л\s+на|уродина|конченн)/i;
 
-/** Претензия к ответу без нового вопроса по теме. */
+/** Претензия к ответу бота (не слово «ошибка» внутри рабочего вопроса). */
 const COMPLAINT_RE =
-  /(ты\s+не\s+то|не\s+то\s+говоришь|вр[её]шь|бред|чушь|фигня|ошиб(ка|ся|лись)|неправильно|хуйню|херню|нес[её]шь\s+чушь)/i;
+  /(ты\s+не\s+то|не\s+то\s+говоришь|вр[её]шь|бред|чушь|фигня|хуйню|херню|нес[её]шь\s+чушь)/i;
+
+/** Одна короткая претензия без контекста: «ошибка», «неправильно». */
+const SHORT_COMPLAINT_RE = /^(ошиб(ка|ся|лись)|неправильно)[!?.…\s]*$/iu;
 
 /** Быстрый локальный детект «спасибо / отлично» без вызова модели. */
 export function detectKbAiChitchat(raw: string): boolean {
@@ -66,11 +69,14 @@ export function detectKbAiNonsense(raw: string): boolean {
   return false;
 }
 
-/** Грубость или «ты не то говоришь» — без статей, попросить уточнить вопрос. */
+/** Грубость или претензия к боту — без статей, попросить уточнить вопрос. */
 export function detectKbAiClarify(raw: string): boolean {
   const t = raw.trim();
   if (!t) return false;
-  return RUDE_RE.test(t) || COMPLAINT_RE.test(t);
+  if (RUDE_RE.test(t)) return true;
+  if (COMPLAINT_RE.test(t)) return true;
+  if (SHORT_COMPLAINT_RE.test(t)) return true;
+  return false;
 }
 
 /** Префиксы, которые просим у модели в system prompt. */
