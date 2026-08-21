@@ -14,7 +14,14 @@
           <span v-if="i < card.breadcrumbs.length - 1" class="kb-article__crumb-sep">/</span>
         </template>
       </nav>
-      <span v-else-if="card.category" class="kb-article__badge">{{ card.category }}</span>
+      <div class="kb-hit__depts">
+        <span v-if="!card.departments?.length" class="kb-dept kb-dept--all">Всем</span>
+        <span
+          v-for="dept in card.departments ?? []"
+          :key="dept"
+          class="kb-dept kb-dept--violet"
+        >{{ dept }}</span>
+      </div>
       <h2 class="kb-article__title">{{ card.title }}</h2>
       <p v-if="card.author || card.publishedAt" class="kb-article__meta muted">
         <span v-if="card.author">{{ card.author }}</span>

@@ -30,6 +30,11 @@ export type KnowledgeAiAnswer = {
   mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify';
 };
 
+export type KnowledgeAiHistoryTurn = {
+  role: 'user' | 'assistant';
+  text: string;
+};
+
 const textOnlyAnswer = (
   text: string,
   mode: 'chitchat' | 'offtopic' | 'clarify'
@@ -39,7 +44,6 @@ const textOnlyAnswer = (
   mode
 });
 
-/** Текст ответа + пустая строка + «Ещё по теме:» и кликабельные статьи через запятую. */
 const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cites: KnowledgeAiCite[]) => {
   if (!cites.length) return;
   parts.push({ type: 'text', value: '\n\nЕщё по теме: ' });
@@ -73,10 +77,14 @@ type YandexAskResponse = {
   answer?: string;
   citations?: KnowledgeAiCite[];
   found?: boolean;
+  degraded?: boolean;
 };
 
 export function useKnowledgeAiAnswer() {
-  const answerQuestion = async (question: string): Promise<KnowledgeAiAnswer> => {
+  const answerQuestion = async (
+    question: string,
+    history: KnowledgeAiHistoryTurn[] = []
+  ): Promise<KnowledgeAiAnswer> => {
     if (detectKbAiChitchat(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
     }
@@ -90,7 +98,7 @@ export function useKnowledgeAiAnswer() {
     try {
       const resp = await $fetch<YandexAskResponse>('/api/knowledge/yandex-ask', {
         method: 'POST',
-        body: { question }
+        body: { question, history: history.slice(-6) }
       });
 
       const citations = (resp.citations ?? [])
@@ -101,7 +109,6 @@ export function useKnowledgeAiAnswer() {
         const text =
           resp.answer?.trim() ||
           'В базе знаний не нашлось подходящих материалов по этому вопросу. Попробуйте переформулировать или откройте вкладку «Поиск».';
-        // Нет подходящих статей — не offtopic («только по БЗ»), а честный «не нашли»
         return assertKnowledgeAiCitations(textOnlyAnswer(text, 'offtopic'));
       }
 
@@ -128,7 +135,7 @@ export function useKnowledgeAiAnswer() {
       console.warn('[knowledge-ai] yandex-ask failed', err);
       return assertKnowledgeAiCitations(
         textOnlyAnswer(
-          'Сейчас не удалось получить ответ от помощника. Попробуйте ещё раз чуть позже или воспользуйтесь вкладкой «Поиск».',
+          'Бот ушёл на перекур, но скоро вернётся. Пока ответы могут быть менее точными. Попробуйте ещё раз чуть позже или вкладку «Поиск».',
           'clarify'
         )
       );

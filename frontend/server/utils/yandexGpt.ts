@@ -104,7 +104,12 @@ export async function yandexToMarkdown(sourceText: string, opts?: { maxTokens?: 
 export async function yandexChatAnswer(
   question: string,
   contextText: string,
-  opts?: { maxTokens?: number; temperature?: number }
+  opts?: {
+    maxTokens?: number;
+    temperature?: number;
+    /** Короткая память диалога (user/assistant). */
+    history?: { role: 'user' | 'assistant'; text: string }[];
+  }
 ) {
   const config = readConfig();
 
@@ -118,6 +123,18 @@ export async function yandexChatAnswer(
   const maxTokens = typeof opts?.maxTokens === 'number' ? opts.maxTokens : 900;
   const temperature = typeof opts?.temperature === 'number' ? opts.temperature : 0.2;
 
+  const historyLines = (opts?.history ?? [])
+    .slice(-6)
+    .map((h) => {
+      const text = String(h.text || '').trim().slice(0, 600);
+      if (!text) return '';
+      return `${h.role === 'user' ? 'Сотрудник' : 'Ассистент'}: ${text}`;
+    })
+    .filter(Boolean);
+  const historyBlock = historyLines.length
+    ? `Недавний диалог (учти при уточнениях вроде «а подробнее?»):\n${historyLines.join('\n')}\n\n`
+    : '';
+
   const system = [
     'Ты ассистент базы знаний VBI HR.',
     'Отвечай вежливо, спокойно и по делу — как коллега из HR: без канцелярита, без воды и без восторженных вступлений («Конечно!», «Отличный вопрос!» и т.п.).',
@@ -129,14 +146,15 @@ export async function yandexChatAnswer(
     '4) Вопрос по работе / процессам / контактам из контекста базы → обычный ответ по контексту БЕЗ префиксов CHITCHAT/OFFTOPIC/CLARIFY.',
     '',
     'Для типа 4: только по контексту, не выдумывай факты. Если в контексте нет ответа — коротко скажи, что в базе этого нет (это не OFFTOPIC).',
+    'Если в диалоге есть уточнение («подробнее», «а там», «а если») — отвечай в продолжение предыдущей темы, опираясь на контекст базы.',
     'Структура типа 4: сразу прямой ответ (факты, контакты, шаги).',
     'Не добавляй ссылки на статьи и блок «Ещё по теме» — их добавит система.',
     'Вывод — обычный текст без markdown.'
   ].join('\n');
 
   const user = ctx
-    ? `Сообщение пользователя: ${q}\n\nКонтекст базы знаний (для обычного ответа по базе):\n${safeCtx}\n\nОтвет:`
-    : `Сообщение пользователя: ${q}\n\nКонтекст базы знаний: (пусто)\n\nОтвет:`;
+    ? `${historyBlock}Сообщение пользователя: ${q}\n\nКонтекст базы знаний (для обычного ответа по базе):\n${safeCtx}\n\nОтвет:`
+    : `${historyBlock}Сообщение пользователя: ${q}\n\nКонтекст базы знаний: (пусто)\n\nОтвет:`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

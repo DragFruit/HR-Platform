@@ -4,12 +4,14 @@ import {
   normalizeKnowledgeArticleStatus,
   type KnowledgeArticle
 } from '../../../utils/knowledgeArticlesStore';
+import { normalizeDepartmentList } from '../../../utils/knowledgeAudience';
 
 type PatchArticleBody = {
   title?: string;
   summary?: string;
   body?: string;
   tags?: string[];
+  departments?: string[];
   status?: 'review' | 'published' | 'draft';
 };
 
@@ -26,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const tags = Array.isArray(payload.tags)
     ? payload.tags.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];
+  const departments = normalizeDepartmentList(payload.departments);
 
   const plain = body.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 
@@ -48,6 +51,7 @@ export default defineEventHandler(async (event) => {
       summary,
       body,
       tags,
+      departments,
       status,
       updatedAt: now,
       authorName: session.name || session.email || state.articles[index].authorName

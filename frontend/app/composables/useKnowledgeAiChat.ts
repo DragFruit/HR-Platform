@@ -66,7 +66,22 @@ export function useKnowledgeAiChat() {
 
     pending.value = true;
     try {
-      const answer = await answerQuestion(text);
+      const history = messages.value
+        .slice(0, -1)
+        .slice(-6)
+        .map((m) => {
+          if (m.from === 'user') {
+            return { role: 'user' as const, text: String(m.text || '') };
+          }
+          const text = (m.parts ?? [])
+            .filter((p) => p.type === 'text')
+            .map((p) => (p.type === 'text' ? p.value : ''))
+            .join('');
+          return { role: 'assistant' as const, text };
+        })
+        .filter((h) => h.text.trim());
+
+      const answer = await answerQuestion(text, history);
       messages.value.push({
         id: newId(),
         from: 'bot',

@@ -1,11 +1,13 @@
 import { requireRole } from '../../../utils/requireRole';
 import { mutateKnowledgeArticles, type KnowledgeArticle } from '../../../utils/knowledgeArticlesStore';
+import { normalizeDepartmentList } from '../../../utils/knowledgeAudience';
 
 type CreateArticleBody = {
   title?: string;
   summary?: string;
   body?: string;
   tags?: string[];
+  departments?: string[];
 };
 
 export default defineEventHandler(async (event) => {
@@ -19,6 +21,7 @@ export default defineEventHandler(async (event) => {
   const tags = Array.isArray(payload.tags)
     ? payload.tags.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];
+  const departments = normalizeDepartmentList(payload.departments);
 
   const plain = body.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 
@@ -32,12 +35,14 @@ export default defineEventHandler(async (event) => {
   const now = new Date().toISOString();
   let created: KnowledgeArticle | null = null;
   const next = await mutateKnowledgeArticles((state) => {
-    const article = {
+    const article: KnowledgeArticle = {
       id: `kb-${state.nextId}`,
       title,
       summary,
       body,
       tags,
+      breadcrumbs: [],
+      departments,
       status,
       createdAt: now,
       updatedAt: now,

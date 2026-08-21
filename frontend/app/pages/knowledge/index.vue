@@ -188,6 +188,17 @@
             class="kb-hit"
             role="listitem"
           >
+            <span class="kb-hit__depts">
+              <span
+                v-if="!hit.card.departments?.length"
+                class="kb-dept kb-dept--all"
+              >Всем</span>
+              <span
+                v-for="dept in hit.card.departments"
+                :key="dept"
+                class="kb-dept kb-dept--violet"
+              >{{ dept }}</span>
+            </span>
             <span class="kb-hit__title">
               <template v-for="(part, idx) in hit.titleParts" :key="`${hit.card.id}-${idx}`">
                 <mark v-if="part.hit">{{ part.text }}</mark>

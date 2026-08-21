@@ -11,7 +11,8 @@ export type AdminNotificationKind =
   | 'idea_submitted'
   | 'vpn_peer_delete_failed'
   | 'sales_best_pick_due'
-  | 'page_feedback';
+  | 'page_feedback'
+  | 'knowledge_ai_degraded';
 
 export type AdminNotification = {
   id: string;
@@ -362,6 +363,45 @@ export async function createPageFeedbackNotification(input: {
     stars: input.stars,
     comment: input.comment || '',
     page: input.page || '/knowledge',
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createKnowledgeAiDegradedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  error_message: string;
+  question?: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  // не спамим: если за последний час уже есть такое — обновим текст
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const recent = state.items.find(
+    (item) =>
+      item.kind === 'knowledge_ai_degraded' && new Date(item.created_at).getTime() >= hourAgo
+  );
+  if (recent) {
+    recent.error_message = input.error_message;
+    recent.employee_id = input.employee_id;
+    recent.employee_name = input.employee_name;
+    recent.admin_seen = false;
+    recent.created_at = new Date().toISOString();
+    await writeState(state);
+    return recent;
+  }
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'knowledge_ai_degraded',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    error_message: input.error_message,
+    page: '/knowledge',
+    comment: input.question ? input.question.slice(0, 200) : '',
     created_at: new Date().toISOString(),
     admin_seen: false
   };

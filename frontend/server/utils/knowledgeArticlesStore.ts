@@ -1,6 +1,7 @@
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
+import { resolveArticleDepartments } from './knowledgeAudience';
 
 export type KnowledgeArticleStatus = 'review' | 'published';
 
@@ -14,6 +15,10 @@ export type KnowledgeArticle = {
   body: string;
   tags: string[];
   breadcrumbs: string[];
+  /**
+   * Кому видна: [] = всей компании; иначе только эти отделы (как в employees.department).
+   */
+  departments: string[];
   status: KnowledgeArticleStatus;
   createdAt: string;
   updatedAt: string;
@@ -54,6 +59,8 @@ const normalizeArticle = (raw: Partial<KnowledgeArticle>): KnowledgeArticle | nu
   const authorName = String(raw.authorName || '').trim() || 'Администратор';
   const createdAt = String(raw.createdAt || '').trim() || toIso();
   const updatedAt = String(raw.updatedAt || '').trim() || createdAt;
+  const breadcrumbs = normalizeTags((raw as Record<string, unknown>).breadcrumbs);
+  const tags = normalizeTags(raw.tags);
 
   if (!title) return null;
 
@@ -62,8 +69,13 @@ const normalizeArticle = (raw: Partial<KnowledgeArticle>): KnowledgeArticle | nu
     title,
     summary,
     body,
-    tags: normalizeTags(raw.tags),
-    breadcrumbs: normalizeTags((raw as Record<string, unknown>).breadcrumbs),
+    tags,
+    breadcrumbs,
+    departments: resolveArticleDepartments({
+      departments: (raw as { departments?: unknown }).departments,
+      title,
+      breadcrumbs
+    }),
     status: normalizeStatus(raw.status),
     createdAt,
     updatedAt,

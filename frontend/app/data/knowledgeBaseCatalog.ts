@@ -4,8 +4,8 @@ export type KnowledgeCardTone = 'violet' | 'lime' | 'ink' | 'plum' | 'doc' | 'pl
 
 export type KnowledgeArticleType = 'regulation' | 'faq';
 
-/** Пока все сиды — всей компании. Отделы появятся на странице редактуры. */
-export type KnowledgeVisibility = 'all';
+/** all = всей компании; department = только перечисленные в departments. */
+export type KnowledgeVisibility = 'all' | 'department';
 
 export type KnowledgeCard = {
   id: string;
@@ -25,6 +25,8 @@ export type KnowledgeCard = {
   type?: KnowledgeArticleType;
   publishedAt?: string;
   visibility?: KnowledgeVisibility;
+  /** Отделы-аудитория; пусто = всем */
+  departments?: string[];
 };
 
 export const KNOWLEDGE_TYPE_LABEL: Record<KnowledgeArticleType, string> = {

@@ -15666,6 +15666,72 @@ button.button {
   border-bottom: 1px solid #111;
 }
 
+.kb-hit__depts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.kb-dept {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 2px solid #111;
+  background: #eeeee8;
+  color: #111;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: none;
+  box-shadow: 2px 2px 0 #111;
+}
+
+.kb-dept--all {
+  background: #ddf365;
+}
+
+.kb-dept--violet {
+  background: #7451f4;
+  color: #fff;
+}
+
+.kb-dept.is-on {
+  background: #7451f4;
+  color: #fff;
+}
+
+.kb-editor__audience {
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 2px solid #111;
+}
+
+.kb-editor__audience-legend {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.kb-editor__audience-hint {
+  margin: 4px 0 10px;
+  font-size: 0.85rem;
+}
+
+.kb-editor__audience-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kb-editor__audience-chips .kb-dept {
+  cursor: pointer;
+}
+
 .kb-hit:hover .kb-hit__title {
   color: #7451f4;
 }

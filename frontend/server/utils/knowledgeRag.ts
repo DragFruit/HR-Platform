@@ -6,10 +6,12 @@ import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticle
 import { lexicalScore, tokenizeForRag } from './knowledgeRagLexical';
 import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
 import {
+  ambiguousBranchesForQuestion,
   applySenseScoreAdjust,
-  dayoffAmbiguousBranches,
+  clearSenseForQuestion,
   type KnowledgeSense
 } from './knowledgeRagSense';
+import { canUserSeeArticle } from './knowledgeAudience';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
@@ -224,7 +226,13 @@ export async function retrieveKnowledgeByMeaning(
 /** Полный результат с флагом двусмысленности. */
 export async function retrieveKnowledgeDetailed(
   question: string,
-  opts?: { topArticles?: number; topChunks?: number; minScore?: number }
+  opts?: {
+    topArticles?: number;
+    topChunks?: number;
+    minScore?: number;
+    /** Фильтр по отделу сотрудника. */
+    viewer?: { role: string; department: string };
+  }
 ): Promise<KnowledgeRagRetrieveResult> {
   const q = question.trim();
   if (!q) return { hits: [], ambiguous: false, branches: [] };
@@ -238,31 +246,38 @@ export async function retrieveKnowledgeDetailed(
   }
   if (!index.chunks.length) return { hits: [], ambiguous: false, branches: [] };
 
+  const published = state.articles.filter((a) => a.status === 'published');
+  const visibleIds = new Set(
+    opts?.viewer
+      ? published.filter((a) => canUserSeeArticle(a.departments, opts.viewer!)).map((a) => a.id)
+      : published.map((a) => a.id)
+  );
+
   const plan = await buildRetrievalQueryPlan(q);
   const topChunks = opts?.topChunks ?? TOP_CHUNKS;
   const topArticles = opts?.topArticles ?? TOP_ARTICLES;
   const minSem = opts?.minScore ?? MIN_SEMANTIC;
   const lexTokens = tokenizeForRag(plan.lexicalQuery);
-  const publishedById = new Map(
-    state.articles.filter((a) => a.status === 'published').map((a) => [a.id, a])
-  );
+  const publishedById = new Map(published.map((a) => [a.id, a]));
+
+  const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
 
   const semByChunk = new Map<string, number>();
   for (const queryText of plan.queries) {
     const queryVector = await yandexEmbedText(queryText, 'query');
-    for (const chunk of index.chunks) {
+    for (const chunk of visibleChunks) {
       const s = cosineSimilarity(queryVector, chunk.embedding);
       const prev = semByChunk.get(chunk.id) ?? 0;
       if (s > prev) semByChunk.set(chunk.id, s);
     }
   }
 
-  const scored = index.chunks
+  const scored = visibleChunks
     .map((chunk) => {
       const sem = semByChunk.get(chunk.id) ?? 0;
       const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
       let combined = W_SEM * sem + W_LEX * lex;
-      combined = applySenseScoreAdjust(chunk.articleId, combined, plan.dayoffSense);
+      combined = applySenseScoreAdjust(chunk.articleId, combined, q);
       return { chunk, sem, lex, combined };
     })
     .filter((row) => row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED)
@@ -293,68 +308,39 @@ export async function retrieveKnowledgeDetailed(
 
   let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
 
-  /** При сомнении по дейоф — гарантируем обе ветки в выдаче. */
-  let ambiguous = plan.dayoffSense === 'ambiguous';
-  const branches: KnowledgeRagBranch[] = [];
-
-  if (plan.dayoffSense === 'ambiguous' || plan.dayoffSense === 'leave' || plan.dayoffSense === 'saas') {
-    const senseList =
-      plan.dayoffSense === 'ambiguous'
-        ? dayoffAmbiguousBranches()
-        : dayoffAmbiguousBranches().filter((s) =>
-            plan.dayoffSense === 'leave' ? s.id === 'dayoff-leave' : s.id === 'dayoff-saas'
-          );
-
-    for (const sense of senseList) {
-      const hit = pickSenseHit(hits, sense, publishedById, index.chunks, semByChunk);
-      if (hit) {
-        branches.push({ label: sense.label, hit });
-        if (!hits.some((h) => h.articleId === hit.articleId)) {
-          hits = [hit, ...hits];
-        }
-      }
-    }
-
-    if (plan.dayoffSense === 'ambiguous' && branches.length >= 2) {
-      ambiguous = true;
-      // В топ — по одной статье на смысл
-      hits = branches.map((b) => b.hit);
-    } else if (plan.dayoffSense !== 'ambiguous') {
-      ambiguous = false;
+  const clearSense = clearSenseForQuestion(q);
+  let ambiguousBranches = ambiguousBranchesForQuestion(q);
+  // если clear — только эта ветка в приоритете
+  if (clearSense) {
+    ambiguousBranches = [];
+    const hit = pickSenseHit(hits, clearSense, publishedById, visibleChunks, semByChunk);
+    if (hit && visibleIds.has(hit.articleId)) {
+      hits = [hit, ...hits.filter((h) => h.articleId !== hit.articleId)];
     }
   }
 
-  // Доп. эвристика: два топ-хита из разных dayoff-смыслов и близкие score → два ответа
-  if (!ambiguous && hits.length >= 2) {
-    const leaveIds = new Set(dayoffAmbiguousBranches().find((s) => s.id === 'dayoff-leave')?.articleIds ?? []);
-    const saasIds = new Set(dayoffAmbiguousBranches().find((s) => s.id === 'dayoff-saas')?.articleIds ?? []);
-    const a = hits[0]!;
-    const b = hits[1]!;
-    const aLeave = leaveIds.has(a.articleId);
-    const aSaas = saasIds.has(a.articleId);
-    const bLeave = leaveIds.has(b.articleId);
-    const bSaas = saasIds.has(b.articleId);
-    const cross = (aLeave && bSaas) || (aSaas && bLeave);
-    if (cross && Math.abs(a.score - b.score) < 0.12 && mentionsDayoffInQuestion(q)) {
-      ambiguous = true;
-      branches.length = 0;
-      branches.push(
-        { label: aLeave ? 'отгул' : 'систему DayOFFF', hit: a },
-        { label: bLeave ? 'отгул' : 'систему DayOFFF', hit: b }
-      );
-      hits = [a, b];
+  let ambiguous = ambiguousBranches.length >= 2;
+  const branches: KnowledgeRagBranch[] = [];
+
+  if (ambiguous) {
+    for (const sense of ambiguousBranches) {
+      const hit = pickSenseHit(hits, sense, publishedById, visibleChunks, semByChunk);
+      if (hit && visibleIds.has(hit.articleId)) {
+        branches.push({ label: sense.label, hit });
+      }
+    }
+    if (branches.length >= 2) {
+      hits = branches.map((b) => b.hit);
+    } else {
+      ambiguous = false;
     }
   }
 
   return {
     hits: hits.slice(0, ambiguous ? Math.max(2, topArticles) : topArticles),
     ambiguous,
-    branches: ambiguous ? branches.slice(0, 2) : []
+    branches: ambiguous ? branches.slice(0, 3) : []
   };
-}
-
-function mentionsDayoffInQuestion(q: string): boolean {
-  return /(day\s*offf?|dayofff?|дей\s*офф?|дейофф?)/i.test(q);
 }
 
 function pickSenseHit(
@@ -402,5 +388,40 @@ export function buildRagAmbiguousContext(branches: KnowledgeRagBranch[]): string
     return `Вариант ${idx + 1} — если вопрос про ${branch.label} (статья «${branch.hit.title}»):\n${limited}`;
   });
   return parts.join('\n\n');
+}
+
+/** Запасной подбор без эмбеддингов (если Yandex embeddings недоступны). */
+export async function retrieveKnowledgeLexicalFallback(
+  question: string,
+  opts?: { topArticles?: number; viewer?: { role: string; department: string } }
+): Promise<KnowledgeRagHit[]> {
+  const q = question.trim();
+  if (!q) return [];
+  const tokens = tokenizeForRag(q);
+  if (!tokens.length) return [];
+
+  const state = await readKnowledgeArticles();
+  const published = state.articles.filter((a) => a.status === 'published');
+  const visible = opts?.viewer
+    ? published.filter((a) => canUserSeeArticle(a.departments, opts.viewer!))
+    : published;
+
+  const scored = visible
+    .map((article) => {
+      const plain = `${article.title}\n${article.body}`.replace(/<[^>]+>/g, ' ');
+      const lex = lexicalScore(article.title, plain, tokens);
+      return {
+        articleId: article.id,
+        title: article.title,
+        score: lex,
+        lexicalScore: lex,
+        snippets: [plain.slice(0, 2000)]
+      } satisfies KnowledgeRagHit;
+    })
+    .filter((h) => h.score >= 0.25)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, opts?.topArticles ?? TOP_ARTICLES);
+
+  return scored;
 }
 

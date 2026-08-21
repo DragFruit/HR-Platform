@@ -6,6 +6,7 @@ export type AdminKnowledgeArticle = {
   summary: string;
   body: string;
   tags: string[];
+  departments: string[];
   status: AdminKnowledgeArticleStatus;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +22,7 @@ type UpsertInput = {
   summary: string;
   body: string;
   tags: string[];
+  departments: string[];
   status: AdminKnowledgeArticleStatus;
 };
 

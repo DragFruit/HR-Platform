@@ -6,7 +6,8 @@ export type AdminNotificationKind =
   | 'idea_submitted'
   | 'vpn_peer_delete_failed'
   | 'sales_best_pick_due'
-  | 'page_feedback';
+  | 'page_feedback'
+  | 'knowledge_ai_degraded';
 
 export type AdminNotification = {
   id: string;
@@ -112,6 +113,9 @@ export function useAdminNotifications() {
       const section = pageFeedbackLabel(item.page);
       return `Оценка «${section}»: ${item.stars ?? '—'}/5`;
     }
+    if (item.kind === 'knowledge_ai_degraded') {
+      return 'ИИ базы знаний: сбой Yandex';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
@@ -149,6 +153,14 @@ export function useAdminNotifications() {
         ? `${item.employee_name}: «${note}»`
         : `${item.employee_name} оценил(а) страницу, комментария нет.`;
     }
+    if (item.kind === 'knowledge_ai_degraded') {
+      const q = item.comment?.trim();
+      return (
+        `${item.employee_name}: помощник БЗ перешёл в упрощённый режим. ` +
+        `${item.error_message || 'Ошибка Yandex'}` +
+        (q ? ` Вопрос: «${q}».` : '')
+      );
+    }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
   };
@@ -174,6 +186,7 @@ export function useAdminNotifications() {
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
     if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
     if (item.kind === 'page_feedback') return pageFeedbackLabel(item.page);
+    if (item.kind === 'knowledge_ai_degraded') return 'База знаний';
     return 'Справочник';
   };
 
@@ -187,6 +200,7 @@ export function useAdminNotifications() {
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
     if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
     if (item.kind === 'page_feedback') return item.page || '/knowledge';
+    if (item.kind === 'knowledge_ai_degraded') return '/admin/knowledge';
     return '/admin/employees';
   };
 

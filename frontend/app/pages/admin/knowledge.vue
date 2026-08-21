@@ -35,6 +35,23 @@
           />
         </KnowledgeWysiwygEditor>
 
+        <fieldset class="kb-editor__audience">
+          <legend class="kb-editor__audience-legend">Видимость</legend>
+          <p class="muted kb-editor__audience-hint">Пусто = всей компании. Иначе — только выбранные отделы.</p>
+          <div class="kb-editor__audience-chips">
+            <button
+              v-for="dept in deptOptions"
+              :key="dept"
+              type="button"
+              class="kb-dept"
+              :class="{ 'is-on': form.departments.includes(dept), 'kb-dept--violet': form.departments.includes(dept) }"
+              @click="toggleDept(dept)"
+            >
+              {{ dept }}
+            </button>
+          </div>
+        </fieldset>
+
         <p v-if="errorText" class="gift-error">{{ errorText }}</p>
         <p v-if="okText" class="success-note">{{ okText }}</p>
       </form>
@@ -59,6 +76,12 @@
           <div class="kb-queue__main">
             <div class="kb-queue__meta">
               <span class="kb-editor__pill" :data-status="article.status">{{ statusLabel(article.status) }}</span>
+              <span
+                class="kb-dept"
+                :class="article.departments?.length ? 'kb-dept--violet' : 'kb-dept--all'"
+              >
+                {{ article.departments?.length ? article.departments.join(' · ') : 'Всем' }}
+              </span>
               <span class="kb-queue__date">{{ formatDateTime(article.updatedAt) }}</span>
             </div>
             <h3 class="kb-queue__title">{{ article.title }}</h3>
@@ -111,13 +134,33 @@ const form = reactive<{
   body: string;
   status: AdminKnowledgeArticleStatus;
   tags: string[];
+  departments: string[];
 }>({
   title: '',
   summary: '',
   body: '',
   status: 'review',
-  tags: []
+  tags: [],
+  departments: []
 });
+
+const deptOptions = [
+  'Digital',
+  'DEV',
+  'SEO / ORM',
+  'Отдел продаж',
+  'Маркетинг',
+  'Бухгалтерия',
+  'Дирекция',
+  'Внутренние проекты',
+  'HR'
+];
+
+const toggleDept = (dept: string) => {
+  const i = form.departments.indexOf(dept);
+  if (i >= 0) form.departments.splice(i, 1);
+  else form.departments.push(dept);
+};
 
 const bodyPlainText = (html: string) =>
   html
@@ -193,6 +236,7 @@ const blankForm = () => {
   form.body = '';
   form.status = 'review';
   form.tags = [];
+  form.departments = [];
 };
 
 const resetForm = () => {
@@ -211,6 +255,7 @@ const fillForm = (article: AdminKnowledgeArticle) => {
   form.body = article.body;
   form.status = article.status;
   form.tags = [...article.tags];
+  form.departments = [...(article.departments ?? [])];
   errorText.value = '';
   nextTick(resizeEditorFields);
 };
@@ -236,6 +281,7 @@ const articlePayload = (status: AdminKnowledgeArticleStatus) => ({
   summary: form.summary.trim(),
   body: sanitizeBody(form.body),
   tags: form.tags,
+  departments: [...form.departments],
   status
 });
 
@@ -282,6 +328,7 @@ const publishArticle = async (article: AdminKnowledgeArticle) => {
       summary: article.summary,
       body: article.body,
       tags: article.tags,
+      departments: article.departments ?? [],
       status: 'published'
     });
     if (editingId.value === article.id) fillForm(updated);

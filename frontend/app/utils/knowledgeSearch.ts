@@ -231,7 +231,7 @@ export function highlightTitle(title: string, parsed: ParsedKnowledgeQuery) {
 export function applyKnowledgeFilters(cards: KnowledgeCard[], filters: KnowledgeSearchFilters) {
   return cards.filter((card) => {
     if (card.tone === 'placeholder') return false;
-    if (card.visibility && card.visibility !== 'all') return false;
+    // visibility/departments уже отфильтрованы на сервере (/api/knowledge)
     if (filters.author && card.author !== filters.author) return false;
     if (filters.topic && card.category !== filters.topic) return false;
     if (filters.type && card.type !== filters.type) return false;

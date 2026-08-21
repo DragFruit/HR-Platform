@@ -7,6 +7,7 @@ type ApiArticle = {
   body: string;
   tags: string[];
   breadcrumbs?: string[];
+  departments?: string[];
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -25,7 +26,8 @@ const toCard = (a: ApiArticle): KnowledgeCard => ({
   tone: 'doc',
   type: 'regulation',
   publishedAt: a.updatedAt.slice(0, 10),
-  visibility: 'all',
+  visibility: a.departments?.length ? 'department' : 'all',
+  departments: a.departments ?? [],
   bodyHtml: a.body,
   breadcrumbs: a.breadcrumbs?.length ? a.breadcrumbs : undefined
 });

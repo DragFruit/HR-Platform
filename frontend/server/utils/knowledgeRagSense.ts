@@ -1,89 +1,171 @@
 /**
  * Разрешение двусмысленных внутренних терминов по ОБЩЕМУ смыслу вопроса.
- * Пример: «дейоф» = и отгул (разговорно), и SaaS DayOFFF.
  */
 
-export type KnowledgeSenseId = 'dayoff-leave' | 'dayoff-saas';
-
 export type KnowledgeSense = {
-  id: KnowledgeSenseId;
-  /** Короткая подпись для «двух ответов». */
+  id: string;
   label: string;
   articleIds: string[];
 };
 
-/** Известные «столкновения» смыслов. */
-export const KNOWLEDGE_SENSES: KnowledgeSense[] = [
+type CollisionGroup = {
+  id: string;
+  /** Термин-омоним в вопросе. */
+  term: RegExp;
+  senses: KnowledgeSense[];
+  /** Сигналы → id sense. */
+  signals: { senseId: string; re: RegExp }[];
+};
+
+const COLLISIONS: CollisionGroup[] = [
   {
-    id: 'dayoff-leave',
-    label: 'отгул',
-    articleIds: ['kb-30077']
+    id: 'dayoff',
+    term: /(day\s*offf?|dayofff?|дей\s*офф?|дейофф?)/i,
+    senses: [
+      { id: 'dayoff-leave', label: 'отгул', articleIds: ['kb-30077'] },
+      { id: 'dayoff-saas', label: 'систему DayOFFF', articleIds: ['kb-27877'] }
+    ],
+    signals: [
+      {
+        senseId: 'dayoff-leave',
+        re: /(взять|оформить|оформлен|отгул|отпроси|выходн|день\s+отдых)/i
+      },
+      {
+        senseId: 'dayoff-saas',
+        re: /(войти|вход|логин|авториз|парол|система|dayofff\.ru|проект(ы|ов)?|подключ|crm|ppc|smm)/i
+      }
+    ]
   },
   {
-    id: 'dayoff-saas',
-    label: 'систему DayOFFF',
-    articleIds: ['kb-27877']
+    id: 'access',
+    term: /доступ/i,
+    senses: [
+      { id: 'access-afina', label: 'доступы к AFINA CRM', articleIds: ['kb-20520'] },
+      { id: 'access-guest', label: 'гостевые доступы VBI', articleIds: ['kb-29864'] },
+      {
+        id: 'access-sales',
+        label: 'доступы отдела продаж (Директ / ВК)',
+        articleIds: ['kb-25590']
+      }
+    ],
+    signals: [
+      { senseId: 'access-afina', re: /(afina|афин|crm)/i },
+      { senseId: 'access-guest', re: /гостев/i },
+      { senseId: 'access-sales', re: /(продаж|директ|google\s*ads|таргет|вк\b|вкр|calltouch)/i }
+    ]
+  },
+  {
+    id: 'vacation-dept',
+    term: /отпуск/i,
+    senses: [
+      { id: 'vac-digital', label: 'отпуск в Digital', articleIds: ['kb-21301'] },
+      { id: 'vac-seo', label: 'отпуск в SEO/SERM', articleIds: ['kb-24611'] }
+    ],
+    signals: [
+      { senseId: 'vac-digital', re: /(digital|диджитал)/i },
+      { senseId: 'vac-seo', re: /(seo|serm|orm)/i }
+    ]
   }
 ];
 
-const DAYOFF_TERM_RE = /(day\s*offf?|dayofff?|дей\s*офф?|дейофф?)/i;
+export type SenseResolution =
+  | { kind: 'none' }
+  | { kind: 'clear'; groupId: string; sense: KnowledgeSense }
+  | { kind: 'ambiguous'; groupId: string; senses: KnowledgeSense[] };
 
-const LEAVE_SIGNAL_RE =
-  /(взять|оформить|оформлен|отгул|отпроси|выходн|день\s+отдых|взять\s+день)/i;
+/** Разрешить омоним по общему смыслу вопроса (первый сработавший collision). */
+export function resolveQuestionSense(question: string): SenseResolution {
+  const q = question.trim();
+  if (!q) return { kind: 'none' };
 
-const SAAS_SIGNAL_RE =
-  /(войти|вход|логин|авториз|парол|система|dayofff\.ru|проект(ы|ов)?|подключ|crm|ppc|smm)/i;
+  for (const group of COLLISIONS) {
+    if (!group.term.test(q)) continue;
+    const matched = group.signals.filter((s) => s.re.test(q)).map((s) => s.senseId);
+    const unique = [...new Set(matched)];
+    if (unique.length === 1) {
+      const sense = group.senses.find((s) => s.id === unique[0]);
+      if (sense) return { kind: 'clear', groupId: group.id, sense };
+    }
+    if (unique.length > 1) {
+      return { kind: 'ambiguous', groupId: group.id, senses: [...group.senses] };
+    }
+    // нет сигнала: для отпуска / доступов — не форсируем «два ответа» (сработает фильтр отдела / обычный RAG)
+    if (group.id === 'vacation-dept') return { kind: 'none' };
+    if (group.id === 'access') {
+      // «доступы» без уточнения — два самых частых смысла
+      return {
+        kind: 'ambiguous',
+        groupId: group.id,
+        senses: group.senses.filter((s) => s.id === 'access-afina' || s.id === 'access-guest')
+      };
+    }
+    if (group.id === 'dayoff') {
+      return { kind: 'ambiguous', groupId: group.id, senses: [...group.senses] };
+    }
+  }
+  return { kind: 'none' };
+}
 
+/** @deprecated совместимость с dayoff-only API */
 export type DayoffSenseGuess = 'leave' | 'saas' | 'ambiguous' | 'none';
 
-/** Есть ли в вопросе двусмысленный «дейоф / day off». */
-export function mentionsDayoffTerm(question: string): boolean {
-  return DAYOFF_TERM_RE.test(question);
-}
-
-/**
- * По общему смыслу вопроса: отгул, SaaS или сомнение.
- * Без термина дейоф → none (обычный поиск).
- */
 export function guessDayoffSense(question: string): DayoffSenseGuess {
-  if (!mentionsDayoffTerm(question)) return 'none';
-  const leave = LEAVE_SIGNAL_RE.test(question);
-  const saas = SAAS_SIGNAL_RE.test(question);
-  if (leave && !saas) return 'leave';
-  if (saas && !leave) return 'saas';
-  return 'ambiguous';
+  const r = resolveQuestionSense(question);
+  if (r.kind === 'none') return 'none';
+  if (r.kind === 'ambiguous' && r.groupId === 'dayoff') return 'ambiguous';
+  if (r.kind === 'clear' && r.groupId === 'dayoff') {
+    return r.sense.id === 'dayoff-leave' ? 'leave' : 'saas';
+  }
+  // другой collision — для dayoff-specific expand не трогаем
+  return 'none';
 }
 
-export function senseByGuess(guess: DayoffSenseGuess): KnowledgeSense | null {
-  if (guess === 'leave') return KNOWLEDGE_SENSES.find((s) => s.id === 'dayoff-leave') ?? null;
-  if (guess === 'saas') return KNOWLEDGE_SENSES.find((s) => s.id === 'dayoff-saas') ?? null;
-  return null;
-}
-
-/** Обе ветки для режима «два ответа». */
 export function dayoffAmbiguousBranches(): KnowledgeSense[] {
-  return [...KNOWLEDGE_SENSES];
+  return COLLISIONS.find((c) => c.id === 'dayoff')?.senses ?? [];
 }
 
-/**
- * Буст/штраф score статьи по угаданному смыслу.
- * clear leave → +leave articles, −saas (и наоборот).
- */
 export function applySenseScoreAdjust(
   articleId: string,
   baseScore: number,
-  guess: DayoffSenseGuess
+  question: string
 ): number {
-  if (guess === 'none' || guess === 'ambiguous') return baseScore;
-  const leaveIds = new Set(KNOWLEDGE_SENSES.find((s) => s.id === 'dayoff-leave')?.articleIds ?? []);
-  const saasIds = new Set(KNOWLEDGE_SENSES.find((s) => s.id === 'dayoff-saas')?.articleIds ?? []);
-  if (guess === 'leave') {
-    if (leaveIds.has(articleId)) return baseScore + 0.22;
-    if (saasIds.has(articleId)) return baseScore - 0.2;
-  }
-  if (guess === 'saas') {
-    if (saasIds.has(articleId)) return baseScore + 0.22;
-    if (leaveIds.has(articleId)) return baseScore - 0.2;
-  }
+  const r = resolveQuestionSense(question);
+  if (r.kind !== 'clear') return baseScore;
+  const boostIds = new Set(r.sense.articleIds);
+  const allIds = new Set(COLLISIONS.find((c) => c.id === r.groupId)?.senses.flatMap((s) => s.articleIds) ?? []);
+  if (boostIds.has(articleId)) return baseScore + 0.22;
+  if (allIds.has(articleId)) return baseScore - 0.2;
   return baseScore;
 }
+
+export function ambiguousBranchesForQuestion(question: string): KnowledgeSense[] {
+  const r = resolveQuestionSense(question);
+  if (r.kind === 'ambiguous') return r.senses;
+  return [];
+}
+
+export function clearSenseForQuestion(question: string): KnowledgeSense | null {
+  const r = resolveQuestionSense(question);
+  return r.kind === 'clear' ? r.sense : null;
+}
+
+/** Описание известных кейсов для доков / ответа заказчику. */
+export const KNOWN_SENSE_CASES_DOC = [
+  {
+    term: 'дейоф / day off',
+    examples: ['взять дейоф → отгул', 'войти в дейоф → SaaS DayOFFF', 'что такое дейоф → два ответа']
+  },
+  {
+    term: 'доступ / доступы',
+    examples: [
+      'доступы AFINA → CRM',
+      'гостевые доступы → kb гостевые',
+      'доступы директ/ВК → отдел продаж',
+      'просто «доступы» → несколько вариантов'
+    ]
+  },
+  {
+    term: 'отпуск',
+    examples: ['отпуск digital → регламент Digital', 'отпуск SEO → SEO/SERM', 'просто «отпуск» → два ответа (пока нет фильтра по отделу юзера в sense)']
+  }
+];
