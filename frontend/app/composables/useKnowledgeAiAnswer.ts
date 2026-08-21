@@ -123,7 +123,7 @@ export function useKnowledgeAiAnswer() {
         const mode =
           resp.intent === 'offtopic' || resp.intent === 'not_found'
             ? resp.intent
-            : emptyKbReplyMode(question);
+            : emptyKbReplyMode(question, history);
         if (mode === 'offtopic') {
           return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
         }
@@ -139,7 +139,10 @@ export function useKnowledgeAiAnswer() {
       }
 
       // Модель иногда клеит CTA про статьи на оффтоп — срезаем
-      if (/дописать стать|написать HR|Админ\s*→\s*База/i.test(rawAnswer) && emptyKbReplyMode(question) === 'offtopic') {
+      if (
+        /дописать стать|написать HR|Админ\s*→\s*База/i.test(rawAnswer) &&
+        emptyKbReplyMode(question, history) === 'offtopic'
+      ) {
         return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
       }
 

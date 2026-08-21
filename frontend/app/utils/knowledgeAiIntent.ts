@@ -92,11 +92,58 @@ export function looksLikeWorkplaceKbQuestion(raw: string): boolean {
   return WORKPLACE_HINT_RE.test(raw.trim());
 }
 
+/** Уточнения в диалоге: «а ещё?», «подробнее», «а если…» — не оффтоп сами по себе. */
+const CLARIFY_FOLLOWUP_RE =
+  /^(а\s+)?(ещ[её]|там|тут|если|ну)\b|^(какие\s+)?ещ[её]|подробнее|что\s+ещ[её]|какие\s+ещ[её]|а\s+что|а\s+как|а\s+где|продолж|уточн|а\s+кроме|кроме\s+этого/i;
+
+export function isKbClarifyingFollowUp(raw: string): boolean {
+  const t = raw.trim().replace(/\s+/g, ' ');
+  if (!t || t.length > 96) return false;
+  if (t.split(/\s+/).length > 14) return false;
+  if (CLARIFY_FOLLOWUP_RE.test(t)) return true;
+  // короткие «а …?» после рабочего ответа
+  return /^а\s+.+\?$/iu.test(t) && t.length <= 64;
+}
+
+export function historySuggestsWorkplace(
+  history: { role?: string; text?: string }[] | undefined
+): boolean {
+  if (!Array.isArray(history) || !history.length) return false;
+  return history.some((h) => looksLikeWorkplaceKbQuestion(String(h?.text || '')));
+}
+
+/**
+ * Для поиска: уточнение склеиваем с последним рабочим вопросом из истории.
+ */
+export function expandQuestionFromHistory(
+  question: string,
+  history: { role?: string; text?: string }[] | undefined
+): string {
+  const q = question.trim();
+  if (!q || !isKbClarifyingFollowUp(q) || !Array.isArray(history) || !history.length) {
+    return q;
+  }
+  const users = history
+    .filter((h) => (h?.role === 'user' || !h?.role) && String(h?.text || '').trim())
+    .map((h) => String(h.text).trim());
+  const lastWork = [...users].reverse().find((t) => looksLikeWorkplaceKbQuestion(t));
+  const base = lastWork || users[users.length - 1];
+  if (!base || base === q) return q;
+  return `${base}\nУточнение: ${q}`;
+}
+
 /**
  * Пустой поиск: оффтоп / не похоже на работу → отказ без «допишите статью»;
  * иначе короткий not_found без CTA.
+ * Уточнения при рабочей истории — не оффтоп.
  */
-export function emptyKbReplyMode(question: string): 'offtopic' | 'not_found' {
+export function emptyKbReplyMode(
+  question: string,
+  history: { role?: string; text?: string }[] = []
+): 'offtopic' | 'not_found' {
+  if (isKbClarifyingFollowUp(question) && historySuggestsWorkplace(history)) {
+    return 'not_found';
+  }
   if (detectKbAiOfftopic(question)) return 'offtopic';
   if (!looksLikeWorkplaceKbQuestion(question)) return 'offtopic';
   return 'not_found';

@@ -2,6 +2,7 @@ import { requireRole } from '../../utils/requireRole';
 import { createKnowledgeAiDegradedNotification } from '../../utils/adminNotificationsStore';
 import {
   emptyKbReplyMode,
+  expandQuestionFromHistory,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY
 } from '../../../app/utils/knowledgeAiIntent';
@@ -56,9 +57,11 @@ export default defineEventHandler(async (event) => {
 
   const history = normalizeHistory(payload.history);
   const viewer = { role: session.role, department: session.department };
+  /** Для RAG: уточнение + предыдущий рабочий вопрос. */
+  const retrievalQuestion = expandQuestionFromHistory(question, history);
 
-  // Нерабочее — сразу отказ, без embeddings и без «допишите статью»
-  if (emptyKbReplyMode(question) === 'offtopic') {
+  // Нерабочее — сразу отказ (уточнения при рабочей истории не режем)
+  if (emptyKbReplyMode(question, history) === 'offtopic') {
     return {
       answer: KB_AI_OFFTOPIC_REPLY,
       citations: [] as YandexAskCitation[],
@@ -84,9 +87,9 @@ export default defineEventHandler(async (event) => {
   };
 
   try {
-    const retrieved = await retrieveKnowledgeDetailed(question, { viewer });
+    const retrieved = await retrieveKnowledgeDetailed(retrievalQuestion, { viewer });
     if (!retrieved.hits.length) {
-      const mode = emptyKbReplyMode(question);
+      const mode = emptyKbReplyMode(question, history);
       return {
         answer: mode === 'offtopic' ? KB_AI_OFFTOPIC_REPLY : KB_AI_NOT_FOUND_REPLY,
         citations: [] as YandexAskCitation[],
@@ -123,7 +126,7 @@ export default defineEventHandler(async (event) => {
     await alertAdmin(err);
 
     try {
-      const lexHits = await retrieveKnowledgeLexicalFallback(question, { viewer });
+      const lexHits = await retrieveKnowledgeLexicalFallback(retrievalQuestion, { viewer });
       if (!lexHits.length) {
         return {
           answer: `${SMOKE_PREFIX}Сейчас не удалось подобрать материалы. Попробуйте чуть позже или вкладку «Поиск».`,
