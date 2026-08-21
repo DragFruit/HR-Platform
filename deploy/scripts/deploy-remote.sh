@@ -205,4 +205,17 @@ echo "→ права на server/data (процесс deploy пишет atomic t
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
 
+RAG_SCRIPT="${ROOT}/deploy/scripts/run-knowledge-rag-reindex.sh"
+if [[ -f "${RAG_SCRIPT}" ]]; then
+  echo "→ установка run-knowledge-rag-reindex.sh + прогрев RAG"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${RAG_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-knowledge-rag-reindex.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-knowledge-rag-reindex.sh'"
+  # staging → 3301, production → 3300 (как в systemd unit)
+  NITRO_PORT_DEFAULT=3300
+  if [[ "$ENV" == "staging" ]]; then NITRO_PORT_DEFAULT=3301; fi
+  sleep 3
+  "${SSH_CMD[@]}" "${REMOTE}" "cd '${DEPLOY_PATH}' && export NITRO_PORT='${NITRO_PORT_DEFAULT}' && bash deploy-scripts/run-knowledge-rag-reindex.sh" || true
+fi
+
 echo "✓ Готово: ${ENV} на ${DEPLOY_HOST}"

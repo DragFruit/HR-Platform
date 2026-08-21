@@ -208,10 +208,19 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 **Причина без bridge (подтверждено 2026-07-15):** REST `im.notify.system.add` идёт как **неопознанный** тип. В расширенных настройках без галки «Неопознанные» колокольчик молчит; с галкой часто включается лишний шум (чаты/задачи).
 
-**Правильное решение:** мост `vbihr|vacation` (см. выше). Временный обход: галка «Неопознанные» + точечно выключить SMS чатов/задач.
+**Правильное решение (если когда‑нибудь разрешат правки портала):** мост `vbihr|vacation`.  
+**Сейчас правки на crm.vbi.ru запрещены** — мост/PHP не ставим. Обход без портала: колокольчик **в Vibe** у согласующего + алерт админу при FAIL Bitrix. Галка «Неопознанные» на портале — тоже правка учётки, не делаем сами.
 
 Отчёт прогона: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.  
-CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/`.
+CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/` (архив на случай разрешения).
+
+### Вход логин/пароль (без PHP на портале)
+
+Форма на Vibe → сервер вызывает уже существующий `POST {портал}/oauth/token/` с `grant_type=password` и ключами приложения «VBI HR Platform» → выставляет cookie-сессию Vibe. Код/модули на crm.vbi.ru **не трогаем**.
+
+Если портал отвечает `unsupported_grant_type` — password grant для локального приложения недоступен; остаётся только OAuth-редирект «Войти через Битрикс24». Выключить форму: `BITRIX_PASSWORD_LOGIN=0`.
+
+Код: `POST /api/auth/bitrix-password`, `exchangeBitrixPassword` в `bitrixClient.ts`.
 
 ### Отпуска → график отсутствий (пальма) + календарь
 

@@ -1,5 +1,6 @@
 type AuthConfig = {
   bitrixAuthEnabled: boolean;
+  bitrixPasswordLoginEnabled?: boolean;
   oauthMisconfigured?: boolean;
   oauthMisconfiguredHint?: string;
 };
@@ -13,6 +14,9 @@ export function useBitrixAuthConfig() {
   });
 
   const bitrixAuthEnabled = computed(() => data.value?.bitrixAuthEnabled === true);
+  const bitrixPasswordLoginEnabled = computed(
+    () => data.value?.bitrixPasswordLoginEnabled === true
+  );
   const configReady = computed(() => status.value !== 'pending');
   const oauthMisconfigured = computed(() => data.value?.oauthMisconfigured === true);
   const oauthMisconfiguredHint = computed(() => data.value?.oauthMisconfiguredHint ?? '');
@@ -23,6 +27,7 @@ export function useBitrixAuthConfig() {
 
   return {
     bitrixAuthEnabled,
+    bitrixPasswordLoginEnabled,
     configReady,
     preferBitrixLogin,
     oauthMisconfigured,

@@ -78,6 +78,56 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
   return data;
 }
 
+/**
+ * Вход логин/пароль портала без редиректа и без PHP на коробке.
+ * Только HTTP к уже существующему /oauth/token/ (правки Bitrix не нужны).
+ * Если портал не отдаёт grant_type=password — вернётся понятная ошибка.
+ */
+export async function exchangeBitrixPassword(
+  username: string,
+  password: string
+): Promise<BitrixTokenResponse> {
+  const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    client_id: bitrixClientId,
+    client_secret: bitrixClientSecret,
+    username: username.trim(),
+    password
+  });
+
+  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+
+  const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
+  if (!response.ok || !data.access_token) {
+    const err = String(data.error || '');
+    const desc = String(data.error_description || data.error || `HTTP ${response.status}`);
+    if (err === 'unsupported_grant_type' || /unsupported_grant_type/i.test(desc)) {
+      throw createError({
+        statusCode: 501,
+        statusMessage:
+          'Портал Bitrix не принимает вход по паролю для этого приложения (grant_type=password). ' +
+          'Без правок на crm.vbi.ru остаётся только «Войти через Битрикс24».'
+      });
+    }
+    if (err === 'invalid_grant' || /invalid_grant|wrong/i.test(desc)) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Неверный логин или пароль Bitrix'
+      });
+    }
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth password: ${desc}`)
+    });
+  }
+  return data;
+}
+
 export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTokenResponse> {
   const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
   const body = new URLSearchParams({

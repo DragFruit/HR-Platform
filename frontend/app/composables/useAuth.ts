@@ -224,6 +224,42 @@ export function useAuth() {
     window.location.href = '/api/auth/bitrix';
   };
 
+  /** Логин/пароль портала → сессия Vibe (без редиректа в UI Bitrix). */
+  const loginWithBitrixPassword = async (loginValue: string, password: string) => {
+    try {
+      const res = await $fetch<{ ok: boolean; user: AuthSessionUser }>('/api/auth/bitrix-password', {
+        method: 'POST',
+        body: { login: loginValue.trim(), password }
+      });
+      user.value = res.user;
+    } catch (err: unknown) {
+      const fetchErr = err as {
+        data?: { statusMessage?: string; message?: string };
+        statusMessage?: string;
+        message?: string;
+      };
+      const msg =
+        fetchErr.data?.statusMessage ||
+        fetchErr.data?.message ||
+        fetchErr.statusMessage ||
+        fetchErr.message ||
+        'Неверный логин или пароль Bitrix';
+      return { ok: false as const, error: String(msg) };
+    }
+
+    const sessionUser = user.value!;
+    if (import.meta.client) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      syncOnboardingState(sessionUser.id);
+    }
+
+    return {
+      ok: true as const,
+      user: sessionUser,
+      isFirstLogin: showOnboarding.value
+    };
+  };
+
   const login = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const found = credentials.find(
@@ -313,6 +349,7 @@ export function useAuth() {
     restoreSession,
     login,
     loginWithBitrix,
+    loginWithBitrixPassword,
     logout,
     finishOnboarding,
     demoAccounts

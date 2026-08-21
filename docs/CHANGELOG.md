@@ -4,6 +4,14 @@
 
 ## 2026-08-21
 
+### Вход логин/пароль Bitrix без правок портала + авто-RAG после деплоя
+
+- Форма на экране входа → `POST /api/auth/bitrix-password` → OAuth `grant_type=password` на уже существующий `/oauth/token/` → cookie-сессия **Vibe** (без PHP/модулей на crm.vbi.ru).
+- Если портал не отдаёт password grant — кнопка «Войти через Битрикс24» остаётся; выключить форму: `BITRIX_PASSWORD_LOGIN=0`.
+- После деплоя: Nitro warm-plugin + `deploy-scripts/run-knowledge-rag-reindex.sh` (CRON_SECRET, localhost).
+- Cron/imbot stub остаются «открытыми» осознанно: cron — секрет + обычно loopback; imbot — Bitrix бьёт в URL без cookie Vibe.
+- Колокольчик у ~11 учёток: без правок портала / моста не чинится; в Vibe уведомление есть, админу — алерт при FAIL.
+
 ### База знаний: явный ответ «нет в базе» + приглашение дописать
 
 - Не путать с offtopic (погода/шутки). Текст предлагает дописать статью или написать HR.

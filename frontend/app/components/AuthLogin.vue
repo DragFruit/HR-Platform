@@ -8,7 +8,7 @@
         <p class="muted">
           {{
             showBitrixLogin
-              ? 'Войдите через корпоративный портал Битрикс24'
+              ? 'Войдите логином Bitrix или через портал'
               : 'Войдите, чтобы начать работу в платформе'
           }}
         </p>
@@ -18,8 +18,46 @@
         <p v-if="oauthMisconfigured && oauthMisconfiguredHint" class="gift-error auth-oauth-misconfig">
           {{ oauthMisconfiguredHint }}
         </p>
+
+        <template v-if="showBitrixPasswordForm">
+          <form class="auth-form auth-form--password" @submit.prevent="submitBitrixPassword">
+            <label class="gift-field">
+              <span>Логин или email Bitrix</span>
+              <input
+                v-model="email"
+                class="org-input"
+                type="text"
+                autocomplete="username"
+                placeholder="ivanov или name@vbi.ru"
+                required
+              />
+            </label>
+
+            <label class="gift-field">
+              <span>Пароль Bitrix</span>
+              <input
+                v-model="password"
+                class="org-input"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Пароль портала"
+                required
+              />
+            </label>
+
+            <button class="button primary auth-submit" type="submit" :disabled="loading">
+              {{ loading ? 'Входим...' : 'Войти' }}
+            </button>
+          </form>
+
+          <div class="auth-divider" role="separator">
+            <span>или</span>
+          </div>
+        </template>
+
         <button
-          class="button primary auth-submit"
+          class="button auth-submit"
+          :class="showBitrixPasswordForm ? '' : 'primary'"
           type="button"
           :disabled="oauthMisconfigured"
           @click="goBitrixLogin"
@@ -82,12 +120,21 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const { isDevelopment } = useAppEnv();
-const { login, demoAccounts } = useAuth();
+const { login, loginWithBitrixPassword, demoAccounts } = useAuth();
 const BITRIX_LOGIN_PATH = '/api/auth/bitrix';
 
-const { configReady, preferBitrixLogin, oauthMisconfigured, oauthMisconfiguredHint } = useBitrixAuthConfig();
+const {
+  configReady,
+  preferBitrixLogin,
+  bitrixPasswordLoginEnabled,
+  oauthMisconfigured,
+  oauthMisconfiguredHint
+} = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
+const showBitrixPasswordForm = computed(
+  () => showBitrixLogin.value && bitrixPasswordLoginEnabled.value && !oauthMisconfigured.value
+);
 const showDemoLogin = computed(() => {
   if (!isDevelopment.value) return false;
   if (!configReady.value && preferBitrixLogin.value) return false;
@@ -125,6 +172,18 @@ const goBitrixLogin = () => {
   window.location.href = BITRIX_LOGIN_PATH;
 };
 
+const submitBitrixPassword = async () => {
+  error.value = '';
+  loading.value = true;
+  const result = await loginWithBitrixPassword(email.value, password.value);
+  loading.value = false;
+  if (!result.ok) {
+    error.value = result.error;
+    return;
+  }
+  emit('success');
+};
+
 const submit = async () => {
   error.value = '';
   loading.value = true;
@@ -148,6 +207,10 @@ const submit = async () => {
   margin: 0 0 12px;
   line-height: 1.45;
   font-size: 0.86rem;
+}
+
+.auth-form--password {
+  margin-bottom: 0;
 }
 
 .auth-divider {
