@@ -178,3 +178,66 @@ export async function yandexChatAnswer(
   return typeof textOut === 'string' ? textOut.trim() : '';
 }
 
+/**
+ * Двусмысленный вопрос: два коротких ответа по двум блокам контекста.
+ */
+export async function yandexChatAnswerAmbiguous(
+  question: string,
+  contextText: string,
+  opts?: { maxTokens?: number; temperature?: number }
+) {
+  const config = readConfig();
+  const q = question.trim();
+  if (!q) return '';
+
+  const maxChars = 12000;
+  const ctx = contextText.trim();
+  const safeCtx = ctx.length > maxChars ? `${ctx.slice(0, maxChars)}\n\n[обрезано для лимитов]` : ctx;
+  const maxTokens = typeof opts?.maxTokens === 'number' ? opts.maxTokens : 1000;
+  const temperature = typeof opts?.temperature === 'number' ? opts.temperature : 0.2;
+
+  const system = [
+    'Ты ассистент базы знаний VBI HR.',
+    'Вопрос сотрудника двусмысленный: подходит под ДВЕ разные темы из контекста.',
+    'Не выбирай один вариант сам. Дай ДВА коротких ответа по делу:',
+    '1) Если про …: …',
+    '2) Если про …: …',
+    'В конце одной строкой: «Уточните, какой вариант имелся в виду.»',
+    'Только по контексту, без выдумок. Без markdown. Без ссылок «Ещё по теме».'
+  ].join('\n');
+
+  const user = `Сообщение пользователя: ${q}\n\nКонтекст (два варианта):\n${safeCtx}\n\nОтвет:`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-folder-id': config.folderId
+  };
+  if (config.apiKey) headers.Authorization = `Api-Key ${config.apiKey}`;
+  else headers.Authorization = `Bearer ${config.iamToken}`;
+
+  const res = await fetch(YANDEX_COMPLETION_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      modelUri: config.modelUri,
+      completionOptions: { stream: false, temperature, maxTokens },
+      messages: [
+        { role: 'system', text: system },
+        { role: 'user', text: user }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '');
+    throw createError({
+      statusCode: 502,
+      statusMessage: `Yandex GPT chat: HTTP ${res.status}. ${raw ? `Body: ${raw.slice(0, 300)}` : ''}`
+    });
+  }
+
+  const json = await res.json();
+  const textOut = json?.result?.alternatives?.[0]?.message?.text;
+  return typeof textOut === 'string' ? textOut.trim() : '';
+}
+

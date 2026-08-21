@@ -57,9 +57,8 @@ const STOP = new Set([
 
 /** Пары/группы близких формулировок (осторожное расширение, без смены темы). */
 const SYNONYM_GROUPS: string[][] = [
-  // Внутренний SaaS DayOFFF (dayofff.ru) — НЕ путать с отгулом
-  ['dayoff', 'day off', 'dayofff', 'дейофф', 'дейоф', 'дей офф', 'дей оф'],
-  // Отгул — отдельная тема (регламент оформления отгулов)
+  // Написание SaaS (без «отгул» — смысл вопроса разбирает knowledgeRagSense)
+  ['dayofff', 'day offf', 'дейофф', 'дей офф'],
   ['отгул', 'отгулы', 'оформления отгулов'],
   ['afina', 'афина', 'афину', 'афине'],
   ['vpn', 'впн'],
@@ -68,6 +67,21 @@ const SYNONYM_GROUPS: string[][] = [
   ['пароль', 'пароля', 'логин'],
   ['регламент отпуска', 'ухода в отпуск', 'правила отпуска']
 ];
+
+/**
+ * Расширение под двусмысленный «дейоф»:
+ * - «взять дейоф» → +отгул
+ * - «войти в дейоф» → +dayofff / система
+ * - неясно → оба направления, чтобы retrieval увидел оба смысла
+ */
+export function expandDayoffBySense(question: string, guess: 'leave' | 'saas' | 'ambiguous' | 'none'): string {
+  const q = question.trim();
+  if (!q || guess === 'none') return q;
+  if (guess === 'leave') return `${q} отгул оформить отгул`.replace(/\s+/g, ' ').trim();
+  if (guess === 'saas') return `${q} dayofff система DayOFFF авторизация`.replace(/\s+/g, ' ').trim();
+  // ambiguous: оба якоря в поисковой строке
+  return `${q} отгул dayofff система DayOFFF`.replace(/\s+/g, ' ').trim();
+}
 
 export function tokenizeForRag(text: string): string[] {
   return String(text || '')

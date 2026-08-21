@@ -1,6 +1,10 @@
 import { requireRole } from '../../utils/requireRole';
-import { yandexChatAnswer } from '../../utils/yandexGpt';
-import { buildRagContext, retrieveKnowledgeByMeaning } from '../../utils/knowledgeRag';
+import { yandexChatAnswer, yandexChatAnswerAmbiguous } from '../../utils/yandexGpt';
+import {
+  buildRagAmbiguousContext,
+  buildRagContext,
+  retrieveKnowledgeDetailed
+} from '../../utils/knowledgeRag';
 
 type Body = {
   question?: string;
@@ -14,8 +18,7 @@ export type YandexAskCitation = {
 };
 
 /**
- * Спросить ИИ: подбор статей по смыслу на сервере → ответ модели.
- * Клиент шлёт только вопрос.
+ * Спросить ИИ: подбор по общему смыслу; при сомнении — два ответа.
  */
 export default defineEventHandler(async (event) => {
   await requireRole(event, ['employee', 'manager', 'hr', 'admin']);
@@ -27,23 +30,33 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'question слишком длинный (макс. 2000)' });
   }
 
-  const hits = await retrieveKnowledgeByMeaning(question);
-  if (!hits.length) {
+  const retrieved = await retrieveKnowledgeDetailed(question);
+  if (!retrieved.hits.length) {
     return {
       answer:
         'В базе знаний не нашлось подходящих материалов по этому вопросу. Попробуйте переформулировать или откройте вкладку «Поиск».',
       citations: [] as YandexAskCitation[],
-      found: false
+      found: false,
+      ambiguous: false
     };
   }
 
-  const context = buildRagContext(hits);
-  const answer = await yandexChatAnswer(question, context);
-  const citations: YandexAskCitation[] = hits.map((h) => ({ id: h.articleId, title: h.title }));
+  if (retrieved.ambiguous && retrieved.branches.length >= 2) {
+    const context = buildRagAmbiguousContext(retrieved.branches);
+    const answer = await yandexChatAnswerAmbiguous(question, context);
+    const citations: YandexAskCitation[] = retrieved.branches.map((b) => ({
+      id: b.hit.articleId,
+      title: b.hit.title
+    }));
+    return { answer, citations, found: true, ambiguous: true };
+  }
 
-  return {
-    answer,
-    citations,
-    found: true
-  };
+  const context = buildRagContext(retrieved.hits);
+  const answer = await yandexChatAnswer(question, context);
+  const citations: YandexAskCitation[] = retrieved.hits.map((h) => ({
+    id: h.articleId,
+    title: h.title
+  }));
+
+  return { answer, citations, found: true, ambiguous: false };
 });

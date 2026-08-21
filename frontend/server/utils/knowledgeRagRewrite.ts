@@ -1,4 +1,5 @@
-import { expandQueryWithSynonyms, isRewriteSafe } from './knowledgeRagLexical';
+import { expandDayoffBySense, expandQueryWithSynonyms, isRewriteSafe } from './knowledgeRagLexical';
+import { guessDayoffSense } from './knowledgeRagSense';
 
 const YANDEX_COMPLETION_URL = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion';
 
@@ -26,6 +27,7 @@ export async function rewriteQueryConservatively(question: string): Promise<stri
     'Ты помогаешь поиску по базе знаний.',
     'Переформулируй вопрос сотрудника для поиска: те же сущности и тот же смысл.',
     'Можно заменить слова синонимами и чуть переставить порядок.',
+    'Важно: «дейоф/day off» у нас двусмысленно — отгул ИЛИ SaaS DayOFFF. Сохрани глагол и общий смысл (взять ≈ отгул; войти/логин ≈ система). Не подменяй одно другим.',
     'Нельзя: менять тему, добавлять новые факты, имена отделов, продукты или условия, которых не было.',
     'Если переформулировать без смены смысла нельзя — верни исходный текст как есть.',
     'Ответ: одна строка без кавычек, без пояснений.'
@@ -67,17 +69,21 @@ export async function rewriteQueryConservatively(question: string): Promise<stri
 export type RetrievalQueryPlan = {
   /** Варианты для эмбеддинга/поиска (исходный всегда первый). */
   queries: string[];
-  /** Текст для словесного слоя (исходный + синонимы). */
+  /** Текст для словесного слоя (исходный + синонимы + sense). */
   lexicalQuery: string;
   rewriteUsed: string | null;
+  dayoffSense: ReturnType<typeof guessDayoffSense>;
 };
 
-/** Собрать варианты запроса: исходный, синонимы, безопасная нейро-переформулировка. */
+/** Собрать варианты запроса: исходный, синонимы, смысл «дейоф», безопасная нейро-переформулировка. */
 export async function buildRetrievalQueryPlan(question: string): Promise<RetrievalQueryPlan> {
   const original = question.trim();
-  const lexicalQuery = expandQueryWithSynonyms(original);
+  const dayoffSense = guessDayoffSense(original);
+  const withSense = expandDayoffBySense(original, dayoffSense);
+  const lexicalQuery = expandQueryWithSynonyms(withSense);
   const queries = [original];
-  if (lexicalQuery !== original) queries.push(lexicalQuery);
+  if (withSense !== original) queries.push(withSense);
+  if (lexicalQuery !== original && lexicalQuery !== withSense) queries.push(lexicalQuery);
 
   let rewriteUsed: string | null = null;
   try {
@@ -87,5 +93,5 @@ export async function buildRetrievalQueryPlan(question: string): Promise<Retriev
     rewriteUsed = null;
   }
 
-  return { queries, lexicalQuery, rewriteUsed };
+  return { queries, lexicalQuery, rewriteUsed, dayoffSense };
 }

@@ -5,6 +5,11 @@ import { writeJsonAtomic } from './atomicJson';
 import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticlesStore';
 import { lexicalScore, tokenizeForRag } from './knowledgeRagLexical';
 import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
+import {
+  applySenseScoreAdjust,
+  dayoffAmbiguousBranches,
+  type KnowledgeSense
+} from './knowledgeRagSense';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
@@ -193,16 +198,36 @@ export type KnowledgeRagHit = {
   lexicalScore?: number;
 };
 
+export type KnowledgeRagBranch = {
+  label: string;
+  hit: KnowledgeRagHit;
+};
+
+export type KnowledgeRagRetrieveResult = {
+  hits: KnowledgeRagHit[];
+  /** Два равноправных смысла — показать два ответа. */
+  ambiguous: boolean;
+  branches: KnowledgeRagBranch[];
+};
+
 /**
- * Подбор статей: смысл + слова, с осторожной переформулировкой запроса.
- * При устаревшем/пустом индексе — пытается пересобрать.
+ * Подбор статей: смысл + слова, с разбором двусмысленностей (дейоф = отгул | SaaS).
  */
 export async function retrieveKnowledgeByMeaning(
   question: string,
   opts?: { topArticles?: number; topChunks?: number; minScore?: number }
 ): Promise<KnowledgeRagHit[]> {
+  const result = await retrieveKnowledgeDetailed(question, opts);
+  return result.hits;
+}
+
+/** Полный результат с флагом двусмысленности. */
+export async function retrieveKnowledgeDetailed(
+  question: string,
+  opts?: { topArticles?: number; topChunks?: number; minScore?: number }
+): Promise<KnowledgeRagRetrieveResult> {
   const q = question.trim();
-  if (!q) return [];
+  if (!q) return { hits: [], ambiguous: false, branches: [] };
 
   let index = await readIndexFile();
   const state = await readKnowledgeArticles();
@@ -211,15 +236,17 @@ export async function retrieveKnowledgeByMeaning(
   if (!index?.chunks?.length || index.corpusHash !== expectedHash) {
     index = await rebuildKnowledgeRagIndex();
   }
-  if (!index.chunks.length) return [];
+  if (!index.chunks.length) return { hits: [], ambiguous: false, branches: [] };
 
   const plan = await buildRetrievalQueryPlan(q);
   const topChunks = opts?.topChunks ?? TOP_CHUNKS;
   const topArticles = opts?.topArticles ?? TOP_ARTICLES;
   const minSem = opts?.minScore ?? MIN_SEMANTIC;
   const lexTokens = tokenizeForRag(plan.lexicalQuery);
+  const publishedById = new Map(
+    state.articles.filter((a) => a.status === 'published').map((a) => [a.id, a])
+  );
 
-  /** Лучший cosine по всем вариантам запроса. */
   const semByChunk = new Map<string, number>();
   for (const queryText of plan.queries) {
     const queryVector = await yandexEmbedText(queryText, 'query');
@@ -234,12 +261,13 @@ export async function retrieveKnowledgeByMeaning(
     .map((chunk) => {
       const sem = semByChunk.get(chunk.id) ?? 0;
       const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
-      const combined = W_SEM * sem + W_LEX * lex;
+      let combined = W_SEM * sem + W_LEX * lex;
+      combined = applySenseScoreAdjust(chunk.articleId, combined, plan.dayoffSense);
       return { chunk, sem, lex, combined };
     })
     .filter((row) => row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED)
     .sort((a, b) => b.combined - a.combined || b.sem - a.sem)
-    .slice(0, topChunks);
+    .slice(0, Math.max(topChunks, 12));
 
   const byArticle = new Map<string, KnowledgeRagHit>();
   for (const row of scored) {
@@ -263,7 +291,97 @@ export async function retrieveKnowledgeByMeaning(
     }
   }
 
-  return [...byArticle.values()].sort((a, b) => b.score - a.score).slice(0, topArticles);
+  let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
+
+  /** При сомнении по дейоф — гарантируем обе ветки в выдаче. */
+  let ambiguous = plan.dayoffSense === 'ambiguous';
+  const branches: KnowledgeRagBranch[] = [];
+
+  if (plan.dayoffSense === 'ambiguous' || plan.dayoffSense === 'leave' || plan.dayoffSense === 'saas') {
+    const senseList =
+      plan.dayoffSense === 'ambiguous'
+        ? dayoffAmbiguousBranches()
+        : dayoffAmbiguousBranches().filter((s) =>
+            plan.dayoffSense === 'leave' ? s.id === 'dayoff-leave' : s.id === 'dayoff-saas'
+          );
+
+    for (const sense of senseList) {
+      const hit = pickSenseHit(hits, sense, publishedById, index.chunks, semByChunk);
+      if (hit) {
+        branches.push({ label: sense.label, hit });
+        if (!hits.some((h) => h.articleId === hit.articleId)) {
+          hits = [hit, ...hits];
+        }
+      }
+    }
+
+    if (plan.dayoffSense === 'ambiguous' && branches.length >= 2) {
+      ambiguous = true;
+      // В топ — по одной статье на смысл
+      hits = branches.map((b) => b.hit);
+    } else if (plan.dayoffSense !== 'ambiguous') {
+      ambiguous = false;
+    }
+  }
+
+  // Доп. эвристика: два топ-хита из разных dayoff-смыслов и близкие score → два ответа
+  if (!ambiguous && hits.length >= 2) {
+    const leaveIds = new Set(dayoffAmbiguousBranches().find((s) => s.id === 'dayoff-leave')?.articleIds ?? []);
+    const saasIds = new Set(dayoffAmbiguousBranches().find((s) => s.id === 'dayoff-saas')?.articleIds ?? []);
+    const a = hits[0]!;
+    const b = hits[1]!;
+    const aLeave = leaveIds.has(a.articleId);
+    const aSaas = saasIds.has(a.articleId);
+    const bLeave = leaveIds.has(b.articleId);
+    const bSaas = saasIds.has(b.articleId);
+    const cross = (aLeave && bSaas) || (aSaas && bLeave);
+    if (cross && Math.abs(a.score - b.score) < 0.12 && mentionsDayoffInQuestion(q)) {
+      ambiguous = true;
+      branches.length = 0;
+      branches.push(
+        { label: aLeave ? 'отгул' : 'систему DayOFFF', hit: a },
+        { label: bLeave ? 'отгул' : 'систему DayOFFF', hit: b }
+      );
+      hits = [a, b];
+    }
+  }
+
+  return {
+    hits: hits.slice(0, ambiguous ? Math.max(2, topArticles) : topArticles),
+    ambiguous,
+    branches: ambiguous ? branches.slice(0, 2) : []
+  };
+}
+
+function mentionsDayoffInQuestion(q: string): boolean {
+  return /(day\s*offf?|dayofff?|дей\s*офф?|дейофф?)/i.test(q);
+}
+
+function pickSenseHit(
+  hits: KnowledgeRagHit[],
+  sense: KnowledgeSense,
+  publishedById: Map<string, KnowledgeArticle>,
+  chunks: KnowledgeRagChunk[],
+  semByChunk: Map<string, number>
+): KnowledgeRagHit | null {
+  for (const id of sense.articleIds) {
+    const existing = hits.find((h) => h.articleId === id);
+    if (existing) return existing;
+    const article = publishedById.get(id);
+    if (!article) continue;
+    const articleChunks = chunks.filter((c) => c.articleId === id);
+    const best = articleChunks
+      .map((c) => ({ c, s: semByChunk.get(c.id) ?? 0 }))
+      .sort((x, y) => y.s - x.s)[0];
+    return {
+      articleId: id,
+      title: article.title,
+      score: best?.s ?? 0.4,
+      semanticScore: best?.s,
+      snippets: best ? [best.c.text] : [article.title]
+    };
+  }
+  return null;
 }
 
 export function buildRagContext(hits: KnowledgeRagHit[]): string {
@@ -275,3 +393,14 @@ export function buildRagContext(hits: KnowledgeRagHit[]): string {
   const joined = parts.join('\n\n');
   return joined.length > 12000 ? `${joined.slice(0, 12000)}\n\n[обрезано]` : joined;
 }
+
+/** Контекст для двух смыслов: модель должна ответить двумя вариантами. */
+export function buildRagAmbiguousContext(branches: KnowledgeRagBranch[]): string {
+  const parts = branches.map((branch, idx) => {
+    const body = branch.hit.snippets.join('\n…\n');
+    const limited = body.length > 3500 ? `${body.slice(0, 3500)}\n\n[обрезано]` : body;
+    return `Вариант ${idx + 1} — если вопрос про ${branch.label} (статья «${branch.hit.title}»):\n${limited}`;
+  });
+  return parts.join('\n\n');
+}
+

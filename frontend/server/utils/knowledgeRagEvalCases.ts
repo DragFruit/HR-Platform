@@ -33,18 +33,28 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     expectAny: ['kb-24611']
   },
   {
-    id: 'dayoff-saas',
-    canonical: 'DayOff дейофф система',
-    paraphrases: [
-      'как войти в dayofff',
-      'что такое дейоф у нас',
-      'инструкция по DayOFFF авторизация'
-    ],
-    expectAny: ['kb-27877'],
-    note: 'SaaS DayOFFF (dayofff.ru), не отгул'
+    id: 'dayoff-leave-sense',
+    canonical: 'как взять дейоф',
+    paraphrases: ['хочу взять day off', 'как оформить дейоф'],
+    expectAny: ['kb-30077'],
+    note: 'Общий смысл = отгул, не SaaS'
   },
   {
-    id: 'otgul',
+    id: 'dayoff-saas-sense',
+    canonical: 'как войти в дейоф',
+    paraphrases: ['логин в dayofff', 'авторизация DayOFFF'],
+    expectAny: ['kb-27877'],
+    note: 'Общий смысл = SaaS'
+  },
+  {
+    id: 'dayoff-ambiguous',
+    canonical: 'дейоф',
+    paraphrases: ['что такое дейоф', 'day off'],
+    expectAny: ['kb-27877', 'kb-30077'],
+    note: 'Сомнение — ок любая из двух или обе; UI даёт два ответа'
+  },
+  {
+    id: 'otgul-explicit',
     canonical: 'регламент оформления отгулов',
     paraphrases: ['как взять отгул', 'оформить отгул digital'],
     expectAny: ['kb-30077']

@@ -1,7 +1,8 @@
 import { requireRole } from '../../../utils/requireRole';
 import { retrieveKnowledgeByMeaning } from '../../../utils/knowledgeRag';
 import { KNOWLEDGE_RAG_EVAL_CASES } from '../../../utils/knowledgeRagEvalCases';
-import { isRewriteSafe, expandQueryWithSynonyms } from '../../../utils/knowledgeRagLexical';
+import { expandDayoffBySense, isRewriteSafe, expandQueryWithSynonyms } from '../../../utils/knowledgeRagLexical';
+import { guessDayoffSense } from '../../../utils/knowledgeRagSense';
 
 type CaseResult = {
   caseId: string;
@@ -19,12 +20,14 @@ type CaseResult = {
 export default defineEventHandler(async (event) => {
   await requireRole(event, ['admin', 'hr']);
 
-  // Быстрая проверка правил переформулировки (без Yandex).
   const safety = {
     keepGood: isRewriteSafe('как уйти в отпуск в digital', 'как оформить отпуск в digital'),
     rejectDrift: !isRewriteSafe('как уйти в отпуск в digital', 'как настроить рекламу в Яндекс Директ'),
-    expandDayoff: expandQueryWithSynonyms('взять dayoff').toLowerCase().includes('дейоф') &&
-      !expandQueryWithSynonyms('взять dayoff').toLowerCase().includes('отгул')
+    leaveSense: guessDayoffSense('как взять дейоф') === 'leave',
+    saasSense: guessDayoffSense('как войти в дейоф') === 'saas',
+    ambiguousSense: guessDayoffSense('что такое дейоф') === 'ambiguous',
+    leaveExpand: expandDayoffBySense('как взять дейоф', 'leave').includes('отгул'),
+    saasSpelling: expandQueryWithSynonyms('dayofff вход').toLowerCase().includes('дейофф')
   };
 
   const results: CaseResult[] = [];
@@ -43,8 +46,6 @@ export default defineEventHandler(async (event) => {
       const hitIds = hits.map((h) => h.articleId);
       let ok: boolean;
       if (!c.expectAny.length) {
-        // offtopic: не считаем провалом, если пусто; провал если в топе «случайная» сильная статья —
-        // мягко: ok если пусто или score < 0.45 у первого
         ok = !hits.length || (hits[0]?.score ?? 0) < 0.45;
       } else {
         ok = c.expectAny.some((id) => hitIds.includes(id));
@@ -61,8 +62,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const safetyOk = Object.values(safety).every(Boolean);
   return {
-    ok: passed === total && safety.keepGood && safety.rejectDrift && safety.expandDayoff,
+    ok: passed === total && safetyOk,
     passed,
     total,
     safety,
