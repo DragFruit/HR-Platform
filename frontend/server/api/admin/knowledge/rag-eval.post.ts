@@ -23,7 +23,8 @@ export default defineEventHandler(async (event) => {
   const safety = {
     keepGood: isRewriteSafe('как уйти в отпуск в digital', 'как оформить отпуск в digital'),
     rejectDrift: !isRewriteSafe('как уйти в отпуск в digital', 'как настроить рекламу в Яндекс Директ'),
-    expandDayoff: expandQueryWithSynonyms('взять dayoff').toLowerCase().includes('отгул')
+    expandDayoff: expandQueryWithSynonyms('взять dayoff').toLowerCase().includes('дейоф') &&
+      !expandQueryWithSynonyms('взять dayoff').toLowerCase().includes('отгул')
   };
 
   const results: CaseResult[] = [];

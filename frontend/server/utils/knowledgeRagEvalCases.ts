@@ -33,10 +33,21 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     expectAny: ['kb-24611']
   },
   {
-    id: 'dayoff',
-    canonical: 'DayOff дейофф',
-    paraphrases: ['как взять отгул', 'что такое day off у нас', 'дей офф как оформить'],
-    expectAny: ['kb-27877']
+    id: 'dayoff-saas',
+    canonical: 'DayOff дейофф система',
+    paraphrases: [
+      'как войти в dayofff',
+      'что такое дейоф у нас',
+      'инструкция по DayOFFF авторизация'
+    ],
+    expectAny: ['kb-27877'],
+    note: 'SaaS DayOFFF (dayofff.ru), не отгул'
+  },
+  {
+    id: 'otgul',
+    canonical: 'регламент оформления отгулов',
+    paraphrases: ['как взять отгул', 'оформить отгул digital'],
+    expectAny: ['kb-30077']
   },
   {
     id: 'afina-first',
