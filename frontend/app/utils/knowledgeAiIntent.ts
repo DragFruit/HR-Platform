@@ -43,7 +43,7 @@ const CASUAL_PERSONAL_RE =
 
 /** Признаки рабочего вопроса по базе (отпуск, доступы, HR…). */
 const WORKPLACE_HINT_RE =
-  /(отпуск|отгул|дейоф|day\s*off|dayoff|vpn|доступ|afina|афин|битрикс|bitrix|зарплат|больничн|командиров|регламент|офис|отдел|кадр|трудоустрой|увольнен|адаптац|мерч|ачивк|иде[яи]|wifi|wi-?fi|почт[аеуы]|1[сc]|лицензи|сертификат|собесед|ваканс|\bhr\b|вайб|vibe)/i;
+  /(отпуск|отгул|дейоф|day\s*off|dayoff|vpn|доступ|afina|афин|битрикс|bitrix|зарплат|больничн|командиров|регламент|офис|отдел|кадр|трудоустрой|увольнен|адаптац|мерч|ачивк|иде[яи]|wifi|wi-?fi|почт[аеуы]|1[сc]|лицензи|сертификат|собесед|ваканс|\bhr\b|эйчар|сотрудник|кандидат|клиент|проект|задач|день\s*рожден|вайб|vibe)/i;
 
 /** Звуки / шутки / «мяу?» — не вопрос по базе. */
 const NONSENSE_RE =
@@ -133,20 +133,27 @@ export function expandQuestionFromHistory(
 }
 
 /**
- * Пустой поиск: оффтоп / не похоже на работу → отказ без «допишите статью»;
- * иначе короткий not_found без CTA.
- * Уточнения при рабочей истории — не оффтоп.
+ * Пустой поиск: явный оффтоп → отказ; иначе «нет в базе» без CTA.
+ * Нельзя: «нет слов из whitelist → оффтоп» — ломает рабочие вопросы (эйчар, клиенты…).
  */
 export function emptyKbReplyMode(
   question: string,
   history: { role?: string; text?: string }[] = []
 ): 'offtopic' | 'not_found' {
-  if (isKbClarifyingFollowUp(question) && historySuggestsWorkplace(history)) {
+  if (isKbClarifyingFollowUp(question) && history.length > 0) {
     return 'not_found';
   }
   if (detectKbAiOfftopic(question)) return 'offtopic';
-  if (!looksLikeWorkplaceKbQuestion(question)) return 'offtopic';
   return 'not_found';
+}
+
+/** Жёсткий оффтоп до RAG (коты, наркотики, погода) — без whitelist «это работа?». */
+export function shouldSkipRagAsOfftopic(
+  question: string,
+  history: { role?: string; text?: string }[] = []
+): boolean {
+  if (isKbClarifyingFollowUp(question) && history.length > 0) return false;
+  return detectKbAiOfftopic(question);
 }
 
 /**

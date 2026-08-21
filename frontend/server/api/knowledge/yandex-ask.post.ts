@@ -4,7 +4,8 @@ import {
   emptyKbReplyMode,
   expandQuestionFromHistory,
   KB_AI_NOT_FOUND_REPLY,
-  KB_AI_OFFTOPIC_REPLY
+  KB_AI_OFFTOPIC_REPLY,
+  shouldSkipRagAsOfftopic
 } from '../../../app/utils/knowledgeAiIntent';
 import { yandexChatAnswer, yandexChatAnswerAmbiguous } from '../../utils/yandexGpt';
 import {
@@ -60,8 +61,8 @@ export default defineEventHandler(async (event) => {
   /** Для RAG: уточнение + предыдущий рабочий вопрос. */
   const retrievalQuestion = expandQuestionFromHistory(question, history);
 
-  // Нерабочее — сразу отказ (уточнения при рабочей истории не режем)
-  if (emptyKbReplyMode(question, history) === 'offtopic') {
+  // Только явный оффтоп (коты/погода/наркотики) — не «нет ключевых слов»
+  if (shouldSkipRagAsOfftopic(question, history)) {
     return {
       answer: KB_AI_OFFTOPIC_REPLY,
       citations: [] as YandexAskCitation[],
