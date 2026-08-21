@@ -65,7 +65,8 @@ const SYNONYM_GROUPS: string[][] = [
   ['отпуск раньше', 'аванс отпуска', 'раньше в отпуск', 'уйти раньше в отпуск'],
   ['больничный', 'больничн'],
   ['пароль', 'пароля', 'логин'],
-  ['регламент отпуска', 'ухода в отпуск', 'правила отпуска']
+  ['регламент отпуска', 'ухода в отпуск', 'правила отпуска'],
+  ['дни рождения', 'день рождения', 'др клиентов', 'др клиента', 'др клиент', 'birthday']
 ];
 
 /**
@@ -90,6 +91,56 @@ export function tokenizeForRag(text: string): string[] {
     .split(/\s+/)
     .map((t) => t.trim())
     .filter((t) => t.length >= 2 && !STOP.has(t));
+}
+
+/** Слишком общие слова — по ним нельзя оставлять «похожие» статьи. */
+const GENERIC_QUERY_TOKENS = new Set([
+  'могу',
+  'посмотреть',
+  'найти',
+  'узнать',
+  'сделать',
+  'открыть',
+  'клиент',
+  'клиента',
+  'клиенты',
+  'клиентов',
+  'клиентам',
+  'сотрудник',
+  'сотрудника',
+  'сотрудники',
+  'сотрудников',
+  'проект',
+  'проекта',
+  'проекты',
+  'проектов',
+  'система',
+  'раздел',
+  'страница',
+  'инструкция',
+  'информация'
+]);
+
+/**
+ * Значимые токены запроса (после синонимов).
+ * Если ни одна статья их не покрывает — лучше пустой retrieval, чем чужие «клиенты/CRM».
+ */
+export function distinctiveQueryTokens(question: string): string[] {
+  return tokenizeForRag(expandQueryWithSynonyms(question)).filter(
+    (t) => t.length >= 4 && !GENERIC_QUERY_TOKENS.has(t)
+  );
+}
+
+export function hitCoversDistinctiveTokens(
+  title: string,
+  snippets: string[],
+  distinctive: string[]
+): boolean {
+  if (!distinctive.length) return true;
+  const blob = `${title}\n${snippets.join('\n')}`.toLowerCase();
+  const matched = distinctive.filter((t) => blob.includes(t));
+  const need = Math.max(1, Math.ceil(distinctive.length * 0.4));
+  return matched.length >= need;
 }
 
 /**

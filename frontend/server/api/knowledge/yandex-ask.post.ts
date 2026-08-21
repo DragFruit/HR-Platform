@@ -115,6 +115,21 @@ export default defineEventHandler(async (event) => {
 
     const context = buildRagContext(retrieved.hits);
     const answer = await yandexChatAnswer(question, context, { history });
+    // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме»
+    if (
+      /в базе знаний\s+(пока\s+)?нет|нет информации|в базе этого нет|не нашлось|не нашёл|не нашел/i.test(
+        answer
+      )
+    ) {
+      return {
+        answer,
+        citations: [] as YandexAskCitation[],
+        found: false,
+        ambiguous: false,
+        degraded: false,
+        intent: 'not_found' as const
+      };
+    }
     return {
       answer,
       citations: retrieved.hits.map((h) => ({ id: h.articleId, title: h.title })),

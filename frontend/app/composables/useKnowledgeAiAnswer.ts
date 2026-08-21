@@ -157,9 +157,13 @@ export function useKnowledgeAiAnswer() {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CLARIFY_REPLY, 'clarify'));
       }
 
-      // Ответ «нет в базе» + CTA — без ссылок, без предложения статей
-      if (/в базе знаний пока нет|в базе этого нет|не нашлось/i.test(parsed.text)) {
-        return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_NOT_FOUND_REPLY, 'not_found'));
+      // Ответ «нет в базе» — без «Ещё по теме» (даже если RAG подсунул слабые цитаты)
+      if (
+        /в базе знаний\s+(пока\s+)?нет|нет информации|в базе этого нет|не нашлось|не нашёл|не нашел/i.test(
+          parsed.text
+        )
+      ) {
+        return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_NOT_FOUND_REPLY, 'not_found'));
       }
 
       const parts: KnowledgeAiPart[] = [{ type: 'text', value: parsed.text }];

@@ -3,7 +3,13 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
 import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticlesStore';
-import { lexicalScore, tokenizeForRag } from './knowledgeRagLexical';
+import {
+  distinctiveQueryTokens,
+  expandQueryWithSynonyms,
+  hitCoversDistinctiveTokens,
+  lexicalScore,
+  tokenizeForRag
+} from './knowledgeRagLexical';
 import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
 import {
   ambiguousBranchesForQuestion,
@@ -259,6 +265,7 @@ export async function retrieveKnowledgeDetailed(
   const minSem = opts?.minScore ?? MIN_SEMANTIC;
   const lexTokens = tokenizeForRag(plan.lexicalQuery);
   const publishedById = new Map(published.map((a) => [a.id, a]));
+  const distinctive = distinctiveQueryTokens(q);
 
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
 
@@ -278,6 +285,13 @@ export async function retrieveKnowledgeDetailed(
       const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
       let combined = W_SEM * sem + W_LEX * lex;
       combined = applySenseScoreAdjust(chunk.articleId, combined, q);
+      // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
+      if (
+        distinctive.length &&
+        hitCoversDistinctiveTokens(chunk.title, [chunk.text], distinctive)
+      ) {
+        combined = Math.min(1, combined + 0.4);
+      }
       return { chunk, sem, lex, combined };
     })
     .filter((row) => row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED)
@@ -307,6 +321,12 @@ export async function retrieveKnowledgeDetailed(
   }
 
   let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
+
+  // Семантика тянет «клиент/CRM» на чужие статьи — оставляем только покрытие значимых слов.
+  if (distinctive.length) {
+    const covered = hits.filter((h) => hitCoversDistinctiveTokens(h.title, h.snippets, distinctive));
+    hits = covered;
+  }
 
   const clearSense = clearSenseForQuestion(q);
   let ambiguousBranches = ambiguousBranchesForQuestion(q);
@@ -397,7 +417,7 @@ export async function retrieveKnowledgeLexicalFallback(
 ): Promise<KnowledgeRagHit[]> {
   const q = question.trim();
   if (!q) return [];
-  const tokens = tokenizeForRag(q);
+  const tokens = tokenizeForRag(expandQueryWithSynonyms(q));
   if (!tokens.length) return [];
 
   const state = await readKnowledgeArticles();
@@ -406,7 +426,7 @@ export async function retrieveKnowledgeLexicalFallback(
     ? published.filter((a) => canUserSeeArticle(a.departments, opts.viewer!))
     : published;
 
-  const scored = visible
+  let scored = visible
     .map((article) => {
       const plain = `${article.title}\n${article.body}`.replace(/<[^>]+>/g, ' ');
       const lex = lexicalScore(article.title, plain, tokens);
@@ -419,9 +439,13 @@ export async function retrieveKnowledgeLexicalFallback(
       } satisfies KnowledgeRagHit;
     })
     .filter((h) => h.score >= 0.25)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, opts?.topArticles ?? TOP_ARTICLES);
+    .sort((a, b) => b.score - a.score);
 
-  return scored;
+  const distinctive = distinctiveQueryTokens(q);
+  if (distinctive.length) {
+    scored = scored.filter((h) => hitCoversDistinctiveTokens(h.title, h.snippets, distinctive));
+  }
+
+  return scored.slice(0, opts?.topArticles ?? TOP_ARTICLES);
 }
 
