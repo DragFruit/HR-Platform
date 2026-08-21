@@ -3,6 +3,8 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
 import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticlesStore';
+import { lexicalScore, tokenizeForRag } from './knowledgeRagLexical';
+import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
@@ -15,8 +17,15 @@ const CHUNK_OVERLAP = 150;
 const TOP_CHUNKS = 8;
 /** Сколько разных статей в контекст модели. */
 const TOP_ARTICLES = 3;
-/** Минимальная близость смысла (cosine), иначе считаем «не нашли». */
-const MIN_SCORE = 0.35;
+/** Минимальная близость смысла (cosine). */
+const MIN_SEMANTIC = 0.35;
+/** Минимальный комбинированный score (смысл + слова). */
+const MIN_COMBINED = 0.32;
+/** Сильный словесный hit — берём даже при слабом смысле (точное название/термин). */
+const MIN_LEXICAL_RESCUE = 0.55;
+/** Веса гибрида. */
+const W_SEM = 0.7;
+const W_LEX = 0.3;
 
 export type KnowledgeRagChunk = {
   id: string;
@@ -180,10 +189,12 @@ export type KnowledgeRagHit = {
   title: string;
   score: number;
   snippets: string[];
+  semanticScore?: number;
+  lexicalScore?: number;
 };
 
 /**
- * Подбор статей по смыслу вопроса.
+ * Подбор статей: смысл + слова, с осторожной переформулировкой запроса.
  * При устаревшем/пустом индексе — пытается пересобрать.
  */
 export async function retrieveKnowledgeByMeaning(
@@ -202,18 +213,32 @@ export async function retrieveKnowledgeByMeaning(
   }
   if (!index.chunks.length) return [];
 
-  const queryVector = await yandexEmbedText(q, 'query');
-  const minScore = opts?.minScore ?? MIN_SCORE;
+  const plan = await buildRetrievalQueryPlan(q);
   const topChunks = opts?.topChunks ?? TOP_CHUNKS;
   const topArticles = opts?.topArticles ?? TOP_ARTICLES;
+  const minSem = opts?.minScore ?? MIN_SEMANTIC;
+  const lexTokens = tokenizeForRag(plan.lexicalQuery);
+
+  /** Лучший cosine по всем вариантам запроса. */
+  const semByChunk = new Map<string, number>();
+  for (const queryText of plan.queries) {
+    const queryVector = await yandexEmbedText(queryText, 'query');
+    for (const chunk of index.chunks) {
+      const s = cosineSimilarity(queryVector, chunk.embedding);
+      const prev = semByChunk.get(chunk.id) ?? 0;
+      if (s > prev) semByChunk.set(chunk.id, s);
+    }
+  }
 
   const scored = index.chunks
-    .map((chunk) => ({
-      chunk,
-      score: cosineSimilarity(queryVector, chunk.embedding)
-    }))
-    .filter((row) => row.score >= minScore)
-    .sort((a, b) => b.score - a.score)
+    .map((chunk) => {
+      const sem = semByChunk.get(chunk.id) ?? 0;
+      const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
+      const combined = W_SEM * sem + W_LEX * lex;
+      return { chunk, sem, lex, combined };
+    })
+    .filter((row) => row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED)
+    .sort((a, b) => b.combined - a.combined || b.sem - a.sem)
     .slice(0, topChunks);
 
   const byArticle = new Map<string, KnowledgeRagHit>();
@@ -223,11 +248,17 @@ export async function retrieveKnowledgeByMeaning(
       byArticle.set(row.chunk.articleId, {
         articleId: row.chunk.articleId,
         title: row.chunk.title,
-        score: row.score,
+        score: row.combined,
+        semanticScore: row.sem,
+        lexicalScore: row.lex,
         snippets: [row.chunk.text]
       });
     } else {
-      existing.score = Math.max(existing.score, row.score);
+      if (row.combined > existing.score) {
+        existing.score = row.combined;
+        existing.semanticScore = row.sem;
+        existing.lexicalScore = row.lex;
+      }
       if (existing.snippets.length < 3) existing.snippets.push(row.chunk.text);
     }
   }
