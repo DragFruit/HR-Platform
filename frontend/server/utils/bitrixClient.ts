@@ -7,6 +7,37 @@ const BITRIX_FETCH_TIMEOUT_MS = 20_000;
 const bitrixFetch = (url: string, init?: RequestInit): Promise<Response> =>
   fetch(url, { ...init, signal: AbortSignal.timeout(BITRIX_FETCH_TIMEOUT_MS) });
 
+/** Понятная ошибка, если VPS не достучался до портала (firewall / DNS). */
+function throwIfBitrixUnreachable(err: unknown, label: string): never {
+  const cause = err && typeof err === 'object' && 'cause' in err ? (err as { cause?: unknown }).cause : err;
+  const code =
+    cause && typeof cause === 'object' && 'code' in cause
+      ? String((cause as { code?: string }).code || '')
+      : '';
+  const msg = err instanceof Error ? err.message : String(err);
+  const unreachable =
+    code === 'UND_ERR_CONNECT_TIMEOUT' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    /Connect Timeout|fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(msg);
+
+  if (unreachable) {
+    throw createError({
+      statusCode: 503,
+      statusMessage:
+        'Сервер Vibe не достучался до crm.vbi.ru (таймаут сети). ' +
+        'Пока исходящий HTTPS с 45.12.74.25 на портал закрыт — вход логин/пароль не работает. ' +
+        'Используйте «Войти через Битрикс24» (браузер ходит на портал сам) или откройте сеть Vibe→Bitrix.'
+    });
+  }
+
+  throw createError({
+    statusCode: 502,
+    statusMessage: redactSensitiveText(`${label}: ${msg}`)
+  });
+}
+
 export type BitrixTokenResponse = {
   access_token: string;
   refresh_token?: string;
@@ -55,11 +86,16 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
     redirect_uri: redirectUri
   });
 
-  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  });
+  let response: Response;
+  try {
+    response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+  } catch (err) {
+    throwIfBitrixUnreachable(err, 'Bitrix OAuth');
+  }
 
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
@@ -96,11 +132,16 @@ export async function exchangeBitrixPassword(
     password
   });
 
-  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  });
+  let response: Response;
+  try {
+    response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+  } catch (err) {
+    throwIfBitrixUnreachable(err, 'Bitrix OAuth password');
+  }
 
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
