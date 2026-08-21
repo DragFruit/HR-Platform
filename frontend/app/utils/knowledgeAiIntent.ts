@@ -22,6 +22,15 @@ export type KnowledgeAiIntent = 'chitchat' | 'offtopic' | 'clarify' | 'kb' | 'no
 const CHITCHAT_RE =
   /^(спасибо|благодарю|благодар|отлично|супер|класс|круто|огонь|топ|ок|окей|ладно|понял[аи]?|понятно|ясно|хорошо|замечательно|прекрасно|отлично[\s,]*спасибо|спасибо[\s,]*большое|вс[её]\s*(понятно|ясно|супер|отлично)|👍|🙏|❤️|😘)+[!?.…\s]*$/iu;
 
+/** Приветствия — без RAG/Yandex (иначе «привет» ловит 429 и «перекур»). */
+const GREETING_RE =
+  /^(прив(ет|етствую)?|здравств(уй|уйте)|добр(ый|ое|ого)\s+(день|утро|вечер)|хай|hello|hi)\b/iu;
+
+const HOW_ARE_YOU_RE = /как\s+(дела|ты|жизнь)|что\s+нового|how\s+are\s+you/i;
+
+/** Ответ на приветствие. */
+export const KB_AI_GREETING_REPLY = 'Здравствуйте! Чем помочь по базе знаний?';
+
 /**
  * Явный оффтоп / бессмыслица — без вызова модели и без статей.
  * Без `\b`: для кириллицы word-boundary в JS часто не срабатывает.
@@ -48,10 +57,16 @@ const COMPLAINT_RE =
 /** Одна короткая претензия без контекста: «ошибка», «неправильно». */
 const SHORT_COMPLAINT_RE = /^(ошиб(ка|ся|лись)|неправильно)[!?.…\s]*$/iu;
 
-/** Быстрый локальный детект «спасибо / отлично» без вызова модели. */
+/** Быстрый локальный детект «спасибо / привет / как дела» без вызова модели. */
 export function detectKbAiChitchat(raw: string): boolean {
   const t = raw.trim().replace(/\s+/g, ' ');
   if (!t || t.length > 72) return false;
+  if (t.split(/\s+/).length > 10) return false;
+
+  if (GREETING_RE.test(t) || (HOW_ARE_YOU_RE.test(t) && t.length <= 48)) {
+    return true;
+  }
+
   if (/[?]/.test(t)) return false;
   if (t.split(/\s+/).length > 8) return false;
   return CHITCHAT_RE.test(t);

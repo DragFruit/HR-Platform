@@ -4,6 +4,7 @@ import {
   detectKbAiOfftopic,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_CLARIFY_REPLY,
+  KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
   parseKbAiModelReply
@@ -92,7 +93,12 @@ export function useKnowledgeAiAnswer() {
     history: KnowledgeAiHistoryTurn[] = []
   ): Promise<KnowledgeAiAnswer> => {
     if (detectKbAiChitchat(question)) {
-      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CHITCHAT_REPLY, 'chitchat'));
+      const t = question.trim().toLowerCase();
+      const greeting =
+        /^(прив|здравств|добр|хай|hello|hi)/i.test(t) || /как\s+(дела|ты|жизнь)/i.test(t);
+      return assertKnowledgeAiCitations(
+        textOnlyAnswer(greeting ? KB_AI_GREETING_REPLY : KB_AI_CHITCHAT_REPLY, 'chitchat')
+      );
     }
     if (detectKbAiClarify(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CLARIFY_REPLY, 'clarify'));
