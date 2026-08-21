@@ -56,7 +56,7 @@ async function denyIfAccessNotAllowed(
     return null;
   }
 
-  if (user.auth_source === 'bitrix') {
+  if (user.auth_source === 'bitrix' || user.auth_source === 'vibe') {
     const bitrixId = Number(user.bitrix_user_id ?? user.id);
     if (!(await isBitrixUserInRoster(bitrixId))) {
       clearVbiSession(event);
@@ -71,7 +71,7 @@ export async function refreshBitrixSessionRoleIfNeeded(
   event: H3Event,
   user: SessionUser
 ): Promise<SessionUser> {
-  if (user.auth_source !== 'bitrix') return user;
+  if (user.auth_source !== 'bitrix' && user.auth_source !== 'vibe') return user;
   const userId = user.bitrix_user_id ?? user.id;
   const fromEmployees = await resolveAuthRoleFromEmployees(userId);
   if (!fromEmployees || fromEmployees === user.role) return user;
@@ -94,7 +94,10 @@ export function getVbiSession(event: H3Event): SessionUser | null {
     const parsed = decodeSignedSession(raw);
     if (!parsed) return null;
 
-    if (parsed.auth_source === 'bitrix' && parsed.bitrix_user_id) {
+    if (
+      (parsed.auth_source === 'bitrix' || parsed.auth_source === 'vibe') &&
+      parsed.bitrix_user_id
+    ) {
       if (parsed.id !== parsed.bitrix_user_id) return null;
       if (!parsed.email?.trim()) return null;
       return parsed;

@@ -7,40 +7,42 @@
         <span class="brand-title">{{ platformName }}</span>
         <p class="muted">
           {{
-            showBitrixLogin
-              ? 'Войдите логином Bitrix или через портал'
-              : 'Войдите, чтобы начать работу в платформе'
+            showVibePasswordForm
+              ? 'Войдите логином Vibe или через Битрикс24'
+              : showBitrixLogin
+                ? 'Войдите через корпоративный портал Битрикс24'
+                : 'Войдите, чтобы начать работу в платформе'
           }}
         </p>
       </div>
 
-      <div v-if="showBitrixLogin" class="auth-form">
+      <div v-if="showBitrixLogin || showVibePasswordForm" class="auth-form">
         <p v-if="oauthMisconfigured && oauthMisconfiguredHint" class="gift-error auth-oauth-misconfig">
           {{ oauthMisconfiguredHint }}
         </p>
 
-        <template v-if="showBitrixPasswordForm">
-          <form class="auth-form auth-form--password" @submit.prevent="submitBitrixPassword">
+        <template v-if="showVibePasswordForm">
+          <form class="auth-form auth-form--password" @submit.prevent="submitVibePassword">
             <label class="gift-field">
-              <span>Логин или email Bitrix</span>
+              <span>Email или логин</span>
               <input
                 v-model="email"
                 class="org-input"
                 type="text"
                 autocomplete="username"
-                placeholder="ivanov или name@vbi.ru"
+                placeholder="name@vbi.ru"
                 required
               />
             </label>
 
             <label class="gift-field">
-              <span>Пароль Bitrix</span>
+              <span>Пароль Vibe</span>
               <input
                 v-model="password"
                 class="org-input"
                 type="password"
                 autocomplete="current-password"
-                placeholder="Пароль портала"
+                placeholder="Пароль платформы"
                 required
               />
             </label>
@@ -50,14 +52,19 @@
             </button>
           </form>
 
-          <div class="auth-divider" role="separator">
+          <p class="muted auth-password-hint">
+            Пароль задаёт HR в Админ → Сотрудники. Это пароль Vibe, не пароль Bitrix.
+          </p>
+
+          <div v-if="showBitrixLogin" class="auth-divider" role="separator">
             <span>или</span>
           </div>
         </template>
 
         <button
+          v-if="showBitrixLogin"
           class="button auth-submit"
-          :class="showBitrixPasswordForm ? '' : 'primary'"
+          :class="showVibePasswordForm ? '' : 'primary'"
           type="button"
           :disabled="oauthMisconfigured"
           @click="goBitrixLogin"
@@ -68,7 +75,7 @@
       </div>
 
       <template v-if="showDemoLogin">
-        <div v-if="showBitrixLogin" class="auth-divider" role="separator">
+        <div v-if="showBitrixLogin || showVibePasswordForm" class="auth-divider" role="separator">
           <span>или демо-доступ</span>
         </div>
 
@@ -83,7 +90,7 @@
             <input v-model="password" class="org-input" type="password" placeholder="Введите пароль" required />
           </label>
 
-          <p v-if="!showBitrixLogin && error" class="gift-error">{{ error }}</p>
+          <p v-if="!showBitrixLogin && !showVibePasswordForm && error" class="gift-error">{{ error }}</p>
 
           <button class="button primary auth-submit" type="submit" :disabled="loading">
             {{ loading ? 'Входим...' : 'Войти' }}
@@ -120,21 +127,19 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const { isDevelopment } = useAppEnv();
-const { login, loginWithBitrixPassword, demoAccounts } = useAuth();
+const { login, loginWithVibePassword, demoAccounts } = useAuth();
 const BITRIX_LOGIN_PATH = '/api/auth/bitrix';
 
 const {
   configReady,
   preferBitrixLogin,
-  bitrixPasswordLoginEnabled,
+  vibePasswordLoginEnabled,
   oauthMisconfigured,
   oauthMisconfiguredHint
 } = useBitrixAuthConfig();
 
 const showBitrixLogin = computed(() => preferBitrixLogin.value);
-const showBitrixPasswordForm = computed(
-  () => showBitrixLogin.value && bitrixPasswordLoginEnabled.value && !oauthMisconfigured.value
-);
+const showVibePasswordForm = computed(() => vibePasswordLoginEnabled.value);
 const showDemoLogin = computed(() => {
   if (!isDevelopment.value) return false;
   if (!configReady.value && preferBitrixLogin.value) return false;
@@ -172,10 +177,10 @@ const goBitrixLogin = () => {
   window.location.href = BITRIX_LOGIN_PATH;
 };
 
-const submitBitrixPassword = async () => {
+const submitVibePassword = async () => {
   error.value = '';
   loading.value = true;
-  const result = await loginWithBitrixPassword(email.value, password.value);
+  const result = await loginWithVibePassword(email.value, password.value);
   loading.value = false;
   if (!result.ok) {
     error.value = result.error;
@@ -211,6 +216,12 @@ const submit = async () => {
 
 .auth-form--password {
   margin-bottom: 0;
+}
+
+.auth-password-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .auth-divider {

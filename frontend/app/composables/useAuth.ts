@@ -8,7 +8,7 @@ export type AuthSessionUser = {
   role: 'employee' | 'manager' | 'hr' | 'admin';
   department: string;
   bitrix_user_id?: number | null;
-  auth_source?: 'demo' | 'bitrix';
+  auth_source?: 'demo' | 'bitrix' | 'vibe';
 };
 
 type Credential = AuthSessionUser & {
@@ -128,7 +128,7 @@ export function useAuth() {
       try {
         const parsed = JSON.parse(raw) as AuthSessionUser;
 
-        if (parsed.auth_source === 'bitrix') {
+        if (parsed.auth_source === 'bitrix' || parsed.auth_source === 'vibe') {
           user.value = null;
           localStorage.removeItem(SESSION_KEY);
           return;
@@ -260,6 +260,42 @@ export function useAuth() {
     };
   };
 
+  /** Локальный пароль Vibe (хеш на нашем сервере, без Bitrix). */
+  const loginWithVibePassword = async (loginValue: string, password: string) => {
+    try {
+      const res = await $fetch<{ ok: boolean; user: AuthSessionUser }>('/api/auth/vibe-login', {
+        method: 'POST',
+        body: { login: loginValue.trim(), password }
+      });
+      user.value = res.user;
+    } catch (err: unknown) {
+      const fetchErr = err as {
+        data?: { statusMessage?: string; message?: string };
+        statusMessage?: string;
+        message?: string;
+      };
+      const msg =
+        fetchErr.data?.statusMessage ||
+        fetchErr.data?.message ||
+        fetchErr.statusMessage ||
+        fetchErr.message ||
+        'Неверный логин или пароль';
+      return { ok: false as const, error: String(msg) };
+    }
+
+    const sessionUser = user.value!;
+    if (import.meta.client) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      syncOnboardingState(sessionUser.id);
+    }
+
+    return {
+      ok: true as const,
+      user: sessionUser,
+      isFirstLogin: showOnboarding.value
+    };
+  };
+
   const login = async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const found = credentials.find(
@@ -350,6 +386,7 @@ export function useAuth() {
     login,
     loginWithBitrix,
     loginWithBitrixPassword,
+    loginWithVibePassword,
     logout,
     finishOnboarding,
     demoAccounts

@@ -149,6 +149,14 @@
             </td>
             <td class="col-actions">
               <button
+                class="personnel-password-btn"
+                type="button"
+                title="Пароль Vibe"
+                @click="onSetVibePassword(emp)"
+              >
+                🔑
+              </button>
+              <button
                 v-if="emp.account_role !== 'admin'"
                 class="personnel-delete-btn"
                 type="button"
@@ -206,6 +214,34 @@ const onRemoveEmployee = async (emp: Employee) => {
   const result = await removeEmployee(emp.id);
   if (!result.ok) {
     window.alert(result.error || 'Не удалось удалить на сервере');
+  }
+};
+
+const onSetVibePassword = async (emp: Employee) => {
+  const label = emp.name.trim() || `id ${emp.id}`;
+  const password = window.prompt(
+    `Пароль Vibe для «${label}» (не короче 8 символов).\nПусто + OK — сбросить пароль.`
+  );
+  if (password === null) return;
+  try {
+    if (!password.trim()) {
+      await $fetch(`/api/admin/employees/${emp.id}/vibe-password`, {
+        method: 'PUT',
+        body: { clear: true }
+      });
+      window.alert('Пароль Vibe сброшен');
+      return;
+    }
+    await $fetch(`/api/admin/employees/${emp.id}/vibe-password`, {
+      method: 'PUT',
+      body: { password }
+    });
+    window.alert('Пароль Vibe сохранён. Сотрудник входит email + этот пароль.');
+  } catch (err: unknown) {
+    const fetchErr = err as { data?: { statusMessage?: string }; statusMessage?: string };
+    window.alert(
+      fetchErr.data?.statusMessage || fetchErr.statusMessage || 'Не удалось сохранить пароль'
+    );
   }
 };
 
@@ -353,6 +389,30 @@ onMounted(() => {
   color: var(--text-muted, #888);
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
+}
+
+.personnel-password-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin-right: 0.25rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.personnel-password-btn:hover {
+  background: rgba(116, 81, 244, 0.12);
+}
+
+.col-actions {
+  white-space: nowrap;
 }
 
 .personnel-delete-btn:hover {

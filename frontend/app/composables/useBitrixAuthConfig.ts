@@ -1,5 +1,6 @@
 type AuthConfig = {
   bitrixAuthEnabled: boolean;
+  vibePasswordLoginEnabled?: boolean;
   bitrixPasswordLoginEnabled?: boolean;
   oauthMisconfigured?: boolean;
   oauthMisconfiguredHint?: string;
@@ -14,6 +15,9 @@ export function useBitrixAuthConfig() {
   });
 
   const bitrixAuthEnabled = computed(() => data.value?.bitrixAuthEnabled === true);
+  const vibePasswordLoginEnabled = computed(
+    () => data.value?.vibePasswordLoginEnabled === true
+  );
   const bitrixPasswordLoginEnabled = computed(
     () => data.value?.bitrixPasswordLoginEnabled === true
   );
@@ -27,6 +31,7 @@ export function useBitrixAuthConfig() {
 
   return {
     bitrixAuthEnabled,
+    vibePasswordLoginEnabled,
     bitrixPasswordLoginEnabled,
     configReady,
     preferBitrixLogin,

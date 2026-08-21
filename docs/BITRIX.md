@@ -217,15 +217,13 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 Отчёт прогона: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.  
 CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/` (архив на случай разрешения).
 
-### Вход логин/пароль (без PHP на портале)
+### Вход логин/пароль (локально на Vibe)
 
-Форма на Vibe → сервер вызывает уже существующий `POST {портал}/oauth/token/` с `grant_type=password` и ключами приложения «VBI HR Platform» → выставляет cookie-сессию Vibe. Код/модули на crm.vbi.ru **не трогаем**.
+**Паролей Bitrix в репозитории/на сервере Vibe нет.** Сравнение идёт с локальными хешами `server/data/vibe-passwords.json` (задаёт HR в Админ → Сотрудники). Bitrix не вызывается — правок портала не нужно.
 
-**Сеть:** с VPS `45.12.74.25` должен открываться HTTPS на `crm.vbi.ru` (сейчас бывает Connect Timeout — тогда форма покажет 503, кнопка OAuth через браузер всё ещё возможна для authorize, но обмен code→token с сервера тоже упрётся в ту же сеть). Починка — firewall/маршрут **Vibe→портал**, не правка Bitrix.
+`POST /api/auth/vibe-login` → cookie-сессия Vibe (`auth_source: vibe`).
 
-Если портал отвечает `unsupported_grant_type` — password grant для локального приложения недоступен; остаётся только OAuth-редирект «Войти через Битрикс24». Выключить форму: `BITRIX_PASSWORD_LOGIN=0`.
-
-Код: `POST /api/auth/bitrix-password`, `exchangeBitrixPassword` в `bitrixClient.ts`.
+Запасной путь: OAuth «Войти через Битрикс24». Старый эксперимент `grant_type=password` к порталу — только при `BITRIX_PASSWORD_LOGIN=1` (нужна сеть Vibe→crm).
 
 ### Отпуска → график отсутствий (пальма) + календарь
 

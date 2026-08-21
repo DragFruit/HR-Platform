@@ -4,6 +4,13 @@
 
 ## 2026-08-21
 
+### Вход по паролю Vibe (локальные хеши, без Bitrix)
+
+- Паролей Bitrix на Vibe **нет** и не было — только демо `*.vbi.local` и OAuth.
+- Новый файл `server/data/vibe-passwords.json` (scrypt): HR задаёт пароль в Админ → Сотрудники (🔑).
+- `POST /api/auth/vibe-login` сравнивает ввод с хешем и выдаёт cookie-сессию Vibe. Портал не вызывается.
+- Кнопка «Войти через Битрикс24» остаётся запасным путём.
+
 ### Вход логин/пароль Bitrix без правок портала + авто-RAG после деплоя
 
 - Форма на экране входа → `POST /api/auth/bitrix-password` → OAuth `grant_type=password` на уже существующий `/oauth/token/` → cookie-сессия **Vibe** (без PHP/модулей на crm.vbi.ru).

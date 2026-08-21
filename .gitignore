@@ -41,3 +41,4 @@ frontend/server/data/bitrix-oauth-service.json
 frontend/server/data/vpn-keys.json
 frontend/server/data/employee-access-denylist.json
 frontend/server/data/knowledge-rag-index.json
+frontend/server/data/vibe-passwords.json
