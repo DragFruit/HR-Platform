@@ -1,6 +1,6 @@
-import { requireRole } from '../../../utils/requireRole';
-import { readEmployees } from '../../../utils/employeesStore';
-import { clearVibePassword, setVibePassword } from '../../../utils/vibePasswordsStore';
+import { requireRole } from '../../../../utils/requireRole';
+import { readEmployees } from '../../../../utils/employeesStore';
+import { clearVibePassword, setVibePassword } from '../../../../utils/vibePasswordsStore';
 
 /** Админ/HR задаёт или сбрасывает локальный пароль Vibe у сотрудника. */
 export default defineEventHandler(async (event) => {
