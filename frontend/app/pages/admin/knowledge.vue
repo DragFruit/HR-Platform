@@ -14,10 +14,11 @@
               {{ saving ? 'Сохраняю…' : 'Сохранить' }}
             </button>
           </template>
-          <input
+          <textarea
+            ref="titleRef"
             v-model="form.title"
             class="kb-editor__title"
-            type="text"
+            rows="1"
             maxlength="140"
             required
             placeholder="Заголовок"
@@ -100,6 +101,7 @@ const publishingId = ref<string | null>(null);
 const errorText = ref('');
 const okText = ref('');
 const loadError = ref('');
+const titleRef = ref<HTMLTextAreaElement | null>(null);
 const leadRef = ref<HTMLTextAreaElement | null>(null);
 let savedSnapshot = '';
 
@@ -129,6 +131,14 @@ const sanitizeBody = (html: string) => {
   const box = document.createElement('div');
   box.innerHTML = html;
   box.querySelectorAll('.kb-spoiler.is-open').forEach((el) => el.classList.remove('is-open'));
+  box.querySelectorAll('.kb-img-wrap').forEach((wrap) => {
+    const img = wrap.querySelector('img');
+    if (img) {
+      img.classList.remove('kb-img--selected');
+      wrap.replaceWith(img);
+    }
+  });
+  box.querySelectorAll('.kb-img-resize-handle').forEach((el) => el.remove());
   box.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
   box.querySelectorAll('script, style, iframe').forEach((el) => el.remove());
   return box.innerHTML.trim();
@@ -162,11 +172,18 @@ const apiErrorMessage = (error: unknown, fallback: string) => {
   return err.data?.statusMessage || err.statusMessage || err.data?.message || err.message || fallback;
 };
 
-const resizeLead = () => {
-  const el = leadRef.value;
+const resizeField = (el: HTMLTextAreaElement | null, minPx: number) => {
   if (!el) return;
   el.style.height = 'auto';
-  el.style.height = `${Math.max(el.scrollHeight, 36)}px`;
+  el.style.height = `${Math.max(el.scrollHeight, minPx)}px`;
+};
+
+const resizeTitle = () => resizeField(titleRef.value, 40);
+const resizeLead = () => resizeField(leadRef.value, 36);
+
+const resizeEditorFields = () => {
+  resizeTitle();
+  resizeLead();
 };
 
 const blankForm = () => {
@@ -184,7 +201,7 @@ const resetForm = () => {
   errorText.value = '';
   okText.value = '';
   markClean();
-  nextTick(resizeLead);
+  nextTick(resizeEditorFields);
 };
 
 const fillForm = (article: AdminKnowledgeArticle) => {
@@ -195,7 +212,7 @@ const fillForm = (article: AdminKnowledgeArticle) => {
   form.status = article.status;
   form.tags = [...article.tags];
   errorText.value = '';
-  nextTick(resizeLead);
+  nextTick(resizeEditorFields);
 };
 
 const startEdit = (article: AdminKnowledgeArticle) => {
@@ -211,7 +228,7 @@ const startEdit = (article: AdminKnowledgeArticle) => {
 
 const onEditorReady = () => {
   markClean();
-  nextTick(resizeLead);
+  nextTick(resizeEditorFields);
 };
 
 const articlePayload = (status: AdminKnowledgeArticleStatus) => ({
@@ -237,11 +254,11 @@ const saveArticle = async () => {
       errorText.value = 'Текст статьи: минимум 20 символов';
       return;
     }
-    const payload = articlePayload('review');
+    const payload = articlePayload(editingId.value ? form.status : 'review');
     if (editingId.value) {
       const article = await updateArticle(editingId.value, payload);
       fillForm(article);
-      okText.value = 'Сохранено, на проверке';
+      okText.value = 'Сохранено';
     } else {
       const article = await createArticle(payload);
       fillForm(article);
@@ -285,7 +302,7 @@ const removeArticle = async (id: string) => {
     if (editingId.value === id) {
       blankForm();
       markClean();
-      nextTick(resizeLead);
+      nextTick(resizeEditorFields);
     }
     okText.value = 'Статья удалена';
   } catch (error: unknown) {
@@ -303,8 +320,8 @@ const formatDateTime = (iso: string) =>
   });
 
 watch(
-  () => form.summary,
-  () => nextTick(resizeLead)
+  () => [form.title, form.summary] as const,
+  () => nextTick(resizeEditorFields)
 );
 
 onMounted(() => {
@@ -314,7 +331,7 @@ onMounted(() => {
     })
     .finally(() => {
       markClean();
-      nextTick(resizeLead);
+      nextTick(resizeEditorFields);
     });
 });
 </script>

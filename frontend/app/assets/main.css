@@ -6334,35 +6334,40 @@ button.org-unit-head--link:hover {
 }
 
 .kb-wysiwyg__column {
-  width: min(720px, 100%);
+  width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 22px;
+  box-sizing: border-box;
 }
 
 .kb-editor__title,
 .kb-editor__lead {
+  display: block;
   width: 100%;
   border: 0;
   background: transparent;
   font: inherit;
   color: #111;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .kb-editor__title {
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 2.8vw, 2.05rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.03em;
+  min-height: 1.2em;
   padding: 0 0 8px;
 }
 
 .kb-editor__lead {
-  display: block;
   min-height: 2.2em;
   margin-bottom: 8px;
-  overflow: hidden;
-  resize: none;
   font-size: 1.02rem;
   line-height: 1.45;
   color: #111;
