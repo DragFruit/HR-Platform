@@ -1,5 +1,10 @@
 import { requireRole } from '../../utils/requireRole';
 import { createKnowledgeAiDegradedNotification } from '../../utils/adminNotificationsStore';
+import {
+  emptyKbReplyMode,
+  KB_AI_NOT_FOUND_REPLY,
+  KB_AI_OFFTOPIC_REPLY
+} from '../../../app/utils/knowledgeAiIntent';
 import { yandexChatAnswer, yandexChatAnswerAmbiguous } from '../../utils/yandexGpt';
 import {
   buildRagAmbiguousContext,
@@ -52,6 +57,18 @@ export default defineEventHandler(async (event) => {
   const history = normalizeHistory(payload.history);
   const viewer = { role: session.role, department: session.department };
 
+  // Нерабочее — сразу отказ, без embeddings и без «допишите статью»
+  if (emptyKbReplyMode(question) === 'offtopic') {
+    return {
+      answer: KB_AI_OFFTOPIC_REPLY,
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false,
+      intent: 'offtopic' as const
+    };
+  }
+
   const alertAdmin = async (err: unknown) => {
     const msg = err instanceof Error ? err.message : String(err);
     try {
@@ -68,17 +85,17 @@ export default defineEventHandler(async (event) => {
 
   try {
     const retrieved = await retrieveKnowledgeDetailed(question, { viewer });
-  if (!retrieved.hits.length) {
-    return {
-      answer:
-        'В базе знаний пока нет материала по этому вопросу.\n\n' +
-        'Если тема нужна команде — вы можете дописать статью сами или написать HR, что не хватает знаний по этой теме. Мы добавим.',
-      citations: [] as YandexAskCitation[],
-      found: false,
-      ambiguous: false,
-      degraded: false
-    };
-  }
+    if (!retrieved.hits.length) {
+      const mode = emptyKbReplyMode(question);
+      return {
+        answer: mode === 'offtopic' ? KB_AI_OFFTOPIC_REPLY : KB_AI_NOT_FOUND_REPLY,
+        citations: [] as YandexAskCitation[],
+        found: false,
+        ambiguous: false,
+        degraded: false,
+        intent: mode
+      };
+    }
 
     if (retrieved.ambiguous && retrieved.branches.length >= 2) {
       const context = buildRagAmbiguousContext(retrieved.branches);

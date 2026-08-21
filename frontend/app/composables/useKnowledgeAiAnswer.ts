@@ -2,6 +2,7 @@ import {
   detectKbAiChitchat,
   detectKbAiClarify,
   detectKbAiOfftopic,
+  emptyKbReplyMode,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_CLARIFY_REPLY,
   KB_AI_GREETING_REPLY,
@@ -85,6 +86,7 @@ type YandexAskResponse = {
   citations?: KnowledgeAiCite[];
   found?: boolean;
   degraded?: boolean;
+  intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify';
 };
 
 export function useKnowledgeAiAnswer() {
@@ -118,14 +120,27 @@ export function useKnowledgeAiAnswer() {
         .filter((c) => c.id && c.title);
 
       if (resp.found === false || !citations.length) {
-        // Не offtopic: рабочий вопрос без статьи — явное «нет в базе» + приглашение дописать
-        const text = resp.answer?.trim() || KB_AI_NOT_FOUND_REPLY;
+        const mode =
+          resp.intent === 'offtopic' || resp.intent === 'not_found'
+            ? resp.intent
+            : emptyKbReplyMode(question);
+        if (mode === 'offtopic') {
+          return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
+        }
+        const text = (resp.answer || '').includes('дописать стать')
+          ? KB_AI_NOT_FOUND_REPLY
+          : resp.answer?.trim() || KB_AI_NOT_FOUND_REPLY;
         return assertKnowledgeAiCitations(textOnlyAnswer(text, 'not_found'));
       }
 
       const rawAnswer = String(resp.answer || '').trim();
       if (!rawAnswer) {
         throw new Error('empty yandex answer');
+      }
+
+      // Модель иногда клеит CTA про статьи на оффтоп — срезаем
+      if (/дописать стать|написать HR|Админ\s*→\s*База/i.test(rawAnswer) && emptyKbReplyMode(question) === 'offtopic') {
+        return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
       }
 
       const parsed = parseKbAiModelReply(rawAnswer);
@@ -137,6 +152,11 @@ export function useKnowledgeAiAnswer() {
       }
       if (parsed.intent === 'clarify') {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CLARIFY_REPLY, 'clarify'));
+      }
+
+      // Ответ «нет в базе» + CTA — без ссылок, без предложения статей
+      if (/в базе знаний пока нет|в базе этого нет|не нашлось/i.test(parsed.text)) {
+        return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_NOT_FOUND_REPLY, 'not_found'));
       }
 
       const parts: KnowledgeAiPart[] = [{ type: 'text', value: parsed.text }];
