@@ -110,6 +110,214 @@ export function tokenizeForRag(text: string): string[] {
     .filter((t) => t.length >= 2 && !STOP.has(t));
 }
 
+const RU_VOWELS = 'аеиоуыэюя';
+
+const byLonger = (a: string, b: string) => b.length - a.length;
+
+/** Стеммер по мотивам Snowball Russian — только для матчинга словоформ в RAG. */
+export function stemRu(raw: string): string {
+  let w = String(raw || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  if (w.length < 4 || !/[а-я]/.test(w)) return w;
+
+  let rvStart = -1;
+  for (let i = 0; i < w.length; i++) {
+    if (RU_VOWELS.includes(w[i])) {
+      rvStart = i + 1;
+      break;
+    }
+  }
+  if (rvStart < 0 || rvStart >= w.length) return w;
+  const head = w.slice(0, rvStart);
+  let rv = w.slice(rvStart);
+
+  const cut = (endings: string[]): boolean => {
+    for (const e of endings) {
+      if (rv.length > e.length && rv.endsWith(e)) {
+        rv = rv.slice(0, -e.length);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const cutAfterAYa = (endings: string[]): boolean => {
+    for (const e of endings) {
+      if (rv.length <= e.length + 1) continue;
+      if (!rv.endsWith(e)) continue;
+      const prev = rv[rv.length - e.length - 1];
+      if (prev === 'а' || prev === 'я') {
+        rv = rv.slice(0, -e.length);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (
+    !cut(['ившись', 'ывшись', 'ивши', 'ывши', 'ив', 'ыв'].sort(byLonger))
+  ) {
+    cutAfterAYa(['вшись', 'вши', 'в']);
+  }
+  cut(['ся', 'сь']);
+
+  const adjectives = [
+    'ившими',
+    'ывшими',
+    'его',
+    'ого',
+    'ему',
+    'ому',
+    'ими',
+    'ыми',
+    'ее',
+    'ие',
+    'ые',
+    'ое',
+    'ей',
+    'ий',
+    'ый',
+    'ой',
+    'ем',
+    'им',
+    'ым',
+    'ом',
+    'их',
+    'ых',
+    'ую',
+    'юю',
+    'ая',
+    'яя',
+    'ою',
+    'ею'
+  ].sort(byLonger);
+  const partAfterAYa = ['ющ', 'вш', 'нн', 'ем', 'щ'].sort(byLonger);
+  const part2 = ['ивши', 'ывши', 'ующ'].sort(byLonger);
+  if (cut(adjectives)) {
+    if (!cutAfterAYa(partAfterAYa)) cut(part2);
+  } else if (!cutAfterAYa(partAfterAYa)) {
+    cut(part2);
+  }
+
+  const verbAfterAYa = [
+    'ете',
+    'йте',
+    'ешь',
+    'нно',
+    'ла',
+    'на',
+    'ли',
+    'ло',
+    'но',
+    'ет',
+    'ют',
+    'ны',
+    'ть',
+    'й',
+    'л',
+    'ем',
+    'н'
+  ].sort(byLonger);
+  // «уволится» → после снятия «ся» остаётся «уволит» (3 л. ед. ч.)
+  const verb2 = [
+    'ейте',
+    'уйте',
+    'ила',
+    'ыла',
+    'ена',
+    'ите',
+    'или',
+    'ыли',
+    'ено',
+    'уют',
+    'ены',
+    'ить',
+    'ыть',
+    'ишь',
+    'ит',
+    'ят',
+    'ат',
+    'ую',
+    'ю'
+  ].sort(byLonger);
+  if (!cutAfterAYa(verbAfterAYa)) cut(verb2);
+
+  cut(
+    [
+      'иями',
+      'ями',
+      'ами',
+      'иях',
+      'ях',
+      'иям',
+      'ям',
+      'ием',
+      'ией',
+      'ьев',
+      'иях',
+      'ей',
+      'ой',
+      'ий',
+      'ие',
+      'ье',
+      'еи',
+      'ии',
+      'ев',
+      'ов',
+      'ом',
+      'ем',
+      'ах',
+      'ию',
+      'ью',
+      'ия',
+      'ья',
+      'ам',
+      'ия',
+      'а',
+      'е',
+      'и',
+      'й',
+      'о',
+      'у',
+      'ы',
+      'ь',
+      'ю',
+      'я'
+    ].sort(byLonger)
+  );
+
+  cut(['ость', 'ост']);
+  cut(['ейше', 'ейш']);
+  if (rv.endsWith('нн') && rv.length > 2) rv = rv.slice(0, -1);
+  if ((rv.endsWith('ь') || rv.endsWith('й')) && rv.length > 1) rv = rv.slice(0, -1);
+
+  return `${head}${rv}`;
+}
+
+/** Одна словоформа? Точное вхождение или общая основа (увол / увольн). */
+export function tokensMatchMorph(a: string, b: string): boolean {
+  const x = a.toLowerCase().replace(/ё/g, 'е');
+  const y = b.toLowerCase().replace(/ё/g, 'е');
+  if (x === y) return true;
+  if (x.length < 4 || y.length < 4) return x.includes(y) || y.includes(x);
+  // «ь» в основе часто мешает префиксу (увол vs увольн)
+  const sa = stemRu(x).replace(/ь/g, '');
+  const sb = stemRu(y).replace(/ь/g, '');
+  if (sa === sb) return true;
+  if (sa.length >= 4 && sb.length >= 4 && (sa.startsWith(sb) || sb.startsWith(sa))) return true;
+  return false;
+}
+
+export function textCoversToken(text: string, token: string): boolean {
+  const t = token.toLowerCase();
+  const blob = String(text || '').toLowerCase();
+  if (!t) return true;
+  if (blob.includes(t)) return true;
+  if (t.length < 4) return false;
+  return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t));
+}
+
 /** Слишком общие слова — по ним нельзя оставлять «похожие» статьи. */
 const GENERIC_QUERY_TOKENS = new Set([
   'могу',
@@ -154,8 +362,8 @@ export function hitCoversDistinctiveTokens(
   distinctive: string[]
 ): boolean {
   if (!distinctive.length) return true;
-  const blob = `${title}\n${snippets.join('\n')}`.toLowerCase();
-  const matched = distinctive.filter((t) => blob.includes(t));
+  const blob = `${title}\n${snippets.join('\n')}`;
+  const matched = distinctive.filter((t) => textCoversToken(blob, t));
   const need = Math.max(1, Math.ceil(distinctive.length * 0.4));
   return matched.length >= need;
 }
@@ -163,18 +371,17 @@ export function hitCoversDistinctiveTokens(
 /**
  * Доля совпавших токенов + бонус за заголовок (0…1).
  * Редкое точное слово в title поднимает score сильнее.
+ * Совпадение — точное или по словоформе (основа).
  */
 export function lexicalScore(title: string, body: string, queryTokens: string[]): number {
   if (!queryTokens.length) return 0;
-  const titleL = title.toLowerCase();
-  const bodyL = body.toLowerCase();
   let hits = 0;
   let titleHits = 0;
   for (const token of queryTokens) {
-    if (titleL.includes(token)) {
+    if (textCoversToken(title, token)) {
       hits += 1;
       titleHits += 1;
-    } else if (bodyL.includes(token)) {
+    } else if (textCoversToken(body, token)) {
       hits += 1;
     }
   }
