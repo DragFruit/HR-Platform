@@ -164,6 +164,25 @@ const copyButtonHtml = () =>
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+const looksLikeHtml = (value: string) =>
+  /<(p|h[1-4]|div|ul|ol|li|blockquote|span|pre|strong|em|u|s|del|strike|a|br|i|b|img|table|hr|font|noindex|tbody|thead|tr|td|th)\b/i.test(
+    value
+  );
+
+const decodeEscapedHtml = (value: string) => {
+  let out = value;
+  for (let i = 0; i < 3; i++) {
+    if (!/&lt;(?:\/?[a-z]+|br)\b/i.test(out)) break;
+    out = out
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&');
+  }
+  return out;
+};
+
 const isEmptyHtml = (html: string) => {
   const text = html
     .replace(/<br\s*\/?>/gi, '')
@@ -231,9 +250,9 @@ const pruneEmptyDecorations = () => {
 };
 
 const markdownToHtml = (src: string) => {
-  const raw = src.trim();
+  const raw = decodeEscapedHtml(src.trim());
   if (!raw) return '<p><br></p>';
-  if (/<(p|h[1-4]|div|ul|ol|blockquote|span|pre|strong|em|u|s|del|strike)\b/i.test(raw)) return src;
+  if (looksLikeHtml(raw)) return raw;
 
   const inline = (value: string) =>
     escapeHtml(value)

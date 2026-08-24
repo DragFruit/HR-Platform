@@ -4,7 +4,9 @@
  * - If target already has an article with the same `id` — keep target metadata
  *   (do not wipe admin edits), but refresh `body` / `coverImage` from seed when
  *   the seed carries local `/knowledge/...` assets or the target still has
- *   Bitrix page chrome (`/devs/asset/...` link/script).
+ *   Bitrix page chrome (`/devs/asset/...` link/script), or
+ *   the target body looks like escaped HTML (`&lt;a` / `&lt;br`) from an older
+ *   editor path that treated inline HTML as markdown.
  * - Otherwise — add incoming article from seed.
  *
  * Usage:
@@ -45,6 +47,14 @@ function hasBitrixPageChrome(body) {
   return typeof body === 'string' && /\/devs\/asset\//.test(body);
 }
 
+function looksEscapedHtml(body) {
+  return typeof body === 'string' && /&lt;(?:\/?[a-z]+|br)\b/i.test(body);
+}
+
+function seedHasRenderableHtml(body) {
+  return typeof body === 'string' && /<(?:a|br|p|div|img|i|b)\b/i.test(body);
+}
+
 function shouldRefreshBody(targetArticle, incomingArticle) {
   const incomingBody = incomingArticle?.body;
   if (typeof incomingBody !== 'string' || !incomingBody.trim()) return false;
@@ -54,6 +64,10 @@ function shouldRefreshBody(targetArticle, incomingArticle) {
   if (hasBitrixPageChrome(targetBody)) return true;
   // First time seed brings migrated local image paths.
   if (seedHasLocalKnowledgeAssets(incomingBody) && !seedHasLocalKnowledgeAssets(targetBody)) {
+    return true;
+  }
+  // Editor used to treat inline HTML as markdown and save tags as text.
+  if (looksEscapedHtml(targetBody) && seedHasRenderableHtml(incomingBody)) {
     return true;
   }
   return false;

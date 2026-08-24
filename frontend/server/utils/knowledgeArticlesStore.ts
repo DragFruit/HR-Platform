@@ -2,6 +2,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
 import { resolveArticleDepartments } from './knowledgeAudience';
+import { normalizeKnowledgeArticleBody } from './knowledgeArticleHtml';
 
 export type KnowledgeArticleStatus = 'review' | 'published';
 
@@ -55,7 +56,7 @@ const normalizeArticle = (raw: Partial<KnowledgeArticle>): KnowledgeArticle | nu
 
   const title = String(raw.title || '').trim();
   const summary = String(raw.summary || '').trim();
-  const body = String(raw.body || '').trim();
+  const body = normalizeKnowledgeArticleBody(String(raw.body || '').trim());
   const authorName = String(raw.authorName || '').trim() || 'Администратор';
   const createdAt = String(raw.createdAt || '').trim() || toIso();
   const updatedAt = String(raw.updatedAt || '').trim() || createdAt;
