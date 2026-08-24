@@ -90,6 +90,19 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     expectAny: ['kb-29011']
   },
   {
+    id: 'resignation',
+    canonical: 'увольнение сотрудника',
+    paraphrases: [
+      'как уволиться',
+      'хочу уволиться что нужно',
+      'процесс увольнения',
+      'как уволится',
+      'хочу уволится'
+    ],
+    expectAny: ['kb-20175', 'kb-24927'],
+    note: '«уволиться» = та же тема, что «увольнение»'
+  },
+  {
     id: 'offtopic-weather',
     canonical: 'какая погода завтра в Москве',
     paraphrases: ['расскажи анекдот', 'кто выиграл футбол'],

@@ -37,5 +37,36 @@ assert.equal(isRewriteSafe('как уйти в отпуск в digital', 'как
 assert.equal(isRewriteSafe('доступы AFINA', 'доступы к афине CRM'), true);
 assert.equal(isRewriteSafe('контакты', 'погода в Москве завтра вечером'), false);
 
+// Синонимы увольнения (зеркало knowledgeRagLexical SYNONYM_GROUPS)
+const RESIGN = [
+  'увольнение',
+  'увольнения',
+  'увольнении',
+  'уволиться',
+  'уволится',
+  'уволюсь',
+  'увольняюсь',
+  'процесс увольнения',
+  'регламент увольнения',
+  'как уволиться',
+  'как уволится',
+  'хочу уволиться',
+  'хочу уволится',
+  'что нужно чтобы уволиться'
+];
+function expandResign(q) {
+  const lower = q.toLowerCase();
+  const hit = RESIGN.some((t) => lower.includes(t.toLowerCase()));
+  if (!hit) return q;
+  const extra = RESIGN.filter((t) => !lower.includes(t.toLowerCase()));
+  return `${q} ${extra.join(' ')}`;
+}
+for (const q of ['как уволиться', 'хочу уволится что нужно', 'процесс увольнения', 'увольнение']) {
+  const expanded = expandResign(q);
+  assert.ok(expanded.toLowerCase().includes('увольнение'), q);
+  assert.ok(expanded.toLowerCase().includes('уволиться') || q.includes('увольнен'), q);
+}
+
 console.log('ok: rewrite safety checks passed');
+console.log('ok: resignation synonym expansion');
 console.log('Полный eval на перефразах: POST /api/admin/knowledge/rag-eval (admin/hr, индекс должен быть собран).');
