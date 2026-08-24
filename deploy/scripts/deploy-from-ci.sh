@@ -14,5 +14,18 @@ fi
 
 ENV="${1:?staging или production}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+OUTPUT_PUBLIC="${ROOT}/frontend/.output/public"
+REPO_KNOWLEDGE="${ROOT}/frontend/public/knowledge"
+
+# Артефакт CI без public/knowledge (лимит GitLab → 413). Вернём из checkout перед rsync,
+# иначе --delete на сервере снесёт картинки статей.
+if [[ -d "${REPO_KNOWLEDGE}" ]]; then
+  echo "→ CI: подмешиваем frontend/public/knowledge → .output/public/knowledge"
+  mkdir -p "${OUTPUT_PUBLIC}"
+  rm -rf "${OUTPUT_PUBLIC}/knowledge"
+  cp -a "${REPO_KNOWLEDGE}" "${OUTPUT_PUBLIC}/knowledge"
+else
+  echo "⚠ CI: нет ${REPO_KNOWLEDGE} — картинки БЗ на сервере могут устареть/пропасть при rsync --delete" >&2
+fi
 
 bash "${ROOT}/deploy/scripts/deploy-remote.sh" "${ENV}"

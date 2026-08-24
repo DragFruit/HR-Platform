@@ -161,6 +161,7 @@ flowchart LR
 | Job | Частая причина |
 |-----|----------------|
 | build | ошибка в коде / `npm ci` — смотреть лог job |
+| build | `413 Request Entity Too Large` / `FATAL: too large` при Uploading artifacts — архив `.output` больше лимита GitLab. В CI `public/knowledge` **исключён** из artifacts и подмешивается в `deploy-from-ci.sh` из checkout; не убирать этот exclude без поднятия `max_artifacts_size` на GitLab |
 | deploy | rsync `Permission denied` на `.output` | файлы от root после ручного деплоя — `chown` в `deploy-remote.sh`; sudoers: `deploy/sudoers/vbi-hr-deploy` |
 | deploy | пустые `DEPLOY_HOST` / `DEPLOY_USER` | переменные Protected, а ветка не protected — значения заданы в `.gitlab-ci.yml` |
 | deploy | нет/битый `SSH_PRIVATE_KEY` или `SSH_PRIVATE_KEY_B64` (`truncated input`), нет ключа у `deploy@сервер` |

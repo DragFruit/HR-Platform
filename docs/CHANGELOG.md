@@ -4,6 +4,10 @@
 
 ## 2026-08-24
 
+### CI: артефакт build без 413 (картинки БЗ)
+- Падение `build:staging` с `413 Request Entity Too Large` / `FATAL: too large`: в artifacts не кладём `frontend/.output/public/knowledge` (~100MB); перед деплоем подмешиваем из checkout.
+- Файлы: `.gitlab-ci.yml`, `deploy/scripts/deploy-from-ci.sh`, `docs/CI-CD.md`.
+
 ### База знаний ИИ: якорь Programmatic сильнее случайного совпадения
 - «programmatic» вскользь в DayOfff больше не перебивает блок Programmatic в «Контактах».
 - По сильному якорю (латиница / длинное слово) сначала ищем фрагменты с заголовком секции, без семантики «расчётов→коллтрекинг».
