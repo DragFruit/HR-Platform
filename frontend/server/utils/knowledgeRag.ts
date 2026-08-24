@@ -8,6 +8,8 @@ import {
   expandQueryWithSynonyms,
   hitCoversDistinctiveTokens,
   lexicalScore,
+  rareDistinctiveTokens,
+  textCoversToken,
   tokenizeForRag
 } from './knowledgeRagLexical';
 import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
@@ -21,6 +23,8 @@ import { canUserSeeArticle } from './knowledgeAudience';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
+/** Смена нарезки — пересобрать индекс, даже если статьи те же. */
+const INDEX_VERSION = 2;
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -50,7 +54,7 @@ export type KnowledgeRagChunk = {
 };
 
 export type KnowledgeRagIndex = {
-  version: 1;
+  version: 2;
   updatedAt: string;
   /** Хеш набора опубликованных статей (id+updatedAt+body) — чтобы понять, устарел ли индекс. */
   corpusHash: string;
@@ -70,11 +74,9 @@ const stripHtml = (html: string) =>
 
 const hashText = (value: string) => createHash('sha1').update(value).digest('hex').slice(0, 16);
 
-export function chunkArticleText(title: string, bodyHtml: string): string[] {
-  const plain = stripHtml(bodyHtml);
-  const full = `${title}\n\n${plain}`.trim();
+function windowChunks(text: string): string[] {
+  const full = text.trim();
   if (!full) return [];
-
   if (full.length <= CHUNK_SIZE) return [full];
 
   const chunks: string[] = [];
@@ -94,6 +96,58 @@ export function chunkArticleText(title: string, bodyHtml: string): string[] {
   return chunks;
 }
 
+/** Длинные статьи (Контакты) режем по блокам, иначе Programmatic тонет в юристах/Яндексе. */
+function splitPlainSections(plain: string): string[] {
+  const marked = String(plain || '')
+    .replace(/_{12,}/g, '\n§\n')
+    .replace(/(?=\bProgrammatic\b)/gi, '\n§\n');
+  const sections = marked
+    .split(/\n§\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return sections.length ? sections : [plain];
+}
+
+export function chunkArticleText(title: string, bodyHtml: string): string[] {
+  const plain = stripHtml(bodyHtml);
+  if (!plain) return [];
+  const heading = title.trim();
+  const sections = splitPlainSections(plain);
+  const chunks: string[] = [];
+  for (const section of sections) {
+    const labeled = heading && !section.startsWith(heading) ? `${heading}\n\n${section}` : section;
+    chunks.push(...windowChunks(labeled));
+  }
+  return chunks;
+}
+
+/** Из всех фрагментов статьи берём те, где есть якорь запроса, а не «случайный» верх. */
+export function pickArticleSnippets(
+  title: string,
+  chunkTexts: string[],
+  distinctive: string[],
+  queryTokens: string[],
+  limit = 3
+): string[] {
+  if (!chunkTexts.length) return [];
+  const rare = rareDistinctiveTokens(distinctive);
+  const ranked = chunkTexts
+    .map((text, idx) => {
+      const lex = lexicalScore(title, text, queryTokens);
+      const rareHits = rare.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
+      const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
+      return { text, idx, score: rareHits * 3 + distHits * 0.6 + lex };
+    })
+    .sort((a, b) => b.score - a.score || a.idx - b.idx);
+  const picked: string[] = [];
+  for (const row of ranked) {
+    if (picked.length >= limit) break;
+    if (picked.includes(row.text)) continue;
+    picked.push(row.text);
+  }
+  return picked;
+}
+
 function corpusHashFromArticles(articles: KnowledgeArticle[]): string {
   const rows = articles
     .filter((a) => a.status === 'published')
@@ -106,7 +160,7 @@ async function readIndexFile(): Promise<KnowledgeRagIndex | null> {
   try {
     const raw = await readFile(INDEX_FILE, 'utf8');
     const parsed = JSON.parse(raw) as KnowledgeRagIndex;
-    if (parsed?.version !== 1 || !Array.isArray(parsed.chunks)) return null;
+    if (parsed?.version !== INDEX_VERSION || !Array.isArray(parsed.chunks)) return null;
     return parsed;
   } catch {
     return null;
@@ -132,7 +186,12 @@ export async function rebuildKnowledgeRagIndex(opts?: {
 
     if (!opts?.force) {
       const existing = await readIndexFile();
-      if (existing && existing.corpusHash === nextHash && existing.chunks.length) {
+      if (
+        existing &&
+        existing.version === INDEX_VERSION &&
+        existing.corpusHash === nextHash &&
+        existing.chunks.length
+      ) {
         return existing;
       }
     }
@@ -177,7 +236,7 @@ export async function rebuildKnowledgeRagIndex(opts?: {
     }
 
     const index: KnowledgeRagIndex = {
-      version: 1,
+      version: INDEX_VERSION,
       updatedAt: new Date().toISOString(),
       corpusHash: nextHash,
       chunks: nextChunks
@@ -320,6 +379,11 @@ export async function retrieveKnowledgeDetailed(
     }
   }
 
+  for (const hit of byArticle.values()) {
+    const articleChunks = visibleChunks.filter((c) => c.articleId === hit.articleId).map((c) => c.text);
+    hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3);
+  }
+
   let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
 
   // Семантика тянет «клиент/CRM» на чужие статьи — оставляем только покрытие значимых слов.
@@ -419,6 +483,7 @@ export async function retrieveKnowledgeLexicalFallback(
   if (!q) return [];
   const tokens = tokenizeForRag(expandQueryWithSynonyms(q));
   if (!tokens.length) return [];
+  const distinctive = distinctiveQueryTokens(q);
 
   const state = await readKnowledgeArticles();
   const published = state.articles.filter((a) => a.status === 'published');
@@ -428,20 +493,20 @@ export async function retrieveKnowledgeLexicalFallback(
 
   let scored = visible
     .map((article) => {
-      const plain = `${article.title}\n${article.body}`.replace(/<[^>]+>/g, ' ');
+      const chunkTexts = chunkArticleText(article.title, article.body);
+      const plain = chunkTexts.join('\n');
       const lex = lexicalScore(article.title, plain, tokens);
       return {
         articleId: article.id,
         title: article.title,
         score: lex,
         lexicalScore: lex,
-        snippets: [plain.slice(0, 2000)]
+        snippets: pickArticleSnippets(article.title, chunkTexts, distinctive, tokens, 3)
       } satisfies KnowledgeRagHit;
     })
     .filter((h) => h.score >= 0.25)
     .sort((a, b) => b.score - a.score);
 
-  const distinctive = distinctiveQueryTokens(q);
   if (distinctive.length) {
     scored = scored.filter((h) => hitCoversDistinctiveTokens(h.title, h.snippets, distinctive));
   }

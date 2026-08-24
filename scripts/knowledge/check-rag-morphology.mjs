@@ -28,7 +28,7 @@ new Function('exports', 'module', 'require', result.outputFiles[0].text)(
   requireFromFrontend
 );
 
-const { textCoversToken, tokensMatchMorph, stemRu } = module.exports;
+const { textCoversToken, tokensMatchMorph, stemRu, distinctiveQueryTokens, hitCoversDistinctiveTokens, expandQueryWithSynonyms } = module.exports;
 
 assert.equal(textCoversToken('При увольнении сотрудника создается задача', 'уволиться'), true);
 assert.equal(textCoversToken('Регламент увольнения сотрудника', 'уволится'), true);
@@ -41,6 +41,26 @@ assert.equal(tokensMatchMorph('уволиться', 'погода'), false);
 assert.equal(tokensMatchMorph('привет', 'приветствие'), false);
 assert.equal(tokensMatchMorph('привет', 'приветствия'), false);
 assert.ok(stemRu('уволиться').length >= 4);
+
+assert.equal(textCoversToken('Programmatic (focus on astralab; solta)', 'программатики'), true);
+assert.equal(
+  textCoversToken('partners@metrika.ru расчеты по площадкам Яндекс', 'программатики'),
+  false
+);
+const distinctive = distinctiveQueryTokens(
+  'Какие есть программатики и кому лучше писать для расчетов?'
+);
+assert.ok(distinctive.includes('программатики'));
+assert.ok(!distinctive.includes('писать'));
+assert.equal(
+  hitCoversDistinctiveTokens('Контакты', ['partners@metrika.ru для расчетов'], distinctive),
+  false
+);
+assert.equal(
+  hitCoversDistinctiveTokens('Контакты', ['Programmatic focus on astralab solta adheads hybrid'], distinctive),
+  true
+);
+assert.ok(expandQueryWithSynonyms('программатики').toLowerCase().includes('programmatic'));
 
 const intentBuild = esbuild.buildSync({
   entryPoints: [join(frontend, 'app/utils/knowledgeAiIntent.ts')],
@@ -62,3 +82,4 @@ assert.equal(detectKbAiChitchat('как уволиться'), false);
 
 console.log('ok: morphology covers увольнение↔уволиться, отпуск↔отпуска');
 console.log('ok: привет ≠ приветствие; greeting skips RAG');
+console.log('ok: programmatic ≠ metrika partners for distinctive cover');

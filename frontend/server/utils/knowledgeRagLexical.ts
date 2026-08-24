@@ -68,6 +68,7 @@ const SYNONYM_GROUPS: string[][] = [
   ['регламент отпуска', 'ухода в отпуск', 'правила отпуска'],
   ['дни рождения', 'день рождения', 'др клиентов', 'др клиента', 'др клиент', 'birthday'],
   // Сотрудник спрашивает «как уволиться» — то же, что регламент/процесс увольнения
+  ['программатик', 'программатика', 'программатики', 'programmatic'],
   [
     'увольнение',
     'увольнения',
@@ -313,13 +314,31 @@ export function tokensMatchMorph(a: string, b: string): boolean {
   return /^(н|ен|ени|нн|ок|к|ск|т|л|вш|ющ|ива|ыва)*$/u.test(extra);
 }
 
+function synonymGroupForToken(token: string): string[] | null {
+  const t = token.toLowerCase();
+  for (const group of SYNONYM_GROUPS) {
+    if (group.some((term) => term.toLowerCase() === t || t.includes(term.toLowerCase()))) {
+      return group;
+    }
+  }
+  return null;
+}
+
 export function textCoversToken(text: string, token: string): boolean {
   const t = token.toLowerCase();
   const blob = String(text || '').toLowerCase();
   if (!t) return true;
   if (blob.includes(t)) return true;
   if (t.length < 4) return false;
-  return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t));
+  if (tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t))) return true;
+  const group = synonymGroupForToken(t);
+  if (!group) return false;
+  return group.some((term) => {
+    const g = term.toLowerCase();
+    if (g === t) return false;
+    if (blob.includes(g)) return true;
+    return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, g));
+  });
 }
 
 /** Слишком общие слова — по ним нельзя оставлять «похожие» статьи. */
@@ -347,7 +366,14 @@ const GENERIC_QUERY_TOKENS = new Set([
   'раздел',
   'страница',
   'инструкция',
-  'информация'
+  'информация',
+  'лучше',
+  'писать',
+  'кому',
+  'какой',
+  'какая',
+  'какие',
+  'есть'
 ]);
 
 /**
@@ -355,9 +381,12 @@ const GENERIC_QUERY_TOKENS = new Set([
  * Если ни одна статья их не покрывает — лучше пустой retrieval, чем чужие «клиенты/CRM».
  */
 export function distinctiveQueryTokens(question: string): string[] {
-  return tokenizeForRag(expandQueryWithSynonyms(question)).filter(
-    (t) => t.length >= 4 && !GENERIC_QUERY_TOKENS.has(t)
-  );
+  return tokenizeForRag(question).filter((t) => t.length >= 4 && !GENERIC_QUERY_TOKENS.has(t));
+}
+
+/** Редкие якоря запроса: длинные слова и латиница (programmatic). */
+export function rareDistinctiveTokens(distinctive: string[]): string[] {
+  return distinctive.filter((t) => t.length >= 8 || /[a-z]/i.test(t));
 }
 
 export function hitCoversDistinctiveTokens(
@@ -367,6 +396,12 @@ export function hitCoversDistinctiveTokens(
 ): boolean {
   if (!distinctive.length) return true;
   const blob = `${title}\n${snippets.join('\n')}`;
+  const rare = rareDistinctiveTokens(distinctive);
+  if (rare.length) {
+    // Обязателен самый специфичный якорь (программатики), не «расчётов» из чужого блока
+    const longest = [...rare].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    return textCoversToken(blob, longest);
+  }
   const matched = distinctive.filter((t) => textCoversToken(blob, t));
   const need = Math.max(1, Math.ceil(distinctive.length * 0.4));
   return matched.length >= need;
