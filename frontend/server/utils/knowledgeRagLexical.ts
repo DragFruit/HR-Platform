@@ -389,6 +389,43 @@ export function rareDistinctiveTokens(distinctive: string[]): string[] {
   return distinctive.filter((t) => t.length >= 8 || /[a-z]/i.test(t));
 }
 
+export function longestRareToken(distinctive: string[]): string | null {
+  const rare = rareDistinctiveTokens(distinctive);
+  if (!rare.length) return null;
+  return [...rare].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+}
+
+/**
+ * Насколько «якорь» сидит в тексте: 1 = вскользь (как programmatic в DayOfff),
+ * ≥2 = заголовок секции / несколько вхождений (блок Programmatic в Контактах).
+ */
+export function rareTokenStrength(text: string, token: string): number {
+  if (!token || !text) return 0;
+  const blob = String(text)
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
+  const group = synonymGroupForToken(token);
+  if (group) {
+    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е'));
+  }
+
+  let score = 0;
+  for (const form of forms) {
+    if (form.length < 4) continue;
+    let idx = 0;
+    while ((idx = blob.indexOf(form, idx)) >= 0) {
+      score += 1;
+      const lineStart = blob.lastIndexOf('\n', Math.max(0, idx - 1)) + 1;
+      const col = idx - lineStart;
+      // заголовок секции / начало строки, не «…ads, programmatic, аналитика…»
+      if (col <= 2) score += 2;
+      idx += form.length;
+    }
+  }
+  return score;
+}
+
 export function hitCoversDistinctiveTokens(
   title: string,
   snippets: string[],
@@ -396,11 +433,10 @@ export function hitCoversDistinctiveTokens(
 ): boolean {
   if (!distinctive.length) return true;
   const blob = `${title}\n${snippets.join('\n')}`;
-  const rare = rareDistinctiveTokens(distinctive);
-  if (rare.length) {
-    // Обязателен самый специфичный якорь (программатики), не «расчётов» из чужого блока
-    const longest = [...rare].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
-    return textCoversToken(blob, longest);
+  const anchor = longestRareToken(distinctive);
+  if (anchor) {
+    // Обязателен самый специфичный якорь (programmatic), не «расчётов» из чужого блока
+    return rareTokenStrength(blob, anchor) > 0;
   }
   const matched = distinctive.filter((t) => textCoversToken(blob, t));
   const need = Math.max(1, Math.ceil(distinctive.length * 0.4));

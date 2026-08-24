@@ -8,7 +8,9 @@ import {
   expandQueryWithSynonyms,
   hitCoversDistinctiveTokens,
   lexicalScore,
+  longestRareToken,
   rareDistinctiveTokens,
+  rareTokenStrength,
   textCoversToken,
   tokenizeForRag
 } from './knowledgeRagLexical';
@@ -136,7 +138,9 @@ export function pickArticleSnippets(
       const lex = lexicalScore(title, text, queryTokens);
       const rareHits = rare.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
       const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
-      return { text, idx, score: rareHits * 3 + distHits * 0.6 + lex };
+      const anchor = longestRareToken(distinctive);
+      const strength = anchor ? rareTokenStrength(`${title}\n${text}`, anchor) : 0;
+      return { text, idx, score: strength * 4 + rareHits * 3 + distHits * 0.6 + lex };
     })
     .sort((a, b) => b.score - a.score || a.idx - b.idx);
   const picked: string[] = [];
@@ -328,6 +332,67 @@ export async function retrieveKnowledgeDetailed(
 
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
 
+  // Жёсткий якорь (Programmatic): не ждём эмбеддинги — иначе вскользь «programmatic» в DayOfff
+  // и семантика «расчётов» уводят от блока в Контактах.
+  const anchor = longestRareToken(distinctive);
+  if (anchor) {
+    const ranked = visibleChunks
+      .map((chunk) => {
+        const strength = rareTokenStrength(`${chunk.title}\n${chunk.text}`, anchor);
+        const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
+        return { chunk, strength, lex };
+      })
+      .filter((row) => row.strength > 0)
+      .sort((a, b) => b.strength - a.strength || b.lex - a.lex);
+
+    if (ranked.length) {
+      const maxStrength = ranked[0]!.strength;
+      const preferred = maxStrength >= 2 ? ranked.filter((row) => row.strength >= 2) : ranked;
+      const byArticle = new Map<string, KnowledgeRagHit>();
+      for (const row of preferred) {
+        const existing = byArticle.get(row.chunk.articleId);
+        const score = Math.min(1, 0.55 + row.strength * 0.08 + row.lex * 0.2);
+        if (!existing) {
+          byArticle.set(row.chunk.articleId, {
+            articleId: row.chunk.articleId,
+            title: row.chunk.title,
+            score,
+            lexicalScore: row.lex,
+            snippets: [row.chunk.text]
+          });
+        } else if (score > existing.score) {
+          existing.score = score;
+          existing.lexicalScore = row.lex;
+        }
+      }
+      for (const hit of byArticle.values()) {
+        const articleChunks = visibleChunks
+          .filter((c) => c.articleId === hit.articleId)
+          .map((c) => c.text);
+        hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3);
+      }
+      let hits = [...byArticle.values()].sort((a, b) => {
+        const sa = rareTokenStrength(`${a.title}\n${a.snippets.join('\n')}`, anchor);
+        const sb = rareTokenStrength(`${b.title}\n${b.snippets.join('\n')}`, anchor);
+        return sb - sa || b.score - a.score;
+      });
+      const maxHit = Math.max(
+        0,
+        ...hits.map((h) => rareTokenStrength(`${h.title}\n${h.snippets.join('\n')}`, anchor))
+      );
+      if (maxHit >= 2) {
+        hits = hits.filter(
+          (h) => rareTokenStrength(`${h.title}\n${h.snippets.join('\n')}`, anchor) >= 2
+        );
+      }
+      return {
+        hits: hits.slice(0, topArticles),
+        ambiguous: false,
+        branches: []
+      };
+    }
+  }
+
   const semByChunk = new Map<string, number>();
   for (const queryText of plan.queries) {
     const queryVector = await yandexEmbedText(queryText, 'query');
@@ -390,6 +455,17 @@ export async function retrieveKnowledgeDetailed(
   if (distinctive.length) {
     const covered = hits.filter((h) => hitCoversDistinctiveTokens(h.title, h.snippets, distinctive));
     hits = covered;
+    const hybridAnchor = longestRareToken(distinctive);
+    if (hybridAnchor && hits.length) {
+      const strengths = hits.map((h) => ({
+        h,
+        s: rareTokenStrength(`${h.title}\n${h.snippets.join('\n')}`, hybridAnchor)
+      }));
+      const maxS = Math.max(0, ...strengths.map((x) => x.s));
+      if (maxS >= 2) {
+        hits = strengths.filter((x) => x.s >= 2).map((x) => x.h);
+      }
+    }
   }
 
   const clearSense = clearSenseForQuestion(q);

@@ -62,6 +62,24 @@ assert.equal(
 );
 assert.ok(expandQueryWithSynonyms('программатики').toLowerCase().includes('programmatic'));
 
+const { rareTokenStrength } = module.exports;
+assert.ok(
+  rareTokenStrength(
+    'Контакты\n\nProgrammatic на базе данных соцсетей Hybrid astralab',
+    'programmatic'
+  ) >= 2
+);
+assert.ok(
+  rareTokenStrength(
+    'PPC — google ads, programmatic, аналитика, геосервисы',
+    'programmatic'
+  ) <
+    rareTokenStrength(
+      'Контакты\n\nProgrammatic на базе данных соцсетей',
+      'programmatic'
+    )
+);
+
 const intentBuild = esbuild.buildSync({
   entryPoints: [join(frontend, 'app/utils/knowledgeAiIntent.ts')],
   bundle: true,
