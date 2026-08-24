@@ -76,9 +76,10 @@ export default defineEventHandler(async (event) => {
   }
 
   // Кто руководит отделом / структура — только из org-structure (+ справочник), не из статей
-  const orgHref =
-    session.role === 'admin' || session.role === 'hr' ? '/admin/organization' : '/organization';
-  const orgAnswer = await tryAnswerFromOrgStructure(retrievalQuestion, { orgHref });
+  // «Ещё по теме» всегда на сотрудницкую схему, даже если спрашивает admin/HR
+  const orgAnswer = await tryAnswerFromOrgStructure(retrievalQuestion, {
+    orgHref: '/organization'
+  });
   if (orgAnswer) {
     return {
       answer: orgAnswer.answer,

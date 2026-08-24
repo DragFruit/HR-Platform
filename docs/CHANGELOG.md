@@ -4,6 +4,10 @@
 
 ## 2026-08-24
 
+### База знаний ИИ: «Структура» ведёт на сотрудницкую схему
+- В «Ещё по теме» ссылка **Структура** всегда `/organization`, даже если спрашивает admin/HR (не `/admin/organization`).
+- Файл: `yandex-ask.post.ts`. Проверка: чат → «кто руководит…» → клик «Структура» → `/organization`.
+
 ### База знаний ИИ: Bitrix-квадратик у ФИО
 - В ответах про людей (руководитель отдела / «кто такой …») сразу после ФИО — квадратик ↗ в профиль Bitrix (как в визитке).
 - Файлы: `knowledgeOrgAnswer.ts`, `useKnowledgeAiAnswer.ts`, `knowledge/index.vue`, `main.css`.
@@ -11,7 +15,7 @@
 
 ### База знаний ИИ: руководители отделов из Структуры
 - Вопросы «кто руководит…», гендир, состав отдела — ответ из `org-structure.json` (не из статей RAG).
-- В «Ещё по теме» — ссылка **Структура** (`/organization` / `/admin/organization`).
+- В «Ещё по теме» — ссылка **Структура** (`/organization`; с 2026-08-24 не админка).
 - Файлы: `knowledgeOrgAnswer.ts`, `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`, `knowledge/index.vue`.
 - Проверка: `python3 frontend/scripts/check-knowledge-org-answer.py`; в чате «кто руководит отделом разработки» → Музыка Сергей + ссылка Структура (не Новоторцева).
 
