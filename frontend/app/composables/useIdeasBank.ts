@@ -191,17 +191,21 @@ export function useIdeasBank() {
 
   const userVoteFor = (ideaId: string) => userVotes.value[ideaId];
 
-  const canDeleteIdea = (idea: Idea) => {
+  const isIdeaAuthor = (idea: Idea) => {
     const currentUser = user.value;
     if (!currentUser) return false;
-    if (currentUser.role === 'admin' || currentUser.role === 'hr') return true;
-    return idea.authorUserId === currentUser.id;
+    if (idea.authorUserId === currentUser.id) return true;
+    const bitrixId = currentUser.bitrix_user_id;
+    return Boolean(bitrixId && idea.authorUserId === bitrixId);
   };
+
+  /** В банке сотрудника — только автор. Админ удаляет чужие из /admin/ideas. */
+  const canDeleteIdea = (idea: Idea) => isIdeaAuthor(idea);
 
   /** Свою идею можно докинуть файлом, если он ещё не лежит на сервере. */
   const canAttachIdeaFile = (idea: Idea) => {
     if (idea.attachmentStored) return false;
-    return canDeleteIdea(idea);
+    return isIdeaAuthor(idea);
   };
 
   const canManageIdeaStatus = () => {
@@ -248,7 +252,10 @@ export function useIdeasBank() {
 
   const deleteIdea = async (ideaId: string): Promise<boolean> => {
     const idea = ideas.value.find((item) => item.id === ideaId);
-    if (!idea || !canDeleteIdea(idea)) return false;
+    if (!idea) return false;
+    const currentUser = user.value;
+    const asAdmin = currentUser?.role === 'admin' || currentUser?.role === 'hr';
+    if (!asAdmin && !isIdeaAuthor(idea)) return false;
 
     try {
       const payload = await $fetch<IdeasApiPayload>(`/api/ideas/${encodeURIComponent(ideaId)}`, {
