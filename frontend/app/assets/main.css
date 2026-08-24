@@ -15777,7 +15777,7 @@ button.button {
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  padding: 8px 4px 8px 0;
+  padding: 8px 4px 18px 0;
 }
 
 .kb-thread__pin {
@@ -15815,6 +15815,8 @@ button.button {
 .kb-bubble__text {
   margin: 0;
   white-space: pre-wrap;
+  overflow: visible;
+  padding-bottom: 2px;
 }
 
 .kb-thread__end {
@@ -15875,6 +15877,9 @@ button.button {
   font-weight: 800;
   text-decoration: none;
   border-bottom: 2px solid #ddf365;
+  padding-bottom: 0.12em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .kb-cite:hover {

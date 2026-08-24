@@ -38,6 +38,27 @@ assert.equal(textCoversToken('Погода в Москве', 'уволиться
 assert.equal(tokensMatchMorph('уволиться', 'увольнение'), true);
 assert.equal(tokensMatchMorph('отпуск', 'отпуска'), true);
 assert.equal(tokensMatchMorph('уволиться', 'погода'), false);
+assert.equal(tokensMatchMorph('привет', 'приветствие'), false);
+assert.equal(tokensMatchMorph('привет', 'приветствия'), false);
 assert.ok(stemRu('уволиться').length >= 4);
 
+const intentBuild = esbuild.buildSync({
+  entryPoints: [join(frontend, 'app/utils/knowledgeAiIntent.ts')],
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  write: false
+});
+const intentModule = { exports: {} };
+new Function('exports', 'module', 'require', intentBuild.outputFiles[0].text)(
+  intentModule.exports,
+  intentModule,
+  requireFromFrontend
+);
+const { detectKbAiChitchat } = intentModule.exports;
+assert.equal(detectKbAiChitchat('привет'), true);
+assert.equal(detectKbAiChitchat('здравствуйте'), true);
+assert.equal(detectKbAiChitchat('как уволиться'), false);
+
 console.log('ok: morphology covers увольнение↔уволиться, отпуск↔отпуска');
+console.log('ok: привет ≠ приветствие; greeting skips RAG');

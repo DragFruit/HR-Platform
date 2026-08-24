@@ -305,8 +305,12 @@ export function tokensMatchMorph(a: string, b: string): boolean {
   const sa = stemRu(x).replace(/ь/g, '');
   const sb = stemRu(y).replace(/ь/g, '');
   if (sa === sb) return true;
-  if (sa.length >= 4 && sb.length >= 4 && (sa.startsWith(sb) || sb.startsWith(sa))) return true;
-  return false;
+  if (sa.length < 4 || sb.length < 4) return false;
+  const [shortStem, longStem] = sa.length <= sb.length ? [sa, sb] : [sb, sa];
+  if (!longStem.startsWith(shortStem)) return false;
+  const extra = longStem.slice(shortStem.length);
+  // хвост стеммера (увол / уволнен), не другая лексема (привет / приветств)
+  return /^(н|ен|ени|нн|ок|к|ск|т|л|вш|ющ|ива|ыва)*$/u.test(extra);
 }
 
 export function textCoversToken(text: string, token: string): boolean {

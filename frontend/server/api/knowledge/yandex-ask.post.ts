@@ -1,8 +1,11 @@
 import { requireRole } from '../../utils/requireRole';
 import { createKnowledgeAiDegradedNotification } from '../../utils/adminNotificationsStore';
 import {
+  detectKbAiChitchat,
   emptyKbReplyMode,
   expandQuestionFromHistory,
+  KB_AI_CHITCHAT_REPLY,
+  KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
   shouldSkipRagAsOfftopic
@@ -62,6 +65,18 @@ export default defineEventHandler(async (event) => {
   const viewer = { role: session.role, department: session.department };
   /** Для RAG: уточнение + предыдущий рабочий вопрос. */
   const retrievalQuestion = expandQuestionFromHistory(question, history);
+
+  if (detectKbAiChitchat(question)) {
+    const greeting = /^(прив|здравств|добр|хай|hello|hi)/i.test(question.trim());
+    return {
+      answer: greeting ? KB_AI_GREETING_REPLY : KB_AI_CHITCHAT_REPLY,
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false,
+      intent: 'chitchat' as const
+    };
+  }
 
   // Только явный оффтоп (коты/погода/наркотики) — не «нет ключевых слов»
   if (shouldSkipRagAsOfftopic(question, history)) {
