@@ -20,11 +20,13 @@ export const KB_AI_CITE_REQUIRED = true;
 export type KnowledgeAiCite = {
   id: string;
   title: string;
+  /** Если задан — ссылка не на статью `/knowledge/:id`, а на путь платформы (напр. Структура). */
+  href?: string;
 };
 
 export type KnowledgeAiPart =
   | { type: 'text'; value: string }
-  | { type: 'cite'; id: string; title: string };
+  | { type: 'cite'; id: string; title: string; href?: string };
 
 export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
@@ -52,7 +54,7 @@ const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cites: KnowledgeAiCit
   parts.push({ type: 'text', value: '\n\nЕщё по теме: ' });
   cites.forEach((cite, idx) => {
     if (idx > 0) parts.push({ type: 'text', value: ', ' });
-    parts.push({ type: 'cite', id: cite.id, title: cite.title });
+    parts.push({ type: 'cite', id: cite.id, title: cite.title, href: cite.href });
   });
 };
 
@@ -86,7 +88,7 @@ type YandexAskResponse = {
   citations?: KnowledgeAiCite[];
   found?: boolean;
   degraded?: boolean;
-  intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify';
+  intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify' | 'org';
 };
 
 export function useKnowledgeAiAnswer() {
@@ -116,7 +118,11 @@ export function useKnowledgeAiAnswer() {
       });
 
       const citations = (resp.citations ?? [])
-        .map((c) => ({ id: String(c.id || '').trim(), title: String(c.title || '').trim() }))
+        .map((c) => ({
+          id: String(c.id || '').trim(),
+          title: String(c.title || '').trim(),
+          ...(c.href ? { href: String(c.href).trim() } : {})
+        }))
         .filter((c) => c.id && c.title);
 
       if (resp.found === false || !citations.length) {

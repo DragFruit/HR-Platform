@@ -14,6 +14,7 @@ import {
   retrieveKnowledgeDetailed,
   retrieveKnowledgeLexicalFallback
 } from '../../utils/knowledgeRag';
+import { tryAnswerFromOrgStructure } from '../../utils/knowledgeOrgAnswer';
 
 type HistoryItem = { role?: string; text?: string };
 
@@ -26,6 +27,7 @@ type Body = {
 export type YandexAskCitation = {
   id: string;
   title: string;
+  href?: string;
 };
 
 const SMOKE_PREFIX =
@@ -70,6 +72,21 @@ export default defineEventHandler(async (event) => {
       ambiguous: false,
       degraded: false,
       intent: 'offtopic' as const
+    };
+  }
+
+  // Кто руководит отделом / структура — только из org-structure (+ справочник), не из статей
+  const orgHref =
+    session.role === 'admin' || session.role === 'hr' ? '/admin/organization' : '/organization';
+  const orgAnswer = await tryAnswerFromOrgStructure(retrievalQuestion, { orgHref });
+  if (orgAnswer) {
+    return {
+      answer: orgAnswer.answer,
+      citations: orgAnswer.citations,
+      found: true,
+      ambiguous: false,
+      degraded: false,
+      intent: 'org' as const
     };
   }
 

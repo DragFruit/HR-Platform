@@ -224,7 +224,7 @@
               <template v-for="(part, idx) in msg.parts ?? []" :key="`${msg.id}-${idx}`">
                 <NuxtLink
                   v-if="part.type === 'cite'"
-                  :to="`/knowledge/${part.id}`"
+                  :to="part.href || `/knowledge/${part.id}`"
                   class="kb-cite"
                 >
                   {{ part.title }}

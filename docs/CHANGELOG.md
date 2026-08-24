@@ -4,6 +4,12 @@
 
 ## 2026-08-24
 
+### База знаний ИИ: руководители отделов из Структуры
+- Вопросы «кто руководит…», гендир, состав отдела — ответ из `org-structure.json` (не из статей RAG).
+- В «Ещё по теме» — ссылка **Структура** (`/organization` / `/admin/organization`).
+- Файлы: `knowledgeOrgAnswer.ts`, `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`, `knowledge/index.vue`.
+- Проверка: `python3 frontend/scripts/check-knowledge-org-answer.py`; в чате «кто руководит отделом разработки» → Музыка Сергей + ссылка Структура (не Новоторцева).
+
 ### Памятка: старый кот снова на «С возвращением!»
 - Welcome: `/memos/post-vacation-cover.png`. Вводная «Вот четыре совета»: `/memos/post-vacation-cover-dragon-awake.png`.
 - Файл: `postVacationMemoSlides.ts`. Проверка: `?pvm=1` — на первой карточке прежний кот, на intro — текущий арт советов.
