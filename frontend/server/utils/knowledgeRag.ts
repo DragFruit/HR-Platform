@@ -10,6 +10,7 @@ import {
   lexicalScore,
   longestRareToken,
   rareDistinctiveTokens,
+  rareTokenHeadingHits,
   rareTokenStrength,
   textCoversToken,
   tokenizeForRag
@@ -26,7 +27,7 @@ import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
 /** Смена нарезки — пересобрать индекс, даже если статьи те же. */
-const INDEX_VERSION = 2;
+const INDEX_VERSION = 3;
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -102,7 +103,8 @@ function windowChunks(text: string): string[] {
 function splitPlainSections(plain: string): string[] {
   const marked = String(plain || '')
     .replace(/_{12,}/g, '\n§\n')
-    .replace(/(?=\bProgrammatic\b)/gi, '\n§\n');
+    // только с начала строки — иначе «ads, programmatic, …» в DayOfff становится «заголовком»
+    .replace(/(?:^|\n)\s*(?=Programmatic\b)/gi, '\n§\n');
   const sections = marked
     .split(/\n§\n/)
     .map((s) => s.trim())
@@ -338,20 +340,24 @@ export async function retrieveKnowledgeDetailed(
   if (anchor) {
     const ranked = visibleChunks
       .map((chunk) => {
-        const strength = rareTokenStrength(`${chunk.title}\n${chunk.text}`, anchor);
+        const blob = `${chunk.title}\n${chunk.text}`;
+        const strength = rareTokenStrength(blob, anchor);
+        const headings = rareTokenHeadingHits(blob, anchor);
         const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
-        return { chunk, strength, lex };
+        return { chunk, strength, headings, lex };
       })
       .filter((row) => row.strength > 0)
-      .sort((a, b) => b.strength - a.strength || b.lex - a.lex);
+      .sort((a, b) => b.headings - a.headings || b.strength - a.strength || b.lex - a.lex);
 
     if (ranked.length) {
-      const maxStrength = ranked[0]!.strength;
-      const preferred = maxStrength >= 2 ? ranked.filter((row) => row.strength >= 2) : ranked;
+      const bestHeadings = ranked[0]!.headings;
+      // Если есть секция с якорем в заголовке строки — отбрасываем mid-body (DayOfff, AFINA «программатики»).
+      const preferred =
+        bestHeadings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
       const byArticle = new Map<string, KnowledgeRagHit>();
       for (const row of preferred) {
         const existing = byArticle.get(row.chunk.articleId);
-        const score = Math.min(1, 0.55 + row.strength * 0.08 + row.lex * 0.2);
+        const score = Math.min(1, 0.55 + row.strength * 0.08 + row.headings * 0.12 + row.lex * 0.2);
         if (!existing) {
           byArticle.set(row.chunk.articleId, {
             articleId: row.chunk.articleId,
@@ -372,17 +378,19 @@ export async function retrieveKnowledgeDetailed(
         hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3);
       }
       let hits = [...byArticle.values()].sort((a, b) => {
+        const ha = rareTokenHeadingHits(`${a.title}\n${a.snippets.join('\n')}`, anchor);
+        const hb = rareTokenHeadingHits(`${b.title}\n${b.snippets.join('\n')}`, anchor);
         const sa = rareTokenStrength(`${a.title}\n${a.snippets.join('\n')}`, anchor);
         const sb = rareTokenStrength(`${b.title}\n${b.snippets.join('\n')}`, anchor);
-        return sb - sa || b.score - a.score;
+        return hb - ha || sb - sa || b.score - a.score;
       });
-      const maxHit = Math.max(
+      const maxHead = Math.max(
         0,
-        ...hits.map((h) => rareTokenStrength(`${h.title}\n${h.snippets.join('\n')}`, anchor))
+        ...hits.map((h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor))
       );
-      if (maxHit >= 2) {
+      if (maxHead > 0) {
         hits = hits.filter(
-          (h) => rareTokenStrength(`${h.title}\n${h.snippets.join('\n')}`, anchor) >= 2
+          (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
         );
       }
       return {

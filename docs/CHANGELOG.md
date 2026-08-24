@@ -4,6 +4,11 @@
 
 ## 2026-08-24
 
+### База знаний ИИ: Programmatic → только «Контакты»
+- Ложные совпадения: разрез mid-line давал DayOfff «заголовок»; `программатик` ловился внутри `программатики` в AFINA.
+- Якорь-секция = латинский `Programmatic` с начала строки; в «Ещё по теме» остаётся «Контакты». Промпт: до 5 ФИО + специализация + контакт из контекста.
+- Индекс RAG v3. Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `yandexGpt.ts`.
+
 ### CI: артефакт build без 413 (картинки БЗ)
 - Падение `build:staging` с `413 Request Entity Too Large` / `FATAL: too large`: в artifacts не кладём `frontend/.output/public/knowledge` (~100MB); перед деплоем подмешиваем из checkout.
 - Файлы: `.gitlab-ci.yml`, `deploy/scripts/deploy-from-ci.sh`, `docs/CI-CD.md`.

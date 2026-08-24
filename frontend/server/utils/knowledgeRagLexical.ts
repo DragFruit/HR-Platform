@@ -395,6 +395,20 @@ export function longestRareToken(distinctive: string[]): string | null {
   return [...rare].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
 }
 
+/** Целое слово (не «программатик» внутри «программатики»). */
+function forEachWholeWord(blob: string, form: string, fn: (idx: number) => void): void {
+  if (!form || form.length < 4) return;
+  const re = new RegExp(
+    `(?<![\\p{L}\\p{N}_])${form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_])`,
+    'giu'
+  );
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(blob)) !== null) {
+    fn(m.index);
+    if (m.index === re.lastIndex) re.lastIndex += 1;
+  }
+}
+
 /**
  * Насколько «якорь» сидит в тексте: 1 = вскользь (как programmatic в DayOfff),
  * ≥2 = заголовок секции / несколько вхождений (блок Programmatic в Контактах).
@@ -411,19 +425,48 @@ export function rareTokenStrength(text: string, token: string): number {
   }
 
   let score = 0;
-  for (const form of forms) {
-    if (form.length < 4) continue;
-    let idx = 0;
-    while ((idx = blob.indexOf(form, idx)) >= 0) {
+  for (const form of [...forms].sort((a, b) => b.length - a.length)) {
+    forEachWholeWord(blob, form, (idx) => {
       score += 1;
-      const lineStart = blob.lastIndexOf('\n', Math.max(0, idx - 1)) + 1;
-      const col = idx - lineStart;
-      // заголовок секции / начало строки, не «…ads, programmatic, аналитика…»
-      if (col <= 2) score += 2;
-      idx += form.length;
-    }
+      if (isRareAnchorHeadingAt(blob, form, idx)) score += 2;
+    });
   }
   return score;
+}
+
+/** Секция вроде «Programmatic …» в Контактах; не «- Программатик;» и не «ads, programmatic,». */
+function isRareAnchorHeadingAt(blob: string, form: string, idx: number): boolean {
+  const lineStart = blob.lastIndexOf('\n', Math.max(0, idx - 1)) + 1;
+  const col = idx - lineStart;
+  if (col > 2) return false;
+  const after = blob[idx + form.length] || '';
+  if (after === ',') return false;
+  // В «Контактах» заголовки секций латиницей Programmatic
+  if (!/^programmatic$/i.test(form)) return false;
+  const lineEnd = blob.indexOf('\n', idx);
+  const line = blob.slice(lineStart, lineEnd < 0 ? blob.length : lineEnd).trim();
+  if (/^[-•*–—]\s/.test(line)) return false;
+  return true;
+}
+
+/** Сколько раз якорь стоит в начале строки (секция Programmatic vs список PPC). */
+export function rareTokenHeadingHits(text: string, token: string): number {
+  if (!token || !text) return 0;
+  const blob = String(text)
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
+  const group = synonymGroupForToken(token);
+  if (group) {
+    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е'));
+  }
+  let hits = 0;
+  for (const form of [...forms].sort((a, b) => b.length - a.length)) {
+    forEachWholeWord(blob, form, (idx) => {
+      if (isRareAnchorHeadingAt(blob, form, idx)) hits += 1;
+    });
+  }
+  return hits;
 }
 
 export function hitCoversDistinctiveTokens(

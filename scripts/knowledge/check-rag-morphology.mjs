@@ -62,7 +62,7 @@ assert.equal(
 );
 assert.ok(expandQueryWithSynonyms('программатики').toLowerCase().includes('programmatic'));
 
-const { rareTokenStrength } = module.exports;
+const { rareTokenStrength, rareTokenHeadingHits } = module.exports;
 assert.ok(
   rareTokenStrength(
     'Контакты\n\nProgrammatic на базе данных соцсетей Hybrid astralab',
@@ -78,6 +78,18 @@ assert.ok(
       'Контакты\n\nProgrammatic на базе данных соцсетей',
       'programmatic'
     )
+);
+// подстрока «программатик» ≠ отдельное слово внутри «программатики»
+assert.equal(
+  rareTokenStrength('карты, программатики, озон', 'programmatic'),
+  rareTokenStrength('карты, программатики, озон', 'программатики')
+);
+assert.ok(rareTokenHeadingHits('Контакты\n\nProgrammatic Sape', 'programmatic') >= 1);
+assert.equal(rareTokenHeadingHits('google ads, programmatic, аналитика', 'programmatic'), 0);
+// ложный «заголовок» после разреза mid-line больше не создаём — strength mid-body = 1
+assert.equal(
+  rareTokenStrength('DayOfff\n\nprogrammatic, аналитика, геосервисы', 'programmatic'),
+  1
 );
 
 const intentBuild = esbuild.buildSync({
