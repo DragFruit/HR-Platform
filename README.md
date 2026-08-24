@@ -175,8 +175,8 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 
 | Ветка | Стенд | Модули | `NUXT_PUBLIC_LAUNCH_SCOPE` |
 |-------|-------|--------|----------------------------|
-| `staging` | Тест | Вся платформа | `full` |
-| `main` | Бой | Только график отпусков | `vacations` |
+| `staging` | Стейдж `:8080` | Вся платформа | `full` |
+| `main` | Бой `:80` | Пилот: отпуска + whitelist (идеи, VPN, **база знаний**, …) | `vacations` |
 
 **Публикация (2 задачи):** [docs/CI-CD.md](docs/CI-CD.md) — `scripts/push-to-gitlab.sh` (Mac→Git), GitLab CI (Git→сервер).
 

@@ -81,6 +81,16 @@
 
   <Teleport to="body">
     <div
+      v-if="imgResize"
+      class="kb-img-resize-overlay"
+      @mousemove="onImgResizeMove"
+      @mouseup="onImgResizeEnd"
+      @mouseleave="onImgResizeEnd"
+    />
+  </Teleport>
+
+  <Teleport to="body">
+    <div
       v-if="linkMenu"
       class="kb-link-menu"
       :style="{ top: `${linkMenu.y}px`, left: `${linkMenu.x}px` }"
@@ -152,6 +162,13 @@ const linkHref = ref('');
 const urlInputRef = ref<HTMLInputElement | null>(null);
 let savedRange: Range | null = null;
 let applying = false;
+
+const imgResize = ref<{
+  img: HTMLImageElement;
+  startX: number;
+  startWidth: number;
+  ratio: number;
+} | null>(null);
 
 const COPY_ICON =
   '<svg class="kb-code__icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="8.2" height="8.2" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.2 5.2V3.6A1.4 1.4 0 0 0 8.8 2.2H3.6A1.4 1.4 0 0 0 2.2 3.6v5.2A1.4 1.4 0 0 0 3.6 10.2h1.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
@@ -616,7 +633,20 @@ const onLinkDialogKeydown = (event: KeyboardEvent) => {
 };
 
 const onEditorMouseDown = (event: MouseEvent) => {
-  const copyBtn = asElement(event.target)?.closest('.kb-code__copy') as HTMLButtonElement | null;
+  const target = asElement(event.target);
+
+  if (target?.classList.contains('kb-img-resize-handle')) {
+    const wrap = target.closest('.kb-img-wrap');
+    const img = wrap?.querySelector('img') as HTMLImageElement | null;
+    if (img) {
+      event.preventDefault();
+      event.stopPropagation();
+      onImgResizeStart(event, img);
+    }
+    return;
+  }
+
+  const copyBtn = target?.closest('.kb-code__copy') as HTMLButtonElement | null;
   if (!copyBtn) return;
   event.preventDefault();
   event.stopPropagation();
@@ -658,11 +688,86 @@ const onSurfaceClick = (event: MouseEvent) => {
   if (!target) return;
   linkMenu.value = null;
 
+  if (target.classList.contains('kb-img-resize-handle')) {
+    const wrap = target.closest('.kb-img-wrap');
+    const img = wrap?.querySelector('img') as HTMLImageElement | null;
+    if (img) {
+      event.preventDefault();
+      onImgResizeStart(event, img);
+    }
+    return;
+  }
+
+  if (target instanceof HTMLImageElement) {
+    event.preventDefault();
+    selectImg(target);
+    return;
+  }
+
+  if (activeImg.value && !target.closest('.kb-img-wrap')) {
+    selectImg(null);
+  }
+
   const spoiler = target.closest('.kb-spoiler') as HTMLElement | null;
   if (spoiler && !spoiler.classList.contains('is-open')) {
     event.preventDefault();
     spoiler.classList.add('is-open');
   }
+};
+
+const activeImg = ref<HTMLImageElement | null>(null);
+
+const selectImg = (img: HTMLImageElement | null) => {
+  const root = surfaceRef.value;
+  if (!root) return;
+  root.querySelectorAll('img.kb-img--selected').forEach((el) => {
+    el.classList.remove('kb-img--selected');
+    const wrap = el.closest('.kb-img-wrap');
+    if (wrap) wrap.classList.remove('kb-img-wrap--active');
+  });
+  activeImg.value = img;
+  if (!img) return;
+  img.classList.add('kb-img--selected');
+  if (!img.parentElement?.classList.contains('kb-img-wrap')) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'kb-img-wrap kb-img-wrap--active';
+    wrapper.contentEditable = 'false';
+    img.replaceWith(wrapper);
+    wrapper.appendChild(img);
+    const handle = document.createElement('span');
+    handle.className = 'kb-img-resize-handle';
+    wrapper.appendChild(handle);
+  } else {
+    img.parentElement.classList.add('kb-img-wrap--active');
+  }
+};
+
+const onImgResizeStart = (event: MouseEvent, img: HTMLImageElement) => {
+  event.preventDefault();
+  event.stopPropagation();
+  const rect = img.getBoundingClientRect();
+  imgResize.value = {
+    img,
+    startX: event.clientX,
+    startWidth: rect.width,
+    ratio: rect.height / rect.width,
+  };
+};
+
+const onImgResizeMove = (event: MouseEvent) => {
+  const r = imgResize.value;
+  if (!r) return;
+  const dx = event.clientX - r.startX;
+  const newWidth = Math.max(60, r.startWidth + dx);
+  r.img.style.width = `${Math.round(newWidth)}px`;
+  r.img.style.height = 'auto';
+  r.img.removeAttribute('width');
+  r.img.removeAttribute('height');
+};
+
+const onImgResizeEnd = () => {
+  imgResize.value = null;
+  syncFromDom();
 };
 
 const onDocumentClick = () => {
