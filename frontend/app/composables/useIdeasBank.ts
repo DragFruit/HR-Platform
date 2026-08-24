@@ -198,6 +198,12 @@ export function useIdeasBank() {
     return idea.authorUserId === currentUser.id;
   };
 
+  /** Свою идею можно докинуть файлом, если он ещё не лежит на сервере. */
+  const canAttachIdeaFile = (idea: Idea) => {
+    if (idea.attachmentStored) return false;
+    return canDeleteIdea(idea);
+  };
+
   const canManageIdeaStatus = () => {
     const currentUser = user.value;
     if (!currentUser) return false;
@@ -297,6 +303,7 @@ export function useIdeasBank() {
     voteIdea,
     userVoteFor,
     canDeleteIdea,
+    canAttachIdeaFile,
     canManageIdeaStatus,
     setIdeaStatus,
     deleteIdea,

@@ -1,4 +1,5 @@
 import { requireVbiSession } from '../../../utils/session';
+import { sessionNotificationRecipientIds } from '../../../utils/notificationRecipients';
 import { assertIdeaAttachment, saveIdeaAttachment } from '../../../utils/ideaAttachments';
 import { mutateIdeas } from '../../../utils/ideasStore';
 import { toClientPayload } from '../../../utils/ideaMutations';
@@ -17,6 +18,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Нужен файл' });
   }
   const attachment = assertIdeaAttachment(filePart);
+  const authorIds = await sessionNotificationRecipientIds(session);
 
   const state = await mutateIdeas((current) => {
     const idea = current.ideas.find((item) => item.id === id);
@@ -26,7 +28,7 @@ export default defineEventHandler(async (event) => {
     const canEdit =
       session.role === 'admin' ||
       session.role === 'hr' ||
-      idea.authorUserId === session.id;
+      authorIds.includes(idea.authorUserId);
     if (!canEdit) {
       throw createError({ statusCode: 403, statusMessage: 'Недостаточно прав' });
     }

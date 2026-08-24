@@ -182,7 +182,7 @@
               <span class="ideas-chip ideas-chip--accent">{{ idea.category }}</span>
               <span class="ideas-chip">{{ formatDate(idea.createdAt) }}</span>
               <button
-                v-if="idea.attachmentName"
+                v-if="idea.attachmentName && idea.attachmentStored"
                 type="button"
                 class="ideas-chip ideas-chip--file"
                 :title="idea.attachmentName"
@@ -190,6 +190,18 @@
               >
                 файл
               </button>
+              <label
+                v-else-if="canAttachIdeaFile(idea)"
+                class="ideas-chip ideas-chip--file ideas-chip--upload"
+              >
+                прикрепить файл
+                <input
+                  type="file"
+                  class="ideas-attach__input"
+                  accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  @change="onAttachToIdea(idea.id, $event)"
+                />
+              </label>
             </div>
             <h3 class="ideas-bank-card__title">{{ idea.title }}</h3>
             <p class="ideas-bank-card__text muted">{{ idea.description }}</p>
@@ -427,8 +439,10 @@ const {
   voteIdea,
   userVoteFor,
   canDeleteIdea,
+  canAttachIdeaFile,
   deleteIdea,
-  openIdeaAttachment
+  openIdeaAttachment,
+  uploadIdeaAttachment
 } = useIdeasBank();
 
 const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
@@ -732,6 +746,17 @@ const submitCreate = async () => {
 
 const askDelete = (ideaId: string) => {
   pendingDeleteId.value = ideaId;
+};
+
+const onAttachToIdea = async (ideaId: string, event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const ok = await uploadIdeaAttachment(ideaId, file);
+  input.value = '';
+  if (!ok) {
+    window.alert('Не удалось прикрепить файл');
+  }
 };
 
 const confirmDelete = async () => {
