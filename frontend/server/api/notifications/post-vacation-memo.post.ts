@@ -1,4 +1,5 @@
 import { requireVbiSession } from '../../utils/session';
+import { sessionNotificationRecipientIds } from '../../utils/notificationRecipients';
 import {
   createUserNotification,
   listUserNotifications
@@ -12,7 +13,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Нужен vacation_request_id' });
   }
 
-  const existing = (await listUserNotifications(session.id)).find(
+  const recipients = await sessionNotificationRecipientIds(session);
+  const existing = (await listUserNotifications(recipients)).find(
     (item) => item.kind === 'post_vacation_memo' && item.vacation_request_id === requestId
   );
   if (existing) {

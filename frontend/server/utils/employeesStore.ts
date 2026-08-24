@@ -180,6 +180,12 @@ export async function findEmployeeForSession(session: SessionUser): Promise<Serv
   const byPlatformId = list.find((e) => e.platform_user_id === session.id);
   if (byPlatformId) return byPlatformId;
 
+  const bitrixId = session.bitrix_user_id ?? session.id;
+  if (bitrixId > 0) {
+    const byBitrix = list.find((e) => e.bitrix_user_id === bitrixId);
+    if (byBitrix) return byBitrix;
+  }
+
   const email = session.email.trim().toLowerCase();
   if (email) {
     const byEmail = list.find((e) => e.email?.trim().toLowerCase() === email);
@@ -205,8 +211,8 @@ export async function findEmployeeByName(name: string): Promise<ServerEmployee |
   return list.find((e) => e.name.trim().toLowerCase() === normalized) ?? null;
 }
 
-/** id для user-notifications: Bitrix/platform id, иначе id из справочника. */
+/** id для user-notifications: как session.id у Bitrix (bitrix_user_id), иначе platform/id. */
 export function employeeNotificationUserId(employee: ServerEmployee): number | null {
-  const uid = employee.platform_user_id ?? employee.bitrix_user_id ?? employee.id;
+  const uid = employee.bitrix_user_id ?? employee.platform_user_id ?? employee.id;
   return uid > 0 ? uid : null;
 }

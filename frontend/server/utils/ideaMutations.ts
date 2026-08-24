@@ -2,6 +2,7 @@ import type { SessionUser } from './credentials';
 import type { CreateIdeaInput, Idea, IdeaStatus } from '../../app/composables/useIdeasBank';
 import { createIdeaSubmittedNotification } from './adminNotificationsStore';
 import { notifyIdeaAuthorStatusChanged } from './ideaNotifications';
+import { deleteIdeaAttachment, saveIdeaAttachment, type IdeaAttachmentFile } from './ideaAttachments';
 import {
   mutateIdeas,
   votesForUser,
@@ -44,7 +45,8 @@ export function toClientPayload(
 
 export async function createIdeaForUser(
   session: SessionUser,
-  input: CreateIdeaInput
+  input: CreateIdeaInput,
+  attachment?: IdeaAttachmentFile | null
 ): Promise<IdeasClientPayload> {
   const title = stripUserHtml(String(input.title || ''));
   const description = stripUserHtml(String(input.description || ''));
@@ -72,7 +74,10 @@ export async function createIdeaForUser(
       createdAt: new Date().toISOString().slice(0, 10),
       votesUp: 0,
       votesDown: 0,
-      ...(input.attachmentName ? { attachmentName: String(input.attachmentName).trim() } : {})
+      ...(input.attachmentName || attachment
+        ? { attachmentName: String(attachment?.originalName || input.attachmentName || '').trim() }
+        : {}),
+      attachmentStored: Boolean(attachment)
     };
     next.nextIdeaId += 1;
     next.ideas = [idea, ...next.ideas];
@@ -80,6 +85,10 @@ export async function createIdeaForUser(
     createdTitle = idea.title;
     return next;
   });
+
+  if (createdId && attachment) {
+    await saveIdeaAttachment(createdId, attachment);
+  }
 
   if (createdId) {
     await createIdeaSubmittedNotification({
@@ -231,6 +240,8 @@ export async function deleteIdeaForUser(
     }
     return next;
   });
+
+  await deleteIdeaAttachment(id).catch(() => {});
 
   return toClientPayload(state, session.id);
 }

@@ -6898,6 +6898,20 @@ button.org-unit-head--link:hover {
 .ideas-chip--file {
   background: rgba(116, 81, 244, 0.14);
   color: #5a3dc4;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ideas-chip--upload {
+  position: relative;
+  overflow: hidden;
+}
+
+.ideas-chip--upload .ideas-attach__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .ideas-create-form__grid {

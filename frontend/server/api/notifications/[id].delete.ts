@@ -1,4 +1,5 @@
 import { requireVbiSession } from '../../utils/session';
+import { sessionNotificationRecipientIds } from '../../utils/notificationRecipients';
 import { dismissUserNotification } from '../../utils/userNotificationsStore';
 
 /** DELETE /api/notifications/:id — полное удаление из хранилища. */
@@ -9,7 +10,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Не указан id уведомления' });
   }
 
-  const removed = await dismissUserNotification(session.id, id);
+  const recipients = await sessionNotificationRecipientIds(session);
+  const removed = await dismissUserNotification(recipients, id);
   if (!removed) {
     throw createError({ statusCode: 404, statusMessage: 'Уведомление не найдено' });
   }

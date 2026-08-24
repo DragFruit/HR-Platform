@@ -150,7 +150,6 @@ export async function upsertBitrixFieldNotification(input: {
 
   const existing = state.items.find(
     (item) =>
-      !item.admin_seen &&
       (item.kind === 'bitrix_employee_name' || item.kind === 'bitrix_employee_title') &&
       item.employee_id === input.employee_id &&
       item.field === input.field &&
@@ -196,10 +195,7 @@ export async function createTenureGiftOrderNotification(input: {
   const state = await readState();
 
   const existing = state.items.find(
-    (item) =>
-      !item.admin_seen &&
-      item.kind === 'tenure_gift_order' &&
-      item.order_id === input.order_id
+    (item) => item.kind === 'tenure_gift_order' && item.order_id === input.order_id
   );
   if (existing) return existing;
 
@@ -228,10 +224,7 @@ export async function createIdeaSubmittedNotification(input: {
   const state = await readState();
 
   const existing = state.items.find(
-    (item) =>
-      !item.admin_seen &&
-      item.kind === 'idea_submitted' &&
-      item.idea_id === input.idea_id
+    (item) => item.kind === 'idea_submitted' && item.idea_id === input.idea_id
   );
   if (existing) return existing;
 
@@ -263,7 +256,6 @@ export async function createBitrixVacationSyncFailedNotification(input: {
 
   const existing = state.items.find(
     (item) =>
-      !item.admin_seen &&
       item.kind === 'bitrix_vacation_sync_failed' &&
       item.vacation_request_id === input.request_id
   );
@@ -326,10 +318,7 @@ export async function createSalesBestPickDueNotification(input: {
 }): Promise<AdminNotification> {
   const state = await readState();
   const existing = state.items.find(
-    (item) =>
-      !item.admin_seen &&
-      item.kind === 'sales_best_pick_due' &&
-      item.sales_period === input.period
+    (item) => item.kind === 'sales_best_pick_due' && item.sales_period === input.period
   );
   if (existing) return existing;
 

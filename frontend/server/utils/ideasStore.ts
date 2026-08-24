@@ -47,6 +47,7 @@ const normalizeIdea = (raw: Partial<Idea>): Idea | null => {
     votesUp: typeof raw.votesUp === 'number' && raw.votesUp >= 0 ? raw.votesUp : 0,
     votesDown: typeof raw.votesDown === 'number' && raw.votesDown >= 0 ? raw.votesDown : 0,
     ...(raw.attachmentName ? { attachmentName: String(raw.attachmentName) } : {}),
+    attachmentStored: Boolean(raw.attachmentStored),
     ...(raw.statusComment ? { statusComment: String(raw.statusComment) } : {}),
     ...(raw.statusChangedAt ? { statusChangedAt: String(raw.statusChangedAt) } : {})
   };
@@ -88,7 +89,14 @@ async function ensureFile() {
 export async function readIdeas(): Promise<IdeasStoreState> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeIdeasStoreState(JSON.parse(raw) as Partial<IdeasStoreState>);
+  const state = normalizeIdeasStoreState(JSON.parse(raw) as Partial<IdeasStoreState>);
+  const { ideaAttachmentExists } = await import('./ideaAttachments');
+  for (const idea of state.ideas) {
+    if (idea.attachmentName && !idea.attachmentStored) {
+      idea.attachmentStored = await ideaAttachmentExists(idea.id);
+    }
+  }
+  return state;
 }
 
 export async function writeIdeas(state: IdeasStoreState): Promise<IdeasStoreState> {

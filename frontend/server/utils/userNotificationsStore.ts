@@ -89,12 +89,13 @@ const trimRecipientToMax = (state: NotificationsState, recipientUserId: number) 
 };
 
 export async function listUserNotifications(
-  recipientUserId: number,
+  recipientUserId: number | number[],
   filters?: { unseen?: boolean; forBell?: boolean }
 ): Promise<UserNotification[]> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
   let list = state.items
-    .filter((item) => item.recipient_user_id === recipientUserId)
+    .filter((item) => recipients.has(item.recipient_user_id))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   if (filters?.forBell) {
     list = list.filter((item) => !item.hidden_from_bell);
@@ -105,35 +106,36 @@ export async function listUserNotifications(
   return list;
 }
 
-export async function countUnseenUserNotifications(recipientUserId: number): Promise<number> {
+export async function countUnseenUserNotifications(recipientUserId: number | number[]): Promise<number> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
   return state.items.filter(
     (item) =>
-      item.recipient_user_id === recipientUserId &&
+      recipients.has(item.recipient_user_id) &&
       !item.seen &&
       !item.hidden_from_bell
   ).length;
 }
 
 export async function markUserNotificationSeen(
-  recipientUserId: number,
+  recipientUserId: number | number[],
   id: string
 ): Promise<UserNotification | null> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
-  const item = state.items.find(
-    (row) => row.id === id && row.recipient_user_id === recipientUserId
-  );
+  const item = state.items.find((row) => row.id === id && recipients.has(row.recipient_user_id));
   if (!item) return null;
   item.seen = true;
   await writeState(state);
   return item;
 }
 
-export async function markAllUserNotificationsSeen(recipientUserId: number): Promise<number> {
+export async function markAllUserNotificationsSeen(recipientUserId: number | number[]): Promise<number> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
   let changed = 0;
   for (const item of state.items) {
-    if (item.recipient_user_id === recipientUserId && !item.seen) {
+    if (recipients.has(item.recipient_user_id) && !item.seen) {
       item.seen = true;
       changed += 1;
     }
@@ -144,13 +146,12 @@ export async function markAllUserNotificationsSeen(recipientUserId: number): Pro
 
 /** Убрать из колокольчика; запись остаётся в разделе «Уведомления». */
 export async function hideUserNotificationFromBell(
-  recipientUserId: number,
+  recipientUserId: number | number[],
   id: string
 ): Promise<UserNotification | null> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
-  const item = state.items.find(
-    (row) => row.id === id && row.recipient_user_id === recipientUserId
-  );
+  const item = state.items.find((row) => row.id === id && recipients.has(row.recipient_user_id));
   if (!item) return null;
   item.hidden_from_bell = true;
   item.seen = true;
@@ -160,12 +161,13 @@ export async function hideUserNotificationFromBell(
 
 /** Полное удаление (раздел «Уведомления» / админская очистка). */
 export async function dismissUserNotification(
-  recipientUserId: number,
+  recipientUserId: number | number[],
   id: string
 ): Promise<boolean> {
+  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
   const state = await readState();
   const index = state.items.findIndex(
-    (row) => row.id === id && row.recipient_user_id === recipientUserId
+    (row) => row.id === id && recipients.has(row.recipient_user_id)
   );
   if (index === -1) return false;
   state.items.splice(index, 1);

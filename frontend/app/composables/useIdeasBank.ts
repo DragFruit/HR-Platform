@@ -13,6 +13,8 @@ export type Idea = {
   votesUp: number;
   votesDown: number;
   attachmentName?: string;
+  /** Файл лежит на сервере и его можно открыть */
+  attachmentStored?: boolean;
   /** Комментарий админа при последней смене этапа */
   statusComment?: string;
   statusChangedAt?: string;
@@ -136,17 +138,34 @@ export function useIdeasBank() {
 
   const statusLabel = (status: IdeaStatus) => STATUS_LABELS[status];
 
-  const createIdea = async (input: CreateIdeaInput): Promise<Idea | null> => {
+  const createIdea = async (
+    input: CreateIdeaInput,
+    file?: File | null
+  ): Promise<Idea | null> => {
     if (!user.value) return null;
     const title = input.title.trim();
     const description = input.description.trim();
     if (title.length < 3 || description.length < 10) return null;
 
     try {
-      const payload = await $fetch<IdeasApiPayload>('/api/ideas', {
-        method: 'POST',
-        body: input
-      });
+      let payload: IdeasApiPayload;
+      if (file) {
+        const form = new FormData();
+        form.append('title', input.title);
+        form.append('description', input.description);
+        form.append('category', input.category);
+        form.append('city', input.city);
+        form.append('file', file);
+        payload = await $fetch<IdeasApiPayload>('/api/ideas', {
+          method: 'POST',
+          body: form
+        });
+      } else {
+        payload = await $fetch<IdeasApiPayload>('/api/ideas', {
+          method: 'POST',
+          body: input
+        });
+      }
       applyPayload(payload);
       if (payload.createdId) {
         return ideas.value.find((idea) => idea.id === payload.createdId) ?? null;
@@ -236,6 +255,32 @@ export function useIdeasBank() {
     }
   };
 
+  const openIdeaAttachment = (idea: Idea) => {
+    if (!idea.attachmentName || !import.meta.client) return;
+    if (!idea.attachmentStored) {
+      window.alert(
+        'Файл не сохранился на сервере (раньше сохранялось только имя). Попросите автора прикрепить снова или загрузите в админке.'
+      );
+      return;
+    }
+    window.open(`/api/ideas/${encodeURIComponent(idea.id)}/file`, '_blank', 'noopener,noreferrer');
+  };
+
+  const uploadIdeaAttachment = async (ideaId: string, file: File): Promise<boolean> => {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const payload = await $fetch<IdeasApiPayload>(
+        `/api/ideas/${encodeURIComponent(ideaId)}/file`,
+        { method: 'POST', body: form }
+      );
+      applyPayload(payload);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     ideas,
     hydrated,
@@ -255,6 +300,8 @@ export function useIdeasBank() {
     canManageIdeaStatus,
     setIdeaStatus,
     deleteIdea,
+    openIdeaAttachment,
+    uploadIdeaAttachment,
     IDEA_CATEGORIES,
     IDEA_CITIES
   };
