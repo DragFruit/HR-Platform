@@ -55,6 +55,13 @@ function seedHasRenderableHtml(body) {
   return typeof body === 'string' && /<(?:a|br|p|div|img|i|b)\b/i.test(body);
 }
 
+/** Bitrix fragments with tags but without a wrapping block — need seed wrap. */
+function looksLooseInlineHtml(body) {
+  if (typeof body !== 'string' || !body.trim()) return false;
+  if (/^\s*<(?:p|div|h[1-4]|ul|ol|blockquote|table|pre)\b/i.test(body)) return false;
+  return /<(?:a|br|i|b|img)\b/i.test(body);
+}
+
 function shouldRefreshBody(targetArticle, incomingArticle) {
   const incomingBody = incomingArticle?.body;
   if (typeof incomingBody !== 'string' || !incomingBody.trim()) return false;
@@ -68,6 +75,10 @@ function shouldRefreshBody(targetArticle, incomingArticle) {
   }
   // Editor used to treat inline HTML as markdown and save tags as text.
   if (looksEscapedHtml(targetBody) && seedHasRenderableHtml(incomingBody)) {
+    return true;
+  }
+  // Pull wrapped seed over loose unwrapped Bitrix HTML.
+  if (looksLooseInlineHtml(targetBody) && /^\s*<div\b/i.test(incomingBody)) {
     return true;
   }
   return false;
