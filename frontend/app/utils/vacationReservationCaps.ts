@@ -8,10 +8,10 @@ export { DEFAULT_RESERVATION_MONTHLY_CAP };
 export const DEFAULT_SUBGROUP_RESERVATION_MONTHLY_CAP = 1;
 
 export const RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE =
-  'Уже максимум сотрудников взяли бронь на этот месяц в отделе. Больше нельзя — договоритесь поменяться или забронируйте другой месяц.';
+  'Уже максимум сотрудников заняли этот месяц в отделе (бронь или отпуск). Больше нельзя — договоритесь поменяться или выберите другой месяц.';
 
 export const RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE =
-  'В вашей группе уже есть бронь на этот месяц. Договоритесь с коллегами или выберите другой месяц.';
+  'В вашей группе этот месяц уже занят (бронь или отпуск). Договоритесь с коллегами или выберите другой месяц.';
 
 /** @deprecated Используйте RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE */
 export const RESERVATION_CAP_BLOCKED_MESSAGE = RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE;
@@ -148,23 +148,46 @@ export function countGroupVacationSlotsForMonth(params: {
   return seen.size;
 }
 
+/** Месяцы (1–12), которые пересекает период start…end включительно. */
+export function monthsOverlappingIsoRange(
+  start: string,
+  end: string
+): { year: number; month: number }[] {
+  const rangeStart = parseIsoToDate(start);
+  const rangeEnd = parseIsoToDate(end);
+  if (Number.isNaN(rangeStart.getTime()) || Number.isNaN(rangeEnd.getTime()) || rangeEnd < rangeStart) {
+    return [];
+  }
+
+  const out: { year: number; month: number }[] = [];
+  let cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+  while (cursor <= last) {
+    out.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+  return out;
+}
+
 export function isReservationMonthAtDepartmentCap(params: {
   poolId: string;
   memberNames: string[];
   year: number;
   month: number;
   reservations: VacationReservation[];
+  requests?: VacationRequest[];
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): boolean {
   const cap = getDepartmentReservationMonthlyCap(params.poolId, params.caps);
-  const count = countGroupReservationsForMonth(
-    params.memberNames,
-    params.year,
-    params.month,
-    params.reservations,
-    params.excludeEmployee
-  );
+  const count = countGroupVacationSlotsForMonth({
+    groupMemberNames: params.memberNames,
+    year: params.year,
+    month: params.month,
+    reservations: params.reservations,
+    requests: params.requests ?? [],
+    excludeEmployee: params.excludeEmployee
+  });
   return count >= cap;
 }
 
@@ -174,17 +197,19 @@ export function isReservationMonthAtSubgroupCap(params: {
   year: number;
   month: number;
   reservations: VacationReservation[];
+  requests?: VacationRequest[];
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): boolean {
   const cap = getSubgroupReservationMonthlyCap(params.subgroupId, params.caps);
-  const count = countGroupReservationsForMonth(
-    params.memberNames,
-    params.year,
-    params.month,
-    params.reservations,
-    params.excludeEmployee
-  );
+  const count = countGroupVacationSlotsForMonth({
+    groupMemberNames: params.memberNames,
+    year: params.year,
+    month: params.month,
+    reservations: params.reservations,
+    requests: params.requests ?? [],
+    excludeEmployee: params.excludeEmployee
+  });
   return count >= cap;
 }
 
@@ -193,10 +218,11 @@ export function getReservationMonthBlockReason(params: {
   year: number;
   month: number;
   reservations: VacationReservation[];
+  requests?: VacationRequest[];
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): ReservationCapBlockReason | null {
-  const { context, year, month, reservations, caps, excludeEmployee } = params;
+  const { context, year, month, reservations, requests, caps, excludeEmployee } = params;
 
   if (
     isReservationMonthAtSubgroupCap({
@@ -205,6 +231,7 @@ export function getReservationMonthBlockReason(params: {
       year,
       month,
       reservations,
+      requests,
       caps,
       excludeEmployee
     })
@@ -219,6 +246,7 @@ export function getReservationMonthBlockReason(params: {
       year,
       month,
       reservations,
+      requests,
       caps,
       excludeEmployee
     })
@@ -226,6 +254,31 @@ export function getReservationMonthBlockReason(params: {
     return 'department';
   }
 
+  return null;
+}
+
+/** Блок лимита для заявки с датами: любой пересечённый месяц на капе. */
+export function getReservationRangeBlockReason(params: {
+  context: EmployeeReservationCapContext;
+  start: string;
+  end: string;
+  reservations: VacationReservation[];
+  requests?: VacationRequest[];
+  caps?: ReservationMonthlyCapsByGroup;
+  excludeEmployee?: string;
+}): ReservationCapBlockReason | null {
+  for (const { year, month } of monthsOverlappingIsoRange(params.start, params.end)) {
+    const reason = getReservationMonthBlockReason({
+      context: params.context,
+      year,
+      month,
+      reservations: params.reservations,
+      requests: params.requests,
+      caps: params.caps,
+      excludeEmployee: params.excludeEmployee
+    });
+    if (reason) return reason;
+  }
   return null;
 }
 
@@ -247,12 +300,13 @@ export function isReservationMonthAtGroupCap(params: {
   excludeEmployee?: string;
 }): boolean {
   const cap = getDepartmentReservationMonthlyCap(params.groupId, params.caps);
-  const count = countGroupReservationsForMonth(
-    params.groupMemberNames,
-    params.year,
-    params.month,
-    params.reservations,
-    params.excludeEmployee
-  );
+  const count = countGroupVacationSlotsForMonth({
+    groupMemberNames: params.groupMemberNames,
+    year: params.year,
+    month: params.month,
+    reservations: params.reservations,
+    requests: params.requests ?? [],
+    excludeEmployee: params.excludeEmployee
+  });
   return count >= cap;
 }

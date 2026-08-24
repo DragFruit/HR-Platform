@@ -192,6 +192,7 @@ import {
 import { resolveEmployeeReservationCapContext } from '~/utils/vacationDepartmentGroups';
 import {
   getReservationMonthBlockReason,
+  getReservationRangeBlockReason,
   reservationCapBlockMessage,
   RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
 } from '~/utils/vacationReservationCaps';
@@ -259,6 +260,8 @@ const {
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
 const displayRequests = computed(() => mergeRequestsForDisplay(props.viewYear, yearRequests.value));
+/** Для лимитов: только реальные заявки (без учебных), все годы. */
+const capRequests = computed(() => Object.values(state.value.requestsByYear).flat());
 const employeeReservationsList = computed(() => {
   if (!employeeName.value) return [];
   const real = employeeReservations(employeeName.value, props.viewYear);
@@ -339,6 +342,7 @@ const openReservationCapNotice = (monthIndex: number) => {
       year: props.viewYear,
       month: monthIndex + 1,
       reservations: allReservations.value,
+      requests: capRequests.value,
       caps: state.value.reservationMonthlyCapsByGroup,
       excludeEmployee: employeeName.value
     });
@@ -410,6 +414,7 @@ const reservationCapBlockedMonths = computed(() => {
         year: props.viewYear,
         month: monthIndex + 1,
         reservations,
+        requests: capRequests.value,
         caps,
         excludeEmployee: employeeName.value
       })
@@ -636,6 +641,37 @@ const submitRequest = async () => {
       text: GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE
     };
     return;
+  }
+
+  const capCtx = reservationCapContext.value;
+  if (capCtx) {
+    const capReason = getReservationRangeBlockReason({
+      context: {
+        department: {
+          id: capCtx.department.id,
+          label: capCtx.department.label,
+          memberNames: capCtx.department.members.map((member) => member.name)
+        },
+        subgroup: {
+          id: capCtx.subgroup.id,
+          label: capCtx.subgroup.label,
+          memberNames: capCtx.subgroup.members.map((member) => member.name)
+        }
+      },
+      start: form.start,
+      end: form.end,
+      reservations: allReservations.value,
+      requests: capRequests.value,
+      caps: state.value.reservationMonthlyCapsByGroup,
+      excludeEmployee: employeeName.value
+    });
+    if (capReason) {
+      formError.value = {
+        title: 'Месяц занят в группе',
+        text: reservationCapBlockMessage(capReason)
+      };
+      return;
+    }
   }
 
   if (isTrainingActive.value) {

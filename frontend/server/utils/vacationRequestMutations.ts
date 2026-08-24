@@ -21,6 +21,7 @@ import {
   notifyVacationRequestDeleted,
   notifyVacationRequestPatched
 } from './vacationNotifications';
+import { assertVacationRequestGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
 import { isPastApprovedVacationRequest } from '../../app/utils/vacationCalendar';
 
@@ -137,7 +138,7 @@ export async function createVacationRequest(
 
   let createdRequest: VacationRequest | null = null;
 
-  const result = await mutateVacations((state) => {
+  const result = await mutateVacations(async (state) => {
     if (body.year < state.primaryYear) {
       throw createError({
         statusCode: 400,
@@ -148,6 +149,9 @@ export async function createVacationRequest(
     yearFromIsoDate(body.end);
     if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
+    }
+    if (employee) {
+      await assertVacationRequestGroupCap(state, employeeName, body.start, body.end);
     }
     request.id = state.nextRequestId++;
     const list = state.requestsByYear[yearKey] ?? [];
@@ -277,6 +281,10 @@ export async function patchVacationRequest(
         found.item.end,
         found.item.id
       );
+    }
+
+    if (owner && changesDates) {
+      await assertVacationRequestGroupCap(state, found.item.employee, found.item.start, found.item.end);
     }
 
     if (decision) {

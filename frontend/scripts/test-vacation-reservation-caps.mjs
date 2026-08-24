@@ -99,4 +99,51 @@ assert(
   'department cap blocks when five reservations exist'
 );
 
+const parseIso = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+const requestOverlapsMonth = (req, year, month) => {
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  return !(parseIso(req.end) < monthStart || parseIso(req.start) > monthEnd);
+};
+const countSlots = (memberNames, year, month, reservations, requests, excludeEmployee) => {
+  const names = new Set(memberNames);
+  const exclude = excludeEmployee?.trim().toLowerCase();
+  const seen = new Set();
+  for (const row of reservations) {
+    if (row.year !== year || row.month !== month) continue;
+    if (!names.has(row.employee)) continue;
+    if (exclude && row.employee.toLowerCase() === exclude) continue;
+    seen.add(row.employee.toLowerCase());
+  }
+  for (const row of requests) {
+    if (row.status !== 'approved' && row.status !== 'pending') continue;
+    if (!names.has(row.employee)) continue;
+    if (exclude && row.employee.toLowerCase() === exclude) continue;
+    if (!requestOverlapsMonth(row, year, month)) continue;
+    seen.add(row.employee.toLowerCase());
+  }
+  return seen.size;
+};
+
+const popov = ['Бояринова Мария', 'Хакимов Олег', 'Попов Виктор'];
+const boyarinovaReservation = [{ employee: 'Бояринова Мария', year: 2026, month: 10 }];
+assert(
+  countSlots(popov, 2026, 10, boyarinovaReservation, [], 'Хакимов Олег') >= 1,
+  'reservation occupies subgroup slot'
+);
+assert(
+  countSlots(
+    popov,
+    2026,
+    10,
+    boyarinovaReservation,
+    [{ employee: 'Хакимов Олег', start: '2026-10-05', end: '2026-10-12', status: 'pending' }],
+    'Хакимов Олег'
+  ) >= 1,
+  'existing Khakimov request is excluded for himself but reservation still occupies slot'
+);
+
 console.log('OK vacation reservation caps');
