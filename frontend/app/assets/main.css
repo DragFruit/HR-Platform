@@ -15882,6 +15882,35 @@ button.button {
   color: #7451f4;
 }
 
+/* Квадратик Bitrix ↗ — как в визитке сотрудника */
+.kb-bitrix-sq {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.15em;
+  width: 20px;
+  height: 20px;
+  margin: 0 0 0 4px;
+  border: 1.5px solid #111;
+  border-radius: 5px;
+  background: #fff;
+  color: #111;
+  box-shadow: 1.5px 1.5px 0 #111;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.kb-bitrix-sq:hover {
+  background: #ddf365;
+  transform: translate(-1px, -1px);
+  box-shadow: 2.5px 2.5px 0 #111;
+}
+
+.kb-bitrix-sq:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 2px;
+}
+
 @keyframes kb-bubble-in {
   from {
     opacity: 0;

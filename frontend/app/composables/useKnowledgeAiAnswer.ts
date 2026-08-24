@@ -24,15 +24,21 @@ export type KnowledgeAiCite = {
   href?: string;
 };
 
+export type KnowledgeAiPerson = {
+  name: string;
+  href: string;
+};
+
 export type KnowledgeAiPart =
   | { type: 'text'; value: string }
-  | { type: 'cite'; id: string; title: string; href?: string };
+  | { type: 'cite'; id: string; title: string; href?: string }
+  | { type: 'person'; name: string; href: string };
 
 export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
   citations: KnowledgeAiCite[];
   /** Без «Ещё по теме» */
-  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify' | 'not_found';
+  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify' | 'not_found' | 'org';
 };
 
 export type KnowledgeAiHistoryTurn = {
@@ -58,6 +64,46 @@ const appendRelatedTopicCites = (parts: KnowledgeAiPart[], cites: KnowledgeAiCit
   });
 };
 
+/** Вставляет квадратик Bitrix сразу после ФИО в тексте ответа. */
+export function partsWithInlinePeople(
+  text: string,
+  people: KnowledgeAiPerson[]
+): KnowledgeAiPart[] {
+  const unique = people
+    .filter((p) => p.name.trim() && p.href.trim())
+    .sort((a, b) => b.name.length - a.name.length);
+  if (!unique.length) return [{ type: 'text', value: text }];
+
+  const parts: KnowledgeAiPart[] = [];
+  let rest = text;
+  const used = new Set<string>();
+
+  while (rest.length) {
+    let bestIdx = -1;
+    let best: KnowledgeAiPerson | null = null;
+    for (const person of unique) {
+      if (used.has(person.name)) continue;
+      const idx = rest.indexOf(person.name);
+      if (idx < 0) continue;
+      if (bestIdx < 0 || idx < bestIdx) {
+        bestIdx = idx;
+        best = person;
+      }
+    }
+    if (!best || bestIdx < 0) {
+      parts.push({ type: 'text', value: rest });
+      break;
+    }
+    if (bestIdx > 0) parts.push({ type: 'text', value: rest.slice(0, bestIdx) });
+    parts.push({ type: 'text', value: best.name });
+    parts.push({ type: 'person', name: best.name, href: best.href });
+    used.add(best.name);
+    rest = rest.slice(bestIdx + best.name.length);
+  }
+
+  return parts;
+}
+
 export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): KnowledgeAiAnswer {
   if (!KB_AI_CITE_REQUIRED) {
     throw new Error('KB_AI_CITE_REQUIRED нельзя выключать');
@@ -70,12 +116,20 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
   ) {
     return answer;
   }
-  const inline = answer.parts.filter((part) => part.type === 'cite');
-  if (!inline.length || !answer.citations.length) {
+  const inlineCites = answer.parts.filter((part) => part.type === 'cite');
+  const inlinePeople = answer.parts.filter((part) => part.type === 'person');
+  if (answer.mode === 'org') {
+    if (!inlineCites.length && !inlinePeople.length) {
+      throw new Error('KB_AI_CITE_REQUIRED: org-ответ без Структуры/Bitrix запрещён');
+    }
+    return answer;
+  }
+  if (!inlineCites.length || !answer.citations.length) {
     throw new Error('KB_AI_CITE_REQUIRED: ответ без ссылок на статьи запрещён');
   }
   const ids = new Set(answer.citations.map((cite) => cite.id));
-  for (const part of inline) {
+  for (const part of inlineCites) {
+    if (part.type !== 'cite') continue;
     if (!ids.has(part.id) || !part.title.trim()) {
       throw new Error('KB_AI_CITE_REQUIRED: ссылка должна указывать на конкретную статью');
     }
@@ -86,6 +140,7 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
 type YandexAskResponse = {
   answer?: string;
   citations?: KnowledgeAiCite[];
+  people?: KnowledgeAiPerson[];
   found?: boolean;
   degraded?: boolean;
   intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify' | 'org';
@@ -125,7 +180,11 @@ export function useKnowledgeAiAnswer() {
         }))
         .filter((c) => c.id && c.title);
 
-      if (resp.found === false || !citations.length) {
+      const people = (resp.people ?? [])
+        .map((p) => ({ name: String(p.name || '').trim(), href: String(p.href || '').trim() }))
+        .filter((p) => p.name && p.href);
+
+      if (resp.found === false || (!citations.length && !people.length)) {
         const mode =
           resp.intent === 'offtopic' || resp.intent === 'not_found'
             ? resp.intent
@@ -172,9 +231,10 @@ export function useKnowledgeAiAnswer() {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_NOT_FOUND_REPLY, 'not_found'));
       }
 
-      const parts: KnowledgeAiPart[] = [{ type: 'text', value: parsed.text }];
+      const parts = partsWithInlinePeople(parsed.text, people);
       appendRelatedTopicCites(parts, citations);
-      return assertKnowledgeAiCitations({ parts, citations, mode: 'kb' });
+      const mode = resp.intent === 'org' || people.length ? 'org' : 'kb';
+      return assertKnowledgeAiCitations({ parts, citations, mode });
     } catch (err) {
       console.warn('[knowledge-ai] yandex-ask failed', err);
       return assertKnowledgeAiCitations(

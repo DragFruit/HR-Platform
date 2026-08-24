@@ -222,8 +222,27 @@
             <p v-if="msg.from === 'user'" class="kb-bubble__text">{{ msg.text }}</p>
             <p v-else class="kb-bubble__text">
               <template v-for="(part, idx) in msg.parts ?? []" :key="`${msg.id}-${idx}`">
+                <a
+                  v-if="part.type === 'person'"
+                  class="kb-bitrix-sq"
+                  :href="part.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :title="`Профиль ${part.name} в Bitrix`"
+                  :aria-label="`Открыть профиль ${part.name} в Bitrix`"
+                >
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true">
+                    <path
+                      d="M5 3.5h7.5V11M12.5 3.5 3.5 12.5"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </a>
                 <NuxtLink
-                  v-if="part.type === 'cite'"
+                  v-else-if="part.type === 'cite'"
                   :to="part.href || `/knowledge/${part.id}`"
                   class="kb-cite"
                 >

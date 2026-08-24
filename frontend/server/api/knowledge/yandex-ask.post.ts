@@ -82,6 +82,7 @@ export default defineEventHandler(async (event) => {
   if (orgAnswer) {
     return {
       answer: orgAnswer.answer,
+      people: orgAnswer.people ?? [],
       citations: orgAnswer.citations,
       found: true,
       ambiguous: false,
