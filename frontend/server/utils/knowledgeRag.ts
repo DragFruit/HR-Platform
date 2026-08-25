@@ -131,7 +131,8 @@ export function pickArticleSnippets(
   chunkTexts: string[],
   distinctive: string[],
   queryTokens: string[],
-  limit = 3
+  limit = 3,
+  question = ''
 ): string[] {
   if (!chunkTexts.length) return [];
   const rare = rareDistinctiveTokens(distinctive);
@@ -140,7 +141,7 @@ export function pickArticleSnippets(
       const lex = lexicalScore(title, text, queryTokens);
       const rareHits = rare.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
       const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
-      const anchor = longestRareToken(distinctive);
+      const anchor = longestRareToken(distinctive, question);
       const strength = anchor ? rareTokenStrength(`${title}\n${text}`, anchor) : 0;
       return { text, idx, score: strength * 4 + rareHits * 3 + distHits * 0.6 + lex };
     })
@@ -334,9 +335,10 @@ export async function retrieveKnowledgeDetailed(
 
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
 
-  // Жёсткий якорь (Programmatic): не ждём эмбеддинги — иначе вскользь «programmatic» в DayOfff
-  // и семантика «расчётов» уводят от блока в Контактах.
-  const anchor = longestRareToken(distinctive);
+  // Жёсткий якорь секции «Контактов» (Programmatic / юрист / Яндекс…):
+  // не ждём эмбеддинги — иначе вскользь совпадение в DayOfff / регламенте дизайна
+  // и семантика «расчётов» уводят от нужного блока.
+  const anchor = longestRareToken(distinctive, q);
   if (anchor) {
     const ranked = visibleChunks
       .map((chunk) => {
@@ -375,7 +377,7 @@ export async function retrieveKnowledgeDetailed(
         const articleChunks = visibleChunks
           .filter((c) => c.articleId === hit.articleId)
           .map((c) => c.text);
-        hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3);
+        hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3, q);
       }
       let hits = [...byArticle.values()].sort((a, b) => {
         const ha = rareTokenHeadingHits(`${a.title}\n${a.snippets.join('\n')}`, anchor);
@@ -454,7 +456,7 @@ export async function retrieveKnowledgeDetailed(
 
   for (const hit of byArticle.values()) {
     const articleChunks = visibleChunks.filter((c) => c.articleId === hit.articleId).map((c) => c.text);
-    hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3);
+    hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3, q);
   }
 
   let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
@@ -463,7 +465,7 @@ export async function retrieveKnowledgeDetailed(
   if (distinctive.length) {
     const covered = hits.filter((h) => hitCoversDistinctiveTokens(h.title, h.snippets, distinctive));
     hits = covered;
-    const hybridAnchor = longestRareToken(distinctive);
+    const hybridAnchor = longestRareToken(distinctive, q);
     if (hybridAnchor && hits.length) {
       const strengths = hits.map((h) => ({
         h,

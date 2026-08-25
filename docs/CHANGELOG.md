@@ -4,6 +4,14 @@
 
 ## 2026-08-25
 
+### База знаний ИИ: якоря всех блоков «Контактов»
+- Hard retrieval обобщён: не только `Programmatic`, но юристы / Яндекс / дизайнеры / переводы / Click.ru и др. при интенте «кому писать / контакты».
+- Шапка секции = короткая строка с якорем в начале или «А / Б»; регламенты дизайна/юристов и DayOfff mid-body не считаются шапкой.
+- Слабые якоря (`агентства`, `менеджера`, `контакты`) уступают доменным (`яндекса`, `юристу`).
+- Файлы: `knowledgeRagLexical.ts`, `knowledgeRag.ts`, `yandexGpt.ts`, `scripts/knowledge/check-rag-contacts.mjs`.
+- Проверка: `node scripts/knowledge/check-rag-contacts.mjs`; на стейдже чат под Драго — 6 вопросов по Контактам.
+
+
 ### ChatGPT-коды → корпоративный Telegram (параллельно /vpn)
 - Cron каждые ~2 мин: IMAP (те же критерии, окно ~1 ч) → `sendMessage` бота в канал.
 - Дедуп: `server/data/chatgpt-code-telegram-state.json`. UI «Код ChatGPT» в `/vpn` не трогали.

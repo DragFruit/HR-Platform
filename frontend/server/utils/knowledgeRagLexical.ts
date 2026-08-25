@@ -55,6 +55,70 @@ const STOP = new Set([
   'расскажи'
 ]);
 
+/**
+ * Секции справочника «Контакты» (kb-20409): якоря блоков, не общие слова вроде «агентства».
+ * Токен из группы → hard retrieval + бонус за короткую шапку секции.
+ */
+const CONTACT_SECTION_GROUPS: string[][] = [
+  ['программатик', 'программатика', 'программатики', 'programmatic'],
+[
+    'юрист',
+    'юриста',
+    'юристу',
+    'юристы',
+    'юристов',
+    'юридическая',
+    'юридической',
+    'юридическую'
+  ],
+  ['дизайнер', 'дизайнера', 'дизайнеру', 'дизайнеры', 'дизайнеров'],
+  [
+    'перевод',
+    'перевода',
+    'переводов',
+    'переводчик',
+    'переводчика',
+    'переводчику',
+    'переводчики',
+    'переводчиков',
+    'elefteria'
+  ],
+  ['яндекс', 'яндекса', 'яндексе', 'яндексу', 'yandex'],
+  ['google360', 'google 360'],
+  ['click', 'clickru', 'click.ru'],
+  ['аэропорт', 'аэропортах', 'аэропорту', 'телевизор', 'телевизоре', 'наружная']
+];
+
+/** Слабые «редкие» слова: не выбирать якорем, если есть секция Контактов. */
+const WEAK_RARE_ANCHORS = new Set([
+  'контакты',
+  'контакт',
+  'менеджера',
+  'менеджер',
+  'агентства',
+  'агентство',
+  'расчетов',
+  'расчётов',
+  'телефон',
+  'телефоны',
+  'справочник'
+]);
+
+/** Вопрос про справочник «кому писать / контакты», а не про регламент площадки. */
+export function hasContactDirectoryIntent(question: string): boolean {
+  const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
+  if (!q) return false;
+  return /(контакт|кому\s+писать|написать|телефон|почт|e-?mail|связаться|справочник|для расчетов|для расчётов)/i.test(
+    q
+  );
+}
+
+/** Якорь-продукт справочника — можно без «контакты» в формулировке. */
+function isProductLikeContactAnchor(token: string): boolean {
+  const t = token.toLowerCase();
+  return /programmatic|программатик|click|google|elefteria|аэропорт|телевизор|наружн/i.test(t);
+}
+
 /** Пары/группы близких формулировок (осторожное расширение, без смены темы). */
 const SYNONYM_GROUPS: string[][] = [
   // Написание SaaS (без «отгул» — смысл вопроса разбирает knowledgeRagSense)
@@ -67,8 +131,8 @@ const SYNONYM_GROUPS: string[][] = [
   ['пароль', 'пароля', 'логин'],
   ['регламент отпуска', 'ухода в отпуск', 'правила отпуска'],
   ['дни рождения', 'день рождения', 'др клиентов', 'др клиента', 'др клиент', 'birthday'],
+  ...CONTACT_SECTION_GROUPS,
   // Сотрудник спрашивает «как уволиться» — то же, что регламент/процесс увольнения
-  ['программатик', 'программатика', 'программатики', 'programmatic'],
   [
     'увольнение',
     'увольнения',
@@ -314,6 +378,21 @@ export function tokensMatchMorph(a: string, b: string): boolean {
   return /^(н|ен|ени|нн|ок|к|ск|т|л|вш|ющ|ива|ыва)*$/u.test(extra);
 }
 
+/** Токен из блока справочника «Контакты» (юрист / яндекс / programmatic …). */
+export function isContactSectionToken(token: string): boolean {
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  if (!t || t.length < 4) return false;
+  for (const group of CONTACT_SECTION_GROUPS) {
+    for (const term of group) {
+      const g = term.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, '');
+      if (g.length < 4) continue;
+      if (t === g || t.includes(g) || g.includes(t)) return true;
+      if (tokensMatchMorph(t, g)) return true;
+    }
+  }
+  return false;
+}
+
 function synonymGroupForToken(token: string): string[] | null {
   const t = token.toLowerCase();
   for (const group of SYNONYM_GROUPS) {
@@ -384,15 +463,26 @@ export function distinctiveQueryTokens(question: string): string[] {
   return tokenizeForRag(question).filter((t) => t.length >= 4 && !GENERIC_QUERY_TOKENS.has(t));
 }
 
-/** Редкие якоря запроса: длинные слова и латиница (programmatic). */
+/** Редкие якоря запроса: секции Контактов, длинные слова, латиница. */
 export function rareDistinctiveTokens(distinctive: string[]): string[] {
-  return distinctive.filter((t) => t.length >= 8 || /[a-z]/i.test(t));
+  return distinctive.filter(
+    (t) => isContactSectionToken(t) || t.length >= 8 || /[a-z]/i.test(t)
+  );
 }
 
-export function longestRareToken(distinctive: string[]): string | null {
+export function longestRareToken(distinctive: string[], question = ''): string | null {
   const rare = rareDistinctiveTokens(distinctive);
   if (!rare.length) return null;
-  return [...rare].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+  const withoutWeak = rare.filter((t) => !WEAK_RARE_ANCHORS.has(t.toLowerCase()));
+  const pool = withoutWeak.length ? withoutWeak : rare;
+  const intent = hasContactDirectoryIntent(question);
+  const contact = pool.filter((t) => {
+    if (!isContactSectionToken(t)) return false;
+    if (isProductLikeContactAnchor(t)) return true;
+    return intent;
+  });
+  const use = contact.length ? contact : pool;
+  return [...use].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
 }
 
 /** Целое слово (не «программатик» внутри «программатики»). */
@@ -411,7 +501,7 @@ function forEachWholeWord(blob: string, form: string, fn: (idx: number) => void)
 
 /**
  * Насколько «якорь» сидит в тексте: 1 = вскользь (как programmatic в DayOfff),
- * ≥2 = заголовок секции / несколько вхождений (блок Programmatic в Контактах).
+ * ≥2 = заголовок секции / несколько вхождений (блок в Контактах).
  */
 export function rareTokenStrength(text: string, token: string): number {
   if (!token || !text) return 0;
@@ -421,11 +511,12 @@ export function rareTokenStrength(text: string, token: string): number {
   const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
   const group = synonymGroupForToken(token);
   if (group) {
-    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е'));
+    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ''));
   }
 
   let score = 0;
   for (const form of [...forms].sort((a, b) => b.length - a.length)) {
+    if (form.includes(' ')) continue;
     forEachWholeWord(blob, form, (idx) => {
       score += 1;
       if (isRareAnchorHeadingAt(blob, form, idx)) score += 2;
@@ -434,22 +525,43 @@ export function rareTokenStrength(text: string, token: string): number {
   return score;
 }
 
-/** Секция вроде «Programmatic …» в Контактах; не «- Программатик;» и не «ads, programmatic,». */
+/**
+ * Шапка блока в «Контактах»: «Programmatic…», «Дизайнеры», «Бюро переводов / …».
+ * Не список PPC («ads, programmatic,»), не регламент и не предложение mid-body.
+ */
 function isRareAnchorHeadingAt(blob: string, form: string, idx: number): boolean {
   const lineStart = blob.lastIndexOf('\n', Math.max(0, idx - 1)) + 1;
-  const col = idx - lineStart;
-  if (col > 2) return false;
   const after = blob[idx + form.length] || '';
   if (after === ',') return false;
-  // В «Контактах» заголовки секций латиницей Programmatic
-  if (!/^programmatic$/i.test(form)) return false;
   const lineEnd = blob.indexOf('\n', idx);
-  const line = blob.slice(lineStart, lineEnd < 0 ? blob.length : lineEnd).trim();
+  const rawLine = blob.slice(lineStart, lineEnd < 0 ? blob.length : lineEnd);
+  const leadWs = (rawLine.match(/^\s*/) || [''])[0].length;
+  const col = idx - lineStart - leadWs;
+  const line = rawLine.trim();
+  if (!line) return false;
   if (/^[-•*–—]\s/.test(line)) return false;
-  return true;
+  // Регламенты/инструкции — не секция справочника контактов
+  if (/^(регламент|инструкция|правила |чек.?лист|как )\b/iu.test(line)) return false;
+  if (/^\d+[\.)]/.test(line)) return false;
+  if (/@|\+7|https?:/i.test(line)) return false;
+
+  const words = line.split(/\s+/).filter(Boolean);
+
+  // «Юридическая поддержка / Юристы», «Бюро переводов / переводчики»
+  if (line.length <= 72 && line.includes('/') && words.length <= 10) return true;
+
+  if (col > 2) return false;
+
+  // Короткая шапка: «Дизайнеры», «Яндекс Менеджер», «CLICK RU»
+  if (line.length <= 48 || words.length <= 4) return true;
+
+  // Длинная строка с якорем в начале — только латиница (Programmatic … Hybrid …)
+  if (/^[a-z0-9]/i.test(form)) return true;
+
+  return false;
 }
 
-/** Сколько раз якорь стоит в начале строки (секция Programmatic vs список PPC). */
+/** Сколько раз якорь в шапке секции (Контакты), а не mid-body / регламент. */
 export function rareTokenHeadingHits(text: string, token: string): number {
   if (!token || !text) return 0;
   const blob = String(text)
@@ -458,10 +570,11 @@ export function rareTokenHeadingHits(text: string, token: string): number {
   const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
   const group = synonymGroupForToken(token);
   if (group) {
-    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е'));
+    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ''));
   }
   let hits = 0;
   for (const form of [...forms].sort((a, b) => b.length - a.length)) {
+    if (form.includes(' ')) continue;
     forEachWholeWord(blob, form, (idx) => {
       if (isRareAnchorHeadingAt(blob, form, idx)) hits += 1;
     });

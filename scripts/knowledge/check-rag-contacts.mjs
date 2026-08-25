@@ -36,7 +36,8 @@ const {
   rareDistinctiveTokens,
   textCoversToken,
   tokenizeForRag,
-  lexicalScore
+  lexicalScore,
+  hasContactDirectoryIntent
 } = mod.exports;
 
 function stripHtml(html) {
@@ -86,14 +87,14 @@ function chunkArticleText(title, bodyHtml) {
   return chunks;
 }
 
-function pickArticleSnippets(title, chunkTexts, distinctive, queryTokens, limit = 3) {
+function pickArticleSnippets(title, chunkTexts, distinctive, queryTokens, limit = 3, question = '') {
   const rare = rareDistinctiveTokens(distinctive);
   const ranked = chunkTexts
     .map((text, idx) => {
       const lex = lexicalScore(title, text, queryTokens);
       const rareHits = rare.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
       const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
-      const anchor = longestRareToken(distinctive);
+      const anchor = longestRareToken(distinctive, question || title);
       const strength = anchor ? rareTokenStrength(`${title}\n${text}`, anchor) : 0;
       return { text, idx, score: strength * 4 + rareHits * 3 + distHits * 0.6 + lex };
     })
@@ -118,7 +119,7 @@ const CASES = [
   },
   {
     id: 'lawyers',
-    q: 'кому писать юристу контакты',
+    q: 'кому писать юристу',
     needles: [/юрист/i, /(марченко|lizmarchenko|данилова)/i]
   },
   {
@@ -133,8 +134,8 @@ const CASES = [
   },
   {
     id: 'designers',
-    q: 'контакты дизайнеров',
-    needles: [/дизайнер/i, /(marconde|marcondesign)/i]
+    q: 'кому писать дизайнеру',
+    needles: [/дизайнер/i, /(marconde|marcondesign|мирончиков|el_strapone)/i]
   },
   {
     id: 'translators',
@@ -157,7 +158,7 @@ let failed = 0;
 for (const c of CASES) {
   const distinctive = distinctiveQueryTokens(c.q);
   const tokens = tokenizeForRag(c.q);
-  const snippets = pickArticleSnippets(contacts.title, contactChunks, distinctive, tokens, 3);
+  const snippets = pickArticleSnippets(contacts.title, contactChunks, distinctive, tokens, 3, c.q);
   const blob = snippets.join('\n');
   const ok = c.needles.every((re) => re.test(blob));
   if (!ok) {
@@ -165,32 +166,78 @@ for (const c of CASES) {
     console.error(`FAIL ${c.id}`);
     console.error('  q:', c.q);
     console.error('  distinctive:', distinctive);
+    console.error('  anchor:', longestRareToken(distinctive, c.q));
     console.error('  top:', snippets[0]?.slice(0, 240).replace(/\s+/g, ' '));
   } else {
-    console.log(`ok  ${c.id}`);
+    console.log(`ok  ${c.id}  anchor=${longestRareToken(distinctive, c.q)}`);
   }
 }
 
-const dayoff = articles.find((a) => a.id === 'kb-27877');
-const anchor = longestRareToken(
-  distinctiveQueryTokens('Какие есть Programmatic и кому писать?')
+assert.equal(hasContactDirectoryIntent('кому писать юристу'), true);
+assert.equal(hasContactDirectoryIntent('комиссия Яндекс Директ'), false);
+assert.equal(
+  longestRareToken(
+    distinctiveQueryTokens('контакты менеджера Яндекса агентства'),
+    'контакты менеджера Яндекса агентства'
+  ),
+  'яндекса'
 );
-assert.equal(anchor, 'programmatic');
+assert.equal(longestRareToken(distinctiveQueryTokens('кому писать юристу'), 'кому писать юристу'), 'юристу');
+
+const dayoff = articles.find((a) => a.id === 'kb-27877');
+const designReg = articles.find((a) => a.id === 'kb-28893');
+const lawyersReg = articles.find((a) => a.id === 'kb-29956');
+
+const progQ = 'Какие есть Programmatic и кому писать?';
+const progAnchor = longestRareToken(distinctiveQueryTokens(progQ), progQ);
+assert.equal(progAnchor, 'programmatic');
 const contactsHead = Math.max(
   0,
-  ...contactChunks.map((t) => rareTokenHeadingHits(`${contacts.title}\n${t}`, anchor))
+  ...contactChunks.map((t) => rareTokenHeadingHits(`${contacts.title}\n${t}`, progAnchor))
 );
 const dayoffChunks = chunkArticleText(dayoff.title, dayoff.body);
 const dayoffHead = Math.max(
   0,
-  ...dayoffChunks.map((t) => rareTokenHeadingHits(`${dayoff.title}\n${t}`, anchor))
+  ...dayoffChunks.map((t) => rareTokenHeadingHits(`${dayoff.title}\n${t}`, progAnchor))
 );
 assert.ok(contactsHead > 0, 'Контакты: heading Programmatic');
 assert.equal(dayoffHead, 0, 'DayOfff: no heading Programmatic');
 console.log('ok  programmatic-vs-dayoff');
 
+const desQ = 'кому писать дизайнеру';
+const desAnchor = longestRareToken(distinctiveQueryTokens(desQ), desQ);
+assert.equal(desAnchor, 'дизайнеру');
+const desContactsHead = Math.max(
+  0,
+  ...contactChunks.map((t) => rareTokenHeadingHits(`${contacts.title}\n${t}`, desAnchor))
+);
+const designChunks = chunkArticleText(designReg.title, designReg.body);
+const desRegHead = Math.max(
+  0,
+  ...designChunks.map((t) => rareTokenHeadingHits(`${designReg.title}\n${t}`, desAnchor))
+);
+assert.ok(desContactsHead > 0, 'Контакты: heading дизайнеры');
+assert.equal(desRegHead, 0, 'Регламент дизайна: no section heading');
+console.log('ok  designers-vs-design-reg');
+
+const lawQ = 'кому писать юристу';
+const lawAnchor = longestRareToken(distinctiveQueryTokens(lawQ), lawQ);
+assert.equal(lawAnchor, 'юристу');
+const lawContactsHead = Math.max(
+  0,
+  ...contactChunks.map((t) => rareTokenHeadingHits(`${contacts.title}\n${t}`, lawAnchor))
+);
+const lawRegChunks = chunkArticleText(lawyersReg.title, lawyersReg.body);
+const lawRegHead = Math.max(
+  0,
+  ...lawRegChunks.map((t) => rareTokenHeadingHits(`${lawyersReg.title}\n${t}`, lawAnchor))
+);
+assert.ok(lawContactsHead > 0, 'Контакты: heading юристы');
+assert.equal(lawRegHead, 0, 'Регламент юристов: no section heading');
+console.log('ok  lawyers-vs-lawyers-reg');
+
 if (failed) {
   console.error(`\n${failed} failed`);
   process.exit(1);
 }
-console.log(`\nok: contacts section pick (${CASES.length} + dayoff guard)`);
+console.log(`\nok: contacts section pick (${CASES.length} + guards)`);

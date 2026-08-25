@@ -91,6 +91,22 @@ assert.equal(
   rareTokenStrength('DayOfff\n\nprogrammatic, аналитика, геосервисы', 'programmatic'),
   1
 );
+assert.ok(rareTokenHeadingHits('Контакты\n\nДизайнеры\nАнтон', 'дизайнеру') >= 1);
+assert.ok(rareTokenHeadingHits('Контакты\n\nЮридическая поддержка / Юристы\nЛиза', 'юристу') >= 1);
+assert.equal(
+  rareTokenHeadingHits('Регламент постановки задач по дизайну\nШаг 1', 'дизайнеру'),
+  0
+);
+
+const { longestRareToken, hasContactDirectoryIntent } = module.exports;
+assert.equal(hasContactDirectoryIntent('кому писать юристу'), true);
+assert.equal(
+  longestRareToken(
+    distinctiveQueryTokens('контакты менеджера Яндекса агентства'),
+    'контакты менеджера Яндекса агентства'
+  ),
+  'яндекса'
+);
 
 const intentBuild = esbuild.buildSync({
   entryPoints: [join(frontend, 'app/utils/knowledgeAiIntent.ts')],
