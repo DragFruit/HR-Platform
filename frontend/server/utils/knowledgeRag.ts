@@ -6,6 +6,7 @@ import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticle
 import {
   distinctiveQueryTokens,
   expandQueryWithSynonyms,
+  hasContactDirectoryIntent,
   hitCoversDistinctiveTokens,
   lexicalScore,
   longestRareToken,
@@ -25,9 +26,9 @@ import {
 import { canUserSeeArticle } from './knowledgeAudience';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
-const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
-/** Смена нарезки — пересобрать индекс, даже если статьи те же. */
-const INDEX_VERSION = 3;
+/** Статья-справочник контактов (якоря секций). */
+const CONTACTS_ARTICLE_ID = 'kb-20409';
+
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -354,8 +355,18 @@ export async function retrieveKnowledgeDetailed(
     if (ranked.length) {
       const bestHeadings = ranked[0]!.headings;
       // Если есть секция с якорем в заголовке строки — отбрасываем mid-body (DayOfff, AFINA «программатики»).
-      const preferred =
+      let preferred =
         bestHeadings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
+      // «Кому писать / контакты» → только справочник Контакты, не КЛАДОВКА/регламенты/Метрика
+      if (hasContactDirectoryIntent(q)) {
+        const contactsOnly = ranked.filter(
+          (row) =>
+            row.strength > 0 &&
+            (row.chunk.articleId === CONTACTS_ARTICLE_ID ||
+              /^контакты$/i.test(row.chunk.title.trim()))
+        );
+        if (contactsOnly.length) preferred = contactsOnly;
+      }
       const byArticle = new Map<string, KnowledgeRagHit>();
       for (const row of preferred) {
         const existing = byArticle.get(row.chunk.articleId);
@@ -394,6 +405,13 @@ export async function retrieveKnowledgeDetailed(
         hits = hits.filter(
           (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
         );
+      }
+      // После фильтра шапок при контактном интенте снова оставляем только Контакты
+      if (hasContactDirectoryIntent(q)) {
+        const only = hits.filter(
+          (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
+        );
+        if (only.length) hits = only;
       }
       return {
         hits: hits.slice(0, topArticles),
