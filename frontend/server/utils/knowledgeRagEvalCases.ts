@@ -84,6 +84,69 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     expectAny: ['kb-20409']
   },
   {
+    id: 'contacts-programmatic',
+    canonical: 'Какие есть Programmatic и кому лучше писать для расчетов?',
+    paraphrases: [
+      'программатики контакты',
+      'кому писать по programmatic',
+      'площадки programmatic и контакты менеджеров'
+    ],
+    expectAny: ['kb-20409'],
+    note: 'Блок Programmatic в Контактах, не DayOfff/AFINA'
+  },
+  {
+    id: 'contacts-lawyers',
+    canonical: 'кому писать юристу',
+    paraphrases: [
+      'контакты юристов',
+      'юридическая поддержка к кому обратиться',
+      'телефон юриста в контактах'
+    ],
+    expectAny: ['kb-20409'],
+    note: 'Блок Юристы в Контактах'
+  },
+  {
+    id: 'contacts-yandex',
+    canonical: 'контакты менеджера Яндекса',
+    paraphrases: [
+      'кому писать в яндекс по рекламе',
+      'яндекс менеджер агентства vbi',
+      'контакт яндекс тим'
+    ],
+    expectAny: ['kb-20409'],
+    note: 'Блок Яндекс в Контактах'
+  },
+  {
+    id: 'contacts-google360',
+    canonical: 'контакты Google 360',
+    paraphrases: ['кому писать по google 360', 'google 360 закупка контакт'],
+    expectAny: ['kb-20409']
+  },
+  {
+    id: 'contacts-designers',
+    canonical: 'контакты дизайнеров',
+    paraphrases: ['кому писать дизайнеру', 'дизайнеры цены контакты'],
+    expectAny: ['kb-20409']
+  },
+  {
+    id: 'contacts-translators',
+    canonical: 'бюро переводов контакты',
+    paraphrases: ['кому писать переводчику', 'переводчики elefteria'],
+    expectAny: ['kb-20409']
+  },
+  {
+    id: 'contacts-clickru',
+    canonical: 'контакты Click.ru',
+    paraphrases: ['кому писать в click ru', 'click.ru менеджер'],
+    expectAny: ['kb-20409']
+  },
+  {
+    id: 'contacts-outdoor-tv',
+    canonical: 'наружная реклама в аэропортах контакты',
+    paraphrases: ['реклама на ТВ контакт', 'кому писать по рекламе в аэропорту'],
+    expectAny: ['kb-20409']
+  },
+  {
     id: 'hiring',
     canonical: 'регламент найма сотрудников VBI',
     paraphrases: ['как у нас нанимают людей', 'процесс найма в компании'],

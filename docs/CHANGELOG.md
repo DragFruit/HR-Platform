@@ -4,6 +4,10 @@
 
 ## 2026-08-25
 
+### База знаний: кейсы по блокам «Контактов»
+- В `knowledgeRagEvalCases` — Programmatic, юристы, Яндекс, Google 360, дизайнеры, переводчики, Click.ru, наружка.
+- Локальный прогон фрагментов: `node scripts/knowledge/check-rag-contacts.mjs` (без Yandex).
+
 ### VPN: кнопка «Код ChatGPT» из корпоративной почты
 - В помощнике `/vpn`: приветствие «Привет! Чем я могу помочь?»; чип **Код ChatGPT** рядом с VPN/Прокси.
 - Сервер читает IMAP (`EMAIL_LOGIN` + `EMAIL_PASSWORD` или `PASSWORD`), письма `noreply@tm.openai.com`, код после `Please use the following code to help verify your identity:`.
