@@ -47,7 +47,8 @@ async function yandexEmbedTextOnce(text: string, kind: EmbedKind, attempt = 0): 
     body: JSON.stringify({
       modelUri: kind === 'doc' ? config.docModelUri : config.queryModelUri,
       text: safe
-    })
+    }),
+    signal: AbortSignal.timeout(12000)
   });
 
   if (res.status === 429 && attempt < 4) {

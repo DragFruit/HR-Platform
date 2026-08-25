@@ -85,7 +85,8 @@ export async function yandexToMarkdown(sourceText: string, opts?: { maxTokens?: 
   const res = await fetch(YANDEX_COMPLETION_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25000)
   });
 
   if (!res.ok) {
@@ -186,7 +187,8 @@ export async function yandexChatAnswer(
   const res = await fetch(YANDEX_COMPLETION_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25000)
   });
 
   if (!res.ok) {
@@ -249,7 +251,8 @@ export async function yandexChatAnswerAmbiguous(
         { role: 'system', text: system },
         { role: 'user', text: user }
       ]
-    })
+    }),
+    signal: AbortSignal.timeout(25000)
   });
 
   if (!res.ok) {

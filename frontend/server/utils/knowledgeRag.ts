@@ -326,27 +326,24 @@ export async function retrieveKnowledgeDetailed(
       : published.map((a) => a.id)
   );
 
-  const plan = await buildRetrievalQueryPlan(q);
   const topChunks = opts?.topChunks ?? TOP_CHUNKS;
   const topArticles = opts?.topArticles ?? TOP_ARTICLES;
   const minSem = opts?.minScore ?? MIN_SEMANTIC;
-  const lexTokens = tokenizeForRag(plan.lexicalQuery);
   const publishedById = new Map(published.map((a) => [a.id, a]));
   const distinctive = distinctiveQueryTokens(q);
-
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
 
-  // Жёсткий якорь секции «Контактов» (Programmatic / юрист / Яндекс…):
-  // не ждём эмбеддинги — иначе вскользь совпадение в DayOfff / регламенте дизайна
-  // и семантика «расчётов» уводят от нужного блока.
+  // Жёсткий якорь секций «Контактов» — ДО rewrite/эмбеддингов (иначе Yandex rewrite
+  // без таймаута даёт 504, а mid-body в DayOfff/КЛАДОВКЕ уводит от справочника).
   const anchor = longestRareToken(distinctive, q);
   if (anchor) {
+    const lexTokensFast = tokenizeForRag(expandQueryWithSynonyms(q));
     const ranked = visibleChunks
       .map((chunk) => {
         const blob = `${chunk.title}\n${chunk.text}`;
         const strength = rareTokenStrength(blob, anchor);
         const headings = rareTokenHeadingHits(blob, anchor);
-        const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
+        const lex = lexicalScore(chunk.title, chunk.text, lexTokensFast);
         return { chunk, strength, headings, lex };
       })
       .filter((row) => row.strength > 0)
@@ -354,10 +351,8 @@ export async function retrieveKnowledgeDetailed(
 
     if (ranked.length) {
       const bestHeadings = ranked[0]!.headings;
-      // Если есть секция с якорем в заголовке строки — отбрасываем mid-body (DayOfff, AFINA «программатики»).
       let preferred =
         bestHeadings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
-      // «Кому писать / контакты» → только справочник Контакты, не КЛАДОВКА/регламенты/Метрика
       if (hasContactDirectoryIntent(q)) {
         const contactsOnly = ranked.filter(
           (row) =>
@@ -388,7 +383,7 @@ export async function retrieveKnowledgeDetailed(
         const articleChunks = visibleChunks
           .filter((c) => c.articleId === hit.articleId)
           .map((c) => c.text);
-        hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokens, 3, q);
+        hit.snippets = pickArticleSnippets(hit.title, articleChunks, distinctive, lexTokensFast, 3, q);
       }
       let hits = [...byArticle.values()].sort((a, b) => {
         const ha = rareTokenHeadingHits(`${a.title}\n${a.snippets.join('\n')}`, anchor);
@@ -406,7 +401,6 @@ export async function retrieveKnowledgeDetailed(
           (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
         );
       }
-      // После фильтра шапок при контактном интенте снова оставляем только Контакты
       if (hasContactDirectoryIntent(q)) {
         const only = hits.filter(
           (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
@@ -420,6 +414,9 @@ export async function retrieveKnowledgeDetailed(
       };
     }
   }
+
+  const plan = await buildRetrievalQueryPlan(q);
+  const lexTokens = tokenizeForRag(plan.lexicalQuery);
 
   const semByChunk = new Map<string, number>();
   for (const queryText of plan.queries) {

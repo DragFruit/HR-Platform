@@ -50,7 +50,8 @@ export async function rewriteQueryConservatively(question: string): Promise<stri
         { role: 'system', text: system },
         { role: 'user', text: q }
       ]
-    })
+    }),
+    signal: AbortSignal.timeout(8000)
   });
 
   if (!res.ok) return null;
