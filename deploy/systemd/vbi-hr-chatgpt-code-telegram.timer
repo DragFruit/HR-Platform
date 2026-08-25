@@ -1,0 +1,12 @@
+[Unit]
+Description=Every 2 min: ChatGPT mail codes → Telegram
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Persistent=true
+Unit=vbi-hr-chatgpt-code-telegram.service
+
+[Install]
+WantedBy=timers.target

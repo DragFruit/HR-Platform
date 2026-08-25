@@ -296,6 +296,22 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Защита: заголовок `X-Cron-Token` = `VACATION_PRE_REMINDER_CRON_SECRET` / `CRON_SECRET`.
 
+### Коды ChatGPT → Telegram (cron)
+
+Параллельно UI `/vpn` → «Код ChatGPT». Общий IMAP: `openaiChatgptMailCode.ts` (окно ~1 ч). Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+
+| API | Назначение |
+|-----|------------|
+| `POST /api/cron/chatgpt-code-telegram` | Новые коды из почты → Telegram (`dry_run=1`) |
+
+| Файл | Роль |
+|------|------|
+| `chatgptCodeTelegram.ts` / `…State.ts` | Пайплайн + дедуп `chatgpt-code-telegram-state.json` |
+| `telegramBot.ts` | Bot API `sendMessage` |
+| `deploy/systemd/vbi-hr-chatgpt-code-telegram.timer` | каждые 2 мин |
+
+Защита: `X-Cron-Token` = `CRON_SECRET`. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` \| `TELEGRAM_CHANNEL_ID`, `EMAIL_*`.
+
 Идеи: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id` (очередь в `ideas.json`; notify встроен в mutations). Legacy: `POST /api/ideas/notify`, `POST /api/ideas/status-notify`.
 
 ### Аватары сотрудников (API)

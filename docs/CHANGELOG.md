@@ -4,6 +4,13 @@
 
 ## 2026-08-25
 
+### ChatGPT-коды → корпоративный Telegram (параллельно /vpn)
+- Cron каждые ~2 мин: IMAP (те же критерии, окно ~1 ч) → `sendMessage` бота в канал.
+- Дедуп: `server/data/chatgpt-code-telegram-state.json`. UI «Код ChatGPT» в `/vpn` не трогали.
+- Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`|`TELEGRAM_CHANNEL_ID`, плюс `EMAIL_*`, `CRON_SECRET`.
+- Файлы: `api/cron/chatgpt-code-telegram.post.ts`, `utils/chatgptCodeTelegram*.ts`, `telegramBot.ts`, `deploy/scripts/run-chatgpt-code-telegram.sh`, systemd timer, `docs/CHATGPT-TELEGRAM.md`.
+- Проверка: `curl -X POST -H "X-Cron-Token: …" '…/api/cron/chatgpt-code-telegram?dry_run=1'`.
+
 ### База знаний: кейсы по блокам «Контактов»
 - В `knowledgeRagEvalCases` — Programmatic, юристы, Яндекс, Google 360, дизайнеры, переводчики, Click.ru, наружка.
 - Локальный прогон фрагментов: `node scripts/knowledge/check-rag-contacts.mjs` (без Yandex).

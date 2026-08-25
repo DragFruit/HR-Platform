@@ -265,6 +265,8 @@
 
 **Код ChatGPT:** `POST /api/vpn/chatgpt-code` `{ excludeCodes?: string[] }` — IMAP (`EMAIL_LOGIN`, `EMAIL_PASSWORD` или `PASSWORD`), письма от `noreply@tm.openai.com` за последний час. Первый запрос — самый свежий код; «Код не подошёл» передаёт уже показанные в `excludeCodes` и берёт предыдущий; пусто → «Код не пришёл» / «Больше кодов не приходило».
 
+**Параллельно — Telegram:** cron `POST /api/cron/chatgpt-code-telegram` (каждые ~2 мин) постит новые коды из той же почты в корпоративный канал через бота (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`). Дедуп по коду в state JSON. Кнопку в `/vpn` не заменяет. Установка: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+
 ### Лимиты конфигов на человека
 
 | Тип | Максимум | Куда |

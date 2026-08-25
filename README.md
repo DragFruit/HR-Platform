@@ -141,6 +141,12 @@ Bitrix-бот и systemd timers: **[docs/BITRIX.md](docs/BITRIX.md)**.
 
 ---
 
+## Коды ChatGPT → Telegram
+
+Параллельно кнопке в `/vpn`: почта → бот → корпоративный канал (каждые 2 мин). Настройка бота, env, cron: **[docs/CHATGPT-TELEGRAM.md](docs/CHATGPT-TELEGRAM.md)**.
+
+---
+
 ## Технологии
 
 | Слой | Стек |

@@ -199,6 +199,14 @@ if [[ -f "${VACATIONS_BACKUP_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacations-backup.sh'"
 fi
 
+CHATGPT_TG_SCRIPT="${ROOT}/deploy/scripts/run-chatgpt-code-telegram.sh"
+if [[ -f "${CHATGPT_TG_SCRIPT}" ]]; then
+  echo "→ установка run-chatgpt-code-telegram.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${CHATGPT_TG_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-chatgpt-code-telegram.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-chatgpt-code-telegram.sh'"
+fi
+
 echo "→ права на server/data (процесс deploy пишет atomic tmp при логине/синке)"
 "${SSH_CMD[@]}" "${REMOTE}" "chown -R deploy:deploy '${DEPLOY_PATH}/server/data' && chmod -R u+rwX,g+rwX '${DEPLOY_PATH}/server/data'"
 
