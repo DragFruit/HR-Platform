@@ -8,6 +8,7 @@ import {
   expandQueryWithSynonyms,
   hasContactDirectoryIntent,
   hitCoversDistinctiveTokens,
+  isContactSectionToken,
   lexicalScore,
   longestRareToken,
   rareDistinctiveTokens,
@@ -26,9 +27,12 @@ import {
 import { canUserSeeArticle } from './knowledgeAudience';
 import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
+const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
+/** Смена нарезки/stripHtml — пересобрать индекс, даже если статьи те же. */
+const INDEX_VERSION = 4;
+
 /** Статья-справочник контактов (якоря секций). */
 const CONTACTS_ARTICLE_ID = 'kb-20409';
-
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -65,15 +69,25 @@ export type KnowledgeRagIndex = {
   chunks: KnowledgeRagChunk[];
 };
 
+/**
+ * HTML → plain с сохранением строк: иначе шапки секций «Контактов»
+ * («Дизайнеры», «Юристы / …») схлопываются в одну длинную строку и
+ * rareTokenHeadingHits всегда 0 → уезжаем в DayOfff / маркетплейсы.
+ */
 const stripHtml = (html: string) =>
   String(html || '')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<[^>]+>/g, '\n')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&\w+;/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
 const hashText = (value: string) => createHash('sha1').update(value).digest('hex').slice(0, 16);
@@ -100,17 +114,28 @@ function windowChunks(text: string): string[] {
   return chunks;
 }
 
-/** Длинные статьи (Контакты) режем по блокам, иначе Programmatic тонет в юристах/Яндексе. */
+/**
+ * Длинные статьи (Контакты) режем по блокам.
+ * Underscore-разделители + шапки секций с начала строки (не mid-body «ads, programmatic»).
+ */
+const CONTACT_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:Programmatic\b|Юридическая\s+поддержка|Бюро\s+переводов|Дизайнеры\b|Копирайтеры\b|Яндекс\s+Менеджер|Google\s*360|CLICK\s*RU|Наружная\s+реклама))/gi;
+
 function splitPlainSections(plain: string): string[] {
   const marked = String(plain || '')
     .replace(/_{12,}/g, '\n§\n')
-    // только с начала строки — иначе «ads, programmatic, …» в DayOfff становится «заголовком»
-    .replace(/(?:^|\n)\s*(?=Programmatic\b)/gi, '\n§\n');
+    .replace(CONTACT_SECTION_LINE_START, '\n§\n');
   const sections = marked
     .split(/\n§\n/)
     .map((s) => s.trim())
     .filter(Boolean);
   return sections.length ? sections : [plain];
+}
+
+/** «Кому писать» или якорь секции Контактов → только kb-20409. */
+function preferContactsDirectory(question: string, anchor: string | null): boolean {
+  if (hasContactDirectoryIntent(question)) return true;
+  return Boolean(anchor && isContactSectionToken(anchor));
 }
 
 export function chunkArticleText(title: string, bodyHtml: string): string[] {
@@ -353,7 +378,7 @@ export async function retrieveKnowledgeDetailed(
       const bestHeadings = ranked[0]!.headings;
       let preferred =
         bestHeadings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
-      if (hasContactDirectoryIntent(q)) {
+      if (preferContactsDirectory(q, anchor)) {
         const contactsOnly = ranked.filter(
           (row) =>
             row.strength > 0 &&
@@ -401,7 +426,7 @@ export async function retrieveKnowledgeDetailed(
           (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
         );
       }
-      if (hasContactDirectoryIntent(q)) {
+      if (preferContactsDirectory(q, anchor)) {
         const only = hits.filter(
           (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
         );

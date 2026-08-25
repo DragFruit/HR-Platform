@@ -108,7 +108,7 @@ const WEAK_RARE_ANCHORS = new Set([
 export function hasContactDirectoryIntent(question: string): boolean {
   const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
   if (!q) return false;
-  return /(контакт|кому\s+писать|написать|телефон|почт|e-?mail|связаться|справочник|для расчетов|для расчётов)/i.test(
+  return /(контакт|кому\s+писать|написать|телефон|почт|e-?mail|связаться|справочник|для расчетов|для расчётов|менеджер[аеу]?\s+(яндекс|yandex)|(?:яндекс|yandex)\s+менеджер)/i.test(
     q
   );
 }
@@ -116,7 +116,9 @@ export function hasContactDirectoryIntent(question: string): boolean {
 /** Якорь-продукт справочника — можно без «контакты» в формулировке. */
 function isProductLikeContactAnchor(token: string): boolean {
   const t = token.toLowerCase();
-  return /programmatic|программатик|click|google|elefteria|аэропорт|телевизор|наружн/i.test(t);
+  return /programmatic|программатик|click|google|elefteria|яндекс|yandex|аэропорт|телевизор|наружн/i.test(
+    t
+  );
 }
 
 /** Пары/группы близких формулировок (осторожное расширение, без смены темы). */
@@ -555,8 +557,9 @@ function isRareAnchorHeadingAt(blob: string, form: string, idx: number): boolean
   // Короткая шапка: «Дизайнеры», «Яндекс Менеджер», «CLICK RU»
   if (line.length <= 48 || words.length <= 4) return true;
 
-  // Длинная строка с якорем в начале — только латиница (Programmatic … Hybrid …)
+  // Длинная строка с якорем в начале — латиница (Programmatic …) или кириллическая шапка секции
   if (/^[a-z0-9]/i.test(form)) return true;
+  if (isContactSectionToken(form) && col <= 2 && words.length <= 12) return true;
 
   return false;
 }

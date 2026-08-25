@@ -4,6 +4,15 @@
 
 ## 2026-08-25
 
+### База знаний ИИ: починка индекса + якоря секций «Контактов»
+- **Регрессия:** в `ed7e4a9` случайно удалили `INDEX_FILE` / `INDEX_VERSION` → RAG-индекс не читался/не писался, чат уходил в lexical fallback («в базе нет», DayOfff/маркетплейсы в цитатах).
+- Восстановлены константы индекса; `INDEX_VERSION = 4` (новая нарезка).
+- `stripHtml` снова **сохраняет переносы строк** — иначе шапки «Дизайнеры» / «Юристы» схлопывались и `rareTokenHeadingHits` всегда был 0.
+- Нарезка секций обобщена (не только `Programmatic`): юристы, бюро переводов, дизайнеры, Яндекс Менеджер, Google 360, Click.ru, наружка.
+- Якорь секции Контактов (в т.ч. «Менеджер Яндекса») → только `kb-20409`.
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `scripts/knowledge/check-rag-contacts.mjs`.
+- Проверка: `node scripts/knowledge/check-rag-contacts.mjs`; после деплоя стейджа — переиндекс (cron/admin) и 6 вопросов чата под Драго.
+
 ### Telegram: текст поста с кодом ChatGPT
 - Шаблон: «Кто просил код от chatGPT?» + строка с кодом (`chatgptCodeTelegram.ts`).
 - Env без изменений: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`|`TELEGRAM_CHANNEL_ID` (см. `.env.example`).

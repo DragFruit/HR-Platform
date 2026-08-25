@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Локальная проверка блоков «Контактов»: нужный фрагмент + Programmatic ≠ DayOfff.
- * Без Yandex/индекса.
+ * Без Yandex/индекса. stripHtml / split — как в knowledgeRag.ts.
  */
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -37,23 +37,35 @@ const {
   textCoversToken,
   tokenizeForRag,
   lexicalScore,
-  hasContactDirectoryIntent
+  hasContactDirectoryIntent,
+  isContactSectionToken
 } = mod.exports;
 
+/** Как в knowledgeRag.ts — с сохранением строк. */
 function stripHtml(html) {
   return String(html || '')
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
     .replace(/<[^>]+>/g, '\n')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
-    .replace(/\r/g, '');
+    .replace(/&\w+;/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
+
+const CONTACT_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:Programmatic\b|Юридическая\s+поддержка|Бюро\s+переводов|Дизайнеры\b|Копирайтеры\b|Яндекс\s+Менеджер|Google\s*360|CLICK\s*RU|Наружная\s+реклама))/gi;
 
 function splitPlainSections(plain) {
   const marked = String(plain || '')
     .replace(/_{12,}/g, '\n§\n')
-    .replace(/(?:^|\n)\s*(?=Programmatic\b)/gi, '\n§\n');
+    .replace(CONTACT_SECTION_LINE_START, '\n§\n');
   const sections = marked
     .split(/\n§\n/)
     .map((s) => s.trim())
@@ -61,7 +73,7 @@ function splitPlainSections(plain) {
   return sections.length ? sections : [plain];
 }
 
-function windowChunks(text, size = 900, overlap = 120) {
+function windowChunks(text, size = 1200, overlap = 150) {
   const t = String(text || '').trim();
   if (!t) return [];
   if (t.length <= size) return [t];
@@ -102,6 +114,84 @@ function pickArticleSnippets(title, chunkTexts, distinctive, queryTokens, limit 
   return ranked.slice(0, limit).map((r) => r.text);
 }
 
+const CONTACTS = 'kb-20409';
+
+function preferContactsDirectory(question, anchor) {
+  if (hasContactDirectoryIntent(question)) return true;
+  return Boolean(anchor && isContactSectionToken(anchor));
+}
+
+function hardRetrieve(q, allChunks) {
+  const distinctive = distinctiveQueryTokens(q);
+  const anchor = longestRareToken(distinctive, q);
+  if (!anchor) return { anchor: null, hits: [] };
+  const lexTokens = tokenizeForRag(q);
+  const ranked = allChunks
+    .map((chunk) => {
+      const blob = `${chunk.title}\n${chunk.text}`;
+      return {
+        chunk,
+        strength: rareTokenStrength(blob, anchor),
+        headings: rareTokenHeadingHits(blob, anchor),
+        lex: lexicalScore(chunk.title, chunk.text, lexTokens)
+      };
+    })
+    .filter((row) => row.strength > 0)
+    .sort((a, b) => b.headings - a.headings || b.strength - a.strength || b.lex - a.lex);
+  if (!ranked.length) return { anchor, hits: [] };
+  let preferred = ranked[0].headings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
+  if (preferContactsDirectory(q, anchor)) {
+    const contactsOnly = ranked.filter(
+      (row) =>
+        row.strength > 0 &&
+        (row.chunk.articleId === CONTACTS || /^контакты$/i.test(row.chunk.title.trim()))
+    );
+    if (contactsOnly.length) preferred = contactsOnly;
+  }
+  const byArticle = new Map();
+  for (const row of preferred) {
+    const existing = byArticle.get(row.chunk.articleId);
+    const score = Math.min(1, 0.55 + row.strength * 0.08 + row.headings * 0.12 + row.lex * 0.2);
+    if (!existing) {
+      byArticle.set(row.chunk.articleId, {
+        articleId: row.chunk.articleId,
+        title: row.chunk.title,
+        score,
+        snippets: [row.chunk.text]
+      });
+    } else if (score > existing.score) {
+      existing.score = score;
+    }
+  }
+  for (const hit of byArticle.values()) {
+    const texts = allChunks.filter((c) => c.articleId === hit.articleId).map((c) => c.text);
+    hit.snippets = pickArticleSnippets(hit.title, texts, distinctive, lexTokens, 3, q);
+  }
+  let hits = [...byArticle.values()].sort((a, b) => {
+    const ha = rareTokenHeadingHits(`${a.title}\n${a.snippets.join('\n')}`, anchor);
+    const hb = rareTokenHeadingHits(`${b.title}\n${b.snippets.join('\n')}`, anchor);
+    const sa = rareTokenStrength(`${a.title}\n${a.snippets.join('\n')}`, anchor);
+    const sb = rareTokenStrength(`${b.title}\n${b.snippets.join('\n')}`, anchor);
+    return hb - ha || sb - sa || b.score - a.score;
+  });
+  const maxHead = Math.max(
+    0,
+    ...hits.map((h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor))
+  );
+  if (maxHead > 0) {
+    hits = hits.filter(
+      (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
+    );
+  }
+  if (preferContactsDirectory(q, anchor)) {
+    const only = hits.filter(
+      (h) => h.articleId === CONTACTS || /^контакты$/i.test(h.title.trim())
+    );
+    if (only.length) hits = only;
+  }
+  return { anchor, hits: hits.slice(0, 3) };
+}
+
 const articles = JSON.parse(
   readFileSync(join(frontend, 'server/data/knowledge-articles.json'), 'utf8')
 ).articles;
@@ -110,6 +200,12 @@ assert.ok(contacts, 'kb-20409');
 
 const contactChunks = chunkArticleText(contacts.title, contacts.body);
 assert.ok(contactChunks.length >= 10, `chunks=${contactChunks.length}`);
+
+// stripHtml must keep newlines so section heads are detectable
+assert.ok(
+  stripHtml(contacts.body).includes('\n'),
+  'stripHtml must preserve newlines for heading anchors'
+);
 
 const CASES = [
   {
@@ -125,6 +221,11 @@ const CASES = [
   {
     id: 'yandex',
     q: 'контакты менеджера Яндекса агентства',
+    needles: [/яндекс/i, /(komanova|yandex-team|2728706|vbi\.agency)/i]
+  },
+  {
+    id: 'yandex-short',
+    q: 'Менеджер Яндекса',
     needles: [/яндекс/i, /(komanova|yandex-team|2728706|vbi\.agency)/i]
   },
   {
@@ -175,6 +276,7 @@ for (const c of CASES) {
 
 assert.equal(hasContactDirectoryIntent('кому писать юристу'), true);
 assert.equal(hasContactDirectoryIntent('комиссия Яндекс Директ'), false);
+assert.equal(hasContactDirectoryIntent('Менеджер Яндекса'), true);
 assert.equal(
   longestRareToken(
     distinctiveQueryTokens('контакты менеджера Яндекса агентства'),
@@ -187,6 +289,7 @@ assert.equal(longestRareToken(distinctiveQueryTokens('кому писать юр
 const dayoff = articles.find((a) => a.id === 'kb-27877');
 const designReg = articles.find((a) => a.id === 'kb-28893');
 const lawyersReg = articles.find((a) => a.id === 'kb-29956');
+const market = articles.find((a) => a.id === 'kb-29760');
 
 const progQ = 'Какие есть Programmatic и кому писать?';
 const progAnchor = longestRareToken(distinctiveQueryTokens(progQ), progQ);
@@ -236,8 +339,79 @@ assert.ok(lawContactsHead > 0, 'Контакты: heading юристы');
 assert.equal(lawRegHead, 0, 'Регламент юристов: no section heading');
 console.log('ok  lawyers-vs-lawyers-reg');
 
+// Cross-article hard path (контролёр: не DayOfff / не маркетплейсы / не регламент дизайна)
+const distractors = [contacts, dayoff, designReg, lawyersReg, market].filter(Boolean);
+const allChunks = [];
+for (const a of distractors) {
+  for (const text of chunkArticleText(a.title, a.body)) {
+    allChunks.push({ articleId: a.id, title: a.title, text });
+  }
+}
+
+const HARD = [
+  {
+    id: 'hard-lawyers',
+    q: 'кому писать юристу',
+    expectId: CONTACTS,
+    forbid: [/dayofff/i, /регламент/i]
+  },
+  {
+    id: 'hard-yandex',
+    q: 'Менеджер Яндекса',
+    expectId: CONTACTS,
+    forbid: [/dayofff/i]
+  },
+  {
+    id: 'hard-designers',
+    q: 'кому писать дизайнеру',
+    expectId: CONTACTS,
+    forbid: [/регламент постановки/i]
+  },
+  {
+    id: 'hard-translators',
+    q: 'бюро переводов кому писать',
+    expectId: CONTACTS,
+    forbid: [/маркетплейс/i]
+  },
+  {
+    id: 'hard-programmatic',
+    q: 'Какие есть Programmatic и кому лучше писать для расчетов?',
+    expectId: CONTACTS,
+    forbid: [/dayofff/i]
+  },
+  {
+    id: 'hard-clickru',
+    q: 'контакты Click.ru',
+    expectId: CONTACTS,
+    forbid: [/dayofff/i]
+  }
+];
+
+for (const c of HARD) {
+  const r = hardRetrieve(c.q, allChunks);
+  const top = r.hits[0];
+  const titles = r.hits.map((h) => h.title).join(' | ');
+  const blob = r.hits.map((h) => `${h.title}\n${h.snippets.join('\n')}`).join('\n');
+  const okId = top?.articleId === c.expectId;
+  const okForbid = !(c.forbid || []).some((re) => re.test(blob));
+  if (!okId || !okForbid) {
+    failed += 1;
+    console.error(`FAIL ${c.id}`);
+    console.error('  anchor:', r.anchor);
+    console.error('  hits:', titles || '(none)');
+  } else {
+    console.log(`ok  ${c.id}  → ${top.articleId}`);
+  }
+}
+
+// Guard: INDEX_FILE / INDEX_VERSION must exist in knowledgeRag.ts (regression ed7e4a9)
+const ragSrc = readFileSync(join(frontend, 'server/utils/knowledgeRag.ts'), 'utf8');
+assert.match(ragSrc, /const INDEX_FILE\s*=/);
+assert.match(ragSrc, /const INDEX_VERSION\s*=\s*\d+/);
+console.log('ok  index-consts-present');
+
 if (failed) {
   console.error(`\n${failed} failed`);
   process.exit(1);
 }
-console.log(`\nok: contacts section pick (${CASES.length} + guards)`);
+console.log(`\nok: contacts section pick (${CASES.length} + hard + guards)`);
