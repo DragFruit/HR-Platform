@@ -46,7 +46,7 @@ export async function runChatgptCodeTelegramSync(opts: {
       result.posted.push({ code: row.code, receivedAt: row.receivedAt, dryRun: true });
       continue;
     }
-    const text = `Код ChatGPT: ${row.code}`;
+    const text = `Кто просил код от chatGPT?\n${row.code}`;
     try {
       const sent = await sendTelegramMessage(text);
       await recordSentChatgptCode({

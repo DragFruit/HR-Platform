@@ -10,6 +10,11 @@
    - маркер: `Please use the following code to help verify your identity:`
    - окно свежести: **~1 час** (`openaiChatgptMailCode.ts`)
 3. Новые коды (не в state) → `sendMessage` бота в `TELEGRAM_CHAT_ID`.
+   Текст поста (две строки, обычный текст):
+   ```
+   Кто просил код от chatGPT?
+   {код}
+   ```
 4. Дедуп: `server/data/chatgpt-code-telegram-state.json` (не слать один код повторно).
 
 ## Env

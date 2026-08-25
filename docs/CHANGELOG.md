@@ -4,6 +4,11 @@
 
 ## 2026-08-25
 
+### Telegram: текст поста с кодом ChatGPT
+- Шаблон: «Кто просил код от chatGPT?» + строка с кодом (`chatgptCodeTelegram.ts`).
+- Env без изменений: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`|`TELEGRAM_CHANNEL_ID` (см. `.env.example`).
+- Проверка: `…/api/cron/chatgpt-code-telegram?dry_run=1`; боевой пост — после chat_id на стенде.
+
 ### База знаний ИИ: якоря всех блоков «Контактов»
 - Hard retrieval обобщён: не только `Programmatic`, но юристы / Яндекс / дизайнеры / переводы / Click.ru и др. при интенте «кому писать / контакты».
 - Шапка секции = короткая строка с якорем в начале или «А / Б»; регламенты дизайна/юристов и DayOfff mid-body не считаются шапкой.
