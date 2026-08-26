@@ -7,12 +7,25 @@
  *   Bitrix page chrome (`/devs/asset/...` link/script), or
  *   the target body looks like escaped HTML (`&lt;a` / `&lt;br`) from an older
  *   editor path that treated inline HTML as markdown.
+ * - Platform-owned Vibe help articles (`PLATFORM_OWNED_ARTICLE_IDS`) always
+ *   take title/summary/body/tags/breadcrumbs/departments/status from seed.
+ * - Retired seed ids (`RETIRED_ARTICLE_IDS`) are dropped from the target.
  * - Otherwise — add incoming article from seed.
  *
  * Usage:
  *   node merge-knowledge-articles-seed.mjs <target.json> <incoming.json>
  */
 import { readFile, writeFile } from 'node:fs/promises';
+
+/** Снятые сид-статьи: не оставлять на стенде после замены. */
+const RETIRED_ARTICLE_IDS = new Set(['kb-vibe-vacations']);
+
+/** Платформенные статьи Vibe: текст и аудитория всегда из сида. */
+const PLATFORM_OWNED_ARTICLE_IDS = new Set([
+  'kb-vibe-vacations-digital',
+  'kb-vibe-vacations-other',
+  'kb-vibe-ideas'
+]);
 
 const [targetPath, incomingPath] = process.argv.slice(2);
 if (!targetPath || !incomingPath) {
@@ -95,6 +108,8 @@ const targetById = new Map(t.articles.map((a) => [String(a?.id ?? ''), a]).filte
 const merged = [];
 let added = 0;
 let refreshedBody = 0;
+let retired = 0;
+let platformOwned = 0;
 
 const incomingById = new Map(
   i.articles.map((a) => [String(a?.id ?? ''), a]).filter(([id]) => id)
@@ -102,6 +117,10 @@ const incomingById = new Map(
 
 for (const targetArticle of t.articles) {
   const id = String(targetArticle?.id ?? '').trim();
+  if (id && RETIRED_ARTICLE_IDS.has(id)) {
+    retired += 1;
+    continue;
+  }
   // Drop Bitrix menu stubs / broken rows without title (API ignores them anyway).
   if (!String(targetArticle?.title ?? '').trim()) {
     continue;
@@ -109,6 +128,22 @@ for (const targetArticle of t.articles) {
   const incomingArticle = id ? incomingById.get(id) : undefined;
   if (!incomingArticle) {
     merged.push(targetArticle);
+    continue;
+  }
+
+  if (PLATFORM_OWNED_ARTICLE_IDS.has(id)) {
+    platformOwned += 1;
+    merged.push({
+      ...targetArticle,
+      title: incomingArticle.title ?? targetArticle.title,
+      summary: incomingArticle.summary ?? targetArticle.summary,
+      body: incomingArticle.body ?? targetArticle.body,
+      tags: incomingArticle.tags ?? targetArticle.tags,
+      breadcrumbs: incomingArticle.breadcrumbs ?? targetArticle.breadcrumbs,
+      departments: incomingArticle.departments ?? targetArticle.departments,
+      status: incomingArticle.status ?? targetArticle.status,
+      updatedAt: toIso()
+    });
     continue;
   }
 
@@ -128,11 +163,12 @@ for (const targetArticle of t.articles) {
   }
 }
 
-let prunedEmptyTitle = t.articles.length - merged.length;
+let prunedEmptyTitle = t.articles.length - merged.length - retired;
 
 for (const incomingArticle of i.articles) {
   const id = String(incomingArticle?.id ?? '').trim();
   if (!id) continue;
+  if (RETIRED_ARTICLE_IDS.has(id)) continue;
   if (!String(incomingArticle?.title ?? '').trim()) continue;
   if (targetById.has(id)) continue;
   merged.push({
@@ -147,5 +183,5 @@ const nextId = Math.max(t.nextId, i.nextId);
 
 await writeFile(targetPath, `${JSON.stringify({ articles: merged, nextId }, null, 2)}\n`, 'utf8');
 console.log(
-  `knowledge articles merged: added ${added}, refreshed body ${refreshedBody}, pruned empty title ${Math.max(0, prunedEmptyTitle)}`
+  `knowledge articles merged: added ${added}, refreshed body ${refreshedBody}, platform-owned ${platformOwned}, retired ${retired}, pruned empty title ${Math.max(0, prunedEmptyTitle)}`
 );

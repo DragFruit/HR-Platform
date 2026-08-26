@@ -17202,17 +17202,21 @@ button.button {
 .pvm-visual--welcome {
   overflow: hidden;
   background: #eeeee8;
-  /* Фикс 340×340: кот и чемодан целиком (как в DevTools заказчика). */
   flex: 0 0 340px;
   height: 340px;
   padding: 0;
 }
 
 .pvm-visual--welcome .pvm-cover {
-  width: 340px;
+  /* Эталон DevTools: content 310×240 + padding-bottom 100 → box 310×340 */
+  box-sizing: border-box;
+  width: 310px;
+  max-width: 100%;
   height: 340px;
-  max-width: none;
   max-height: none;
+  margin: 0;
+  padding: 0 0 100px;
+  border: 0;
   object-fit: contain;
   object-position: center bottom;
   transform: none;
