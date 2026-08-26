@@ -14,33 +14,42 @@
       @click.stop
     >
       <template v-if="ui === 'welcome' || ui === 'collapsing'">
-        <div class="pvm-welcome" :class="{ 'is-fading': ui === 'collapsing' }">
-          <div class="pvm-visual pvm-visual--welcome">
+        <div class="pvm-shell" :class="{ 'is-fading': ui === 'collapsing' }">
+          <div class="pvm-tabs" aria-hidden="true">
+            <span
+              v-for="n in 5"
+              :key="n"
+              class="pvm-tab"
+              :class="{ 'is-active': n === 1 }"
+            >{{ n }}</span>
+          </div>
+          <div class="pvm-card">
+            <div class="pvm-card__paper" aria-hidden="true" />
+            <div class="pvm-card__body">
+              <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
+              <h2 :id="slideTitleId" class="pvm-title pvm-title--welcome">{{ welcome.title }}</h2>
+              <div class="pvm-copy">
+                <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">
+                  {{ para }}
+                </p>
+              </div>
+              <div class="pvm-nav pvm-nav--welcome">
+                <button class="pvm-later" type="button" @click="onLater">
+                  {{ welcome.laterCta }}
+                </button>
+                <button class="pvm-cta" type="button" @click="onRead">
+                  {{ welcome.cta }}
+                </button>
+              </div>
+            </div>
             <img
               v-if="welcome.coverSrc"
               :src="welcome.coverSrc"
               alt=""
-              class="pvm-cover"
-              width="340"
-              height="340"
+              class="pvm-illust"
+              width="400"
+              height="306"
             />
-          </div>
-          <div class="pvm-body-wrap">
-            <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
-            <h2 :id="slideTitleId" class="pvm-title">{{ welcome.title }}</h2>
-            <div class="pvm-copy">
-              <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">
-                {{ para }}
-              </p>
-            </div>
-            <div class="pvm-nav pvm-nav--welcome">
-              <button class="pvm-later" type="button" @click="onLater">
-                {{ welcome.laterCta }}
-              </button>
-              <button class="pvm-thanks" type="button" @click="onRead">
-                {{ welcome.cta }}
-              </button>
-            </div>
           </div>
         </div>
         <div v-if="ui === 'collapsing'" class="pvm-dock-face" aria-hidden="true">
@@ -52,93 +61,71 @@
         </div>
       </template>
 
-      <div v-else class="pvm-strip" :style="{ transform: `translate3d(${-index * 100}%, 0, 0)` }">
-        <div class="pvm-geo" aria-hidden="true">
-          <span class="pvm-geo__fill" />
-          <span class="pvm-geo__arc pvm-geo__arc--a" />
-          <span class="pvm-geo__arc pvm-geo__arc--b" />
-          <span class="pvm-geo__circle pvm-geo__circle--s1" />
-          <span class="pvm-geo__sq pvm-geo__sq--b12" />
-          <span class="pvm-geo__circle pvm-geo__circle--b12" />
-          <span class="pvm-geo__circle pvm-geo__circle--b23" />
-          <span class="pvm-geo__sq pvm-geo__sq--b23" />
-          <span class="pvm-geo__circle pvm-geo__circle--b34" />
-          <span class="pvm-geo__sq pvm-geo__sq--b34" />
-          <span class="pvm-geo__circle pvm-geo__circle--b45" />
-          <span class="pvm-geo__sq pvm-geo__sq--b45" />
-          <span class="pvm-geo__ribbon" />
+      <div v-else class="pvm-shell pvm-shell--carousel">
+        <div class="pvm-tabs" aria-hidden="true">
+          <span
+            v-for="n in 5"
+            :key="n"
+            class="pvm-tab"
+            :class="{ 'is-active': n === activeTab }"
+          >{{ n }}</span>
         </div>
-
-        <article v-for="item in slides" :key="item.id" class="pvm-slide">
-          <div class="pvm-visual" :class="{ 'pvm-visual--welcome': item.id === 'intro' }">
-            <img
-              v-if="item.coverSrc"
-              :src="item.coverSrc"
-              alt=""
-              class="pvm-cover"
-              width="340"
-              height="340"
-            />
-          </div>
-          <div class="pvm-body-wrap">
-            <p v-if="item.kicker" class="pvm-kicker">{{ item.kicker }}</p>
-            <h2 :id="item.id === slide.id ? slideTitleId : undefined" class="pvm-title">
-              {{ item.title }}
-            </h2>
-            <div class="pvm-copy">
-              <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">
-                {{ para }}
-                <span v-if="item.id === 'fresh' && i === 0" class="pvm-desk-plant" aria-hidden="true">
-                  <svg viewBox="0 0 20 24" focusable="false">
-                    <path class="pvm-desk-plant__shift" d="M5.8 14.2h9l-1.1 8H6.9z" />
-                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 7.2 8.2 7.6 3.6c.6 2.8 2.4 5.4 2.4 9.8Z" />
-                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 4.8 9.6 3.4 5.8c1.8 2 4.4 4.2 6.6 7.6Z" />
-                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 15.2 9.6 16.6 5.8c-1.8 2-4.4 4.2-6.6 7.6Z" />
-                    <path class="pvm-desk-plant__leaf" d="M10 13.4C10 13.4 12.8 8.2 12.4 3.6c-.6 2.8-2.4 5.4-2.4 9.8Z" />
-                    <path class="pvm-desk-plant__pot" d="M5 13.2h10l-1.2 8.8H6.2z" />
-                  </svg>
-                </span>
-              </p>
-            </div>
-            <div class="pvm-nav">
-              <div class="pvm-dots" aria-hidden="true">
-                <span
-                  v-for="(dot, i) in slides"
-                  :key="dot.id"
-                  class="pvm-dot"
-                  :class="{ 'is-on': i === index }"
-                />
-              </div>
-              <div class="pvm-arrows">
-                <button
-                  v-if="index > 0"
-                  class="pvm-arrow pvm-arrow--back"
-                  type="button"
-                  aria-label="Назад"
-                  @click="prev"
+        <div class="pvm-card">
+          <div class="pvm-card__paper" aria-hidden="true" />
+          <div class="pvm-strip" :style="{ transform: `translate3d(${-index * 100}%, 0, 0)` }">
+            <article v-for="item in slides" :key="item.id" class="pvm-slide">
+              <div class="pvm-card__body">
+                <p v-if="item.kicker" class="pvm-kicker">{{ item.kicker }}</p>
+                <h2
+                  :id="item.id === slide.id ? slideTitleId : undefined"
+                  class="pvm-title"
                 >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M16 12H8M12 8l-4 4 4 4" />
-                  </svg>
-                </button>
-                <button
-                  v-if="!isLast"
-                  class="pvm-arrow pvm-arrow--fwd"
-                  type="button"
-                  :aria-label="slide.cta"
-                  @click="next"
-                >
-                  <svg viewBox="0 0 112 24" aria-hidden="true">
-                    <path d="M8 12h88M84 6l12 6-12 6" />
-                  </svg>
-                </button>
-                <button v-else class="pvm-thanks" type="button" @click="next">
-                  {{ slide.cta }}
-                </button>
+                  {{ item.title }}
+                </h2>
+                <div class="pvm-copy">
+                  <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">
+                    {{ para }}
+                  </p>
+                </div>
+                <div class="pvm-nav">
+                  <button
+                    v-if="index > 0"
+                    class="pvm-later"
+                    type="button"
+                    @click="prev"
+                  >
+                    Назад
+                  </button>
+                  <span v-else class="pvm-nav__spacer" />
+                  <button
+                    v-if="!isLast"
+                    class="pvm-cta"
+                    type="button"
+                    @click="next"
+                  >
+                    {{ item.cta }}&nbsp;→
+                  </button>
+                  <button
+                    v-else
+                    class="pvm-cta"
+                    type="button"
+                    @click="next"
+                  >
+                    {{ item.cta }}
+                  </button>
+                </div>
               </div>
-            </div>
+              <img
+                v-if="item.coverSrc"
+                :src="item.coverSrc"
+                alt=""
+                class="pvm-illust"
+                width="400"
+                height="360"
+              />
+            </article>
           </div>
-        </article>
+        </div>
       </div>
     </div>
   </div>
@@ -162,6 +149,8 @@
 </template>
 
 <script setup lang="ts">
+import { postVacationMemoTabIndex } from '~/data/postVacationMemoSlides';
+
 const {
   ui,
   welcome,
@@ -185,6 +174,8 @@ const dockStyle = ref<Record<string, string>>({});
 
 const showOverlay = computed(() => ui.value === 'welcome' || ui.value === 'collapsing' || ui.value === 'carousel');
 const showDock = computed(() => ui.value === 'flying' || ui.value === 'docked');
+
+const activeTab = computed(() => postVacationMemoTabIndex(slide.value?.id || 'intro'));
 
 const reducedMotion = () =>
   import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

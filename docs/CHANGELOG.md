@@ -4,6 +4,14 @@
 
 ## 2026-08-26
 
+### Памятка после отпуска: Design C на стейдже
+- UI: lavender folder-карточка, paper texture (CSS), иллюстрации Vibe отдельно от текста (`/memos/pvm-c-welcome.png` … `pvm-c-tip4.png`).
+- Табы 1–5 только визуал (`pointer-events: none`); welcome/intro → 1, tip1–4 → 2–5; неактивные — белый квадрат, вокруг прозрачно.
+- Overlay: слабее затемнение + `blur(3px)` (страница читается за карточкой).
+- Flow без изменений: **Прочитать** → советы без intro; **Позже** → чип → intro → 4 совета. Превью `?pvm=1`.
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` — табы не кликаются, CTA работают; Позже → чип → tips.
+
 ### Памятка: cover на стейдже + направления ITMO
 - Факт: `post-vacation-cover.png` на стейдже `:8080` уже = очки+пальма (sha256 `b2176025…`, 1 105 111 байт = `sketch-old-cat-glasses-palm.png`). Прод `:80` пока старый (916 172).
 - Cache-bust: `postVacationMemoSlides.ts` → `?v=glasses-palm` на welcome/intro, чтобы браузер не держал старый PNG по тому же URL.

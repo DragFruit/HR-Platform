@@ -1,4 +1,5 @@
-/** Слайды «с возвращением»: спокойный тон статьи, цельные абзацы, ты, без тире. */
+/** Слайды «с возвращением»: спокойный тон статьи, цельные абзацы, ты, без тире.
+ * Design C: текст в Vue, иллюстрации отдельно (`/memos/pvm-c-*.png`). */
 
 export type PostVacationMemoSlide = {
   id: string;
@@ -21,8 +22,7 @@ export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
     'Собрали несколько советов, как вернуться к работе после отпуска и не поймать выгорание.',
     'К ним можно будет вернуться позже.'
   ],
-  // ?v= — bust browser cache after same-path PNG replace (очки+пальма)
-  coverSrc: '/memos/post-vacation-cover.png?v=glasses-palm',
+  coverSrc: '/memos/pvm-c-welcome.png?v=design-c',
   laterCta: 'Позже',
   cta: 'Прочитать'
 };
@@ -35,9 +35,10 @@ export const POST_VACATION_DOCK = {
 export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
   {
     id: 'intro',
+    kicker: 'Советы',
     title: 'Вот четыре совета',
     paragraphs: ['Как спокойно вернуться к работе после отпуска. Листай дальше.'],
-    coverSrc: '/memos/post-vacation-cover.png?v=glasses-palm',
+    coverSrc: '/memos/pvm-c-intro.png?v=design-c',
     cta: 'Дальше'
   },
   {
@@ -48,7 +49,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
       'После отпуска мы чувствуем прилив новых сил и можем активно решать рабочие задачи. Но если наброситься на задачи в первый день, легко устать и поймать выгорание.',
       'Пока тебя не было, ситуация на проектах и в команде могла измениться. Узнай у коллег, какая сейчас обстановка. В первые дни просто войди в курс дела, а важные решения лучше отложи на несколько дней.'
     ],
-    coverSrc: '/memos/post-vacation-pace.png',
+    coverSrc: '/memos/pvm-c-tip1.png?v=design-c',
     cta: 'Дальше'
   },
   {
@@ -59,7 +60,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
       'Первые дни после отпуска отличное время, чтобы посмотреть на привычные дела под новым углом и сделать работу интереснее. Можно иначе выстроить работу, изменить распорядок дня или просто переставить вещи на столе',
       'Так потребность в изменениях не игнорируется, а находит полезное применение, и на работу хочется приходить чуть охотнее.'
     ],
-    coverSrc: '/memos/post-vacation-fresh.png',
+    coverSrc: '/memos/pvm-c-tip2.png?v=design-c',
     cta: 'Дальше'
   },
   {
@@ -70,7 +71,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
       'Смена режима утомляет тело и мозги. Вчера были яркие впечатления, а сегодня рабочая атмосфера.',
       'Поэтому практичный совет: на выходных устраивай маленький отпуск: кино, боулинг или долгая прогулка по новым местам. Когда после рабочей недели тебя ждёт маленькое приключение, будни наполняются приятным предвкушением.'
     ],
-    coverSrc: '/memos/post-vacation-weekend.png',
+    coverSrc: '/memos/pvm-c-tip3.png?v=design-c',
     cta: 'Дальше'
   },
   {
@@ -81,7 +82,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
       'Если совсем ничего не помогает, присмотрись к своей работе: может быть, в целом всё нормально, но отдельные моменты триггерят. Например, не очень приятный клиент или чат, в котором ничего не найдёшь.',
       'Подумай, на что ты можешь повлиять. Составь план и сделай первый шаг. Свежий взгляд после отпуска идеално для этого подходит.'
     ],
-    coverSrc: '/memos/post-vacation-triggers.png',
+    coverSrc: '/memos/pvm-c-tip4.png?v=design-c',
     cta: 'Спасибо'
   }
 ];
@@ -94,3 +95,22 @@ export const POST_VACATION_MEMO_WINDOW_DAYS = 7;
 
 /** Сколько рабочих дней чип живёт в углу после «Позже». */
 export const POST_VACATION_MEMO_DOCK_WORKING_DAYS = 10;
+
+/** Визуальный номер folder-tab (1…5). Welcome/intro = 1; tip1–4 = 2…5. */
+export function postVacationMemoTabIndex(slideId: string): number {
+  switch (slideId) {
+    case 'welcome':
+    case 'intro':
+      return 1;
+    case 'pace':
+      return 2;
+    case 'fresh':
+      return 3;
+    case 'weekend':
+      return 4;
+    case 'triggers':
+      return 5;
+    default:
+      return 1;
+  }
+}
