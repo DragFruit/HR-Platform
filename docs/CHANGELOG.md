@@ -4,6 +4,13 @@
 
 ## 2026-08-26
 
+### Памятка после отпуска: welcome доведён
+- Welcome: crop кота+чемодана (`object-fit: contain`, `object-position: center bottom`); текст двух фраз без «о том».
+- **Прочитать** → сразу совет 1; вводная «Вот четыре совета» только после **Позже** (чип / `?pvm=tips`), арт — тот же `post-vacation-cover.png` (не дракон).
+- Последний совет: «идеално» дословно по ТЗ.
+- Файлы: `postVacationMemoSlides.ts`, `usePostVacationMemo.ts`, `PostVacationMemo.vue`, `main.css`.
+- Проверка: `?pvm=1` → Прочитать / Позже+чип; `/vacations?pvm=tips`.
+
 ### База знаний: статьи про разделы Vibe (отпуска, банк идей)
 - В `server/data/knowledge-articles.json` опубликованы общие статьи: `kb-vibe-vacations` («Отпуска в Vibe»), `kb-vibe-ideas` («Банк идей в Vibe»).
 - Текст из `docs/PRODUCT.md` (заявка vs бронь, этапы, баланс; этапы идей; топ-5 авторов только по реализованным `done`).

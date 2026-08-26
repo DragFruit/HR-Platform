@@ -33,6 +33,8 @@ export function usePostVacationMemo() {
   const ui = useState<PvmUi>('pvm-ui', () => 'hidden');
   const index = useState<number>('pvm-index', () => 0);
   const requestId = useState<number>('pvm-request-id', () => 0);
+  /** Вводная «Вот четыре совета» — только после «Позже» (чип / ?pvm=tips). */
+  const showIntro = useState<boolean>('pvm-show-intro', () => true);
 
   const forcePreview = computed(() => {
     void route.fullPath;
@@ -74,11 +76,15 @@ export function usePostVacationMemo() {
     );
   });
 
-  const slides = POST_VACATION_MEMO_SLIDES;
   const welcome = POST_VACATION_WELCOME;
   const dockCopy = POST_VACATION_DOCK;
-  const slide = computed(() => slides[index.value] ?? slides[0]);
-  const isLast = computed(() => index.value >= slides.length - 1);
+  const slides = computed(() =>
+    showIntro.value
+      ? POST_VACATION_MEMO_SLIDES
+      : POST_VACATION_MEMO_SLIDES.filter((s) => s.id !== 'intro')
+  );
+  const slide = computed(() => slides.value[index.value] ?? slides.value[0]);
+  const isLast = computed(() => index.value >= slides.value.length - 1);
 
   const persistDocked = (id: number) => {
     if (!user.value || id === PREVIEW_REQUEST_ID) return;
@@ -121,6 +127,7 @@ export function usePostVacationMemo() {
   };
 
   const openCarousel = () => {
+    showIntro.value = true;
     index.value = 0;
     ui.value = 'carousel';
   };
@@ -131,9 +138,11 @@ export function usePostVacationMemo() {
     void ensureNotification(requestId.value);
   };
 
+  /** «Прочитать» с welcome — сразу совет 1, без вводной. */
   const startReading = async () => {
     persistDocked(requestId.value);
     void ensureNotification(requestId.value);
+    showIntro.value = false;
     index.value = 0;
     ui.value = 'carousel';
   };

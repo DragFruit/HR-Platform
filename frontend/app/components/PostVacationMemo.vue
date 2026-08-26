@@ -29,22 +29,9 @@
             <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
             <h2 :id="slideTitleId" class="pvm-title">{{ welcome.title }}</h2>
             <div class="pvm-copy">
-              <p class="pvm-text">
-                {{ welcome.paragraphs[0] }}
-                <span class="pvm-heart" aria-hidden="true">
-                  <svg viewBox="0 0 28 24" focusable="false">
-                    <path
-                      class="pvm-heart__shift"
-                      d="M8.2 3.2C5.1 3.2 3 5.6 3 8.5c0 6.1 10.2 11.4 11.2 11.9.3.2.7.2 1 0C16.2 19.9 26.4 14.6 26.4 8.5c0-2.9-2.1-5.3-5.2-5.3-1.9 0-3.5 1-4.8 2.6C15.1 4.2 13.5 3.2 11.6 3.2H8.2z"
-                    />
-                    <path
-                      class="pvm-heart__body"
-                      d="M6.4 1.4C3.3 1.4 1.2 3.8 1.2 6.7c0 6.1 10.2 11.4 11.2 11.9.3.2.7.2 1 0C14.4 18.1 24.6 12.8 24.6 6.7c0-2.9-2.1-5.3-5.2-5.3-1.9 0-3.5 1-4.8 2.6C13.3 2.4 11.7 1.4 9.8 1.4H6.4z"
-                    />
-                  </svg>
-                </span>
+              <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">
+                {{ para }}
               </p>
-              <p class="pvm-text">{{ welcome.paragraphs[1] }}</p>
             </div>
             <div class="pvm-nav pvm-nav--welcome">
               <button class="pvm-later" type="button" @click="onLater">
