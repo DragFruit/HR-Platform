@@ -66,6 +66,36 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     expectAny: ['kb-20520']
   },
   {
+    id: 'access-guest',
+    canonical: 'гостевые доступы',
+    paraphrases: [
+      'как выдать гостевой доступ в Директ',
+      'гостевой доступ к Метрике',
+      'как дать гостевой доступ в Calltouch'
+    ],
+    expectAny: ['kb-29864'],
+    note: 'Гостевые, не отдел продаж и не AFINA'
+  },
+  {
+    id: 'access-sales',
+    canonical: 'доступы отдела продаж',
+    paraphrases: ['доступы директ вк', 'на какую почту открывать доступы продажам'],
+    expectAny: ['kb-25590'],
+    note: 'Короткая памятка ОП, не гостевая инструкция'
+  },
+  {
+    id: 'utm-regulation',
+    canonical: 'регламент UTM тегирования',
+    paraphrases: [
+      'как размечать UTM',
+      'регламент utm',
+      'когда UIS Roistat Calltouch',
+      'когда ставить UIS а когда Calltouch'
+    ],
+    expectAny: ['kb-23420'],
+    note: 'Длинная статья; не найм/Контакты/гостевые Calltouch'
+  },
+  {
     id: 'afina-sites',
     canonical: 'указание сайтов клиента в карточке проекта AFINA',
     paraphrases: ['куда в афине писать сайты клиента', 'сайт клиента в карточке проекта'],

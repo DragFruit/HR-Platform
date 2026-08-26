@@ -101,8 +101,16 @@ const WEAK_RARE_ANCHORS = new Set([
   'расчётов',
   'телефон',
   'телефоны',
-  'справочник'
+  'справочник',
+  'регламент',
+  'регламента'
 ]);
+
+/**
+ * Короткие латинские продуктовые якоря (длина < 4): иначе «utm» выпадает из distinctive
+ * и «регламент utm» уезжает в найм/SEO.
+ */
+const SHORT_PRODUCT_TOKENS = new Set(['utm', 'uis', 'vk']);
 
 /** Вопрос про справочник «кому писать / контакты», а не про регламент площадки. */
 export function hasContactDirectoryIntent(question: string): boolean {
@@ -111,6 +119,30 @@ export function hasContactDirectoryIntent(question: string): boolean {
   return /(контакт|кому\s+писать|написать|телефон|почт|e-?mail|связаться|справочник|для расчетов|для расчётов|менеджер[аеу]?\s+(яндекс|yandex)|(?:яндекс|yandex)\s+менеджер)/i.test(
     q
   );
+}
+
+/**
+ * Регламент UTM / коллтрекинг-метки — не гостевые доступы Calltouch и не Контакты.
+ * «доступ к Calltouch» / «гостевые» → false.
+ */
+export function hasUtmTaggingIntent(question: string): boolean {
+  const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
+  if (!q) return false;
+  if (/(гостев|выдат\w*\s+доступ|доступ\s+к\b)/i.test(q) && !/\butm\b|тегир|размет/i.test(q)) {
+    return false;
+  }
+  return (
+    /\butm\b|utm_|тегирован|размечать|разметк|коллтрек|колтрек/i.test(q) ||
+    /(uis|roistat|calltouch|comagic)/i.test(q)
+  );
+}
+
+/** Якорь UTM/коллтрекинга для hard prefer kb-23420. */
+export function isUtmSectionToken(token: string): boolean {
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  if (!t) return false;
+  if (SHORT_PRODUCT_TOKENS.has(t) && (t === 'utm' || t === 'uis')) return true;
+  return /utm|uis|roistat|calltouch|comagic|коллтрек|колтрек|тегирован|разметк/i.test(t);
 }
 
 /** Якорь-продукт справочника — можно без «контакты» в формулировке. */
@@ -126,7 +158,31 @@ const SYNONYM_GROUPS: string[][] = [
   // Написание SaaS (без «отгул» — смысл вопроса разбирает knowledgeRagSense)
   ['dayofff', 'day offf', 'дейофф', 'дей офф'],
   ['отгул', 'отгулы', 'оформления отгулов'],
-  ['afina', 'афина', 'афину', 'афине'],
+  ['afina', 'афина', 'афину', 'афине', 'афины'],
+  [
+    'гостевой',
+    'гостевые',
+    'гостевых',
+    'гостевого',
+    'гостевым',
+    'гостевая',
+    'гостевую'
+  ],
+  [
+    'utm',
+    'utm_source',
+    'тегирования',
+    'тегирование',
+    'разметка',
+    'разметки',
+    'размечать',
+    'коллтрекинг',
+    'колтрекинг',
+    'calltouch',
+    'roistat',
+    'uis',
+    'comagic'
+  ],
   ['vpn', 'впн'],
   ['отпуск раньше', 'аванс отпуска', 'раньше в отпуск', 'уйти раньше в отпуск'],
   ['больничный', 'больничн'],
@@ -462,14 +518,22 @@ const GENERIC_QUERY_TOKENS = new Set([
  * Если ни одна статья их не покрывает — лучше пустой retrieval, чем чужие «клиенты/CRM».
  */
 export function distinctiveQueryTokens(question: string): string[] {
-  return tokenizeForRag(question).filter((t) => t.length >= 4 && !GENERIC_QUERY_TOKENS.has(t));
+  return tokenizeForRag(question).filter((t) => {
+    if (GENERIC_QUERY_TOKENS.has(t)) return false;
+    if (t.length >= 4) return true;
+    return SHORT_PRODUCT_TOKENS.has(t.toLowerCase());
+  });
 }
 
-/** Редкие якоря запроса: секции Контактов, длинные слова, латиница. */
+/** Редкие якоря запроса: секции Контактов, UTM, продукт-синонимы, длинные слова, латиница. */
 export function rareDistinctiveTokens(distinctive: string[]): string[] {
-  return distinctive.filter(
-    (t) => isContactSectionToken(t) || t.length >= 8 || /[a-z]/i.test(t)
-  );
+  return distinctive.filter((t) => {
+    if (isContactSectionToken(t) || isUtmSectionToken(t)) return true;
+    if (t.length >= 8 || /[a-z]/i.test(t)) return true;
+    // «афину» (5) — в группе с afina; иначе hard path не видит якорь
+    const group = synonymGroupForToken(t);
+    return Boolean(group && group.some((g) => /[a-z]/i.test(g) || g.length >= 8));
+  });
 }
 
 export function longestRareToken(distinctive: string[], question = ''): string | null {
@@ -477,12 +541,19 @@ export function longestRareToken(distinctive: string[], question = ''): string |
   if (!rare.length) return null;
   const withoutWeak = rare.filter((t) => !WEAK_RARE_ANCHORS.has(t.toLowerCase()));
   const pool = withoutWeak.length ? withoutWeak : rare;
-  const intent = hasContactDirectoryIntent(question);
+  const contactIntent = hasContactDirectoryIntent(question);
+  const utmIntent = hasUtmTaggingIntent(question);
   const contact = pool.filter((t) => {
     if (!isContactSectionToken(t)) return false;
     if (isProductLikeContactAnchor(t)) return true;
-    return intent;
+    return contactIntent;
   });
+  if (utmIntent) {
+    const utm = pool.filter((t) => isUtmSectionToken(t));
+    if (utm.length) {
+      return [...utm].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    }
+  }
   const use = contact.length ? contact : pool;
   return [...use].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
 }

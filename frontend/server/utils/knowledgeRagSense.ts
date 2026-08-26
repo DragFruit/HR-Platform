@@ -38,7 +38,8 @@ const COLLISIONS: CollisionGroup[] = [
   },
   {
     id: 'access',
-    term: /доступ/i,
+    // «как зайти в афину» без слова «доступ» — тоже этот collision
+    term: /(доступ|афин|afina)/i,
     senses: [
       { id: 'access-afina', label: 'доступы к AFINA CRM', articleIds: ['kb-20520'] },
       { id: 'access-guest', label: 'гостевые доступы VBI', articleIds: ['kb-29864'] },
@@ -49,9 +50,10 @@ const COLLISIONS: CollisionGroup[] = [
       }
     ],
     signals: [
-      { senseId: 'access-afina', re: /(afina|афин|crm)/i },
+      { senseId: 'access-afina', re: /(afina|афин)/i },
       { senseId: 'access-guest', re: /гостев/i },
-      { senseId: 'access-sales', re: /(продаж|директ|google\s*ads|таргет|вк\b|вкр|calltouch)/i }
+      // calltouch/uis — не сюда: чаще UTM/гостевые; продажи = «отдел продаж» или Директ/ВК без гостевого
+      { senseId: 'access-sales', re: /(продаж|директ|google\s*ads|таргет|(?<![a-zа-я])вк(?![a-zа-я])|вкр)/i }
     ]
   },
   {
@@ -87,12 +89,25 @@ export function resolveQuestionSense(question: string): SenseResolution {
       if (sense) return { kind: 'clear', groupId: group.id, sense };
     }
     if (unique.length > 1) {
+      // доступы: более специфичный сигнал побеждает (гостевой + Директ → гостевые, не ambiguous)
+      if (group.id === 'access') {
+        const priority = ['access-guest', 'access-afina', 'access-sales'];
+        for (const id of priority) {
+          if (!unique.includes(id)) continue;
+          const sense = group.senses.find((s) => s.id === id);
+          if (sense) return { kind: 'clear', groupId: group.id, sense };
+        }
+      }
       return { kind: 'ambiguous', groupId: group.id, senses: [...group.senses] };
     }
     // нет сигнала: для отпуска / доступов — не форсируем «два ответа» (сработает фильтр отдела / обычный RAG)
     if (group.id === 'vacation-dept') return { kind: 'none' };
     if (group.id === 'access') {
-      // «доступы» без уточнения — два самых частых смысла
+      // только «афина/afina» без доп. сигнала уже matched выше; чистое «доступы» — два частых смысла
+      if (/(афин|afina)/i.test(q)) {
+        const sense = group.senses.find((s) => s.id === 'access-afina');
+        if (sense) return { kind: 'clear', groupId: group.id, sense };
+      }
       return {
         kind: 'ambiguous',
         groupId: group.id,
@@ -158,9 +173,9 @@ export const KNOWN_SENSE_CASES_DOC = [
   {
     term: 'доступ / доступы',
     examples: [
-      'доступы AFINA → CRM',
-      'гостевые доступы → kb гостевые',
-      'доступы директ/ВК → отдел продаж',
+      'доступы AFINA / «как зайти в афину» → CRM kb-20520',
+      'гостевые доступы (+ Директ) → kb-29864 (приоритет над продажами)',
+      'доступы директ/ВК / отдела продаж → kb-25590',
       'просто «доступы» → несколько вариантов'
     ]
   },

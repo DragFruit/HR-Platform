@@ -7,8 +7,10 @@ import {
   distinctiveQueryTokens,
   expandQueryWithSynonyms,
   hasContactDirectoryIntent,
+  hasUtmTaggingIntent,
   hitCoversDistinctiveTokens,
   isContactSectionToken,
+  isUtmSectionToken,
   lexicalScore,
   longestRareToken,
   rareDistinctiveTokens,
@@ -29,10 +31,12 @@ import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
 /** Смена нарезки/stripHtml — пересобрать индекс, даже если статьи те же. */
-const INDEX_VERSION = 4;
+const INDEX_VERSION = 5;
 
 /** Статья-справочник контактов (якоря секций). */
 const CONTACTS_ARTICLE_ID = 'kb-20409';
+/** Регламент UTM тегирования. */
+const UTM_ARTICLE_ID = 'kb-23420';
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -115,16 +119,23 @@ function windowChunks(text: string): string[] {
 }
 
 /**
- * Длинные статьи (Контакты) режем по блокам.
+ * Длинные статьи режем по блокам.
  * Underscore-разделители + шапки секций с начала строки (не mid-body «ads, programmatic»).
  */
 const CONTACT_SECTION_LINE_START =
   /(?:^|\n)\s*(?=(?:Programmatic\b|Юридическая\s+поддержка|Бюро\s+переводов|Дизайнеры\b|Копирайтеры\b|Яндекс\s+Менеджер|Google\s*360|CLICK\s*RU|Наружная\s+реклама))/gi;
 
+const UTM_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:Топ ошибок|Коллтрекинги\s+и\s+авторазметка|UIS\/Comagic|Roistat\b|Calltou|Параметр\s+utm_))/gi;
+
+const GUEST_ACCESS_SECTION_LINE_START = /(?:^|\n)\s*(?=Доступ к\s+)/gi;
+
 function splitPlainSections(plain: string): string[] {
   const marked = String(plain || '')
     .replace(/_{12,}/g, '\n§\n')
-    .replace(CONTACT_SECTION_LINE_START, '\n§\n');
+    .replace(CONTACT_SECTION_LINE_START, '\n§\n')
+    .replace(UTM_SECTION_LINE_START, '\n§\n')
+    .replace(GUEST_ACCESS_SECTION_LINE_START, '\n§\n');
   const sections = marked
     .split(/\n§\n/)
     .map((s) => s.trim())
@@ -134,8 +145,16 @@ function splitPlainSections(plain: string): string[] {
 
 /** «Кому писать» или якорь секции Контактов → только kb-20409. */
 function preferContactsDirectory(question: string, anchor: string | null): boolean {
+  if (hasUtmTaggingIntent(question)) return false;
   if (hasContactDirectoryIntent(question)) return true;
   return Boolean(anchor && isContactSectionToken(anchor));
+}
+
+/** UTM / коллтрекинг-метки → только kb-23420. */
+function preferUtmRegulation(question: string, anchor: string | null): boolean {
+  if (!hasUtmTaggingIntent(question)) return false;
+  if (hasContactDirectoryIntent(question)) return false;
+  return Boolean(anchor && isUtmSectionToken(anchor)) || hasUtmTaggingIntent(question);
 }
 
 export function chunkArticleText(title: string, bodyHtml: string): string[] {
@@ -378,7 +397,30 @@ export async function retrieveKnowledgeDetailed(
       const bestHeadings = ranked[0]!.headings;
       let preferred =
         bestHeadings > 0 ? ranked.filter((row) => row.headings > 0) : ranked;
-      if (preferContactsDirectory(q, anchor)) {
+      if (preferUtmRegulation(q, anchor)) {
+        const utmOnly = ranked.filter(
+          (row) =>
+            row.strength > 0 &&
+            (row.chunk.articleId === UTM_ARTICLE_ID || /utm/i.test(row.chunk.title))
+        );
+        if (utmOnly.length) {
+          preferred = utmOnly;
+        } else {
+          // якорь calltouch/uis часто сильнее в «гостевых», но интент — регламент UTM
+          const utmRows = visibleChunks
+            .filter((c) => c.articleId === UTM_ARTICLE_ID)
+            .map((chunk) => {
+              const blob = `${chunk.title}\n${chunk.text}`;
+              return {
+                chunk,
+                strength: Math.max(1, rareTokenStrength(blob, anchor)),
+                headings: rareTokenHeadingHits(blob, anchor),
+                lex: lexicalScore(chunk.title, chunk.text, lexTokensFast)
+              };
+            });
+          if (utmRows.length) preferred = utmRows;
+        }
+      } else if (preferContactsDirectory(q, anchor)) {
         const contactsOnly = ranked.filter(
           (row) =>
             row.strength > 0 &&
@@ -426,11 +468,40 @@ export async function retrieveKnowledgeDetailed(
           (h) => rareTokenHeadingHits(`${h.title}\n${h.snippets.join('\n')}`, anchor) > 0
         );
       }
-      if (preferContactsDirectory(q, anchor)) {
+      if (preferUtmRegulation(q, anchor)) {
+        const only = hits.filter(
+          (h) => h.articleId === UTM_ARTICLE_ID || /utm/i.test(h.title)
+        );
+        if (only.length) hits = only;
+      } else if (preferContactsDirectory(q, anchor)) {
         const only = hits.filter(
           (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
         );
         if (only.length) hits = only;
+      }
+      const clearSenseHard = clearSenseForQuestion(q);
+      if (clearSenseHard) {
+        const senseHit = pickSenseHit(
+          hits,
+          clearSenseHard,
+          publishedById,
+          visibleChunks,
+          new Map()
+        );
+        if (senseHit && visibleIds.has(senseHit.articleId)) {
+          const articleChunks = visibleChunks
+            .filter((c) => c.articleId === senseHit.articleId)
+            .map((c) => c.text);
+          senseHit.snippets = pickArticleSnippets(
+            senseHit.title,
+            articleChunks,
+            distinctive,
+            lexTokensFast,
+            3,
+            q
+          );
+          hits = [senseHit];
+        }
       }
       return {
         hits: hits.slice(0, topArticles),
@@ -520,12 +591,40 @@ export async function retrieveKnowledgeDetailed(
 
   const clearSense = clearSenseForQuestion(q);
   let ambiguousBranches = ambiguousBranchesForQuestion(q);
-  // если clear — только эта ветка в приоритете
+  // если clear — только эта ветка (иначе «доступы директ» тянет чужие шаги из гостевых)
   if (clearSense) {
     ambiguousBranches = [];
     const hit = pickSenseHit(hits, clearSense, publishedById, visibleChunks, semByChunk);
     if (hit && visibleIds.has(hit.articleId)) {
-      hits = [hit, ...hits.filter((h) => h.articleId !== hit.articleId)];
+      hits = [hit];
+    }
+  }
+
+  // UTM-интент на hybrid path (без сильного якоря в hard)
+  if (!clearSense && preferUtmRegulation(q, longestRareToken(distinctive, q))) {
+    const utmHit = hits.find((h) => h.articleId === UTM_ARTICLE_ID);
+    if (utmHit) {
+      hits = [utmHit];
+    } else {
+      const article = publishedById.get(UTM_ARTICLE_ID);
+      if (article && visibleIds.has(UTM_ARTICLE_ID)) {
+        const articleChunks = visibleChunks.filter((c) => c.articleId === UTM_ARTICLE_ID);
+        hits = [
+          {
+            articleId: UTM_ARTICLE_ID,
+            title: article.title,
+            score: 0.7,
+            snippets: pickArticleSnippets(
+              article.title,
+              articleChunks.map((c) => c.text),
+              distinctive,
+              lexTokens,
+              3,
+              q
+            )
+          }
+        ];
+      }
     }
   }
 
