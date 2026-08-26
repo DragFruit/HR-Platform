@@ -8,6 +8,8 @@ import {
   KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
+  parseKbAiModelReply,
+  shouldRejectModelOfftopic,
   shouldSkipRagAsOfftopic
 } from '../../../app/utils/knowledgeAiIntent';
 import { yandexChatAnswer, yandexChatAnswerAmbiguous } from '../../utils/yandexGpt';
@@ -49,6 +51,34 @@ function looksLikeKbNotFound(answer: string): boolean {
   if (/нет\s+прямого/i.test(a) && a.length > 220) return false;
   if (/\d[\.)]\s+\S/.test(a) && a.length > 180) return false;
   return true;
+}
+
+/**
+ * Модель сказала OFFTOPIC при живом RAG-контексте и уточнении по теме —
+ * переспрашиваем с явной подсказкой «это продолжение, ответь по контексту».
+ */
+async function answerWithOfftopicGuard(
+  question: string,
+  modelQuestion: string,
+  context: string,
+  history: { role: 'user' | 'assistant'; text: string }[]
+): Promise<string> {
+  const answer = await yandexChatAnswer(modelQuestion, context, { history });
+  const parsed = parseKbAiModelReply(answer);
+  if (
+    parsed.intent !== 'offtopic' ||
+    !shouldRejectModelOfftopic(question, history, { hasKbContext: true })
+  ) {
+    return answer;
+  }
+
+  const retryQ = `${modelQuestion}\n\n(Это уточнение по теме недавнего диалога и фрагменту базы выше. Ответь по контексту: допиши оставшиеся пункты или скажи, что в статье больше нет. Не ставь OFFTOPIC.)`;
+  const retry = await yandexChatAnswer(retryQ, context, { history });
+  const parsedRetry = parseKbAiModelReply(retry);
+  if (parsedRetry.intent === 'offtopic') {
+    return 'В найденном фрагменте базы больше пунктов по этому уточнению нет. Откройте статью в «Ещё по теме» — там полный список.';
+  }
+  return retry;
 }
 
 function normalizeHistory(raw: HistoryItem[] | undefined): { role: 'user' | 'assistant'; text: string }[] {
@@ -163,7 +193,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const context = buildRagContext(retrieved.hits);
-    const answer = await yandexChatAnswer(question, context, { history });
+    // Для уточнений модель видит склейку с прошлым вопросом (Programmatic / Контакты), не голое «ещё другие».
+    const modelQuestion =
+      retrievalQuestion !== question ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n') : question;
+    const answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
     // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
     // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
     if (looksLikeKbNotFound(answer)) {
@@ -201,7 +234,11 @@ export default defineEventHandler(async (event) => {
       const context = buildRagContext(lexHits);
       let answer: string;
       try {
-        answer = await yandexChatAnswer(question, context, { history });
+        const modelQuestion =
+          retrievalQuestion !== question
+            ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n')
+            : question;
+        answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
       } catch {
         answer =
           'Кратко по найденным материалам: откройте ссылки ниже — там актуальные регламенты по запросу.';

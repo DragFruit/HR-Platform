@@ -3,12 +3,14 @@ import {
   detectKbAiClarify,
   detectKbAiOfftopic,
   emptyKbReplyMode,
+  isKbClarifyingFollowUp,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_CLARIFY_REPLY,
   KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
-  parseKbAiModelReply
+  parseKbAiModelReply,
+  shouldRejectModelOfftopic
 } from '~/utils/knowledgeAiIntent';
 
 /**
@@ -162,7 +164,11 @@ export function useKnowledgeAiAnswer() {
     if (detectKbAiClarify(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CLARIFY_REPLY, 'clarify'));
     }
-    if (detectKbAiOfftopic(question)) {
+    // Оффтоп до API — только если это не уточнение в живом диалоге по базе
+    if (
+      detectKbAiOfftopic(question) &&
+      !(isKbClarifyingFollowUp(question) && history.length > 0)
+    ) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_OFFTOPIC_REPLY, 'offtopic'));
     }
 
@@ -214,6 +220,19 @@ export function useKnowledgeAiAnswer() {
       const parsed = parseKbAiModelReply(rawAnswer);
       if (parsed.intent === 'chitchat') {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CHITCHAT_REPLY, 'chitchat'));
+      }
+      // RAG нашёл статьи, а модель сказала OFFTOPIC на уточнении («ещё другие») — не отказывать
+      if (
+        parsed.intent === 'offtopic' &&
+        shouldRejectModelOfftopic(question, history, { hasKbContext: true })
+      ) {
+        const fallback =
+          parsed.text && !/только\s+по\s+базе\s+знаний/i.test(parsed.text)
+            ? parsed.text
+            : 'В найденном фрагменте базы больше пунктов по этому уточнению нет. Откройте статью в «Ещё по теме» — там полный список.';
+        const parts = partsWithInlinePeople(fallback, people);
+        appendRelatedTopicCites(parts, citations);
+        return assertKnowledgeAiCitations({ parts, citations, mode: 'kb' });
       }
       if (parsed.intent === 'offtopic') {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_OFFTOPIC_REPLY, 'offtopic'));

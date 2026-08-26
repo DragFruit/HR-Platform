@@ -4,6 +4,13 @@
 
 ## 2026-08-26
 
+### База знаний ИИ: уточнения в диалоге («ещё другие», «это все?»)
+- Симптом: после списка программатиков вопрос «напиши ещё другие…» → отказ «только по Базе знаний».
+- Причина: follow-up не распознавался (`isKbClarifyingFollowUp`), «программатик» не был workplace-hint → RAG/модель без склейки с темой; модель ставила OFFTOPIC на «другие».
+- Фикс: шире детект уточнений + workplace (programmatic/контакты…); склейка с прошлым вопросом уходит в GPT; retry/guard против ложного OFFTOPIC при живом RAG; клиент не принимает OFFTOPIC на уточнении в треде.
+- Файлы: `knowledgeAiIntent.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `useKnowledgeAiAnswer.ts`, `scripts/knowledge/check-kb-dialog-followup.mjs`.
+- Проверка: `node scripts/knowledge/check-kb-dialog-followup.mjs`; на стейдже чат — программатики → «это все?» → «напиши ещё другие…» (дописать остаток или «в статье больше нет», не шаблонный отказ). Погода/анекдот по-прежнему отказ.
+
 ### База знаний ИИ: DayOfff + акты РП + списания AFINA
 - DayOfff: sense до hard-якорей (взять → отгул `kb-30077`, войти → SaaS `kb-27877`, неясно → два ответа); синоним «дейоф» ↔ dayofff; нарезка разделов SaaS.
 - Акты (`kb-31980`): интент «акты / YDirect / VKR» не уводит в «Контакты»; секции Яндекс / VKR / Add Cost SMM; `INDEX_VERSION = 6`.

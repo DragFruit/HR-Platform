@@ -41,9 +41,9 @@ const OFFTOPIC_RE =
 const CASUAL_PERSONAL_RE =
   /^(я\s+)?(люблю|ненавижу|хочу|скучаю|грустн|весел)\b.{0,40}$/iu;
 
-/** Признаки рабочего вопроса по базе (отпуск, доступы, HR…). */
+/** Признаки рабочего вопроса по базе (отпуск, доступы, HR, контакты…). */
 const WORKPLACE_HINT_RE =
-  /(отпуск|отгул|дейоф|day\s*off|dayoff|vpn|доступ|afina|афин|битрикс|bitrix|зарплат|больничн|командиров|регламент|офис|отдел|кадр|трудоустрой|увольн|уволи|уволю|адаптац|мерч|ачивк|иде[яи]|wifi|wi-?fi|почт[аеуы]|1[сc]|лицензи|сертификат|собесед|ваканс|\bhr\b|эйчар|сотрудник|кандидат|клиент|проект|задач|день\s*рожден|вайб|vibe)/i;
+  /(отпуск|отгул|дейоф|day\s*off|dayoff|vpn|доступ|afina|афин|битрикс|bitrix|зарплат|больничн|командиров|регламент|офис|отдел|кадр|трудоустрой|увольн|уволи|уволю|адаптац|мерч|ачивк|иде[яи]|wifi|wi-?fi|почт[аеуы]|1[сc]|лицензи|сертификат|собесед|ваканс|\bhr\b|эйчар|сотрудник|кандидат|клиент|проект|задач|день\s*рожден|вайб|vibe|программатик|programmatic|контакт|партн[её]р|площадк|юрист|яндекс|коллтрек|utm|списан|акт[аыу]?|дизайн|переводчик|click\.?ru)/i;
 
 /** Звуки / шутки / «мяу?» — не вопрос по базе. */
 const NONSENSE_RE =
@@ -92,17 +92,41 @@ export function looksLikeWorkplaceKbQuestion(raw: string): boolean {
   return WORKPLACE_HINT_RE.test(raw.trim());
 }
 
-/** Уточнения в диалоге: «а ещё?», «подробнее», «а если…» — не оффтоп сами по себе. */
+/**
+ * Уточнения в диалоге: «а ещё?», «подробнее», «ещё другие», «это все?», «а остальные?» —
+ * не оффтоп сами по себе; для RAG склеиваем с прошлым вопросом.
+ */
 const CLARIFY_FOLLOWUP_RE =
-  /^(а\s+)?(ещ[её]|там|тут|если|ну)\b|^(какие\s+)?ещ[её]|подробнее|что\s+ещ[её]|какие\s+ещ[её]|а\s+что|а\s+как|а\s+где|продолж|уточн|а\s+кроме|кроме\s+этого/i;
+  /^(а\s+)?(ещ[её]|там|тут|если|ну)\b|^(какие\s+)?ещ[её]|подробнее|что\s+ещ[её]|какие\s+ещ[её]|а\s+что|а\s+как|а\s+где|продолж|уточн|а\s+кроме|кроме\s+этого|кроме\s+этих|остальн|не\s+назва|это\s+все|это\s+вс[её]|все\s+ли|вс[её]\s+ли|допис|дополни|назови\s+ещ|напиши\s+ещ|перечисл\s+ещ|ещ[её]\s+друг|друг(ие|их)\s+(программ|компани|партн|площад|из\s+списка|с\s+которы)/i;
 
 export function isKbClarifyingFollowUp(raw: string): boolean {
   const t = raw.trim().replace(/\s+/g, ' ');
-  if (!t || t.length > 96) return false;
-  if (t.split(/\s+/).length > 14) return false;
+  if (!t || t.length > 120) return false;
+  if (t.split(/\s+/).length > 18) return false;
   if (CLARIFY_FOLLOWUP_RE.test(t)) return true;
   // короткие «а …?» после рабочего ответа
   return /^а\s+.+\?$/iu.test(t) && t.length <= 64;
+}
+
+/**
+ * Follow-up по базе при живой истории: не принимать OFFTOPIC модели/клиента.
+ * Явный оффтоп (погода/коты) без follow-up-маркеров по-прежнему режется раньше.
+ */
+export function shouldRejectModelOfftopic(
+  question: string,
+  history: { role?: string; text?: string }[] | undefined,
+  opts?: { hasKbContext?: boolean }
+): boolean {
+  if (!Array.isArray(history) || !history.length) return false;
+  if (detectKbAiOfftopic(question) && !isKbClarifyingFollowUp(question)) return false;
+  if (opts?.hasKbContext) {
+    return (
+      isKbClarifyingFollowUp(question) ||
+      looksLikeWorkplaceKbQuestion(question) ||
+      historySuggestsWorkplace(history)
+    );
+  }
+  return isKbClarifyingFollowUp(question) && historySuggestsWorkplace(history);
 }
 
 export function historySuggestsWorkplace(
