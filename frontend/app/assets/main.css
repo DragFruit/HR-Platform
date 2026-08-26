@@ -17172,6 +17172,9 @@ button.button {
   --pvm-tab-h: 38px;
   --pvm-radius: 28px;
   --pvm-pad-x: 8.2%;
+  /* Footer CTA row — арт всегда выше этой зоны, кнопки не режут иллюстрацию */
+  --pvm-nav-h: 52px;
+  --pvm-art-clearance: 72px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17314,12 +17317,12 @@ button.button {
 
 .pvm-illust {
   position: absolute;
-  right: 0;
-  bottom: 2%;
+  right: 2%;
+  bottom: var(--pvm-art-clearance);
   z-index: 1;
-  width: min(64%, 255px);
+  width: min(56%, 220px);
   height: auto;
-  max-height: 40%;
+  max-height: 32%;
   object-fit: contain;
   object-position: right bottom;
   pointer-events: none;
@@ -17327,18 +17330,18 @@ button.button {
 }
 
 .pvm-illust--welcome {
-  width: min(72%, 285px);
-  max-height: 43%;
-  right: -3%;
-  bottom: 1%;
+  width: min(62%, 245px);
+  max-height: 34%;
+  right: 0;
+  bottom: var(--pvm-art-clearance);
 }
 
 .pvm-illust--intro {
-  width: min(76%, 295px);
-  max-height: 40%;
-  right: 4%;
+  width: min(66%, 255px);
+  max-height: 34%;
+  right: 6%;
   left: auto;
-  bottom: 8%;
+  bottom: var(--pvm-art-clearance);
   object-position: center bottom;
 }
 
@@ -17346,10 +17349,10 @@ button.button {
 .pvm-illust--fresh,
 .pvm-illust--weekend,
 .pvm-illust--triggers {
-  width: min(62%, 248px);
-  max-height: 38%;
-  right: -1%;
-  bottom: 3%;
+  width: min(54%, 210px);
+  max-height: 30%;
+  right: 0;
+  bottom: var(--pvm-art-clearance);
 }
 
 .pvm-kicker {
@@ -17406,7 +17409,7 @@ button.button {
 
 .pvm-card--welcome .pvm-copy {
   max-width: min(86%, 19.5rem);
-  padding-bottom: 16%;
+  padding-bottom: 8%;
 }
 
 .pvm-slide--intro .pvm-copy {
@@ -17426,7 +17429,7 @@ button.button {
 .pvm-slide--weekend .pvm-copy,
 .pvm-slide--triggers .pvm-copy {
   max-width: min(88%, 20.5rem);
-  padding-bottom: 12%;
+  padding-bottom: 4%;
 }
 
 .pvm-text {
@@ -17445,12 +17448,15 @@ button.button {
   position: relative;
   z-index: 3;
   margin-top: auto;
-  padding-top: 4px;
+  padding-top: 8px;
+  min-height: var(--pvm-nav-h);
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 14px 20px;
   flex-wrap: nowrap;
+  /* Отдельная полоса CTA: арт не заходит под кнопки */
+  isolation: isolate;
 }
 
 .pvm-nav__spacer {

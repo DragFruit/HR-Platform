@@ -4,6 +4,12 @@
 
 ## 2026-08-26
 
+### Памятка Design C: кнопки не перекрывают арт + горшки
+- Layout: у `.pvm-illust` `bottom: var(--pvm-art-clearance)` (72px) — арт выше полосы CTA; уменьшены `max-height`/`width`, у `.pvm-nav` `min-height`. Кнопки Дальше/Спасибо/Прочитать не наезжают на кота/чемодан/растение.
+- Арт: на всех 6 `pvm-c-art-*.png` растения в белом/светлом горшке (как series-c). Cache-bust `?v=art-c-v8`.
+- Файлы: `main.css` (`.pvm-*`), `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + intro + tip1–4. Прод не трогали.
+
 ### Памятка Design C: перенос переделан (арт + вёрстка)
 - Перенос Design C переделан: чистые сцены `pvm-c-art-*.png` (кот+пропсы, без текста в растре), UI в Vue.
 - Табы 1–5 декоративные (`pointer-events: none`): inactive — белый квадрат цифры, вокруг прозрачно; active — lavender + белая цифра, слит с карточкой.
