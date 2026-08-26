@@ -17202,16 +17202,17 @@ button.button {
 .pvm-visual--welcome {
   overflow: hidden;
   background: #eeeee8;
-  /* Чуть выше обычного слайда — в кадре и кот, и чемодан (квадратный cover). */
-  flex: 0 0 var(--pvm-visual-welcome, clamp(280px, 42vh, 360px));
-  height: var(--pvm-visual-welcome, clamp(280px, 42vh, 360px));
+  /* Фикс 340×340: кот и чемодан целиком (как в DevTools заказчика). */
+  flex: 0 0 340px;
+  height: 340px;
+  padding: 0;
 }
 
 .pvm-visual--welcome .pvm-cover {
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
+  width: 340px;
+  height: 340px;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   object-position: center bottom;
   transform: none;

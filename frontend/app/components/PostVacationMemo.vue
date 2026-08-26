@@ -21,8 +21,8 @@
               :src="welcome.coverSrc"
               alt=""
               class="pvm-cover"
-              width="320"
-              height="320"
+              width="340"
+              height="340"
             />
           </div>
           <div class="pvm-body-wrap">
@@ -76,8 +76,8 @@
               :src="item.coverSrc"
               alt=""
               class="pvm-cover"
-              width="320"
-              height="320"
+              width="340"
+              height="340"
             />
           </div>
           <div class="pvm-body-wrap">
