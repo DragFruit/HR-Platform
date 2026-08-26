@@ -558,6 +558,38 @@ export function longestRareToken(distinctive: string[], question = ''): string |
   return [...use].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
 }
 
+/**
+ * Варианты латинского бренда с кириллическими lookalike (Calltouсh в статье UTM).
+ * Не трогаем целиком русский текст — только формы якоря.
+ */
+function latinLookalikeForms(token: string): string[] {
+  const t = String(token || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  if (!t || !/^[a-z0-9_.-]+$/i.test(t)) return [t];
+  const pairs: [RegExp, string][] = [
+    [/c/g, 'с'],
+    [/e/g, 'е'],
+    [/o/g, 'о'],
+    [/a/g, 'а'],
+    [/p/g, 'р'],
+    [/y/g, 'у'],
+    [/x/g, 'х'],
+    [/k/g, 'к'],
+    [/m/g, 'м'],
+    [/t/g, 'т'],
+    [/h/g, 'н'],
+    [/b/g, 'в']
+  ];
+  const out = new Set<string>([t]);
+  let mixed = t;
+  for (const [re, ch] of pairs) mixed = mixed.replace(re, ch);
+  if (mixed !== t) out.add(mixed);
+  // частый кейс: только «с» вместо c (Calltouсh)
+  if (t.includes('c')) out.add(t.replace(/c/g, 'с'));
+  return [...out].filter(Boolean);
+}
+
 /** Целое слово (не «программатик» внутри «программатики»). */
 function forEachWholeWord(blob: string, form: string, fn: (idx: number) => void): void {
   if (!form || form.length < 4) return;
@@ -581,10 +613,12 @@ export function rareTokenStrength(text: string, token: string): number {
   const blob = String(text)
     .toLowerCase()
     .replace(/ё/g, 'е');
-  const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
+  const forms = new Set<string>(latinLookalikeForms(token));
   const group = synonymGroupForToken(token);
   if (group) {
-    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ''));
+    for (const g of group) {
+      for (const f of latinLookalikeForms(g.replace(/\s+/g, ''))) forms.add(f);
+    }
   }
 
   let score = 0;
@@ -641,10 +675,12 @@ export function rareTokenHeadingHits(text: string, token: string): number {
   const blob = String(text)
     .toLowerCase()
     .replace(/ё/g, 'е');
-  const forms = new Set<string>([token.toLowerCase().replace(/ё/g, 'е')]);
+  const forms = new Set<string>(latinLookalikeForms(token));
   const group = synonymGroupForToken(token);
   if (group) {
-    for (const g of group) forms.add(g.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ''));
+    for (const g of group) {
+      for (const f of latinLookalikeForms(g.replace(/\s+/g, ''))) forms.add(f);
+    }
   }
   let hits = 0;
   for (const form of [...forms].sort((a, b) => b.length - a.length)) {

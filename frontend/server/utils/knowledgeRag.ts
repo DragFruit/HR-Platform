@@ -181,6 +181,9 @@ export function pickArticleSnippets(
 ): string[] {
   if (!chunkTexts.length) return [];
   const rare = rareDistinctiveTokens(distinctive);
+  const whenCalltracking =
+    /когда|обязательн|случа/i.test(question) &&
+    /(uis|roistat|calltouch|comagic|коллтрек|колтрек)/i.test(question);
   const ranked = chunkTexts
     .map((text, idx) => {
       const lex = lexicalScore(title, text, queryTokens);
@@ -188,7 +191,17 @@ export function pickArticleSnippets(
       const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
       const anchor = longestRareToken(distinctive, question);
       const strength = anchor ? rareTokenStrength(`${title}\n${text}`, anchor) : 0;
-      return { text, idx, score: strength * 4 + rareHits * 3 + distHits * 0.6 + lex };
+      let score = strength * 4 + rareHits * 3 + distHits * 0.6 + lex;
+      // иначе calltouch тянет шаблоны РК, а не «когда обязательно размечать коллтрекингом»
+      if (
+        whenCalltracking &&
+        /существуют случаи|коллтрекинги и авторазметка|невозможно отключить авторазметку|импортировать расходы/i.test(
+          text
+        )
+      ) {
+        score += 25;
+      }
+      return { text, idx, score };
     })
     .sort((a, b) => b.score - a.score || a.idx - b.idx);
   const picked: string[] = [];

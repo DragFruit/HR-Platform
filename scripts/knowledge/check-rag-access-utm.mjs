@@ -113,6 +113,9 @@ function chunkArticleText(title, bodyHtml) {
 
 function pickArticleSnippets(title, chunkTexts, distinctive, queryTokens, limit = 3, question = '') {
   const rare = rareDistinctiveTokens(distinctive);
+  const whenCalltracking =
+    /когда|обязательн|случа/i.test(question) &&
+    /(uis|roistat|calltouch|comagic|коллтрек|колтрек)/i.test(question);
   const ranked = chunkTexts
     .map((text, idx) => {
       const lex = lexicalScore(title, text, queryTokens);
@@ -120,7 +123,16 @@ function pickArticleSnippets(title, chunkTexts, distinctive, queryTokens, limit 
       const distHits = distinctive.filter((t) => textCoversToken(`${title}\n${text}`, t)).length;
       const anchor = longestRareToken(distinctive, question || title);
       const strength = anchor ? rareTokenStrength(`${title}\n${text}`, anchor) : 0;
-      return { text, idx, score: strength * 4 + rareHits * 3 + distHits * 0.6 + lex };
+      let score = strength * 4 + rareHits * 3 + distHits * 0.6 + lex;
+      if (
+        whenCalltracking &&
+        /существуют случаи|коллтрекинги и авторазметка|невозможно отключить авторазметку|импортировать расходы/i.test(
+          text
+        )
+      ) {
+        score += 25;
+      }
+      return { text, idx, score };
     })
     .sort((a, b) => b.score - a.score || a.idx - b.idx);
   return ranked.slice(0, limit).map((r) => r.text);
@@ -218,8 +230,9 @@ const utmSnips = pickArticleSnippets(
 const utmBlob = utmSnips.join('\n');
 ok(
   'utm-snippet-calltouch',
-  /(uis|comagic|calltouch|roistat|коллтрек)/i.test(utmBlob),
-  utmBlob.slice(0, 200)
+  /(uis|comagic|calltouch|roistat|коллтрек)/i.test(utmBlob) &&
+    /существуют случаи|невозможно отключить|импортировать расходы/i.test(utmBlob),
+  utmBlob.slice(0, 280)
 );
 
 // Hard retrieve across distractors
