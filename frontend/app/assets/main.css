@@ -17148,9 +17148,10 @@ button.button {
   display: grid;
   place-items: center;
   padding: 20px 16px;
-  background: rgba(18, 16, 28, 0.28);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  /* Слабее старого жёсткого затемнения; карточка читается как на эскизе */
+  background: rgba(24, 20, 36, 0.18);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   transition: background 0.35s ease, backdrop-filter 0.35s ease;
 }
 
@@ -17161,26 +17162,33 @@ button.button {
   pointer-events: none;
 }
 
+/* Пропорции series-c: card ≈ 879×1279 (AR 1.455) */
 .pvm-stage {
-  --pvm-lavender: #c8b8e8;
-  --pvm-ink: #2e1a4a;
+  --pvm-lavender: #c9bddc;
+  --pvm-ink: #2a1848;
   --pvm-lime: #ddf365;
-  --pvm-tab: 36px;
-  --pvm-radius: 28px;
+  --pvm-tab-idle: 34px;
+  --pvm-tab-active-w: 58px;
+  --pvm-tab-h: 40px;
+  --pvm-radius: 32px;
+  --pvm-pad-x: 7%;
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(400px, 92vw);
-  height: min(680px, 92dvh);
+  width: min(392px, 90vw, calc(90dvh * 879 / 1279));
+  aspect-ratio: 879 / 1279;
+  height: auto;
+  max-height: 90dvh;
   box-sizing: border-box;
   background: transparent;
   overflow: visible;
   transition: width 0.48s cubic-bezier(0.33, 0.08, 0.22, 1),
-    height 0.48s cubic-bezier(0.33, 0.08, 0.22, 1);
+    aspect-ratio 0.48s cubic-bezier(0.33, 0.08, 0.22, 1);
 }
 
 .pvm-stage.is-collapse {
   width: 280px;
+  aspect-ratio: auto;
   height: 76px;
   overflow: hidden;
   border-radius: 18px;
@@ -17207,46 +17215,50 @@ button.button {
   min-height: 0;
 }
 
-/* Folder tabs: decorative only */
+/* Folder tabs: декоративные, не кликабельны; вокруг — прозрачно */
 .pvm-tabs {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding: 0 10px;
-  height: calc(var(--pvm-tab) + 6px);
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 var(--pvm-pad-x);
+  height: var(--pvm-tab-h);
   pointer-events: none;
   user-select: none;
   flex: 0 0 auto;
   z-index: 2;
+  background: transparent;
 }
 
 .pvm-tab {
   display: grid;
   place-items: center;
-  width: var(--pvm-tab);
-  height: var(--pvm-tab);
-  border-radius: 10px 10px 0 0;
+  width: var(--pvm-tab-idle);
+  height: calc(var(--pvm-tab-idle) - 2px);
+  border-radius: 11px 11px 0 0;
   background: #fff;
   color: var(--pvm-ink);
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
   line-height: 1;
   box-shadow: none;
-  border: 1.5px solid rgba(46, 26, 74, 0.18);
+  border: 1.5px solid rgba(42, 24, 72, 0.22);
   border-bottom: 0;
+  flex: 0 0 auto;
 }
 
 .pvm-tab.is-active {
-  width: 52px;
-  height: calc(var(--pvm-tab) + 6px);
+  width: var(--pvm-tab-active-w);
+  height: var(--pvm-tab-h);
   background: var(--pvm-lavender);
   color: #fff;
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 800;
   margin-bottom: -1px;
-  border-radius: 12px 12px 0 0;
+  border-radius: 14px 14px 0 0;
   border-color: transparent;
+  /* Слит с карточкой: тот же lavender, без шва */
 }
 
 .pvm-card {
@@ -17258,7 +17270,7 @@ button.button {
   background: var(--pvm-lavender);
   border-radius: 0 0 var(--pvm-radius) var(--pvm-radius);
   overflow: hidden;
-  box-shadow: 0 16px 36px rgba(30, 20, 50, 0.22);
+  box-shadow: 0 18px 40px rgba(30, 20, 50, 0.18);
 }
 
 .pvm-card__paper {
@@ -17266,23 +17278,16 @@ button.button {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.35;
+  opacity: 0.42;
   background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"),
     repeating-linear-gradient(
       0deg,
       transparent,
       transparent 2px,
-      rgba(70, 40, 110, 0.03) 2px,
-      rgba(70, 40, 110, 0.03) 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(70, 40, 110, 0.025) 2px,
-      rgba(70, 40, 110, 0.025) 3px
-    ),
-    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.28), transparent 55%);
+      rgba(70, 40, 110, 0.028) 2px,
+      rgba(70, 40, 110, 0.028) 3px
+    );
   mix-blend-mode: multiply;
 }
 
@@ -17293,68 +17298,123 @@ button.button {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 22px 26px 20px;
+  padding: 7.2% var(--pvm-pad-x) 5.5%;
   color: var(--pvm-ink);
 }
 
 .pvm-illust {
   position: absolute;
-  right: -4%;
-  bottom: -2%;
+  right: -1%;
+  bottom: 0;
   z-index: 1;
-  width: min(72%, 300px);
+  width: min(68%, 270px);
   height: auto;
-  max-height: 46%;
+  max-height: 42%;
   object-fit: contain;
   object-position: right bottom;
   pointer-events: none;
   user-select: none;
 }
 
+.pvm-illust--welcome {
+  width: min(70%, 280px);
+  max-height: 44%;
+  right: -2%;
+  bottom: 0;
+}
+
+.pvm-illust--intro {
+  width: min(78%, 300px);
+  max-height: 38%;
+  right: 6%;
+  left: auto;
+  object-position: center bottom;
+}
+
+.pvm-illust--pace,
+.pvm-illust--fresh,
+.pvm-illust--weekend,
+.pvm-illust--triggers {
+  width: min(66%, 260px);
+  max-height: 40%;
+}
+
 .pvm-kicker {
   display: inline-flex;
   align-self: flex-start;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--pvm-lime);
   color: var(--pvm-ink);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
+  line-height: 1.2;
 }
 
 .pvm-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.28rem, 3.6vw, 1.62rem);
+  font-size: clamp(1.22rem, 4.1vw, 1.58rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.18;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
   color: var(--pvm-ink);
+  max-width: 96%;
+}
+
+.pvm-title__line {
+  display: block;
 }
 
 .pvm-title--welcome {
   white-space: nowrap;
-  font-size: clamp(1.2rem, 4.2vw, 1.72rem);
+  font-size: clamp(1.35rem, 4.8vw, 1.78rem);
+  letter-spacing: -0.04em;
+}
+
+.pvm-title--welcome .pvm-title__line {
+  white-space: nowrap;
 }
 
 .pvm-copy {
   flex: 1 1 auto;
   min-height: 0;
-  margin-top: 16px;
-  margin-bottom: 12px;
+  margin-top: 14px;
+  margin-bottom: 10px;
   overflow: auto;
-  padding-right: 4px;
-  max-width: 92%;
+  padding-right: 2px;
+  /* Не наезжать на арт справа/снизу (эскиз: текст слева, кот справа) */
+  max-width: min(92%, 22rem);
+  padding-bottom: 8%;
+}
+
+.pvm-card--welcome .pvm-copy {
+  max-width: min(88%, 20.5rem);
+  padding-bottom: 18%;
+}
+
+.pvm-slide--intro .pvm-copy {
+  max-width: 100%;
+  flex: 0 0 auto;
+  padding-bottom: 0;
+}
+
+.pvm-slide--pace .pvm-copy,
+.pvm-slide--fresh .pvm-copy,
+.pvm-slide--weekend .pvm-copy,
+.pvm-slide--triggers .pvm-copy {
+  max-width: min(90%, 21rem);
+  padding-bottom: 14%;
 }
 
 .pvm-text {
-  margin: 0 0 12px;
-  font-size: 0.92rem;
+  margin: 0 0 11px;
+  font-size: 0.88rem;
   font-weight: 500;
-  line-height: 1.55;
+  line-height: 1.52;
   color: var(--pvm-ink);
 }
 
@@ -17366,12 +17426,12 @@ button.button {
   position: relative;
   z-index: 3;
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 6px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 14px;
-  flex-wrap: wrap;
+  gap: 12px 18px;
+  flex-wrap: nowrap;
 }
 
 .pvm-nav__spacer {
@@ -17379,12 +17439,20 @@ button.button {
 }
 
 .pvm-nav--welcome {
-  gap: 8px 16px;
+  gap: 8px 18px;
+}
+
+.pvm-nav--intro {
+  justify-content: flex-end;
+}
+
+.pvm-nav--intro .pvm-nav__spacer {
+  display: none;
 }
 
 .pvm-later {
-  height: 44px;
-  padding: 0 4px;
+  height: 42px;
+  padding: 0 2px;
   border: 0;
   background: transparent;
   color: var(--pvm-ink);
@@ -17393,6 +17461,7 @@ button.button {
   letter-spacing: -0.01em;
   cursor: pointer;
   appearance: none;
+  flex: 0 0 auto;
 }
 
 .pvm-later:hover {
@@ -17406,9 +17475,9 @@ button.button {
 }
 
 .pvm-cta {
-  min-width: 132px;
-  height: 44px;
-  padding: 0 22px;
+  min-width: 124px;
+  height: 42px;
+  padding: 0 20px;
   border-radius: 999px;
   border: 0;
   background: var(--pvm-lime);
@@ -17419,6 +17488,7 @@ button.button {
   cursor: pointer;
   appearance: none;
   box-shadow: none;
+  flex: 0 0 auto;
 }
 
 .pvm-cta:hover {
@@ -17451,6 +17521,12 @@ button.button {
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  /* Скрытые слайды карусели не перехватывают клик / фокус */
+  pointer-events: none;
+}
+
+.pvm-slide.is-current {
+  pointer-events: auto;
 }
 
 .pvm-dock-face {

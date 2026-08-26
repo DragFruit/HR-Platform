@@ -4,6 +4,14 @@
 
 ## 2026-08-26
 
+### Памятка Design C: арт и вёрстка 1:1 с series-c
+- Проблема: на стейдже layout кривой, в растре артефакты текста («ся позже»), кропы не совпадали с эскизами.
+- Арт с нуля (только сцена кот+пропсы, без UI/текста): `/memos/pvm-c-art-welcome.png` … `pvm-c-art-tip4.png`. Старые `pvm-c-*.png` больше не используются.
+- Вёрстка: AR карточки как series-c (879∶1279), lavender `#c9bddc`, paper grain, табы (active слит / inactive белый квадрат, `pointer-events: none`), kicker lime, Unbounded + titleLines, «С возвращением!» nowrap, footer Позже/Прочитать и Назад/Дальше/Спасибо.
+- Overlay: `blur(2px)` + лёгкое затемнение.
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: localhost/`?pvm=1` и `http://45.12.74.25:8080/?pvm=1` — сверка с `docs/design-refs/post-vacation-memo/series-c-01…06`.
+
 ### Памятка после отпуска: Design C на стейдже
 - UI: lavender folder-карточка, paper texture (CSS), иллюстрации Vibe отдельно от текста (`/memos/pvm-c-welcome.png` … `pvm-c-tip4.png`).
 - Табы 1–5 только визуал (`pointer-events: none`); welcome/intro → 1, tip1–4 → 2–5; неактивные — белый квадрат, вокруг прозрачно.

@@ -23,11 +23,20 @@
               :class="{ 'is-active': n === 1 }"
             >{{ n }}</span>
           </div>
-          <div class="pvm-card">
+          <div class="pvm-card pvm-card--welcome">
             <div class="pvm-card__paper" aria-hidden="true" />
             <div class="pvm-card__body">
               <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
-              <h2 :id="slideTitleId" class="pvm-title pvm-title--welcome">{{ welcome.title }}</h2>
+              <h2 :id="slideTitleId" class="pvm-title pvm-title--welcome">
+                <template v-if="welcome.titleLines?.length">
+                  <span
+                    v-for="(line, li) in welcome.titleLines"
+                    :key="li"
+                    class="pvm-title__line"
+                  >{{ line }}</span>
+                </template>
+                <template v-else>{{ welcome.title }}</template>
+              </h2>
               <div class="pvm-copy">
                 <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">
                   {{ para }}
@@ -46,9 +55,9 @@
               v-if="welcome.coverSrc"
               :src="welcome.coverSrc"
               alt=""
-              class="pvm-illust"
-              width="400"
-              height="306"
+              class="pvm-illust pvm-illust--welcome"
+              width="560"
+              height="560"
             />
           </div>
         </div>
@@ -73,21 +82,34 @@
         <div class="pvm-card">
           <div class="pvm-card__paper" aria-hidden="true" />
           <div class="pvm-strip" :style="{ transform: `translate3d(${-index * 100}%, 0, 0)` }">
-            <article v-for="item in slides" :key="item.id" class="pvm-slide">
+            <article
+              v-for="(item, slideIdx) in slides"
+              :key="item.id"
+              class="pvm-slide"
+              :class="[`pvm-slide--${item.id}`, { 'is-current': slideIdx === index }]"
+              :aria-hidden="slideIdx === index ? undefined : 'true'"
+            >
               <div class="pvm-card__body">
                 <p v-if="item.kicker" class="pvm-kicker">{{ item.kicker }}</p>
                 <h2
                   :id="item.id === slide.id ? slideTitleId : undefined"
                   class="pvm-title"
                 >
-                  {{ item.title }}
+                  <template v-if="item.titleLines?.length">
+                    <span
+                      v-for="(line, li) in item.titleLines"
+                      :key="li"
+                      class="pvm-title__line"
+                    >{{ line }}</span>
+                  </template>
+                  <template v-else>{{ item.title }}</template>
                 </h2>
                 <div class="pvm-copy">
                   <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">
                     {{ para }}
                   </p>
                 </div>
-                <div class="pvm-nav">
+                <div class="pvm-nav" :class="{ 'pvm-nav--intro': item.id === 'intro' }">
                   <button
                     v-if="index > 0"
                     class="pvm-later"
@@ -120,8 +142,9 @@
                 :src="item.coverSrc"
                 alt=""
                 class="pvm-illust"
-                width="400"
-                height="360"
+                :class="`pvm-illust--${item.id}`"
+                width="560"
+                height="560"
               />
             </article>
           </div>
