@@ -21,7 +21,8 @@ export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
     'Собрали несколько советов, как вернуться к работе после отпуска и не поймать выгорание.',
     'К ним можно будет вернуться позже.'
   ],
-  coverSrc: '/memos/post-vacation-cover.png',
+  // ?v= — bust browser cache after same-path PNG replace (очки+пальма)
+  coverSrc: '/memos/post-vacation-cover.png?v=glasses-palm',
   laterCta: 'Позже',
   cta: 'Прочитать'
 };
@@ -36,7 +37,7 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
     id: 'intro',
     title: 'Вот четыре совета',
     paragraphs: ['Как спокойно вернуться к работе после отпуска. Листай дальше.'],
-    coverSrc: '/memos/post-vacation-cover.png',
+    coverSrc: '/memos/post-vacation-cover.png?v=glasses-palm',
     cta: 'Дальше'
   },
   {

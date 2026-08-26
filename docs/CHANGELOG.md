@@ -4,6 +4,12 @@
 
 ## 2026-08-26
 
+### Памятка: cover на стейдже + направления ITMO
+- Факт: `post-vacation-cover.png` на стейдже `:8080` уже = очки+пальма (sha256 `b2176025…`, 1 105 111 байт = `sketch-old-cat-glasses-palm.png`). Прод `:80` пока старый (916 172).
+- Cache-bust: `postVacationMemoSlides.ts` → `?v=glasses-palm` на welcome/intro, чтобы браузер не держал старый PNG по тому же URL.
+- Арт-дирекшн (эскизы, без внедрения UI): `docs/design-refs/post-vacation-memo/direction-itmo-frame-card.png`, `direction-modern-type-card.png`, `direction-sticker-in-itmo-scene.png`.
+- Проверка: `http://45.12.74.25:8080/memos/post-vacation-cover.png` — Content-Length 1105111; `?pvm=1` hard refresh.
+
 ### Памятка: cover — кот в очках + пальма
 - Product cover welcome/intro: `frontend/public/memos/post-vacation-cover.png` ← эскиз `sketch-old-cat-glasses-palm.png` (очки на лбу, пальма, лайм-тень).
 - Эталон: `docs/design-refs/post-vacation-memo/cover.png`. Пути в `postVacationMemoSlides.ts` без смены (`/memos/post-vacation-cover.png`).
