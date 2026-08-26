@@ -4,6 +4,14 @@
 
 ## 2026-08-26
 
+### Памятка Design C: перенос переделан (арт + вёрстка)
+- Перенос Design C переделан: чистые сцены `pvm-c-art-*.png` (кот+пропсы, без текста в растре), UI в Vue.
+- Табы 1–5 декоративные (`pointer-events: none`): inactive — белый квадрат цифры, вокруг прозрачно; active — lavender + белая цифра, слит с карточкой.
+- Overlay слабее: `rgba(…,0.14)` + `blur(2.5px)`. Пропорции card AR series-c, Unbounded, «С возвращением!» nowrap, lime pills.
+- Cache-bust `?v=art-c-v7`. Flow без изменений (welcome / Позже→чип / intro / tips, `?pvm=1`).
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh). Прод не трогали.
+
 ### Памятка Design C: арт и вёрстка 1:1 с series-c
 - Проблема: на стейдже layout кривой, в растре артефакты текста («ся позже»), кропы не совпадали с эскизами.
 - Арт с нуля (только сцена кот+пропсы, без UI/текста): `/memos/pvm-c-art-welcome.png` … `pvm-c-art-tip4.png`. Старые `pvm-c-*.png` больше не используются.

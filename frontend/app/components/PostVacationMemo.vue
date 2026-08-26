@@ -23,7 +23,7 @@
               :class="{ 'is-active': n === 1 }"
             >{{ n }}</span>
           </div>
-          <div class="pvm-card pvm-card--welcome">
+          <div class="pvm-card pvm-card--welcome" data-tab="1">
             <div class="pvm-card__paper" aria-hidden="true" />
             <div class="pvm-card__body">
               <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
@@ -79,7 +79,7 @@
             :class="{ 'is-active': n === activeTab }"
           >{{ n }}</span>
         </div>
-        <div class="pvm-card">
+        <div class="pvm-card" :data-tab="activeTab">
           <div class="pvm-card__paper" aria-hidden="true" />
           <div class="pvm-strip" :style="{ transform: `translate3d(${-index * 100}%, 0, 0)` }">
             <article
