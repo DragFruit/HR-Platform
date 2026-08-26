@@ -4,6 +4,11 @@
 
 ## 2026-08-26
 
+### Памятка: cover — кот в очках + пальма
+- Product cover welcome/intro: `frontend/public/memos/post-vacation-cover.png` ← эскиз `sketch-old-cat-glasses-palm.png` (очки на лбу, пальма, лайм-тень).
+- Эталон: `docs/design-refs/post-vacation-memo/cover.png`. Пути в `postVacationMemoSlides.ts` без смены (`/memos/post-vacation-cover.png`).
+- Проверка: стейдж `?pvm=1` — welcome и intro с новым артом.
+
 ### База знаний ИИ: уточнения в диалоге («ещё другие», «это все?»)
 - Симптом: после списка программатиков вопрос «напиши ещё другие…» → отказ «только по Базе знаний».
 - Причина: follow-up не распознавался (`isKbClarifyingFollowUp`), «программатик» не был workplace-hint → RAG/модель без склейки с темой; модель ставила OFFTOPIC на «другие».
