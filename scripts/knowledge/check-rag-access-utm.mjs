@@ -366,10 +366,10 @@ for (const c of HARD) {
 
 // Guard: INDEX_VERSION bumped for section split
 const ragSrc = readFileSync(join(frontend, 'server/utils/knowledgeRag.ts'), 'utf8');
-assert.match(ragSrc, /const INDEX_VERSION\s*=\s*5/);
+assert.match(ragSrc, /const INDEX_VERSION\s*=\s*6/);
 assert.match(ragSrc, /UTM_ARTICLE_ID/);
 assert.match(ragSrc, /GUEST_ACCESS_SECTION_LINE_START/);
-console.log('ok  index-v5-utm-guest-sections');
+console.log('ok  index-v6-utm-guest-sections');
 
 if (failed) {
   console.error(`\n${failed} failed`);

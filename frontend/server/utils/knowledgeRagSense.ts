@@ -82,6 +82,14 @@ export function resolveQuestionSense(question: string): SenseResolution {
 
   for (const group of COLLISIONS) {
     if (!group.term.test(q)) continue;
+    // «списания в afina» / комиссии — не доступы к CRM (статья kb-28468)
+    if (
+      group.id === 'access' &&
+      /списан|комисси|прочее\s*\(?\s*ppc|доп\.?\s*расход/i.test(q) &&
+      !/доступ/i.test(q)
+    ) {
+      continue;
+    }
     const matched = group.signals.filter((s) => s.re.test(q)).map((s) => s.senseId);
     const unique = [...new Set(matched)];
     if (unique.length === 1) {
@@ -176,7 +184,8 @@ export const KNOWN_SENSE_CASES_DOC = [
       'доступы AFINA / «как зайти в афину» → CRM kb-20520',
       'гостевые доступы (+ Директ) → kb-29864 (приоритет над продажами)',
       'доступы директ/ВК / отдела продаж → kb-25590',
-      'просто «доступы» → несколько вариантов'
+      'просто «доступы» → несколько вариантов',
+      'списания в afina → не доступы (регламент списаний kb-28468)'
     ]
   },
   {

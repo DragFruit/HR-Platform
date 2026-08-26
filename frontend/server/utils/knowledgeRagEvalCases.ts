@@ -96,6 +96,20 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     note: 'Длинная статья; не найм/Контакты/гостевые Calltouch'
   },
   {
+    id: 'acts-rp',
+    canonical: 'акты от рекламных площадок',
+    paraphrases: ['акты яндекс', 'акты VKR', 'как смотреть акты в YDirect'],
+    expectAny: ['kb-31980'],
+    note: 'Не Контакты про менеджера Яндекса'
+  },
+  {
+    id: 'writeoffs-afina',
+    canonical: 'списания в AFINA комиссии прочее',
+    paraphrases: ['списания в afina', 'прочее ppc комиссии', 'какое правило списания прочее'],
+    expectAny: ['kb-28468'],
+    note: 'Не доступы к AFINA'
+  },
+  {
     id: 'afina-sites',
     canonical: 'указание сайтов клиента в карточке проекта AFINA',
     paraphrases: ['куда в афине писать сайты клиента', 'сайт клиента в карточке проекта'],

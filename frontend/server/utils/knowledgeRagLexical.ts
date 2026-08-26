@@ -110,12 +110,13 @@ const WEAK_RARE_ANCHORS = new Set([
  * Короткие латинские продуктовые якоря (длина < 4): иначе «utm» выпадает из distinctive
  * и «регламент utm» уезжает в найм/SEO.
  */
-const SHORT_PRODUCT_TOKENS = new Set(['utm', 'uis', 'vk']);
+const SHORT_PRODUCT_TOKENS = new Set(['utm', 'uis', 'vk', 'vkr', 'smm', 'ppc']);
 
 /** Вопрос про справочник «кому писать / контакты», а не про регламент площадки. */
 export function hasContactDirectoryIntent(question: string): boolean {
   const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
   if (!q) return false;
+  if (hasActsRegulationIntent(q) || hasWriteoffAfinaIntent(q)) return false;
   return /(контакт|кому\s+писать|написать|телефон|почт|e-?mail|связаться|справочник|для расчетов|для расчётов|менеджер[аеу]?\s+(яндекс|yandex)|(?:яндекс|yandex)\s+менеджер)/i.test(
     q
   );
@@ -145,6 +146,54 @@ export function isUtmSectionToken(token: string): boolean {
   return /utm|uis|roistat|calltouch|comagic|коллтрек|колтрек|тегирован|разметк/i.test(t);
 }
 
+/**
+ * Акты от РП (YDirect / VKR / Add Cost SMM) — kb-31980, не «Контакты» про Яндекс-менеджера.
+ * «актуально» без слова «акт/акты» — false.
+ */
+export function hasActsRegulationIntent(question: string): boolean {
+  const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
+  if (!q) return false;
+  if (/ydirect|add\s*cost/i.test(q)) return true;
+  const withoutActual = q.replace(/актуальн\w*/gi, ' ');
+  return /(?:^|[^а-яa-z])акт(?:ы|ов|а|у|ам|ами)?(?:[^а-яa-z]|$)/i.test(withoutActual);
+}
+
+/** Якорь секции актов / площадок в kb-31980. */
+export function isActsSectionToken(token: string): boolean {
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  if (!t) return false;
+  if (SHORT_PRODUCT_TOKENS.has(t) && (t === 'vkr' || t === 'smm')) return true;
+  return /акт|ydirect|vkr|яндекс|yandex|директ|addcost|марж|преми/i.test(t);
+}
+
+/**
+ * Списания в AFINA (комиссии / прочее / доп.расходы) — kb-28468.
+ * Не путать с «акты …» (те → hasActsRegulationIntent) и не с «доступы к afina».
+ */
+export function hasWriteoffAfinaIntent(question: string): boolean {
+  const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
+  if (!q) return false;
+  if (hasActsRegulationIntent(q) && !/списан|прочее\s*\(?\s*ppc|доп\.?\s*расход/i.test(q)) {
+    return false;
+  }
+  if (/доступ/i.test(q) && !/списан/i.test(q)) return false;
+  return (
+    /списан/i.test(q) ||
+    /прочее\s*\(?\s*ppc/i.test(q) ||
+    /доп\.?\s*расход/i.test(q) ||
+    (/комисси/i.test(q) && /(afina|афин|правил|прочее)/i.test(q)) ||
+    /рекламн\w*\s+сбор/i.test(q)
+  );
+}
+
+/** Якорь списаний AFINA. */
+export function isWriteoffSectionToken(token: string): boolean {
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  if (!t) return false;
+  if (SHORT_PRODUCT_TOKENS.has(t) && (t === 'ppc' || t === 'smm')) return true;
+  return /списан|комисси|прочее|afina|афин|геосервис|копилк|сбор/i.test(t);
+}
+
 /** Якорь-продукт справочника — можно без «контакты» в формулировке. */
 function isProductLikeContactAnchor(token: string): boolean {
   const t = token.toLowerCase();
@@ -156,9 +205,20 @@ function isProductLikeContactAnchor(token: string): boolean {
 /** Пары/группы близких формулировок (осторожное расширение, без смены темы). */
 const SYNONYM_GROUPS: string[][] = [
   // Написание SaaS (без «отгул» — смысл вопроса разбирает knowledgeRagSense)
-  ['dayofff', 'day offf', 'дейофф', 'дей офф'],
+  ['dayofff', 'day offf', 'dayoff', 'day off', 'дейофф', 'дей офф', 'дейоф', 'дей оф'],
   ['отгул', 'отгулы', 'оформления отгулов'],
   ['afina', 'афина', 'афину', 'афине', 'афины'],
+  ['акты', 'акт', 'ydirect', 'vkr', 'add cost'],
+  [
+    'списания',
+    'списание',
+    'списаний',
+    'комиссии',
+    'комиссия',
+    'прочее ppc',
+    'доп расходы',
+    'дополнительные расходы'
+  ],
   [
     'гостевой',
     'гостевые',
@@ -525,10 +585,17 @@ export function distinctiveQueryTokens(question: string): string[] {
   });
 }
 
-/** Редкие якоря запроса: секции Контактов, UTM, продукт-синонимы, длинные слова, латиница. */
+/** Редкие якоря запроса: секции Контактов, UTM, акты, списания, продукт-синонимы, длинные слова, латиница. */
 export function rareDistinctiveTokens(distinctive: string[]): string[] {
   return distinctive.filter((t) => {
-    if (isContactSectionToken(t) || isUtmSectionToken(t)) return true;
+    if (
+      isContactSectionToken(t) ||
+      isUtmSectionToken(t) ||
+      isActsSectionToken(t) ||
+      isWriteoffSectionToken(t)
+    ) {
+      return true;
+    }
     if (t.length >= 8 || /[a-z]/i.test(t)) return true;
     // «афину» (5) — в группе с afina; иначе hard path не видит якорь
     const group = synonymGroupForToken(t);
@@ -543,6 +610,8 @@ export function longestRareToken(distinctive: string[], question = ''): string |
   const pool = withoutWeak.length ? withoutWeak : rare;
   const contactIntent = hasContactDirectoryIntent(question);
   const utmIntent = hasUtmTaggingIntent(question);
+  const actsIntent = hasActsRegulationIntent(question);
+  const writeoffIntent = hasWriteoffAfinaIntent(question);
   const contact = pool.filter((t) => {
     if (!isContactSectionToken(t)) return false;
     if (isProductLikeContactAnchor(t)) return true;
@@ -552,6 +621,18 @@ export function longestRareToken(distinctive: string[], question = ''): string |
     const utm = pool.filter((t) => isUtmSectionToken(t));
     if (utm.length) {
       return [...utm].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    }
+  }
+  if (actsIntent) {
+    const acts = pool.filter((t) => isActsSectionToken(t));
+    if (acts.length) {
+      return [...acts].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    }
+  }
+  if (writeoffIntent) {
+    const wo = pool.filter((t) => isWriteoffSectionToken(t));
+    if (wo.length) {
+      return [...wo].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
     }
   }
   const use = contact.length ? contact : pool;

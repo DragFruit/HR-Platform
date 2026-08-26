@@ -4,6 +4,12 @@
 
 ## 2026-08-26
 
+### База знаний ИИ: DayOfff + акты РП + списания AFINA
+- DayOfff: sense до hard-якорей (взять → отгул `kb-30077`, войти → SaaS `kb-27877`, неясно → два ответа); синоним «дейоф» ↔ dayofff; нарезка разделов SaaS.
+- Акты (`kb-31980`): интент «акты / YDirect / VKR» не уводит в «Контакты»; секции Яндекс / VKR / Add Cost SMM; `INDEX_VERSION = 6`.
+- Списания (`kb-28468`): «списания в afina» больше не sense-доступы; якоря Прочее (PPC) / доп.расходы SMM / комментарии.
+- Регрессия: Контакты / доступы / UTM сохранены. Проверка: `node scripts/knowledge/check-rag-dayoff-acts-writeoffs.mjs`, `check-rag-access-utm.mjs`.
+
 ### Памятка: cover welcome — 310×340 + padding-bottom 100
 - `.pvm-visual--welcome .pvm-cover`: ширина **310px**, высота **340px** (`border-box`), **padding-bottom: 100px** (контент 240px). Как в DevTools-эталоне.
 - Проверка: `?pvm=1` — кот+чемодан, снизу 100px поля до «С возвращением!».

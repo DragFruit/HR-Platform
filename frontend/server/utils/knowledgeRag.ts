@@ -6,11 +6,15 @@ import { readKnowledgeArticles, type KnowledgeArticle } from './knowledgeArticle
 import {
   distinctiveQueryTokens,
   expandQueryWithSynonyms,
+  hasActsRegulationIntent,
   hasContactDirectoryIntent,
   hasUtmTaggingIntent,
+  hasWriteoffAfinaIntent,
   hitCoversDistinctiveTokens,
+  isActsSectionToken,
   isContactSectionToken,
   isUtmSectionToken,
+  isWriteoffSectionToken,
   lexicalScore,
   longestRareToken,
   rareDistinctiveTokens,
@@ -31,12 +35,16 @@ import { cosineSimilarity, yandexEmbedText } from './yandexEmbeddings';
 
 const INDEX_FILE = join(process.cwd(), 'server/data/knowledge-rag-index.json');
 /** Смена нарезки/stripHtml — пересобрать индекс, даже если статьи те же. */
-const INDEX_VERSION = 5;
+const INDEX_VERSION = 6;
 
 /** Статья-справочник контактов (якоря секций). */
 const CONTACTS_ARTICLE_ID = 'kb-20409';
 /** Регламент UTM тегирования. */
 const UTM_ARTICLE_ID = 'kb-23420';
+/** Акты от рекламных площадок (YDirect / VKR / SMM). */
+const ACTS_ARTICLE_ID = 'kb-31980';
+/** Списания в AFINA (комиссии, прочее, доп.расходы). */
+const WRITEOFF_ARTICLE_ID = 'kb-28468';
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -130,12 +138,24 @@ const UTM_SECTION_LINE_START =
 
 const GUEST_ACCESS_SECTION_LINE_START = /(?:^|\n)\s*(?=Доступ к\s+)/gi;
 
+const ACTS_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:Акты\s+Яндекс|Акты\s+ВКР|YDirect\b|VKR\s+Таргет|ADD\s+COST\s+SMM|Прочие\s+списания\s+отдела\s+SMM))/gi;
+
+const WRITEOFF_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:1\.\s*По\s+какому\s+правилу|Прочее\s*\(PPC\)|Доп\.?\s*расходы\s*\(SMM\)|2\.\s*Обязательно\s+указывать\s+комментарий|4\.\s*Какие\s+правила|5\.\s*Есть\s+также\s+тип|6\.\s*Списание\s+рекламного\s+сбора))/gi;
+
+const DAYOFF_SAAS_SECTION_LINE_START =
+  /(?:^|\n)\s*(?=(?:Авторизация\s+в\s+DayOFFF|Раздел\s+системы\s+[«"“]?Проекты|Раздел\s+системы\s+[«"“]?Дополнительные\s+расходы|Раздел\s+системы\s+[«"“]?Дашборд|Раздел\s+системы\s+[«"“]?Статусы\s+проектов))/gi;
+
 function splitPlainSections(plain: string): string[] {
   const marked = String(plain || '')
     .replace(/_{12,}/g, '\n§\n')
     .replace(CONTACT_SECTION_LINE_START, '\n§\n')
     .replace(UTM_SECTION_LINE_START, '\n§\n')
-    .replace(GUEST_ACCESS_SECTION_LINE_START, '\n§\n');
+    .replace(GUEST_ACCESS_SECTION_LINE_START, '\n§\n')
+    .replace(ACTS_SECTION_LINE_START, '\n§\n')
+    .replace(WRITEOFF_SECTION_LINE_START, '\n§\n')
+    .replace(DAYOFF_SAAS_SECTION_LINE_START, '\n§\n');
   const sections = marked
     .split(/\n§\n/)
     .map((s) => s.trim())
@@ -146,6 +166,8 @@ function splitPlainSections(plain: string): string[] {
 /** «Кому писать» или якорь секции Контактов → только kb-20409. */
 function preferContactsDirectory(question: string, anchor: string | null): boolean {
   if (hasUtmTaggingIntent(question)) return false;
+  if (hasActsRegulationIntent(question)) return false;
+  if (hasWriteoffAfinaIntent(question)) return false;
   if (hasContactDirectoryIntent(question)) return true;
   return Boolean(anchor && isContactSectionToken(anchor));
 }
@@ -155,6 +177,23 @@ function preferUtmRegulation(question: string, anchor: string | null): boolean {
   if (!hasUtmTaggingIntent(question)) return false;
   if (hasContactDirectoryIntent(question)) return false;
   return Boolean(anchor && isUtmSectionToken(anchor)) || hasUtmTaggingIntent(question);
+}
+
+/** Акты РП → только kb-31980. */
+function preferActsRegulation(question: string, anchor: string | null): boolean {
+  if (!hasActsRegulationIntent(question)) return false;
+  if (hasUtmTaggingIntent(question) || hasContactDirectoryIntent(question)) return false;
+  return Boolean(anchor && isActsSectionToken(anchor)) || hasActsRegulationIntent(question);
+}
+
+/** Списания AFINA → только kb-28468. */
+function preferWriteoffAfina(question: string, anchor: string | null): boolean {
+  if (!hasWriteoffAfinaIntent(question)) return false;
+  if (hasActsRegulationIntent(question) && /акт/i.test(question) && !/списан/i.test(question)) {
+    return false;
+  }
+  if (hasUtmTaggingIntent(question) || hasContactDirectoryIntent(question)) return false;
+  return Boolean(anchor && isWriteoffSectionToken(anchor)) || hasWriteoffAfinaIntent(question);
 }
 
 export function chunkArticleText(title: string, bodyHtml: string): string[] {
@@ -184,6 +223,9 @@ export function pickArticleSnippets(
   const whenCalltracking =
     /когда|обязательн|случа/i.test(question) &&
     /(uis|roistat|calltouch|comagic|коллтрек|колтрек)/i.test(question);
+  const actsPlatform = /vkr|вкр|ydirect|яндекс|директ|smm|add\s*cost/i.test(question)
+    ? question
+    : '';
   const ranked = chunkTexts
     .map((text, idx) => {
       const lex = lexicalScore(title, text, queryTokens);
@@ -200,6 +242,25 @@ export function pickArticleSnippets(
         )
       ) {
         score += 25;
+      }
+      if (actsPlatform) {
+        if (/vkr|вкр/i.test(actsPlatform) && /vkr\s*таргет|акты\s*вкр/i.test(text)) score += 20;
+        if (
+          /ydirect|яндекс|директ/i.test(actsPlatform) &&
+          /ydirect|акты\s*яндекс/i.test(text) &&
+          !/vkr\s*таргет/i.test(text.slice(0, 80))
+        ) {
+          score += 20;
+        }
+        if (/smm|add\s*cost/i.test(actsPlatform) && /add\s*cost\s*smm|акты\s*add/i.test(text)) {
+          score += 20;
+        }
+      }
+      if (
+        /прочее\s*\(?\s*ppc|комисси.*доход|перевод\s+на\s+карту/i.test(question) &&
+        /прочее\s*\(ppc\)|доп\.?\s*расходы\s*\(smm\)/i.test(text)
+      ) {
+        score += 15;
       }
       return { text, idx, score };
     })
@@ -389,12 +450,68 @@ export async function retrieveKnowledgeDetailed(
   const publishedById = new Map(published.map((a) => [a.id, a]));
   const distinctive = distinctiveQueryTokens(q);
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
+  const lexTokensFast = tokenizeForRag(expandQueryWithSynonyms(q));
 
-  // Жёсткий якорь секций «Контактов» — ДО rewrite/эмбеддингов (иначе Yandex rewrite
+  // Sense (дейоф / доступы) — до hard-якорей Контактов: иначе «dayofff» без ambiguous,
+  // а clear «взять дейоф» без якоря уходит только в hybrid.
+  {
+    const clearEarly = clearSenseForQuestion(q);
+    const ambEarly = ambiguousBranchesForQuestion(q);
+    if (clearEarly) {
+      const senseHit = pickSenseHit(
+        [],
+        clearEarly,
+        publishedById,
+        visibleChunks,
+        new Map()
+      );
+      if (senseHit && visibleIds.has(senseHit.articleId)) {
+        const articleChunks = visibleChunks
+          .filter((c) => c.articleId === senseHit.articleId)
+          .map((c) => c.text);
+        senseHit.snippets = pickArticleSnippets(
+          senseHit.title,
+          articleChunks,
+          distinctive,
+          lexTokensFast,
+          3,
+          q
+        );
+        return { hits: [senseHit], ambiguous: false, branches: [] };
+      }
+    }
+    if (ambEarly.length >= 2) {
+      const branches: KnowledgeRagBranch[] = [];
+      for (const sense of ambEarly) {
+        const hit = pickSenseHit([], sense, publishedById, visibleChunks, new Map());
+        if (!hit || !visibleIds.has(hit.articleId)) continue;
+        const articleChunks = visibleChunks
+          .filter((c) => c.articleId === hit.articleId)
+          .map((c) => c.text);
+        hit.snippets = pickArticleSnippets(
+          hit.title,
+          articleChunks,
+          distinctive,
+          lexTokensFast,
+          3,
+          q
+        );
+        branches.push({ label: sense.label, hit });
+      }
+      if (branches.length >= 2) {
+        return {
+          hits: branches.map((b) => b.hit),
+          ambiguous: true,
+          branches: branches.slice(0, 3)
+        };
+      }
+    }
+  }
+
+  // Жёсткий якорь секций — ДО rewrite/эмбеддингов (иначе Yandex rewrite
   // без таймаута даёт 504, а mid-body в DayOfff/КЛАДОВКЕ уводит от справочника).
   const anchor = longestRareToken(distinctive, q);
   if (anchor) {
-    const lexTokensFast = tokenizeForRag(expandQueryWithSynonyms(q));
     const ranked = visibleChunks
       .map((chunk) => {
         const blob = `${chunk.title}\n${chunk.text}`;
@@ -432,6 +549,50 @@ export async function retrieveKnowledgeDetailed(
               };
             });
           if (utmRows.length) preferred = utmRows;
+        }
+      } else if (preferActsRegulation(q, anchor)) {
+        const actsOnly = ranked.filter(
+          (row) =>
+            row.strength > 0 &&
+            (row.chunk.articleId === ACTS_ARTICLE_ID || /акт/i.test(row.chunk.title))
+        );
+        if (actsOnly.length) {
+          preferred = actsOnly;
+        } else {
+          const actsRows = visibleChunks
+            .filter((c) => c.articleId === ACTS_ARTICLE_ID)
+            .map((chunk) => {
+              const blob = `${chunk.title}\n${chunk.text}`;
+              return {
+                chunk,
+                strength: Math.max(1, rareTokenStrength(blob, anchor)),
+                headings: rareTokenHeadingHits(blob, anchor),
+                lex: lexicalScore(chunk.title, chunk.text, lexTokensFast)
+              };
+            });
+          if (actsRows.length) preferred = actsRows;
+        }
+      } else if (preferWriteoffAfina(q, anchor)) {
+        const woOnly = ranked.filter(
+          (row) =>
+            row.strength > 0 &&
+            (row.chunk.articleId === WRITEOFF_ARTICLE_ID || /списан/i.test(row.chunk.title))
+        );
+        if (woOnly.length) {
+          preferred = woOnly;
+        } else {
+          const woRows = visibleChunks
+            .filter((c) => c.articleId === WRITEOFF_ARTICLE_ID)
+            .map((chunk) => {
+              const blob = `${chunk.title}\n${chunk.text}`;
+              return {
+                chunk,
+                strength: Math.max(1, rareTokenStrength(blob, anchor)),
+                headings: rareTokenHeadingHits(blob, anchor),
+                lex: lexicalScore(chunk.title, chunk.text, lexTokensFast)
+              };
+            });
+          if (woRows.length) preferred = woRows;
         }
       } else if (preferContactsDirectory(q, anchor)) {
         const contactsOnly = ranked.filter(
@@ -486,35 +647,21 @@ export async function retrieveKnowledgeDetailed(
           (h) => h.articleId === UTM_ARTICLE_ID || /utm/i.test(h.title)
         );
         if (only.length) hits = only;
+      } else if (preferActsRegulation(q, anchor)) {
+        const only = hits.filter(
+          (h) => h.articleId === ACTS_ARTICLE_ID || /акт/i.test(h.title)
+        );
+        if (only.length) hits = only;
+      } else if (preferWriteoffAfina(q, anchor)) {
+        const only = hits.filter(
+          (h) => h.articleId === WRITEOFF_ARTICLE_ID || /списан/i.test(h.title)
+        );
+        if (only.length) hits = only;
       } else if (preferContactsDirectory(q, anchor)) {
         const only = hits.filter(
           (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
         );
         if (only.length) hits = only;
-      }
-      const clearSenseHard = clearSenseForQuestion(q);
-      if (clearSenseHard) {
-        const senseHit = pickSenseHit(
-          hits,
-          clearSenseHard,
-          publishedById,
-          visibleChunks,
-          new Map()
-        );
-        if (senseHit && visibleIds.has(senseHit.articleId)) {
-          const articleChunks = visibleChunks
-            .filter((c) => c.articleId === senseHit.articleId)
-            .map((c) => c.text);
-          senseHit.snippets = pickArticleSnippets(
-            senseHit.title,
-            articleChunks,
-            distinctive,
-            lexTokensFast,
-            3,
-            q
-          );
-          hits = [senseHit];
-        }
       }
       return {
         hits: hits.slice(0, topArticles),
@@ -613,7 +760,7 @@ export async function retrieveKnowledgeDetailed(
     }
   }
 
-  // UTM-интент на hybrid path (без сильного якоря в hard)
+  // UTM / акты / списания на hybrid path (без сильного якоря в hard)
   if (!clearSense && preferUtmRegulation(q, longestRareToken(distinctive, q))) {
     const utmHit = hits.find((h) => h.articleId === UTM_ARTICLE_ID);
     if (utmHit) {
@@ -625,6 +772,56 @@ export async function retrieveKnowledgeDetailed(
         hits = [
           {
             articleId: UTM_ARTICLE_ID,
+            title: article.title,
+            score: 0.7,
+            snippets: pickArticleSnippets(
+              article.title,
+              articleChunks.map((c) => c.text),
+              distinctive,
+              lexTokens,
+              3,
+              q
+            )
+          }
+        ];
+      }
+    }
+  } else if (!clearSense && preferActsRegulation(q, longestRareToken(distinctive, q))) {
+    const actsHit = hits.find((h) => h.articleId === ACTS_ARTICLE_ID);
+    if (actsHit) {
+      hits = [actsHit];
+    } else {
+      const article = publishedById.get(ACTS_ARTICLE_ID);
+      if (article && visibleIds.has(ACTS_ARTICLE_ID)) {
+        const articleChunks = visibleChunks.filter((c) => c.articleId === ACTS_ARTICLE_ID);
+        hits = [
+          {
+            articleId: ACTS_ARTICLE_ID,
+            title: article.title,
+            score: 0.7,
+            snippets: pickArticleSnippets(
+              article.title,
+              articleChunks.map((c) => c.text),
+              distinctive,
+              lexTokens,
+              3,
+              q
+            )
+          }
+        ];
+      }
+    }
+  } else if (!clearSense && preferWriteoffAfina(q, longestRareToken(distinctive, q))) {
+    const woHit = hits.find((h) => h.articleId === WRITEOFF_ARTICLE_ID);
+    if (woHit) {
+      hits = [woHit];
+    } else {
+      const article = publishedById.get(WRITEOFF_ARTICLE_ID);
+      if (article && visibleIds.has(WRITEOFF_ARTICLE_ID)) {
+        const articleChunks = visibleChunks.filter((c) => c.articleId === WRITEOFF_ARTICLE_ID);
+        hits = [
+          {
+            articleId: WRITEOFF_ARTICLE_ID,
             title: article.title,
             score: 0.7,
             snippets: pickArticleSnippets(
