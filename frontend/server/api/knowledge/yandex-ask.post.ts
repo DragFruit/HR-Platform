@@ -36,6 +36,21 @@ export type YandexAskCitation = {
 const SMOKE_PREFIX =
   'Бот ушёл на перекур, но скоро вернётся. Пока ответы могут быть менее точными.\n\n';
 
+/** Модель отмахнулась «нет в базе» без полезных фактов (не «нет прямого… Однако 1. UIS…»). */
+function looksLikeKbNotFound(answer: string): boolean {
+  const a = String(answer || '').trim();
+  if (!a) return true;
+  if (
+    !/в базе знаний\s+(пока\s+)?нет|нет информации|в базе этого нет|не нашлось|не нашёл|не нашел/i.test(a)
+  ) {
+    return false;
+  }
+  // Отказ с оговоркой «нет прямого» + дальше нумерованный/конкретный ответ из контекста
+  if (/нет\s+прямого/i.test(a) && a.length > 220) return false;
+  if (/\d[\.)]\s+\S/.test(a) && a.length > 180) return false;
+  return true;
+}
+
 function normalizeHistory(raw: HistoryItem[] | undefined): { role: 'user' | 'assistant'; text: string }[] {
   if (!Array.isArray(raw)) return [];
   const out: { role: 'user' | 'assistant'; text: string }[] = [];
@@ -149,12 +164,9 @@ export default defineEventHandler(async (event) => {
 
     const context = buildRagContext(retrieved.hits);
     const answer = await yandexChatAnswer(question, context, { history });
-    // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме»
-    if (
-      /в базе знаний\s+(пока\s+)?нет|нет информации|в базе этого нет|не нашлось|не нашёл|не нашел/i.test(
-        answer
-      )
-    ) {
+    // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
+    // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
+    if (looksLikeKbNotFound(answer)) {
       return {
         answer,
         citations: [] as YandexAskCitation[],
