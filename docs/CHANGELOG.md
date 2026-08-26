@@ -22,8 +22,8 @@
 
 ### База знаний ИИ: доступы (AFINA / гостевые / ОП) + регламент UTM
 - Sense «доступы»: «как зайти в афину» без слова «доступ»; гостевой+Директ → гостевые (не ambiguous); clear sense оставляет **одну** статью в контексте.
-- UTM (`kb-23420`): короткий якорь `utm` больше не отбрасывается; интент UIS/Roistat/Calltouch → регламент тегирования, не Контакты/гостевые; нарезка секций коллтрекинга; lookalike `Calltouсh`; вопрос «когда … Calltouch» поднимает блок «обязательно размечать», не шаблоны РК; `INDEX_VERSION = 5`.
-- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `knowledgeRagSense.ts`, `knowledgeRagEvalCases.ts`, `scripts/knowledge/check-rag-access-utm.mjs`.
+- UTM (`kb-23420`): короткий якорь `utm` больше не отбрасывается; интент UIS/Roistat/Calltouch → регламент тегирования, не Контакты/гостевые; нарезка секций коллтрекинга; lookalike `Calltouсh`; вопрос «когда … Calltouch» поднимает блок «обязательно размечать», не шаблоны РК; отказ «нет прямого ответа…» с фактами дальше не обнуляет citations; `INDEX_VERSION = 5`.
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `knowledgeRagSense.ts`, `knowledgeRagEvalCases.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `scripts/knowledge/check-rag-access-utm.mjs`.
 - Проверка: `node scripts/knowledge/check-rag-access-utm.mjs`; на стейдже чат под Драго — вопросы по доступам и UTM.
 
 ## 2026-08-25
