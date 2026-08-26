@@ -155,7 +155,10 @@ export function hasActsRegulationIntent(question: string): boolean {
   if (!q) return false;
   if (/ydirect|add\s*cost/i.test(q)) return true;
   const withoutActual = q.replace(/актуальн\w*/gi, ' ');
-  return /(?:^|[^а-яa-z])акт(?:ы|ов|а|у|ам|ами)?(?:[^а-яa-z]|$)/i.test(withoutActual);
+  // не полагаемся на [^а-я] (без unicode-флага в части рантаймов)
+  return /(?:^|[\s,.:;!?«»"(\[])акт(?:ы|ов|а|у|ам|ами)?(?=$|[\s,.:;!?»")\]])/i.test(
+    withoutActual
+  );
 }
 
 /** Якорь секции актов / площадок в kb-31980. */
@@ -625,8 +628,11 @@ export function longestRareToken(distinctive: string[], question = ''): string |
   }
   if (actsIntent) {
     const acts = pool.filter((t) => isActsSectionToken(t));
-    if (acts.length) {
-      return [...acts].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    // «акты яндекс» — не брать якорь «яндекс» (блок Контактов), а слово «акты»
+    const actWord = acts.filter((t) => /^акт/i.test(t));
+    const useActs = actWord.length ? actWord : acts;
+    if (useActs.length) {
+      return [...useActs].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
     }
   }
   if (writeoffIntent) {
@@ -738,7 +744,18 @@ function isRareAnchorHeadingAt(blob: string, form: string, idx: number): boolean
   // «Юридическая поддержка / Юристы», «Бюро переводов / переводчики»
   if (line.length <= 72 && line.includes('/') && words.length <= 10) return true;
 
-  if (col > 2) return false;
+  if (col > 2) {
+    // «Акты Яндекс» / «Акты ВКР» — якорь не в начале строки, но это шапка секции
+    if (
+      line.length <= 48 &&
+      words.length <= 6 &&
+      /^акты?\b/i.test(line) &&
+      col <= 24
+    ) {
+      return true;
+    }
+    return false;
+  }
 
   // Короткая шапка: «Дизайнеры», «Яндекс Менеджер», «CLICK RU»
   if (line.length <= 48 || words.length <= 4) return true;

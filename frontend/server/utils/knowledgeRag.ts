@@ -180,10 +180,10 @@ function preferUtmRegulation(question: string, anchor: string | null): boolean {
 }
 
 /** Акты РП → только kb-31980. */
-function preferActsRegulation(question: string, anchor: string | null): boolean {
+function preferActsRegulation(question: string, _anchor: string | null): boolean {
   if (!hasActsRegulationIntent(question)) return false;
-  if (hasUtmTaggingIntent(question) || hasContactDirectoryIntent(question)) return false;
-  return Boolean(anchor && isActsSectionToken(anchor)) || hasActsRegulationIntent(question);
+  if (hasUtmTaggingIntent(question)) return false;
+  return true;
 }
 
 /** Списания AFINA → только kb-28468. */
@@ -505,6 +505,62 @@ export async function retrieveKnowledgeDetailed(
           branches: branches.slice(0, 3)
         };
       }
+    }
+  }
+
+  // Акты / списания — до hard-якоря «яндекс» из Контактов
+  if (preferActsRegulation(q, null) && visibleIds.has(ACTS_ARTICLE_ID)) {
+    const article = publishedById.get(ACTS_ARTICLE_ID);
+    if (article) {
+      const articleChunks = visibleChunks
+        .filter((c) => c.articleId === ACTS_ARTICLE_ID)
+        .map((c) => c.text);
+      return {
+        hits: [
+          {
+            articleId: ACTS_ARTICLE_ID,
+            title: article.title,
+            score: 0.85,
+            snippets: pickArticleSnippets(
+              article.title,
+              articleChunks,
+              distinctive,
+              lexTokensFast,
+              3,
+              q
+            )
+          }
+        ],
+        ambiguous: false,
+        branches: []
+      };
+    }
+  }
+  if (preferWriteoffAfina(q, null) && visibleIds.has(WRITEOFF_ARTICLE_ID)) {
+    const article = publishedById.get(WRITEOFF_ARTICLE_ID);
+    if (article) {
+      const articleChunks = visibleChunks
+        .filter((c) => c.articleId === WRITEOFF_ARTICLE_ID)
+        .map((c) => c.text);
+      return {
+        hits: [
+          {
+            articleId: WRITEOFF_ARTICLE_ID,
+            title: article.title,
+            score: 0.85,
+            snippets: pickArticleSnippets(
+              article.title,
+              articleChunks,
+              distinctive,
+              lexTokensFast,
+              3,
+              q
+            )
+          }
+        ],
+        ambiguous: false,
+        branches: []
+      };
     }
   }
 
