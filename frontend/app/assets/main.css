@@ -17174,7 +17174,8 @@ button.button {
   --pvm-pad-x: 8.2%;
   /* Footer CTA row — арт всегда выше этой зоны, кнопки не режут иллюстрацию */
   --pvm-nav-h: 52px;
-  --pvm-art-clearance: 72px;
+  --pvm-art-clearance: 98px;
+  --pvm-art-bottom: calc(var(--pvm-nav-h) + 12px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17317,31 +17318,34 @@ button.button {
 
 .pvm-illust {
   position: absolute;
-  right: 2%;
-  bottom: var(--pvm-art-clearance);
+  right: 0;
+  bottom: var(--pvm-art-bottom);
   z-index: 1;
-  width: min(56%, 220px);
+  width: min(48%, 200px);
   height: auto;
-  max-height: 32%;
+  max-height: 29%;
   object-fit: contain;
   object-position: right bottom;
   pointer-events: none;
   user-select: none;
+  /* Не заходить в левую половину — там CTA (series-c) */
+  max-width: min(48%, 200px);
 }
 
 .pvm-illust--welcome {
-  width: min(62%, 245px);
-  max-height: 34%;
-  right: 0;
-  bottom: var(--pvm-art-clearance);
+  width: min(50%, 208px);
+  max-height: 31%;
+  right: -1%;
+  bottom: calc(var(--pvm-nav-h) + 14px);
 }
 
 .pvm-illust--intro {
-  width: min(66%, 255px);
-  max-height: 34%;
-  right: 6%;
-  left: auto;
-  bottom: var(--pvm-art-clearance);
+  width: min(56%, 228px);
+  max-height: 30%;
+  right: 10%;
+  left: 10%;
+  margin-inline: auto;
+  bottom: calc(var(--pvm-nav-h) + 16px);
   object-position: center bottom;
 }
 
@@ -17349,10 +17353,10 @@ button.button {
 .pvm-illust--fresh,
 .pvm-illust--weekend,
 .pvm-illust--triggers {
-  width: min(54%, 210px);
-  max-height: 30%;
+  width: min(46%, 198px);
+  max-height: 28%;
   right: 0;
-  bottom: var(--pvm-art-clearance);
+  bottom: var(--pvm-art-bottom);
 }
 
 .pvm-kicker {
@@ -17403,13 +17407,13 @@ button.button {
   overflow: auto;
   padding-right: 2px;
   /* Не наезжать на арт справа/снизу (эскиз: текст слева, кот справа) */
-  max-width: min(92%, 22rem);
-  padding-bottom: 6%;
+  max-width: min(84%, 20rem);
+  padding-bottom: 12%;
 }
 
 .pvm-card--welcome .pvm-copy {
-  max-width: min(86%, 19.5rem);
-  padding-bottom: 8%;
+  max-width: min(78%, 17rem);
+  padding-bottom: 18%;
 }
 
 .pvm-slide--intro .pvm-copy {
@@ -17446,7 +17450,7 @@ button.button {
 
 .pvm-nav {
   position: relative;
-  z-index: 3;
+  z-index: 4;
   margin-top: auto;
   padding-top: 8px;
   min-height: var(--pvm-nav-h);
@@ -17455,7 +17459,8 @@ button.button {
   justify-content: flex-start;
   gap: 14px 20px;
   flex-wrap: nowrap;
-  /* Отдельная полоса CTA: арт не заходит под кнопки */
+  /* CTA слева; арт справа — не пересекаются (series-c welcome/tips) */
+  max-width: 52%;
   isolation: isolate;
 }
 
@@ -17465,10 +17470,13 @@ button.button {
 
 .pvm-nav--welcome {
   gap: 10px 22px;
+  max-width: 46%;
 }
 
 .pvm-nav--intro {
+  max-width: 100%;
   justify-content: flex-end;
+  padding-right: 2%;
 }
 
 .pvm-nav--intro .pvm-nav__spacer {

@@ -2,6 +2,14 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-08-27
+
+### Памятка Design C: прозрачный арт + clearance CTA
+- Арт: убран baked-in checkerboard на всех 6 `pvm-c-art-*.png` — true alpha, только кот+пропсы.
+- Layout: `--pvm-art-bottom`, nav `max-width` слева, арт уже и выше CTA — «Прочитать»/«Дальше» не наезжают на иллюстрацию.
+- Cache-bust `?v=art-c-v9`. Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + intro + tip1–4.
+
 ## 2026-08-26
 
 ### Памятка Design C: кнопки не перекрывают арт + горшки
