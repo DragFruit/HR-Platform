@@ -293,6 +293,46 @@ export function applyAvitoAutoScoreAdjust(
   return Math.min(baseScore, 0.05);
 }
 
+/** Platform-owned ecom case study articles. */
+export const CASE_ECOM_ARTICLE_IDS = [
+  'kb-case-ecom-index',
+  'kb-case-ecom-cdek-shopping',
+  'kb-case-ecom-kolesoru',
+  'kb-case-ecom-ledeme',
+  'kb-case-ecom-ecco',
+  'kb-case-ecom-artkvartal',
+  'kb-case-ecom-shop-sanequip',
+  'kb-case-ecom-lifestyle-unico',
+  'kb-case-ecom-garda-opt',
+  'kb-case-ecom-portaprima',
+  'kb-case-ecom-mk-shatura',
+  'kb-case-ecom-age-of-innocence'
+] as const;
+
+const CASE_ECOM_ID_SET = new Set<string>(CASE_ECOM_ARTICLE_IDS);
+
+const CASE_STUDY_Q_RE =
+  /(?<![а-яёa-z0-9])кейс(?:а|у|ом|е|ы|ов|ам|ами|ах)?(?![а-яёa-z0-9])|(?<![a-z0-9])case[\s-]*stud(?:y|ies)(?![a-z0-9])/iu;
+
+const ECOM_Q_RE =
+  /(?<![а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс)(?![а-яёa-z0-9])/iu;
+
+export function isCaseEcomArticle(articleId: string): boolean {
+  return CASE_ECOM_ID_SET.has(String(articleId || ''));
+}
+
+/** Буст статей кейсов ecom, когда вопрос про кейсы / ecom. */
+export function applyCaseEcomScoreAdjust(
+  articleId: string,
+  baseScore: number,
+  question: string
+): number {
+  const q = String(question || '');
+  if (!CASE_STUDY_Q_RE.test(q) && !ECOM_Q_RE.test(q)) return baseScore;
+  if (!isCaseEcomArticle(articleId)) return baseScore;
+  return Math.min(1, baseScore + 0.28);
+}
+
 /** Описание известных кейсов для доков / ответа заказчику. */
 export const KNOWN_SENSE_CASES_DOC = [
   {
@@ -322,7 +362,14 @@ export const KNOWN_SENSE_CASES_DOC = [
     examples: [
       'авто / автотематика / машины → НЕ статья Авито (kb-30126)',
       'авито / avito → маркетплейс Авито',
-      'кейс по авто → сначала fallback кейсов, без ссылки на Авито-специалистов'
+      'кейс по авто → RAG по кейсам (пока в базе в основном ecom); Авито не поднимать'
+    ]
+  },
+  {
+    term: 'кейсы ecom',
+    examples: [
+      'кейс / case study / ecom → статьи kb-case-ecom-* (без stub «не умею работать с кейсами»)',
+      'ответ: 1–3 похожих подробно + короткий список остальных + папка Bitrix'
     ]
   }
 ];

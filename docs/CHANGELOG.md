@@ -4,6 +4,13 @@
 
 ## 2026-08-27
 
+### База знаний ИИ: кейсы ecom в RAG (stub снят)
+- Из PDF «сборник кейсов VBI ECOM» извлечено **11** кейсов Ecommerce (+ обзор). MD: `docs/knowledge-cases/ecom/*.md`. Исключён Грузовичкоф (логистика).
+- Статьи БЗ (published, `departments: []`): `kb-case-ecom-*` + `kb-case-ecom-index`; platform-owned в `merge-knowledge-articles-seed.mjs`.
+- Stub «Пока что я не умею работать с кейсами…» снят: вопросы про кейсы идут через RAG/GPT. **авто ≠ Авито** сохранён.
+- Промпт продаж: 1–3 похожих подробно → короткий список других ecom → папка Bitrix кейсов. Буст хитов `applyCaseEcomScoreAdjust`.
+- Проверка: `node scripts/knowledge/check-kb-cases-fallback.mjs`; `node scripts/knowledge/check-kb-auto-avito.mjs`. Стейдж `:8080` — «нужен кейс ecom, проблема с ДРР / фидом». Прод не трогали.
+
 ### База знаний: FAB карандаша внутри контента раздела
 - `.kb-write-fab`: `position: absolute` внутри `.kb-page--search` (bottom-left), вместо `fixed` к viewport — круг больше не сидит на границе сайдбара.
 - Правый нижний угол (кот оценки) не трогали.

@@ -27,9 +27,11 @@ import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
 import {
   ambiguousBranchesForQuestion,
   applyAvitoAutoScoreAdjust,
+  applyCaseEcomScoreAdjust,
   applySenseScoreAdjust,
   clearSenseForQuestion,
   isAvitoFocusedArticle,
+  isCaseEcomArticle,
   shouldSuppressAvitoForAutoQuestion,
   type KnowledgeSense
 } from './knowledgeRagSense';
@@ -773,6 +775,7 @@ export async function retrieveKnowledgeDetailed(
       let combined = W_SEM * sem + W_LEX * lex;
       combined = applySenseScoreAdjust(chunk.articleId, combined, q, senseOpts);
       combined = applyAvitoAutoScoreAdjust(chunk.articleId, chunk.title, combined, q);
+      combined = applyCaseEcomScoreAdjust(chunk.articleId, combined, q);
       // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
       if (
         distinctive.length &&
@@ -866,6 +869,54 @@ export async function retrieveKnowledgeDetailed(
         hits = [...senseHits, ...related];
       } else {
         hits = senseHits;
+      }
+    }
+  }
+
+  // Кейсы / ecom: поднять найденные kb-case-ecom-* и всегда добавить обзор (папка Bitrix + список)
+  if (
+    !clearSense &&
+    (/(?<![а-яёa-z0-9])кейс(?:а|у|ом|е|ы|ов|ам|ами|ах)?(?![а-яёa-z0-9])|(?<![a-z0-9])case[\s-]*stud(?:y|ies)(?![a-z0-9])/iu.test(
+      q
+    ) ||
+      /(?<![а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс)(?![а-яёa-z0-9])/iu.test(q))
+  ) {
+    const caseHits = hits.filter((h) => isCaseEcomArticle(h.articleId));
+    const indexId = 'kb-case-ecom-index';
+    let indexHit = hits.find((h) => h.articleId === indexId);
+    if (!indexHit && visibleIds.has(indexId)) {
+      const article = publishedById.get(indexId);
+      if (article) {
+        const articleChunks = visibleChunks.filter((c) => c.articleId === indexId);
+        indexHit = {
+          articleId: indexId,
+          title: article.title,
+          score: 0.55,
+          snippets: pickArticleSnippets(
+            article.title,
+            articleChunks.map((c) => c.text),
+            distinctive,
+            lexTokens,
+            3,
+            q
+          )
+        };
+      }
+    }
+    const primary = [...caseHits];
+    if (indexHit && !primary.some((h) => h.articleId === indexId)) {
+      primary.push(indexHit);
+    }
+    if (primary.length) {
+      const used = new Set(primary.map((h) => h.articleId));
+      const related = hits.filter((h) => !used.has(h.articleId));
+      hits = [...primary, ...related];
+      if (!usedSourceIds.length) {
+        usedSourceIds = primary
+          .filter((h) => h.articleId !== indexId)
+          .slice(0, 3)
+          .map((h) => h.articleId);
+        if (!usedSourceIds.length) usedSourceIds = [indexId];
       }
     }
   }
@@ -1089,6 +1140,7 @@ export async function retrieveKnowledgeLexicalFallback(
       const plain = chunkTexts.join('\n');
       let lex = lexicalScore(article.title, plain, tokens);
       lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
+      lex = applyCaseEcomScoreAdjust(article.id, lex, q);
       return {
         articleId: article.id,
         title: article.title,

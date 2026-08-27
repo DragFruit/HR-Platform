@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Проверка: авто (машины) ≠ Авито; кейсы + авто → fallback кейсов.
+ * Проверка: авто (машины) ≠ Авито; кейсы идут через RAG (stub снят).
  *
  *   node scripts/knowledge/check-kb-auto-avito.mjs
  */
@@ -35,23 +35,19 @@ const intent = loadTs(join(frontend, 'app/utils/knowledgeAiIntent.ts'));
 const sense = loadTs(join(frontend, 'server/utils/knowledgeRagSense.ts'));
 const lexical = loadTs(join(frontend, 'server/utils/knowledgeRagLexical.ts'));
 
-const {
-  detectKbAiCasesQuestion,
-  KB_AI_CASES_REPLY
-} = intent;
+const { detectKbAiCasesQuestion, KB_AI_CASES_REPLY } = intent;
 const {
   mentionsAutoVehicles,
   mentionsAvitoMarketplace,
   shouldSuppressAvitoForAutoQuestion,
   isAvitoFocusedArticle,
-  applyAvitoAutoScoreAdjust
+  applyAvitoAutoScoreAdjust,
+  applyCaseEcomScoreAdjust,
+  isCaseEcomArticle
 } = sense;
 const { textCoversToken } = lexical;
 
-assert.equal(
-  KB_AI_CASES_REPLY,
-  'Пока что я не умею работать с кейсами, но уже прохожу обучение! Скоро смогу ответить на все ваши вопросы по ним.'
-);
+assert.equal(KB_AI_CASES_REPLY, '', 'cases stub disabled');
 
 const autoQs = [
   'где взять кейс по авто тематике?',
@@ -96,4 +92,17 @@ assert.equal(
   0.9
 );
 
-console.log('ok: auto≠avito + cases+auto fallback detect');
+assert.equal(isCaseEcomArticle('kb-case-ecom-ledeme'), true);
+const boosted = applyCaseEcomScoreAdjust(
+  'kb-case-ecom-ledeme',
+  0.4,
+  'нужен кейс ecom, проблема с фидом и ДРР'
+);
+assert.ok(boosted > 0.4, `boost ecom case, got ${boosted}`);
+assert.equal(
+  applyCaseEcomScoreAdjust('kb-21301', 0.4, 'нужен кейс ecom'),
+  0.4,
+  'non-case article not boosted'
+);
+
+console.log('ok: auto≠avito + cases via RAG (stub off)');

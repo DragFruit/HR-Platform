@@ -20,11 +20,23 @@ import { readFile, writeFile } from 'node:fs/promises';
 /** Снятые сид-статьи: не оставлять на стенде после замены. */
 const RETIRED_ARTICLE_IDS = new Set(['kb-vibe-vacations']);
 
-/** Платформенные статьи Vibe: текст и аудитория всегда из сида. */
+/** Платформенные статьи Vibe / кейсы ecom: текст и аудитория всегда из сида. */
 const PLATFORM_OWNED_ARTICLE_IDS = new Set([
   'kb-vibe-vacations-digital',
   'kb-vibe-vacations-other',
-  'kb-vibe-ideas'
+  'kb-vibe-ideas',
+  'kb-case-ecom-index',
+  'kb-case-ecom-cdek-shopping',
+  'kb-case-ecom-kolesoru',
+  'kb-case-ecom-ledeme',
+  'kb-case-ecom-ecco',
+  'kb-case-ecom-artkvartal',
+  'kb-case-ecom-shop-sanequip',
+  'kb-case-ecom-lifestyle-unico',
+  'kb-case-ecom-garda-opt',
+  'kb-case-ecom-portaprima',
+  'kb-case-ecom-mk-shatura',
+  'kb-case-ecom-age-of-innocence'
 ]);
 
 const [targetPath, incomingPath] = process.argv.slice(2);
