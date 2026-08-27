@@ -9,6 +9,13 @@
 - Правый нижний угол (кот оценки) не трогали.
 - Файлы: `main.css`. Проверка: `/knowledge` — лаймовый FAB слева внизу в области контента. Стейдж `:8080`. Прод не трогали.
 
+### Памятка Design C: шире текст + без чёрной обводки арта (art-c-v15)
+- Layout: колонка copy/title на tip-слайдах уже расширена к series-c в `main.css` (не узкая лента слева); clearance до арта и CTA слева сохранены.
+- Арт: с PNG снят baked black stroke/fringe (особенно tip2–3 после Black→alpha); край смягчён; горшки/текстура/cutouts сохранены. Cache-bust `?v=art-c-v15`.
+- CSS: у `.pvm-illust` по-прежнему без `border`/`outline`/`box-shadow`/`filter`.
+- Файлы: `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png` (+ layout уже в `main.css`).
+- Проверка: `?pvm=tips` — tip1/tip2 шире текст, без чёрной кромки на котах. Стейдж `http://45.12.74.25:8080/?pvm=1` (hard refresh). Прод не трогали.
+
 ### База знаний: статьи сотрудников + модерация руководителя
 - На `/knowledge` — FAB карандаш **слева внизу**; панель создания/правок своих статей; у руководителя — статьи прямых подчинённых и режим «Проверить» (инлайн-комментарии, Принять / На доработку / Отклонить с обязательной причиной).
 - Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). Правка опубликованной — через `pendingRevision` (старая версия жива до Accept). RAG только `published`.
