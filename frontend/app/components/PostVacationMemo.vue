@@ -15,15 +15,7 @@
     >
       <template v-if="ui === 'welcome' || ui === 'collapsing'">
         <div class="pvm-shell" :class="{ 'is-fading': ui === 'collapsing' }">
-          <div class="pvm-tabs" aria-hidden="true">
-            <span
-              v-for="n in 5"
-              :key="n"
-              class="pvm-tab"
-              :class="{ 'is-active': n === 1 }"
-            >{{ n }}</span>
-          </div>
-          <div class="pvm-card pvm-card--welcome" data-tab="1">
+          <div class="pvm-card pvm-card--welcome">
             <div class="pvm-card__paper" aria-hidden="true" />
             <div class="pvm-card__body">
               <p v-if="welcome.kicker" class="pvm-kicker">{{ welcome.kicker }}</p>
@@ -71,15 +63,7 @@
       </template>
 
       <div v-else class="pvm-shell pvm-shell--carousel">
-        <div class="pvm-tabs" aria-hidden="true">
-          <span
-            v-for="n in 5"
-            :key="n"
-            class="pvm-tab"
-            :class="{ 'is-active': n === activeTab }"
-          >{{ n }}</span>
-        </div>
-        <div class="pvm-card" :data-tab="activeTab">
+        <div class="pvm-card">
           <div class="pvm-card__paper" aria-hidden="true" />
           <div class="pvm-strip" :style="{ transform: `translate3d(${-index * 100}%, 0, 0)` }">
             <article
@@ -172,8 +156,6 @@
 </template>
 
 <script setup lang="ts">
-import { postVacationMemoTabIndex } from '~/data/postVacationMemoSlides';
-
 const {
   ui,
   welcome,
@@ -198,8 +180,6 @@ const dockStyle = ref<Record<string, string>>({});
 
 const showOverlay = computed(() => ui.value === 'welcome' || ui.value === 'collapsing' || ui.value === 'carousel');
 const showDock = computed(() => ui.value === 'flying' || ui.value === 'docked');
-
-const activeTab = computed(() => postVacationMemoTabIndex(slide.value?.id || 'intro'));
 
 const reducedMotion = () =>
   import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

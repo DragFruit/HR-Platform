@@ -108,22 +108,3 @@ export const POST_VACATION_MEMO_WINDOW_DAYS = 7;
 
 /** Сколько рабочих дней чип живёт в углу после «Позже». */
 export const POST_VACATION_MEMO_DOCK_WORKING_DAYS = 10;
-
-/** Визуальный номер folder-tab (1…5). Welcome/intro = 1; tip1–4 = 2…5. */
-export function postVacationMemoTabIndex(slideId: string): number {
-  switch (slideId) {
-    case 'welcome':
-    case 'intro':
-      return 1;
-    case 'pace':
-      return 2;
-    case 'fresh':
-      return 3;
-    case 'weekend':
-      return 4;
-    case 'triggers':
-      return 5;
-    default:
-      return 1;
-  }
-}

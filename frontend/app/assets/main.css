@@ -17310,9 +17310,6 @@ button.button {
   --pvm-lavender: #c8bddc;
   --pvm-ink: #2a1848;
   --pvm-lime: #ddf365;
-  --pvm-tab-idle: 32px;
-  --pvm-tab-active-w: 56px;
-  --pvm-tab-h: 38px;
   --pvm-radius: 28px;
   --pvm-pad-x: 8.2%;
   /* Footer CTA + art: series-c — кнопки слева, сцена справа */
@@ -17368,53 +17365,6 @@ button.button {
   min-height: 0;
 }
 
-/* Folder tabs: декоративные, не кликабельны; вокруг — прозрачно */
-.pvm-tabs {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 0 var(--pvm-pad-x);
-  height: var(--pvm-tab-h);
-  pointer-events: none;
-  user-select: none;
-  flex: 0 0 auto;
-  z-index: 2;
-  background: transparent;
-}
-
-.pvm-tab {
-  display: grid;
-  place-items: center;
-  width: var(--pvm-tab-idle);
-  height: var(--pvm-tab-idle);
-  /* Белый квадрат цифры; вокруг прозрачно (не сливается с карточкой) */
-  margin-bottom: 7px;
-  border-radius: 9px;
-  background: #fff;
-  color: var(--pvm-ink);
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: none;
-  border: 1.5px solid rgba(42, 24, 72, 0.28);
-  flex: 0 0 auto;
-}
-
-.pvm-tab.is-active {
-  width: var(--pvm-tab-active-w);
-  height: var(--pvm-tab-h);
-  margin-bottom: -1px;
-  background: var(--pvm-lavender);
-  color: #fff;
-  font-size: 1.4rem;
-  font-weight: 800;
-  border-radius: 14px 14px 0 0;
-  border: 0;
-  /* Слит с карточкой: тот же lavender, белая цифра как на series-c */
-}
-
 .pvm-card {
   position: relative;
   flex: 1 1 auto;
@@ -17422,18 +17372,9 @@ button.button {
   display: flex;
   flex-direction: column;
   background: var(--pvm-lavender);
-  /* По умолчанию верх скруглён; активный таб 1 — без левого угла */
   border-radius: var(--pvm-radius);
   overflow: hidden;
   box-shadow: 0 16px 36px rgba(30, 20, 50, 0.16);
-}
-
-.pvm-card[data-tab='1'] {
-  border-top-left-radius: 0;
-}
-
-.pvm-card[data-tab='5'] {
-  border-top-right-radius: 0;
 }
 
 .pvm-card__paper {
