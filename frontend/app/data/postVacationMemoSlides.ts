@@ -14,7 +14,7 @@ export type PostVacationMemoSlide = {
   laterCta?: string;
 };
 
-const ART_V = 'art-c-v13';
+const ART_V = 'art-c-v14';
 
 /** Первый экран: тепло, без акцента что выход = хандра. */
 export const POST_VACATION_WELCOME: PostVacationMemoSlide = {

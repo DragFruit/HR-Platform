@@ -17333,17 +17333,18 @@ button.button {
 
 .pvm-illust {
   position: absolute;
-  right: 3.5%;
+  right: 2%;
   bottom: var(--pvm-art-bottom);
   z-index: 1;
-  width: min(48%, 200px);
+  /* series-c: сцена ~60–66% ширины / ~45% высоты карточки — не «наклейка» */
+  width: min(64%, 286px);
   height: auto;
-  max-height: 29%;
+  max-height: 44%;
   object-fit: contain;
   object-position: right bottom;
   pointer-events: none;
   user-select: none;
-  max-width: min(48%, 200px);
+  max-width: min(64%, 286px);
   /* Без рамки/плиты вокруг сцены — только cutout на lavender */
   border: none;
   outline: none;
@@ -17355,19 +17356,21 @@ button.button {
 }
 
 .pvm-illust--welcome {
-  width: min(50%, 208px);
-  max-height: 31%;
-  right: 2.5%;
-  bottom: calc(var(--pvm-nav-h) + 12px);
+  width: min(66%, 296px);
+  max-width: min(66%, 296px);
+  max-height: 46%;
+  right: 1.5%;
+  bottom: calc(var(--pvm-nav-h) + 8px);
 }
 
 .pvm-illust--intro {
-  width: min(56%, 228px);
-  max-height: 30%;
-  right: 10%;
-  left: 10%;
+  width: min(68%, 304px);
+  max-width: min(68%, 304px);
+  max-height: 46%;
+  right: 6%;
+  left: 6%;
   margin-inline: auto;
-  bottom: calc(var(--pvm-nav-h) + 14px);
+  bottom: calc(var(--pvm-nav-h) + 10px);
   object-position: center bottom;
 }
 
@@ -17375,9 +17378,10 @@ button.button {
 .pvm-illust--fresh,
 .pvm-illust--weekend,
 .pvm-illust--triggers {
-  width: min(46%, 198px);
-  max-height: 28%;
-  right: 3.5%;
+  width: min(64%, 286px);
+  max-width: min(64%, 286px);
+  max-height: 44%;
+  right: 2%;
   bottom: var(--pvm-art-bottom);
 }
 
@@ -17434,8 +17438,8 @@ button.button {
 }
 
 .pvm-card--welcome .pvm-copy {
-  max-width: min(78%, 17rem);
-  padding-bottom: 18%;
+  max-width: min(68%, 15.5rem);
+  padding-bottom: 26%;
 }
 
 .pvm-slide--intro .pvm-copy {
@@ -17454,8 +17458,8 @@ button.button {
 .pvm-slide--fresh .pvm-copy,
 .pvm-slide--weekend .pvm-copy,
 .pvm-slide--triggers .pvm-copy {
-  max-width: min(88%, 20.5rem);
-  padding-bottom: 4%;
+  max-width: min(72%, 17.5rem);
+  padding-bottom: 18%;
 }
 
 .pvm-text {

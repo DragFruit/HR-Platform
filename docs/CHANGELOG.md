@@ -4,6 +4,12 @@
 
 ## 2026-08-27
 
+### Памятка Design C: tip2–4 cutouts + крупнее арт (art-c-v14)
+- Арт: заказчикские cutouts → `pvm-c-art-tip2.png` (кот+стол/ноут), `pvm-c-art-tip3.png` (идущий кот+растение/боулинг/билет), `pvm-c-art-tip4.png` (кот+блокнот+растение). Black→true alpha; горшки и ground-band сохранены; без шахматки/рамки. welcome/intro/tip1/chip без смены ассетов.
+- Layout: `.pvm-illust` увеличен под пропорции series-c (~64% ширины / ~44% высоты вместо ~46%/28% и капа ~200px); tip-copy чуть уже + больше `padding-bottom`, чтобы текст не наезжал на сцену.
+- Cache-bust `?v=art-c-v14`. Файлы: `public/memos/pvm-c-art-tip{2,3,4}.png`, `postVacationMemoSlides.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — tip2–4 новый арт, коты заметно крупнее на всех слайдах. Прод не трогали.
+
 ### Памятка Design C: новые cutouts welcome/intro/tip1 + чип (art-c-v13)
 - Арт: заказчикские cutouts → `pvm-c-art-welcome.png` (потягивающийся кот), `pvm-c-art-intro.png` (смотрит вправо), `pvm-c-art-tip1.png` (глаза закрыты), новый `pvm-c-art-chip.png` (кот+чемодан без растения). Black→true alpha; cream-горшки и фиолетовая ground-band сохранены. tip2–tip4 без смены.
 - UI: чип/свёртка берёт `POST_VACATION_CHIP_SRC`, не welcome; у `.pvm-illust` явно без рамки; `.pvm-card__paper` — сильнее vertical linen (как series-c-01).
