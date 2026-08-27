@@ -112,7 +112,7 @@ export function useUserNotifications() {
   const notificationLink = (item: UserNotification) => {
     if (item.kind === 'post_vacation_memo') return '/vacations?pvm=tips';
     if (isIdeaNotification(item)) return '/ideas';
-    if (isKnowledgeNotification(item)) return '/knowledge';
+    if (isKnowledgeNotification(item)) return '/knowledge/write';
     return isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
   };
 

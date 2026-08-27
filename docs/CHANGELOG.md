@@ -4,6 +4,13 @@
 
 ## 2026-08-27
 
+### База знаний: редактор статей — отдельная страница + тихий FAB
+- FAB карандаша на `/knowledge`: крем `#eeeee8` + чёрная рамка (лайм только на hover), по-прежнему `absolute` слева внизу внутри `.kb-page--search`.
+- Клик ведёт на **`/knowledge/write`** — полноценная страница в стиле `/admin/knowledge` (редактор + списки: свои / команда; ревью руководителя на той же странице). Без оверлея поверх поиска.
+- Уведомления по статьям открывают `/knowledge/write`. Путь уже в whitelist `startsWith('/knowledge/')`.
+- Файлы: `pages/knowledge/write.vue`, `KnowledgeArticleWorkspace.vue`, `knowledge/index.vue`, `main.css`, `useUserNotifications.ts`, docs.
+- Проверка: стейдж `/knowledge` → FAB → `/knowledge/write`; руководитель — «Проверить». Прод не трогали.
+
 ### База знаний ИИ: кейсы ecom в RAG (stub снят)
 - Из PDF «сборник кейсов VBI ECOM» извлечено **11** кейсов Ecommerce (+ обзор). MD: `docs/knowledge-cases/ecom/*.md`. Исключён Грузовичкоф (логистика).
 - Статьи БЗ (published, `departments: []`): `kb-case-ecom-*` + `kb-case-ecom-index`; platform-owned в `merge-knowledge-articles-seed.mjs`.

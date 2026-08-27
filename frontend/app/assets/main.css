@@ -6241,22 +6241,30 @@ button.org-unit-head--link:hover {
   left: 12px;
   bottom: 12px;
   z-index: 40;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid #111;
-  background: #ddf365;
+  border: 2px solid #111;
+  background: #eeeee8;
   color: #111;
-  box-shadow: 4px 4px 0 #7451f4;
+  box-shadow: 3px 3px 0 #111;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
   cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .kb-write-fab:hover {
+  background: #f6f2ff;
   transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 #7451f4;
+  box-shadow: 4px 4px 0 #ddf365;
+}
+
+.kb-write-fab:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 2px;
 }
 
 .kb-wysiwyg--readonly .kb-wysiwyg__surface {
