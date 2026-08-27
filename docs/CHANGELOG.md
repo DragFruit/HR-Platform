@@ -4,6 +4,12 @@
 
 ## 2026-08-27
 
+### VPN: убрана кнопка «Код ChatGPT»
+- В помощнике `/vpn` больше нет чипа и ветки «Код ChatGPT» (проверка почты OpenAI). Остались только VPN и Прокси с прежними инструкциями.
+- Удалён `POST /api/vpn/chatgpt-code`. Коды в Telegram (cron) без изменений.
+- Файлы: `pages/vpn/index.vue`, удалён `api/vpn/chatgpt-code.post.ts`; `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/CHATGPT-TELEGRAM.md`.
+- Проверка: стейдж `http://45.12.74.25:8080/vpn` и бой `http://45.12.74.25/vpn` — два чипа, без ChatGPT.
+
 ### Памятка Design C: tip2–4 cutouts + крупнее арт (art-c-v14)
 - Арт: заказчикские cutouts → `pvm-c-art-tip2.png` (кот+стол/ноут), `pvm-c-art-tip3.png` (идущий кот+растение/боулинг/билет), `pvm-c-art-tip4.png` (кот+блокнот+растение). Black→true alpha; горшки и ground-band сохранены; без шахматки/рамки. welcome/intro/tip1/chip без смены ассетов.
 - Layout: `.pvm-illust` увеличен под пропорции series-c (~64% ширины / ~44% высоты вместо ~46%/28% и капа ~200px); tip-copy чуть уже + больше `padding-bottom`, чтобы текст не наезжал на сцену.

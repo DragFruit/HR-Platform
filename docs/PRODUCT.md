@@ -259,13 +259,11 @@
 
 ## 6. VPN и прокси (помощник)
 
-Раздел `/vpn` — онбординг сотрудника (скачать клиент; выдача ключа через wg-easy) и код ChatGPT с корпоративной почты. На бое открыт в пилоте отпусков (whitelist).
+Раздел `/vpn` — онбординг сотрудника (скачать клиент; выдача ключа через wg-easy). На бое открыт в пилоте отпусков (whitelist).
 
-Стартовое сообщение: «Привет! Чем я могу помочь?». Ветки: VPN / Прокси / **Код ChatGPT**.
+Стартовое сообщение: «Привет! Чем я могу помочь?». Ветки: VPN / Прокси.
 
-**Код ChatGPT:** `POST /api/vpn/chatgpt-code` `{ excludeCodes?: string[] }` — IMAP (`EMAIL_LOGIN`, `EMAIL_PASSWORD` или `PASSWORD`), письма от `noreply@tm.openai.com` за последний час. Первый запрос — самый свежий код; «Код не подошёл» передаёт уже показанные в `excludeCodes` и берёт предыдущий; пусто → «Код не пришёл» / «Больше кодов не приходило».
-
-**Параллельно — Telegram:** cron `POST /api/cron/chatgpt-code-telegram` (каждые ~2 мин) постит новые коды из той же почты в корпоративный канал через бота (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`). Дедуп по коду в state JSON. Кнопку в `/vpn` не заменяет. Установка: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+**Коды ChatGPT:** кнопка в `/vpn` снята. Коды по-прежнему уходят в корпоративный Telegram: cron `POST /api/cron/chatgpt-code-telegram` (каждые ~2 мин) читает ту же почту (`EMAIL_LOGIN` / `EMAIL_PASSWORD`) и постит через бота. Установка: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
 
 ### Лимиты конфигов на человека
 

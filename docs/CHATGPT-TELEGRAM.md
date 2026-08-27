@@ -1,11 +1,11 @@
 # Коды ChatGPT → корпоративный Telegram
 
-Параллельно кнопке **«Код ChatGPT»** в `/vpn`: тот же IMAP, отдельный пайплайн в канал/чат через бота. UI `/vpn` не отключается.
+IMAP → канал/чат через бота. Кнопки «Код ChatGPT» в `/vpn` больше нет — коды только здесь.
 
 ## Схема
 
 1. systemd timer / cron каждые **2 минуты** дергает `POST /api/cron/chatgpt-code-telegram`.
-2. Сервер читает INBOX (те же критерии, что `/api/vpn/chatgpt-code`):
+2. Сервер читает INBOX (критерии в `openaiChatgptMailCode.ts`):
    - from: `noreply@tm.openai.com`
    - маркер: `Please use the following code to help verify your identity:`
    - окно свежести: **~1 час** (`openaiChatgptMailCode.ts`)

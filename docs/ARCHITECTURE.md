@@ -298,7 +298,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 ### Коды ChatGPT → Telegram (cron)
 
-Параллельно UI `/vpn` → «Код ChatGPT». Общий IMAP: `openaiChatgptMailCode.ts` (окно ~1 ч). Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+IMAP → корпоративный Telegram. Общий util: `openaiChatgptMailCode.ts` (окно ~1 ч). Кнопки в `/vpn` больше нет. Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
 
 | API | Назначение |
 |-----|------------|

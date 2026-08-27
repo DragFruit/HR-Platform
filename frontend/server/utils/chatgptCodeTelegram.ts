@@ -17,9 +17,8 @@ export type ChatgptCodeTelegramSyncResult = {
 };
 
 /**
- * IMAP → новые коды ChatGPT (окно ~1 ч, как /vpn) → Telegram-канал.
+ * IMAP → новые коды ChatGPT (окно ~1 ч) → Telegram-канал.
  * Дедуп по коду в server/data/chatgpt-code-telegram-state.json.
- * VPN-кнопка «Код ChatGPT» не затрагивается.
  */
 export async function runChatgptCodeTelegramSync(opts: {
   dryRun?: boolean;
