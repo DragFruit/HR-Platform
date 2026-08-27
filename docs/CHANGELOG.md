@@ -4,6 +4,15 @@
 
 ## 2026-08-27
 
+### Памятка Design C: текстура, тень, кнопки, регистр заголовка
+- Бумага: сильнее vertical linen на `.pvm-card__paper` (noise + зерно).
+- Тень: с PNG убрана белая пыль под лапами; под `.pvm-illust` — soft violet `drop-shadow` (кот/пропсы те же).
+- Кнопки: «Прочитать»/«Дальше»/«Спасибо» и «Позже»/«Назад» ~4px компактнее; у CTA тонкая обводка `1px`.
+- Арт: небольшой inset от правого края (`right: 2.5–3.5%`), без агрессивного сдвига от кнопок.
+- Tip 3: «свежим взглядом» вместо ALL CAPS `СВЕЖИМ ВЗГЛЯДОМ`.
+- Cache-bust `?v=art-c-v10`. Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + tip «свежим взглядом».
+
 ### Памятка Design C: прозрачный арт + clearance CTA
 - Арт: убран baked-in checkerboard на всех 6 `pvm-c-art-*.png` — true alpha, только кот+пропсы.
 - Layout: `--pvm-art-bottom`, nav `max-width` слева, арт уже и выше CTA — «Прочитать»/«Дальше» не наезжают на иллюстрацию.

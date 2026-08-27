@@ -17172,10 +17172,10 @@ button.button {
   --pvm-tab-h: 38px;
   --pvm-radius: 28px;
   --pvm-pad-x: 8.2%;
-  /* Footer CTA row — арт всегда выше этой зоны, кнопки не режут иллюстрацию */
-  --pvm-nav-h: 52px;
-  --pvm-art-clearance: 98px;
-  --pvm-art-bottom: calc(var(--pvm-nav-h) + 12px);
+  /* Footer CTA row — чуть компактнее, чтобы арт дышал у края карточки */
+  --pvm-nav-h: 46px;
+  --pvm-art-clearance: 90px;
+  --pvm-art-bottom: calc(var(--pvm-nav-h) + 14px);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17292,15 +17292,23 @@ button.button {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.38;
+  /* series-c: заметный вертикальный linen / paper grain, не плоский лавандовый */
+  opacity: 0.62;
   background-image:
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      rgba(55, 30, 95, 0.045) 1px,
+      rgba(55, 30, 95, 0.045) 2px
+    ),
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 2px,
-      rgba(70, 40, 110, 0.03) 2px,
-      rgba(70, 40, 110, 0.03) 3px
+      transparent 3px,
+      rgba(70, 40, 110, 0.028) 3px,
+      rgba(70, 40, 110, 0.028) 4px
     );
   mix-blend-mode: multiply;
 }
@@ -17318,7 +17326,7 @@ button.button {
 
 .pvm-illust {
   position: absolute;
-  right: 0;
+  right: 3.5%;
   bottom: var(--pvm-art-bottom);
   z-index: 1;
   width: min(48%, 200px);
@@ -17328,15 +17336,18 @@ button.button {
   object-position: right bottom;
   pointer-events: none;
   user-select: none;
-  /* Не заходить в левую половину — там CTA (series-c) */
   max-width: min(48%, 200px);
+  /* Мягкая фиолетовая тень под группой вместо белой пыли в PNG */
+  filter:
+    drop-shadow(0 9px 7px rgba(74, 42, 120, 0.28))
+    drop-shadow(0 3px 2px rgba(58, 32, 100, 0.18));
 }
 
 .pvm-illust--welcome {
   width: min(50%, 208px);
   max-height: 31%;
-  right: -1%;
-  bottom: calc(var(--pvm-nav-h) + 14px);
+  right: 2.5%;
+  bottom: calc(var(--pvm-nav-h) + 12px);
 }
 
 .pvm-illust--intro {
@@ -17345,7 +17356,7 @@ button.button {
   right: 10%;
   left: 10%;
   margin-inline: auto;
-  bottom: calc(var(--pvm-nav-h) + 16px);
+  bottom: calc(var(--pvm-nav-h) + 14px);
   object-position: center bottom;
 }
 
@@ -17355,7 +17366,7 @@ button.button {
 .pvm-illust--triggers {
   width: min(46%, 198px);
   max-height: 28%;
-  right: 0;
+  right: 3.5%;
   bottom: var(--pvm-art-bottom);
 }
 
@@ -17452,15 +17463,14 @@ button.button {
   position: relative;
   z-index: 4;
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 6px;
   min-height: var(--pvm-nav-h);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 14px 20px;
+  gap: 12px 16px;
   flex-wrap: nowrap;
-  /* CTA слева; арт справа — не пересекаются (series-c welcome/tips) */
-  max-width: 52%;
+  max-width: 58%;
   isolation: isolate;
 }
 
@@ -17469,8 +17479,8 @@ button.button {
 }
 
 .pvm-nav--welcome {
-  gap: 10px 22px;
-  max-width: 46%;
+  gap: 8px 18px;
+  max-width: 56%;
 }
 
 .pvm-nav--intro {
@@ -17484,13 +17494,13 @@ button.button {
 }
 
 .pvm-later {
-  height: 44px;
+  height: 40px;
   padding: 0 2px;
   border: 0;
   background: transparent;
   color: var(--pvm-ink);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -17509,15 +17519,15 @@ button.button {
 }
 
 .pvm-cta {
-  min-width: 128px;
-  height: 44px;
-  padding: 0 22px;
+  min-width: 118px;
+  height: 40px;
+  padding: 0 18px;
   border-radius: 999px;
-  border: 0;
+  border: 1px solid rgba(42, 24, 72, 0.22);
   background: var(--pvm-lime);
   color: var(--pvm-ink);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   cursor: pointer;
