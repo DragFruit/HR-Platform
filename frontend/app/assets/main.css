@@ -17306,7 +17306,7 @@ button.button {
   pointer-events: none;
 }
 
-/* Пропорции series-c: card ≈ 879×1279 (AR 1.455) */
+/* Пропорции series-c: card ≈ 879×1257 (было 1279; −10px высоты при width 400) */
 .pvm-stage {
   --pvm-lavender: #c8bddc;
   --pvm-ink: #2a1848;
@@ -17326,8 +17326,8 @@ button.button {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(400px, 92vw, calc(90dvh * 879 / 1279));
-  aspect-ratio: 879 / 1279;
+  width: min(400px, 92vw, calc(90dvh * 879 / 1257));
+  aspect-ratio: 879 / 1257;
   height: auto;
   max-height: 90dvh;
   box-sizing: border-box;
