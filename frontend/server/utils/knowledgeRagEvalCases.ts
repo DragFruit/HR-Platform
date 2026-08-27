@@ -1,6 +1,7 @@
 /**
  * Кейсы для проверки RAG на перефразах.
  * expectAny — достаточно попадания любой из статей в топ выдачи.
+ * expectAll — все перечисленные id должны быть в топ (Bitrix+Vibe и т.п.).
  * nearMiss — близкая тема, но НЕ должна быть единственным/первым хитом вместо expectAny (мягкая проверка).
  */
 export type KnowledgeRagEvalCase = {
@@ -11,6 +12,10 @@ export type KnowledgeRagEvalCase = {
   paraphrases: string[];
   /** Ожидаемые id статей (хотя бы одна в топ-3). */
   expectAny: string[];
+  /** Все id должны попасть в топ (строже expectAny). */
+  expectAll?: string[];
+  /** Отдел/роль для фильтра аудитории и sense отпуска. */
+  viewer?: { role: string; department: string };
   note?: string;
 };
 
@@ -23,14 +28,35 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
       'хочу уйти в отпуск какие правила в digital',
       'отпуск в отделе digital что нужно сделать'
     ],
-    expectAny: ['kb-21301'],
-    note: 'Смысл без точного «регламент ухода»'
+    expectAny: ['kb-21301', 'kb-vibe-vacations-digital'],
+    expectAll: ['kb-21301', 'kb-vibe-vacations-digital'],
+    note: 'Bitrix Digital + Vibe Digital'
+  },
+  {
+    id: 'vacation-digital-viewer',
+    canonical: 'как уйти в отпуск',
+    paraphrases: ['как взять отпуск', 'как поставить отпуск', 'как оформить отпуск'],
+    expectAny: ['kb-21301', 'kb-vibe-vacations-digital'],
+    expectAll: ['kb-21301', 'kb-vibe-vacations-digital'],
+    viewer: { role: 'employee', department: 'Digital' },
+    note: 'Без слова Digital — sense по отделу юзера'
   },
   {
     id: 'vacation-seo',
     canonical: 'правила ухода в отпуск SEO',
     paraphrases: ['как сеошнику уйти в отпуск', 'отпуск в SEO SERM какие правила'],
-    expectAny: ['kb-24611']
+    expectAny: ['kb-24611', 'kb-vibe-vacations-other'],
+    expectAll: ['kb-24611', 'kb-vibe-vacations-other'],
+    note: 'Bitrix SEO + Vibe (не-Digital)'
+  },
+  {
+    id: 'vacation-other-viewer',
+    canonical: 'как уйти в отпуск',
+    paraphrases: ['как оформить отпуск', 'как взять отпуск'],
+    expectAny: ['kb-vibe-vacations-other'],
+    expectAll: ['kb-vibe-vacations-other'],
+    viewer: { role: 'employee', department: 'DEV' },
+    note: 'Не-Digital без Bitrix-регламента отдела — только Vibe'
   },
   {
     id: 'dayoff-leave-sense',

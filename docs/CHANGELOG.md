@@ -4,6 +4,15 @@
 
 ## 2026-08-27
 
+### База знаний ИИ: отпуск Bitrix+Vibe + порядок «Ещё по теме»
+- Sense отпуска отдаёт **обе** статьи аудитории: Digital → `kb-21301` + `kb-vibe-vacations-digital`; SEO → `kb-24611` + `kb-vibe-vacations-other`; остальные отделы → `kb-vibe-vacations-other`. Без слова отдела в вопросе sense берётся из `department` сессии.
+- Retrieval больше не обрезает clear-sense до одной Bitrix-статьи; в контекст GPT попадают оба источника.
+- «Ещё по теме»: сначала `usedSourceIds` (источники ответа), затем похожие RAG-хиты (`orderHitsForCitations` / `yandex-ask.post.ts`).
+- Промпт GPT: явно просит объединять Bitrix-регламент и Vibe в один ответ.
+- Eval: `expectAll` + кейсы viewer; локально `node scripts/knowledge/check-rag-vacation-dual.mjs`.
+- Файлы: `knowledgeRagSense.ts`, `knowledgeRag.ts`, `knowledgeRagEvalCases.ts`, `rag-eval.post.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `docs/PRODUCT.md`.
+- Проверка на стейдже: Digital «как уйти в отпуск» → в ответе правила Bitrix и шаги Vibe; «Ещё по теме» — обе статьи первыми.
+
 ### Памятка Design C: без шахматки, горшки + тень (art-c-v12)
 - Причина: на стейдже после art-c-v11 у welcome снова была видимая шахматка (baked gray/white); прошлые «anti-dust» проходы могли съедать светлые горшки.
 - Арт: все 6 `pvm-c-art-*.png` пересобраны из чистого pre-dust v9 (коты/позы те же) + true alpha без checkerboard; светлые горшки сохранены/добавлены у растений (tip3/tip4 — cream pot под листьями); мягкий violet oval запечён под сценой; белая «пыль» пола убрана, чтобы тень читалась на lavender.

@@ -11,6 +11,7 @@ type CaseResult = {
   ok: boolean;
   hitIds: string[];
   expectAny: string[];
+  expectAll?: string[];
 };
 
 /**
@@ -42,11 +43,16 @@ export default defineEventHandler(async (event) => {
 
     for (const q of queries) {
       total += 1;
-      const hits = await retrieveKnowledgeByMeaning(q.text, { topArticles: 3 });
+      const hits = await retrieveKnowledgeByMeaning(q.text, {
+        topArticles: 3,
+        ...(c.viewer ? { viewer: c.viewer } : {})
+      });
       const hitIds = hits.map((h) => h.articleId);
       let ok: boolean;
-      if (!c.expectAny.length) {
+      if (!c.expectAny.length && !(c.expectAll?.length)) {
         ok = !hits.length || (hits[0]?.score ?? 0) < 0.45;
+      } else if (c.expectAll?.length) {
+        ok = c.expectAll.every((id) => hitIds.includes(id));
       } else {
         ok = c.expectAny.some((id) => hitIds.includes(id));
       }
@@ -57,7 +63,8 @@ export default defineEventHandler(async (event) => {
         kind: q.kind,
         ok,
         hitIds,
-        expectAny: c.expectAny
+        expectAny: c.expectAny,
+        ...(c.expectAll ? { expectAll: c.expectAll } : {})
       });
     }
   }

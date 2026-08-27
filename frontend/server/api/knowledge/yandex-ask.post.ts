@@ -95,6 +95,29 @@ function normalizeHistory(raw: HistoryItem[] | undefined): { role: 'user' | 'ass
   return out;
 }
 
+/** «Ещё по теме»: сначала источники ответа, затем похожие RAG-хиты. */
+function orderCitations(
+  hits: { articleId: string; title: string; href?: string }[],
+  usedSourceIds: string[] = []
+): YandexAskCitation[] {
+  if (!hits.length) return [];
+  const toCite = (h: { articleId: string; title: string; href?: string }): YandexAskCitation => ({
+    id: h.articleId,
+    title: h.title,
+    ...(h.href ? { href: h.href } : {})
+  });
+  if (!usedSourceIds.length) return hits.map(toCite);
+  const byId = new Map(hits.map((h) => [h.articleId, h]));
+  const used = new Set(usedSourceIds);
+  const primary: YandexAskCitation[] = [];
+  for (const id of usedSourceIds) {
+    const hit = byId.get(id);
+    if (hit) primary.push(toCite(hit));
+  }
+  const related = hits.filter((h) => !used.has(h.articleId)).map(toCite);
+  return [...primary, ...related];
+}
+
 /**
  * Спросить ИИ: смысл + память диалога; при сбое Yandex — упрощённый ответ + алерт админу.
  */
@@ -199,7 +222,10 @@ export default defineEventHandler(async (event) => {
       const answer = await yandexChatAnswerAmbiguous(question, context);
       return {
         answer,
-        citations: retrieved.branches.map((b) => ({ id: b.hit.articleId, title: b.hit.title })),
+        citations: orderCitations(
+          retrieved.branches.map((b) => b.hit),
+          retrieved.usedSourceIds
+        ),
         found: true,
         ambiguous: true,
         degraded: false
@@ -225,7 +251,7 @@ export default defineEventHandler(async (event) => {
     }
     return {
       answer,
-      citations: retrieved.hits.map((h) => ({ id: h.articleId, title: h.title })),
+      citations: orderCitations(retrieved.hits, retrieved.usedSourceIds),
       found: true,
       ambiguous: false,
       degraded: false

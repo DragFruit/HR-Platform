@@ -401,6 +401,11 @@ export type KnowledgeRagBranch = {
 
 export type KnowledgeRagRetrieveResult = {
   hits: KnowledgeRagHit[];
+  /**
+   * Статьи, из которых собран ответ (sense / hard-якорь).
+   * В «Ещё по теме» идут первыми; остальной топ — похожие RAG-хиты.
+   */
+  usedSourceIds: string[];
   /** Два равноправных смысла — показать два ответа. */
   ambiguous: boolean;
   branches: KnowledgeRagBranch[];
@@ -411,7 +416,12 @@ export type KnowledgeRagRetrieveResult = {
  */
 export async function retrieveKnowledgeByMeaning(
   question: string,
-  opts?: { topArticles?: number; topChunks?: number; minScore?: number }
+  opts?: {
+    topArticles?: number;
+    topChunks?: number;
+    minScore?: number;
+    viewer?: { role: string; department: string };
+  }
 ): Promise<KnowledgeRagHit[]> {
   const result = await retrieveKnowledgeDetailed(question, opts);
   return result.hits;
@@ -424,12 +434,13 @@ export async function retrieveKnowledgeDetailed(
     topArticles?: number;
     topChunks?: number;
     minScore?: number;
-    /** Фильтр по отделу сотрудника. */
+    /** Фильтр по отделу сотрудника + sense отпуска без слова Digital/SEO. */
     viewer?: { role: string; department: string };
   }
 ): Promise<KnowledgeRagRetrieveResult> {
   const q = question.trim();
-  if (!q) return { hits: [], ambiguous: false, branches: [] };
+  if (!q) return { hits: [], usedSourceIds: [], ambiguous: false, branches: [] };
+  const senseOpts = opts?.viewer ? { viewer: opts.viewer } : undefined;
 
   let index = await readIndexFile();
   const state = await readKnowledgeArticles();
@@ -438,7 +449,7 @@ export async function retrieveKnowledgeDetailed(
   if (!index?.chunks?.length || index.corpusHash !== expectedHash) {
     index = await rebuildKnowledgeRagIndex();
   }
-  if (!index.chunks.length) return { hits: [], ambiguous: false, branches: [] };
+  if (!index.chunks.length) return { hits: [], usedSourceIds: [], ambiguous: false, branches: [] };
 
   const published = state.articles.filter((a) => a.status === 'published');
   const visibleIds = new Set(
@@ -455,32 +466,40 @@ export async function retrieveKnowledgeDetailed(
   const visibleChunks = index.chunks.filter((c) => visibleIds.has(c.articleId));
   const lexTokensFast = tokenizeForRag(expandQueryWithSynonyms(q));
 
-  // Sense (дейоф / доступы) — до hard-якорей Контактов: иначе «dayofff» без ambiguous,
+  // Sense (дейоф / доступы / отпуск) — до hard-якорей Контактов: иначе «dayofff» без ambiguous,
   // а clear «взять дейоф» без якоря уходит только в hybrid.
   {
-    const clearEarly = clearSenseForQuestion(q);
-    const ambEarly = ambiguousBranchesForQuestion(q);
+    const clearEarly = clearSenseForQuestion(q, senseOpts);
+    const ambEarly = ambiguousBranchesForQuestion(q, senseOpts);
     if (clearEarly) {
-      const senseHit = pickSenseHit(
+      const senseHits = pickSenseHits(
         [],
         clearEarly,
         publishedById,
         visibleChunks,
         new Map()
-      );
-      if (senseHit && visibleIds.has(senseHit.articleId)) {
-        const articleChunks = visibleChunks
-          .filter((c) => c.articleId === senseHit.articleId)
-          .map((c) => c.text);
-        senseHit.snippets = pickArticleSnippets(
-          senseHit.title,
-          articleChunks,
-          distinctive,
-          lexTokensFast,
-          3,
-          q
-        );
-        return { hits: [senseHit], ambiguous: false, branches: [] };
+      ).filter((h) => visibleIds.has(h.articleId));
+      if (senseHits.length) {
+        for (const senseHit of senseHits) {
+          const articleChunks = visibleChunks
+            .filter((c) => c.articleId === senseHit.articleId)
+            .map((c) => c.text);
+          senseHit.snippets = pickArticleSnippets(
+            senseHit.title,
+            articleChunks,
+            distinctive,
+            lexTokensFast,
+            3,
+            q
+          );
+        }
+        const usedSourceIds = senseHits.map((h) => h.articleId);
+        return {
+          hits: senseHits.slice(0, Math.max(senseHits.length, topArticles)),
+          usedSourceIds,
+          ambiguous: false,
+          branches: []
+        };
       }
     }
     if (ambEarly.length >= 2) {
@@ -504,6 +523,7 @@ export async function retrieveKnowledgeDetailed(
       if (branches.length >= 2) {
         return {
           hits: branches.map((b) => b.hit),
+          usedSourceIds: branches.map((b) => b.hit.articleId),
           ambiguous: true,
           branches: branches.slice(0, 3)
         };
@@ -534,6 +554,7 @@ export async function retrieveKnowledgeDetailed(
             )
           }
         ],
+        usedSourceIds: [ACTS_ARTICLE_ID],
         ambiguous: false,
         branches: []
       };
@@ -561,6 +582,7 @@ export async function retrieveKnowledgeDetailed(
             )
           }
         ],
+        usedSourceIds: [WRITEOFF_ARTICLE_ID],
         ambiguous: false,
         branches: []
       };
@@ -724,6 +746,7 @@ export async function retrieveKnowledgeDetailed(
       }
       return {
         hits: hits.slice(0, topArticles),
+        usedSourceIds: hits.slice(0, topArticles).map((h) => h.articleId),
         ambiguous: false,
         branches: []
       };
@@ -748,7 +771,7 @@ export async function retrieveKnowledgeDetailed(
       const sem = semByChunk.get(chunk.id) ?? 0;
       const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
       let combined = W_SEM * sem + W_LEX * lex;
-      combined = applySenseScoreAdjust(chunk.articleId, combined, q);
+      combined = applySenseScoreAdjust(chunk.articleId, combined, q, senseOpts);
       combined = applyAvitoAutoScoreAdjust(chunk.articleId, chunk.title, combined, q);
       // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
       if (
@@ -821,14 +844,29 @@ export async function retrieveKnowledgeDetailed(
     }
   }
 
-  const clearSense = clearSenseForQuestion(q);
-  let ambiguousBranches = ambiguousBranchesForQuestion(q);
-  // если clear — только эта ветка (иначе «доступы директ» тянет чужие шаги из гостевых)
+  const clearSense = clearSenseForQuestion(q, senseOpts);
+  let ambiguousBranches = ambiguousBranchesForQuestion(q, senseOpts);
+  let usedSourceIds: string[] = [];
+  // если clear — все статьи смысла первыми (Bitrix+Vibe), потом похожие RAG
   if (clearSense) {
     ambiguousBranches = [];
-    const hit = pickSenseHit(hits, clearSense, publishedById, visibleChunks, semByChunk);
-    if (hit && visibleIds.has(hit.articleId)) {
-      hits = [hit];
+    const senseHits = pickSenseHits(
+      hits,
+      clearSense,
+      publishedById,
+      visibleChunks,
+      semByChunk
+    ).filter((h) => visibleIds.has(h.articleId));
+    if (senseHits.length) {
+      usedSourceIds = senseHits.map((h) => h.articleId);
+      const used = new Set(usedSourceIds);
+      // Bitrix+Vibe (несколько id): источники первыми, потом похожие; один sense — только он
+      if (senseHits.length > 1) {
+        const related = hits.filter((h) => !used.has(h.articleId));
+        hits = [...senseHits, ...related];
+      } else {
+        hits = senseHits;
+      }
     }
   }
 
@@ -837,6 +875,7 @@ export async function retrieveKnowledgeDetailed(
     const utmHit = hits.find((h) => h.articleId === UTM_ARTICLE_ID);
     if (utmHit) {
       hits = [utmHit];
+      usedSourceIds = [UTM_ARTICLE_ID];
     } else {
       const article = publishedById.get(UTM_ARTICLE_ID);
       if (article && visibleIds.has(UTM_ARTICLE_ID)) {
@@ -856,12 +895,14 @@ export async function retrieveKnowledgeDetailed(
             )
           }
         ];
+        usedSourceIds = [UTM_ARTICLE_ID];
       }
     }
   } else if (!clearSense && preferActsRegulation(q, longestRareToken(distinctive, q))) {
     const actsHit = hits.find((h) => h.articleId === ACTS_ARTICLE_ID);
     if (actsHit) {
       hits = [actsHit];
+      usedSourceIds = [ACTS_ARTICLE_ID];
     } else {
       const article = publishedById.get(ACTS_ARTICLE_ID);
       if (article && visibleIds.has(ACTS_ARTICLE_ID)) {
@@ -881,12 +922,14 @@ export async function retrieveKnowledgeDetailed(
             )
           }
         ];
+        usedSourceIds = [ACTS_ARTICLE_ID];
       }
     }
   } else if (!clearSense && preferWriteoffAfina(q, longestRareToken(distinctive, q))) {
     const woHit = hits.find((h) => h.articleId === WRITEOFF_ARTICLE_ID);
     if (woHit) {
       hits = [woHit];
+      usedSourceIds = [WRITEOFF_ARTICLE_ID];
     } else {
       const article = publishedById.get(WRITEOFF_ARTICLE_ID);
       if (article && visibleIds.has(WRITEOFF_ARTICLE_ID)) {
@@ -906,6 +949,7 @@ export async function retrieveKnowledgeDetailed(
             )
           }
         ];
+        usedSourceIds = [WRITEOFF_ARTICLE_ID];
       }
     }
   }
@@ -922,16 +966,74 @@ export async function retrieveKnowledgeDetailed(
     }
     if (branches.length >= 2) {
       hits = branches.map((b) => b.hit);
+      usedSourceIds = hits.map((h) => h.articleId);
     } else {
       ambiguous = false;
     }
   }
 
+  const sliced = hits.slice(0, ambiguous ? Math.max(2, topArticles) : topArticles);
+  if (!usedSourceIds.length && sliced.length) {
+    // Обычный hybrid: все попавшие в контекст считаем источниками ответа
+    usedSourceIds = sliced.map((h) => h.articleId);
+  } else {
+    // Источники, которых нет в срезе (не должно), не тащим; порядок — used → related
+    usedSourceIds = usedSourceIds.filter((id) => sliced.some((h) => h.articleId === id));
+  }
   return {
-    hits: hits.slice(0, ambiguous ? Math.max(2, topArticles) : topArticles),
+    hits: orderHitsForCitations(sliced, usedSourceIds),
+    usedSourceIds,
     ambiguous,
     branches: ambiguous ? branches.slice(0, 3) : []
   };
+}
+
+/** Сначала статьи-источники ответа, затем похожие RAG-хиты. */
+export function orderHitsForCitations(
+  hits: KnowledgeRagHit[],
+  usedSourceIds: string[]
+): KnowledgeRagHit[] {
+  if (!usedSourceIds.length || hits.length <= 1) return hits;
+  const byId = new Map(hits.map((h) => [h.articleId, h]));
+  const used = new Set(usedSourceIds);
+  const primary: KnowledgeRagHit[] = [];
+  for (const id of usedSourceIds) {
+    const hit = byId.get(id);
+    if (hit) primary.push(hit);
+  }
+  const related = hits.filter((h) => !used.has(h.articleId));
+  return [...primary, ...related];
+}
+
+function pickSenseHits(
+  hits: KnowledgeRagHit[],
+  sense: KnowledgeSense,
+  publishedById: Map<string, KnowledgeArticle>,
+  chunks: KnowledgeRagChunk[],
+  semByChunk: Map<string, number>
+): KnowledgeRagHit[] {
+  const out: KnowledgeRagHit[] = [];
+  for (const id of sense.articleIds) {
+    const existing = hits.find((h) => h.articleId === id);
+    if (existing) {
+      out.push(existing);
+      continue;
+    }
+    const article = publishedById.get(id);
+    if (!article) continue;
+    const articleChunks = chunks.filter((c) => c.articleId === id);
+    const best = articleChunks
+      .map((c) => ({ c, s: semByChunk.get(c.id) ?? 0 }))
+      .sort((x, y) => y.s - x.s)[0];
+    out.push({
+      articleId: id,
+      title: article.title,
+      score: best?.s ?? 0.4,
+      semanticScore: best?.s,
+      snippets: best ? [best.c.text] : [article.title]
+    });
+  }
+  return out;
 }
 
 function pickSenseHit(
@@ -941,24 +1043,7 @@ function pickSenseHit(
   chunks: KnowledgeRagChunk[],
   semByChunk: Map<string, number>
 ): KnowledgeRagHit | null {
-  for (const id of sense.articleIds) {
-    const existing = hits.find((h) => h.articleId === id);
-    if (existing) return existing;
-    const article = publishedById.get(id);
-    if (!article) continue;
-    const articleChunks = chunks.filter((c) => c.articleId === id);
-    const best = articleChunks
-      .map((c) => ({ c, s: semByChunk.get(c.id) ?? 0 }))
-      .sort((x, y) => y.s - x.s)[0];
-    return {
-      articleId: id,
-      title: article.title,
-      score: best?.s ?? 0.4,
-      semanticScore: best?.s,
-      snippets: best ? [best.c.text] : [article.title]
-    };
-  }
-  return null;
+  return pickSenseHits(hits, sense, publishedById, chunks, semByChunk)[0] ?? null;
 }
 
 export function buildRagContext(hits: KnowledgeRagHit[]): string {

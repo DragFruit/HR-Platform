@@ -5,8 +5,11 @@
 export type KnowledgeSense = {
   id: string;
   label: string;
+  /** Одна или несколько статей одного смысла (напр. Bitrix-регламент + Vibe). */
   articleIds: string[];
 };
+
+export type KnowledgeSenseViewer = { role: string; department: string };
 
 type CollisionGroup = {
   id: string;
@@ -16,6 +19,31 @@ type CollisionGroup = {
   /** Сигналы → id sense. */
   signals: { senseId: string; re: RegExp }[];
 };
+
+/** Bitrix Digital + Vibe Digital — оба в ответе и в «Ещё по теме». */
+export const VACATION_DIGITAL_ARTICLE_IDS = ['kb-21301', 'kb-vibe-vacations-digital'] as const;
+/** Bitrix SEO + Vibe (не-Digital). */
+export const VACATION_SEO_ARTICLE_IDS = ['kb-24611', 'kb-vibe-vacations-other'] as const;
+/** Остальные отделы: только Vibe (Bitrix-регламента отдела нет). */
+export const VACATION_OTHER_ARTICLE_IDS = ['kb-vibe-vacations-other'] as const;
+
+const VACATION_SENSES: KnowledgeSense[] = [
+  {
+    id: 'vac-digital',
+    label: 'отпуск в Digital',
+    articleIds: [...VACATION_DIGITAL_ARTICLE_IDS]
+  },
+  {
+    id: 'vac-seo',
+    label: 'отпуск в SEO/SERM',
+    articleIds: [...VACATION_SEO_ARTICLE_IDS]
+  },
+  {
+    id: 'vac-other',
+    label: 'отпуск в Vibe',
+    articleIds: [...VACATION_OTHER_ARTICLE_IDS]
+  }
+];
 
 const COLLISIONS: CollisionGroup[] = [
   {
@@ -59,10 +87,7 @@ const COLLISIONS: CollisionGroup[] = [
   {
     id: 'vacation-dept',
     term: /отпуск/i,
-    senses: [
-      { id: 'vac-digital', label: 'отпуск в Digital', articleIds: ['kb-21301'] },
-      { id: 'vac-seo', label: 'отпуск в SEO/SERM', articleIds: ['kb-24611'] }
-    ],
+    senses: VACATION_SENSES,
     signals: [
       { senseId: 'vac-digital', re: /(digital|диджитал)/i },
       { senseId: 'vac-seo', re: /(seo|serm|orm)/i }
@@ -75,8 +100,27 @@ export type SenseResolution =
   | { kind: 'clear'; groupId: string; sense: KnowledgeSense }
   | { kind: 'ambiguous'; groupId: string; senses: KnowledgeSense[] };
 
+/** Sense отпуска по отделу сотрудника (когда в вопросе нет Digital/SEO). */
+export function vacationSenseFromViewer(
+  viewer?: KnowledgeSenseViewer | null
+): KnowledgeSense | null {
+  if (!viewer) return null;
+  const dept = String(viewer.department || '').trim().toLowerCase();
+  if (!dept) return null;
+  if (dept === 'digital') {
+    return VACATION_SENSES.find((s) => s.id === 'vac-digital') ?? null;
+  }
+  if (/seo|orm|serm/.test(dept)) {
+    return VACATION_SENSES.find((s) => s.id === 'vac-seo') ?? null;
+  }
+  return VACATION_SENSES.find((s) => s.id === 'vac-other') ?? null;
+}
+
 /** Разрешить омоним по общему смыслу вопроса (первый сработавший collision). */
-export function resolveQuestionSense(question: string): SenseResolution {
+export function resolveQuestionSense(
+  question: string,
+  opts?: { viewer?: KnowledgeSenseViewer | null }
+): SenseResolution {
   const q = question.trim();
   if (!q) return { kind: 'none' };
 
@@ -106,10 +150,22 @@ export function resolveQuestionSense(question: string): SenseResolution {
           if (sense) return { kind: 'clear', groupId: group.id, sense };
         }
       }
+      // отпуск: digital+seo в одном вопросе — ambiguous только этих двух
+      if (group.id === 'vacation-dept') {
+        return {
+          kind: 'ambiguous',
+          groupId: group.id,
+          senses: group.senses.filter((s) => unique.includes(s.id))
+        };
+      }
       return { kind: 'ambiguous', groupId: group.id, senses: [...group.senses] };
     }
-    // нет сигнала: для отпуска / доступов — не форсируем «два ответа» (сработает фильтр отдела / обычный RAG)
-    if (group.id === 'vacation-dept') return { kind: 'none' };
+    // нет сигнала: отпуск — по отделу юзера (Bitrix + Vibe аудитории)
+    if (group.id === 'vacation-dept') {
+      const fromViewer = vacationSenseFromViewer(opts?.viewer);
+      if (fromViewer) return { kind: 'clear', groupId: group.id, sense: fromViewer };
+      return { kind: 'none' };
+    }
     if (group.id === 'access') {
       // только «афина/afina» без доп. сигнала уже matched выше; чистое «доступы» — два частых смысла
       if (/(афин|afina)/i.test(q)) {
@@ -150,9 +206,10 @@ export function dayoffAmbiguousBranches(): KnowledgeSense[] {
 export function applySenseScoreAdjust(
   articleId: string,
   baseScore: number,
-  question: string
+  question: string,
+  opts?: { viewer?: KnowledgeSenseViewer | null }
 ): number {
-  const r = resolveQuestionSense(question);
+  const r = resolveQuestionSense(question, opts);
   if (r.kind !== 'clear') return baseScore;
   const boostIds = new Set(r.sense.articleIds);
   const allIds = new Set(COLLISIONS.find((c) => c.id === r.groupId)?.senses.flatMap((s) => s.articleIds) ?? []);
@@ -161,14 +218,20 @@ export function applySenseScoreAdjust(
   return baseScore;
 }
 
-export function ambiguousBranchesForQuestion(question: string): KnowledgeSense[] {
-  const r = resolveQuestionSense(question);
+export function ambiguousBranchesForQuestion(
+  question: string,
+  opts?: { viewer?: KnowledgeSenseViewer | null }
+): KnowledgeSense[] {
+  const r = resolveQuestionSense(question, opts);
   if (r.kind === 'ambiguous') return r.senses;
   return [];
 }
 
-export function clearSenseForQuestion(question: string): KnowledgeSense | null {
-  const r = resolveQuestionSense(question);
+export function clearSenseForQuestion(
+  question: string,
+  opts?: { viewer?: KnowledgeSenseViewer | null }
+): KnowledgeSense | null {
+  const r = resolveQuestionSense(question, opts);
   return r.kind === 'clear' ? r.sense : null;
 }
 
@@ -248,7 +311,11 @@ export const KNOWN_SENSE_CASES_DOC = [
   },
   {
     term: 'отпуск',
-    examples: ['отпуск digital → регламент Digital', 'отпуск SEO → SEO/SERM', 'просто «отпуск» → два ответа (пока нет фильтра по отделу юзера в sense)']
+    examples: [
+      'отпуск digital / Digital-юзер «как уйти в отпуск» → Bitrix kb-21301 + Vibe kb-vibe-vacations-digital',
+      'отпуск SEO → Bitrix kb-24611 + Vibe kb-vibe-vacations-other',
+      'просто «отпуск» без отдела в тексте → sense по department юзера (не чужие отделы)'
+    ]
   },
   {
     term: 'авто ≠ Авито',
