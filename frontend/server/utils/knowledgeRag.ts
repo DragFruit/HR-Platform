@@ -26,8 +26,11 @@ import {
 import { buildRetrievalQueryPlan } from './knowledgeRagRewrite';
 import {
   ambiguousBranchesForQuestion,
+  applyAvitoAutoScoreAdjust,
   applySenseScoreAdjust,
   clearSenseForQuestion,
+  isAvitoFocusedArticle,
+  shouldSuppressAvitoForAutoQuestion,
   type KnowledgeSense
 } from './knowledgeRagSense';
 import { canUserSeeArticle } from './knowledgeAudience';
@@ -746,6 +749,7 @@ export async function retrieveKnowledgeDetailed(
       const lex = lexicalScore(chunk.title, chunk.text, lexTokens);
       let combined = W_SEM * sem + W_LEX * lex;
       combined = applySenseScoreAdjust(chunk.articleId, combined, q);
+      combined = applyAvitoAutoScoreAdjust(chunk.articleId, chunk.title, combined, q);
       // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
       if (
         distinctive.length &&
@@ -755,7 +759,15 @@ export async function retrieveKnowledgeDetailed(
       }
       return { chunk, sem, lex, combined };
     })
-    .filter((row) => row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED)
+    .filter((row) => {
+      if (
+        shouldSuppressAvitoForAutoQuestion(q) &&
+        isAvitoFocusedArticle(row.chunk.articleId, row.chunk.title)
+      ) {
+        return false;
+      }
+      return row.sem >= minSem || row.lex >= MIN_LEXICAL_RESCUE || row.combined >= MIN_COMBINED;
+    })
     .sort((a, b) => b.combined - a.combined || b.sem - a.sem)
     .slice(0, Math.max(topChunks, 12));
 
@@ -787,6 +799,10 @@ export async function retrieveKnowledgeDetailed(
   }
 
   let hits = [...byArticle.values()].sort((a, b) => b.score - a.score);
+
+  if (shouldSuppressAvitoForAutoQuestion(q)) {
+    hits = hits.filter((h) => !isAvitoFocusedArticle(h.articleId, h.title));
+  }
 
   // Семантика тянет «клиент/CRM» на чужие статьи — оставляем только покрытие значимых слов.
   if (distinctive.length) {
@@ -986,7 +1002,8 @@ export async function retrieveKnowledgeLexicalFallback(
     .map((article) => {
       const chunkTexts = chunkArticleText(article.title, article.body);
       const plain = chunkTexts.join('\n');
-      const lex = lexicalScore(article.title, plain, tokens);
+      let lex = lexicalScore(article.title, plain, tokens);
+      lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
       return {
         articleId: article.id,
         title: article.title,
@@ -995,7 +1012,12 @@ export async function retrieveKnowledgeLexicalFallback(
         snippets: pickArticleSnippets(article.title, chunkTexts, distinctive, tokens, 3)
       } satisfies KnowledgeRagHit;
     })
-    .filter((h) => h.score >= 0.25)
+    .filter((h) => {
+      if (shouldSuppressAvitoForAutoQuestion(q) && isAvitoFocusedArticle(h.articleId, h.title)) {
+        return false;
+      }
+      return h.score >= 0.25;
+    })
     .sort((a, b) => b.score - a.score);
 
   if (distinctive.length) {

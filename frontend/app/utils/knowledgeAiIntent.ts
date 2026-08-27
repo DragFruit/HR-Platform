@@ -16,7 +16,34 @@ export const KB_AI_NOT_FOUND_REPLY =
 export const KB_AI_CLARIFY_REPLY =
   'Прошу прощения, уточните вопрос, чтобы я подобрал более точный ответ в базе';
 
-export type KnowledgeAiIntent = 'chitchat' | 'offtopic' | 'clarify' | 'kb' | 'not_found';
+/**
+ * Вопросы про клиентские/маркетинговые кейсы — пока нет в базе статей.
+ * Текст зафиксирован: не перефразировать.
+ */
+export const KB_AI_CASES_REPLY =
+  'Пока что я не умею работать с кейсами, но уже прохожу обучение! Скоро смогу ответить на все ваши вопросы по ним.';
+
+export type KnowledgeAiIntent =
+  | 'chitchat'
+  | 'offtopic'
+  | 'clarify'
+  | 'kb'
+  | 'not_found'
+  | 'cases';
+
+/**
+ * Кейсы / case studies (ещё не в статьях БЗ).
+ * Без `\b` для кириллицы; не цеплять куски внутри других слов.
+ */
+const CASE_STUDY_RE =
+  /(?<![а-яёa-z0-9])кейс(?:а|у|ом|е|ы|ов|ам|ами|ах)?(?![а-яёa-z0-9])|(?<![a-z0-9])case[\s-]*stud(?:y|ies)(?![a-z0-9])/iu;
+
+/** Вопрос про кейсы — без RAG/GPT и без «Ещё по теме». */
+export function detectKbAiCasesQuestion(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  return CASE_STUDY_RE.test(t);
+}
 
 const CHITCHAT_RE =
   /^(спасибо|благодарю|благодар|отлично|супер|класс|круто|огонь|топ|ок|окей|ладно|понял[аи]?|понятно|ясно|хорошо|замечательно|прекрасно|отлично[\s,]*спасибо|спасибо[\s,]*большое|вс[её]\s*(понятно|ясно|супер|отлично)|👍|🙏|❤️|😘)+[!?.…\s]*$/iu;

@@ -1,9 +1,11 @@
 import {
+  detectKbAiCasesQuestion,
   detectKbAiChitchat,
   detectKbAiClarify,
   detectKbAiOfftopic,
   emptyKbReplyMode,
   isKbClarifyingFollowUp,
+  KB_AI_CASES_REPLY,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_CLARIFY_REPLY,
   KB_AI_GREETING_REPLY,
@@ -15,7 +17,7 @@ import {
 
 /**
  * Для ответов по статьям цитаты обязательны.
- * Исключение: chitchat / offtopic / clarify / not_found — без ссылок на статьи.
+ * Исключение: chitchat / offtopic / clarify / not_found / cases — без ссылок на статьи.
  */
 export const KB_AI_CITE_REQUIRED = true;
 
@@ -40,7 +42,7 @@ export type KnowledgeAiAnswer = {
   parts: KnowledgeAiPart[];
   citations: KnowledgeAiCite[];
   /** Без «Ещё по теме» */
-  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify' | 'not_found' | 'org';
+  mode?: 'kb' | 'chitchat' | 'offtopic' | 'clarify' | 'not_found' | 'cases' | 'org';
 };
 
 export type KnowledgeAiHistoryTurn = {
@@ -50,7 +52,7 @@ export type KnowledgeAiHistoryTurn = {
 
 const textOnlyAnswer = (
   text: string,
-  mode: 'chitchat' | 'offtopic' | 'clarify' | 'not_found'
+  mode: 'chitchat' | 'offtopic' | 'clarify' | 'not_found' | 'cases'
 ): KnowledgeAiAnswer => ({
   parts: [{ type: 'text', value: text }],
   citations: [],
@@ -114,7 +116,8 @@ export function assertKnowledgeAiCitations(answer: KnowledgeAiAnswer): Knowledge
     answer.mode === 'chitchat' ||
     answer.mode === 'offtopic' ||
     answer.mode === 'clarify' ||
-    answer.mode === 'not_found'
+    answer.mode === 'not_found' ||
+    answer.mode === 'cases'
   ) {
     return answer;
   }
@@ -145,7 +148,7 @@ type YandexAskResponse = {
   people?: KnowledgeAiPerson[];
   found?: boolean;
   degraded?: boolean;
-  intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify' | 'org';
+  intent?: 'offtopic' | 'not_found' | 'kb' | 'chitchat' | 'clarify' | 'cases' | 'org';
 };
 
 export function useKnowledgeAiAnswer() {
@@ -163,6 +166,10 @@ export function useKnowledgeAiAnswer() {
     }
     if (detectKbAiClarify(question)) {
       return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CLARIFY_REPLY, 'clarify'));
+    }
+    // Кейсы ещё не в статьях — без API/RAG и без «Ещё по теме»
+    if (detectKbAiCasesQuestion(question)) {
+      return assertKnowledgeAiCitations(textOnlyAnswer(KB_AI_CASES_REPLY, 'cases'));
     }
     // Оффтоп до API — только если это не уточнение в живом диалоге по базе
     if (
@@ -189,6 +196,12 @@ export function useKnowledgeAiAnswer() {
       const people = (resp.people ?? [])
         .map((p) => ({ name: String(p.name || '').trim(), href: String(p.href || '').trim() }))
         .filter((p) => p.name && p.href);
+
+      if (resp.intent === 'cases' || detectKbAiCasesQuestion(question)) {
+        return assertKnowledgeAiCitations(
+          textOnlyAnswer(resp.answer?.trim() || KB_AI_CASES_REPLY, 'cases')
+        );
+      }
 
       if (resp.found === false || (!citations.length && !people.length)) {
         const mode =

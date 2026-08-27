@@ -1,9 +1,11 @@
 import { requireRole } from '../../utils/requireRole';
 import { createKnowledgeAiDegradedNotification } from '../../utils/adminNotificationsStore';
 import {
+  detectKbAiCasesQuestion,
   detectKbAiChitchat,
   emptyKbReplyMode,
   expandQuestionFromHistory,
+  KB_AI_CASES_REPLY,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
@@ -120,6 +122,18 @@ export default defineEventHandler(async (event) => {
       ambiguous: false,
       degraded: false,
       intent: 'chitchat' as const
+    };
+  }
+
+  // Кейсы ещё не в статьях — фиксированный ответ, без RAG и «Ещё по теме»
+  if (detectKbAiCasesQuestion(question)) {
+    return {
+      answer: KB_AI_CASES_REPLY,
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false,
+      intent: 'cases' as const
     };
   }
 

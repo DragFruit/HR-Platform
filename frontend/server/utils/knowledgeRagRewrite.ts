@@ -1,5 +1,9 @@
 import { expandDayoffBySense, expandQueryWithSynonyms, isRewriteSafe } from './knowledgeRagLexical';
-import { guessDayoffSense } from './knowledgeRagSense';
+import {
+  guessDayoffSense,
+  mentionsAutoVehicles,
+  mentionsAvitoMarketplace
+} from './knowledgeRagSense';
 
 const YANDEX_COMPLETION_URL = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion';
 
@@ -28,6 +32,7 @@ export async function rewriteQueryConservatively(question: string): Promise<stri
     'Переформулируй вопрос сотрудника для поиска: те же сущности и тот же смысл.',
     'Можно заменить слова синонимами и чуть переставить порядок.',
     'Важно: «дейоф/day off» у нас двусмысленно — отгул ИЛИ SaaS DayOFFF. Сохрани глагол и общий смысл (взять ≈ отгул; войти/логин ≈ система). Не подменяй одно другим.',
+    'Важно: «авто» = автомобили/автотематика; «Авито/avito» = маркетплейс. Не подменяй авто на Авито и наоборот.',
     'Нельзя: менять тему, добавлять новые факты, имена отделов, продукты или условия, которых не было.',
     'Если переформулировать без смены смысла нельзя — верни исходный текст как есть.',
     'Ответ: одна строка без кавычек, без пояснений.'
@@ -64,6 +69,13 @@ export async function rewriteQueryConservatively(question: string): Promise<stri
 
   if (!text || text === q) return null;
   if (!isRewriteSafe(q, text)) return null;
+  // авто (машины) ≠ Авито: запрет подмены в переформулировке
+  if (mentionsAutoVehicles(q) && !mentionsAvitoMarketplace(q) && mentionsAvitoMarketplace(text)) {
+    return null;
+  }
+  if (mentionsAvitoMarketplace(q) && !mentionsAutoVehicles(q) && mentionsAutoVehicles(text)) {
+    return null;
+  }
   return text;
 }
 

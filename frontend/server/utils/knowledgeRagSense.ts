@@ -172,6 +172,64 @@ export function clearSenseForQuestion(question: string): KnowledgeSense | null {
   return r.kind === 'clear' ? r.sense : null;
 }
 
+/**
+ * Авито (маркетплейс) vs авто (автомобили).
+ * «авто» НЕ подстрока «авито»; не путать с авторизацией / автоматикой.
+ */
+
+const AVITO_MARKETPLACE_RE =
+  /(?<![а-яёa-z0-9])авито(?![а-яёa-z0-9])|(?<![a-z0-9])avito(?![a-z0-9])/iu;
+
+/** Целое слово «авто» (не «авито», не «авторизация»). */
+const AUTO_STANDALONE_RE = /(?<![а-яёa-z0-9])авто(?![а-яёa-z0-9])/iu;
+
+/** Автотематика / автомобили / cars — без Авито. */
+const AUTO_VEHICLE_RE =
+  /автотематик|автомобил|автосалон|автодилер|автосервис|авторынк|(?<![а-яёa-z0-9])авто[\s-]+(кейс|сегмент|тем|ниш|рынок|клиент|реклам)|(?<![а-яёa-z0-9])(машин[аыуеой]?|транспорт)(?![а-яёa-z0-9])|(?<![a-z0-9])(cars?|automobiles?|automotive|vehicles?)(?![a-z0-9])/iu;
+
+/** Статьи про Авито (не путать с авто-сегментом). */
+export const AVITO_FOCUSED_ARTICLE_IDS = new Set(['kb-30126']);
+
+export function mentionsAvitoMarketplace(raw: string): boolean {
+  return AVITO_MARKETPLACE_RE.test(String(raw || ''));
+}
+
+/** Вопрос про авто/машины/автотематику (не про Авито). */
+export function mentionsAutoVehicles(raw: string): boolean {
+  const q = String(raw || '');
+  if (!q.trim()) return false;
+  if (AUTO_VEHICLE_RE.test(q)) return true;
+  if (AUTO_STANDALONE_RE.test(q)) return true;
+  return false;
+}
+
+/**
+ * «авто тематика» без «авито» → не тащить статьи Авито (эмбеддинги их путают).
+ */
+export function shouldSuppressAvitoForAutoQuestion(raw: string): boolean {
+  const q = String(raw || '');
+  if (!mentionsAutoVehicles(q)) return false;
+  if (mentionsAvitoMarketplace(q)) return false;
+  return true;
+}
+
+export function isAvitoFocusedArticle(articleId: string, title = ''): boolean {
+  if (AVITO_FOCUSED_ARTICLE_IDS.has(articleId)) return true;
+  return AVITO_MARKETPLACE_RE.test(String(title || ''));
+}
+
+/** Штраф/обнуление score статьи Авито, если вопрос про автомобили. */
+export function applyAvitoAutoScoreAdjust(
+  articleId: string,
+  title: string,
+  baseScore: number,
+  question: string
+): number {
+  if (!shouldSuppressAvitoForAutoQuestion(question)) return baseScore;
+  if (!isAvitoFocusedArticle(articleId, title)) return baseScore;
+  return Math.min(baseScore, 0.05);
+}
+
 /** Описание известных кейсов для доков / ответа заказчику. */
 export const KNOWN_SENSE_CASES_DOC = [
   {
@@ -191,5 +249,13 @@ export const KNOWN_SENSE_CASES_DOC = [
   {
     term: 'отпуск',
     examples: ['отпуск digital → регламент Digital', 'отпуск SEO → SEO/SERM', 'просто «отпуск» → два ответа (пока нет фильтра по отделу юзера в sense)']
+  },
+  {
+    term: 'авто ≠ Авито',
+    examples: [
+      'авто / автотематика / машины → НЕ статья Авито (kb-30126)',
+      'авито / avito → маркетплейс Авито',
+      'кейс по авто → сначала fallback кейсов, без ссылки на Авито-специалистов'
+    ]
   }
 ];

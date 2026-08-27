@@ -524,19 +524,53 @@ function synonymGroupForToken(token: string): string[] | null {
   return null;
 }
 
+function hasWholeWordToken(blob: string, token: string): boolean {
+  const t = String(token || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  if (!t || !blob) return false;
+  const re = new RegExp(
+    `(?<![\\p{L}\\p{N}_])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_])`,
+    'iu'
+  );
+  return re.test(blob);
+}
+
+/**
+ * Короткие токены-префиксы: нельзя `blob.includes('авто')` → «авторизация» / «автоматически».
+ * «авито» при этом не содержит «авто» как целое слово.
+ */
+const PREFIX_AMBIGUOUS_TOKENS = new Set(['авто', 'акт', 'utm']);
+
 export function textCoversToken(text: string, token: string): boolean {
-  const t = token.toLowerCase();
-  const blob = String(text || '').toLowerCase();
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  const blob = String(text || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
   if (!t) return true;
-  if (blob.includes(t)) return true;
+
+  // Целое слово — основной путь (авто ≠ авторизация ≠ авито)
+  if (hasWholeWordToken(blob, t)) return true;
+
+  // Авто-сегмент: сложные формы без пробела
+  if (t === 'авто' && /авто(мобил|тематик|салон|дилер|сервис|рынок|кейс)/i.test(blob)) {
+    return true;
+  }
+
+  // Старый includes — только для длинных токенов без prefix-ловушки
+  if (!PREFIX_AMBIGUOUS_TOKENS.has(t) && t.length >= 5 && blob.includes(t)) {
+    return true;
+  }
+
   if (t.length < 4) return false;
   if (tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t))) return true;
   const group = synonymGroupForToken(t);
   if (!group) return false;
   return group.some((term) => {
-    const g = term.toLowerCase();
+    const g = term.toLowerCase().replace(/ё/g, 'е');
     if (g === t) return false;
-    if (blob.includes(g)) return true;
+    if (hasWholeWordToken(blob, g)) return true;
+    if (!PREFIX_AMBIGUOUS_TOKENS.has(g) && g.length >= 5 && blob.includes(g)) return true;
     return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, g));
   });
 }
