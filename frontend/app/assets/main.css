@@ -17317,13 +17317,14 @@ button.button {
   --pvm-pad-x: 8.2%;
   /* Footer CTA + art: series-c — кнопки слева, сцена справа */
   --pvm-nav-h: 42px;
-  --pvm-art-clearance: 40%;
+  /* Снизу clear под арт; copy почти на всю ширину над сценой */
+  --pvm-art-clearance: 36%;
   /* Сцена чуть над рядом CTA, чтобы тень/лапы не заходили в кнопку */
   --pvm-art-bottom: calc(var(--pvm-nav-h) + 6px);
-  /* Левая зона под CTA */
+  /* Левая зона под CTA — не наезжает на арт справа */
   --pvm-cta-max: 48%;
-  /* Текстовая колонка — шире к series-c, арт справа clear */
-  --pvm-copy-max: 70%;
+  /* Copy почти на всю ширину (красная аннотация заказчика) */
+  --pvm-copy-max: 96%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17601,18 +17602,19 @@ button.button {
   margin-bottom: 8px;
   overflow: auto;
   padding-right: 2px;
-  /* series-c: колонка шире ~⅔ карточки, снизу clearance под арт */
-  max-width: min(var(--pvm-copy-max), 18.5rem);
+  /* Широкий блок в пустое правое поле над артом; снизу clearance под сцену */
+  max-width: var(--pvm-copy-max);
+  width: 100%;
   padding-bottom: var(--pvm-art-clearance);
 }
 
 .pvm-card--welcome .pvm-copy {
-  max-width: min(72%, 17.5rem);
-  padding-bottom: 38%;
+  max-width: 96%;
+  padding-bottom: 34%;
 }
 
 .pvm-slide--intro .pvm-copy {
-  max-width: 88%;
+  max-width: 96%;
   flex: 0 0 auto;
   padding-bottom: 0;
   margin-top: 18px;
@@ -17624,33 +17626,27 @@ button.button {
 }
 
 .pvm-slide--fresh .pvm-title,
-.pvm-slide--weekend .pvm-title {
-  max-width: min(90%, 20rem);
+.pvm-slide--weekend .pvm-title,
+.pvm-slide--pace .pvm-title,
+.pvm-slide--triggers .pvm-title {
+  max-width: 96%;
 }
 
-.pvm-slide--pace .pvm-title {
-  max-width: min(88%, 19rem);
+.pvm-slide--pace .pvm-copy,
+.pvm-slide--fresh .pvm-copy,
+.pvm-slide--weekend .pvm-copy,
+.pvm-slide--triggers .pvm-copy {
+  max-width: 96%;
+  padding-bottom: var(--pvm-art-clearance);
 }
 
-.pvm-slide--pace .pvm-copy {
-  max-width: min(68%, 17.5rem);
-  padding-bottom: 36%;
+/* tip3 (weekend): сцена выше — чуть больше нижний clear, текст всё равно широкий */
+.pvm-slide--weekend .pvm-copy {
+  padding-bottom: 38%;
 }
 
 .pvm-slide--fresh .pvm-copy {
-  /* Сцена со столом шире — колонка чуть уже tip1, но не «лента слева» */
-  max-width: min(60%, 15.8rem);
-  padding-bottom: 42%;
-}
-
-.pvm-slide--weekend .pvm-copy {
-  max-width: min(64%, 16.8rem);
   padding-bottom: 40%;
-}
-
-.pvm-slide--triggers .pvm-copy {
-  max-width: min(66%, 17.2rem);
-  padding-bottom: 38%;
 }
 
 .pvm-text {

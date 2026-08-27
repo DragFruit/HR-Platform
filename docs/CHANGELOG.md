@@ -4,6 +4,13 @@
 
 ## 2026-08-27
 
+### Памятка Design C: широкий текст + tip2/tip3 без тёмной кромки (art-c-v16)
+- Layout: `.pvm-copy` почти на всю ширину (`max-width: 96%`) — заполняет пустое правое поле над артом (красная аннотация на tip3). Узкая левая колонка снята. Снизу clearance под арт; CTA слева без наезда.
+- Арт tip2/tip3: с PNG снят/осветлён тёмный контурный fringe. Cache-bust `?v=art-c-v16`.
+- CSS: у `.pvm-illust` без `border`/`outline`/`box-shadow`/`filter`.
+- Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-tip{2,3}.png`.
+- Проверка: `?pvm=tips` → таб 4 (tip3) — текст широкий вправо над котом; tip2/tip3 без чёрной обводки. Стейдж `:8080`, hard refresh. Прод не трогали.
+
 ### База знаний: блок «код» — тёмно-синий фон
 - `.kb-code` фон `#111` → `#0d1b2a` (near-black navy, ITMO). Общие стили WYSIWYG: редактор сотрудника/админа и просмотр статьи.
 - Файлы: `main.css`. Проверка: `/knowledge/write` и статья с блоком кода. Стейдж `:8080`. Прод не трогали.
