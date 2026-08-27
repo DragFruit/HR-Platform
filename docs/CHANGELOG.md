@@ -4,6 +4,19 @@
 
 ## 2026-08-27
 
+### Памятка Design C: горшки + тень в PNG (art-c-v11)
+- Причина: pass art-c-v10 (убрать белую пыль) вместе с пылью стёр светлые горшки; CSS `drop-shadow` на lavender почти не читался.
+- Арт: восстановлены светлые горшки у растений на всех 6 `pvm-c-art-*.png` из pre-v10 (art-c-v8), без перерисовки котов; в PNG запечён мягкий violet oval под группой; бумажная текстура сохранена.
+- CSS: слабый `filter: drop-shadow` у `.pvm-illust` снят (тень в растре). Cache-bust `?v=art-c-v11`.
+- Файлы: `public/memos/pvm-c-art-*.png`, `postVacationMemoSlides.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + tip1 + tip3: горшок и тень видны. Прод не трогали.
+
+### База знаний ИИ: fallback на вопросы про кейсы
+- Пока кейсы не в статьях БЗ: вопросы с «кейс/кейсы/case study» → фиксированный ответ без RAG/GPT и без «Ещё по теме» (чтобы не подтягивать чужие статьи вроде Авито-специалистов).
+- Текст: «Пока что я не умею работать с кейсами, но уже прохожу обучение! Скоро смогу ответить на все ваши вопросы по ним.»
+- Файлы: `knowledgeAiIntent.ts` (`detectKbAiCasesQuestion`, `KB_AI_CASES_REPLY`), `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`, `docs/PRODUCT.md`.
+- Проверка: `node scripts/knowledge/check-kb-cases-fallback.mjs`; в чате «где взять кейс по авто тематике?» → точный fallback, без ссылок.
+
 ### Памятка Design C: текстура, тень, кнопки, регистр заголовка
 - Бумага: сильнее vertical linen на `.pvm-card__paper` (noise + зерно).
 - Тень: с PNG убрана белая пыль под лапами; под `.pvm-illust` — soft violet `drop-shadow` (кот/пропсы те же).

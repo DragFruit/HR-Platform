@@ -17337,10 +17337,8 @@ button.button {
   pointer-events: none;
   user-select: none;
   max-width: min(48%, 200px);
-  /* Мягкая фиолетовая тень под группой вместо белой пыли в PNG */
-  filter:
-    drop-shadow(0 9px 7px rgba(74, 42, 120, 0.28))
-    drop-shadow(0 3px 2px rgba(58, 32, 100, 0.18));
+  /* Тень запечена в PNG (мягкий violet oval); CSS drop-shadow на lavender не читался */
+  filter: none;
 }
 
 .pvm-illust--welcome {
