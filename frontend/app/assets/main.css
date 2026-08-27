@@ -6657,6 +6657,7 @@ button.org-unit-head--link:hover {
   overflow: hidden;
   border: 0;
   border-radius: 24px;
+  border-bottom-left-radius: 6px;
   background: #0d1b2a;
   color: #eeeee8;
 }
