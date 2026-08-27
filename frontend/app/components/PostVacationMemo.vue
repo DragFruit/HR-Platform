@@ -62,7 +62,7 @@
           </div>
         </div>
         <div v-if="ui === 'collapsing'" class="pvm-dock-face" aria-hidden="true">
-          <img :src="welcome.coverSrc" alt="" class="pvm-dock-face__img" width="64" height="64" />
+          <img :src="chipSrc" alt="" class="pvm-dock-face__img" width="64" height="64" />
           <span class="pvm-dock-face__copy">
             <strong>{{ dockCopy.title }}</strong>
             <em>{{ dockCopy.label }}</em>
@@ -163,7 +163,7 @@
     :aria-label="`${dockCopy.title}. ${dockCopy.label}`"
     @click="openCarousel"
   >
-    <img :src="welcome.coverSrc" alt="" class="pvm-dock__img" width="72" height="72" />
+    <img :src="chipSrc" alt="" class="pvm-dock__img" width="72" height="72" />
     <span class="pvm-dock__copy">
       <strong>{{ dockCopy.title }}</strong>
       <em>{{ dockCopy.label }}</em>
@@ -177,6 +177,7 @@ import { postVacationMemoTabIndex } from '~/data/postVacationMemoSlides';
 const {
   ui,
   welcome,
+  chipSrc,
   dockCopy,
   slides,
   slide,

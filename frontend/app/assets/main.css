@@ -17292,23 +17292,30 @@ button.button {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  /* series-c: заметный вертикальный linen / paper grain, не плоский лавандовый */
-  opacity: 0.62;
+  /* series-c-01: сильный vertical linen — полосы читаются на lavender, не «плоский фон» */
+  opacity: 0.78;
   background-image:
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E"),
     repeating-linear-gradient(
       90deg,
       transparent,
       transparent 1px,
-      rgba(55, 30, 95, 0.045) 1px,
-      rgba(55, 30, 95, 0.045) 2px
+      rgba(45, 22, 85, 0.09) 1px,
+      rgba(45, 22, 85, 0.09) 2px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 3px,
+      rgba(55, 30, 95, 0.05) 3px,
+      rgba(55, 30, 95, 0.05) 4px
     ),
     repeating-linear-gradient(
       0deg,
       transparent,
-      transparent 3px,
-      rgba(70, 40, 110, 0.028) 3px,
-      rgba(70, 40, 110, 0.028) 4px
+      transparent 4px,
+      rgba(70, 40, 110, 0.035) 4px,
+      rgba(70, 40, 110, 0.035) 5px
     );
   mix-blend-mode: multiply;
 }
@@ -17337,6 +17344,12 @@ button.button {
   pointer-events: none;
   user-select: none;
   max-width: min(48%, 200px);
+  /* Без рамки/плиты вокруг сцены — только cutout на lavender */
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
   /* Тень запечена в PNG (мягкий violet oval); CSS drop-shadow на lavender не читался */
   filter: none;
 }
@@ -17588,10 +17601,11 @@ button.button {
 .pvm-dock-face__img {
   width: 60px;
   height: 60px;
-  object-fit: cover;
-  object-position: right bottom;
+  object-fit: contain;
+  object-position: center bottom;
   flex: 0 0 auto;
   border-radius: 10px;
+  background: transparent;
 }
 
 .pvm-dock-face__copy {
@@ -17662,10 +17676,11 @@ button.button {
 .pvm-dock__img {
   width: 64px;
   height: 64px;
-  object-fit: cover;
-  object-position: right bottom;
+  object-fit: contain;
+  object-position: center bottom;
   flex: 0 0 auto;
   border-radius: 10px;
+  background: transparent;
   transform: rotate(-8deg);
   transition: transform 0.16s ease;
 }

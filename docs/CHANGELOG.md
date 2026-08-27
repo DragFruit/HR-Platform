@@ -4,6 +4,12 @@
 
 ## 2026-08-27
 
+### Памятка Design C: новые cutouts welcome/intro/tip1 + чип (art-c-v13)
+- Арт: заказчикские cutouts → `pvm-c-art-welcome.png` (потягивающийся кот), `pvm-c-art-intro.png` (смотрит вправо), `pvm-c-art-tip1.png` (глаза закрыты), новый `pvm-c-art-chip.png` (кот+чемодан без растения). Black→true alpha; cream-горшки и фиолетовая ground-band сохранены. tip2–tip4 без смены.
+- UI: чип/свёртка берёт `POST_VACATION_CHIP_SRC`, не welcome; у `.pvm-illust` явно без рамки; `.pvm-card__paper` — сильнее vertical linen (как series-c-01).
+- Cache-bust `?v=art-c-v13`. Файлы: `public/memos/pvm-c-art-{welcome,intro,tip1,chip}.png`, `postVacationMemoSlides.ts`, `PostVacationMemo.vue`, `usePostVacationMemo.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome/intro/tip1 новые позы, горшок виден, нет чёрного/шахматки/рамки; «Позже» → чип без растения. Прод не трогали.
+
 ### База знаний ИИ: отпуск Bitrix+Vibe + порядок «Ещё по теме»
 - Sense отпуска отдаёт **обе** статьи аудитории: Digital → `kb-21301` + `kb-vibe-vacations-digital`; SEO → `kb-24611` + `kb-vibe-vacations-other`; остальные отделы → `kb-vibe-vacations-other`. Без слова отдела в вопросе sense берётся из `department` сессии.
 - Retrieval больше не обрезает clear-sense до одной Bitrix-статьи; в контекст GPT попадают оба источника.

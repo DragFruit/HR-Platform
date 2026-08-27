@@ -1,4 +1,5 @@
 import {
+  POST_VACATION_CHIP_SRC,
   POST_VACATION_DOCK,
   POST_VACATION_MEMO_SLIDES,
   POST_VACATION_WELCOME
@@ -78,6 +79,7 @@ export function usePostVacationMemo() {
 
   const welcome = POST_VACATION_WELCOME;
   const dockCopy = POST_VACATION_DOCK;
+  const chipSrc = POST_VACATION_CHIP_SRC;
   const slides = computed(() =>
     showIntro.value
       ? POST_VACATION_MEMO_SLIDES
@@ -248,6 +250,7 @@ export function usePostVacationMemo() {
   return {
     ui,
     welcome,
+    chipSrc,
     dockCopy,
     slides,
     slide,

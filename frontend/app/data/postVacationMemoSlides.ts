@@ -14,7 +14,7 @@ export type PostVacationMemoSlide = {
   laterCta?: string;
 };
 
-const ART_V = 'art-c-v12';
+const ART_V = 'art-c-v13';
 
 /** Первый экран: тепло, без акцента что выход = хандра. */
 export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
@@ -31,6 +31,9 @@ export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
   laterCta: 'Позже',
   cta: 'Прочитать'
 };
+
+/** Чип (свёрнутая памятка): кот + чемодан, без растения. */
+export const POST_VACATION_CHIP_SRC = `/memos/pvm-c-art-chip.png?v=${ART_V}`;
 
 export const POST_VACATION_DOCK = {
   title: 'Советы после отпуска',
