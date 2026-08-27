@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
   const title = String(payload.title || '').trim();
   const summary = String(payload.summary || '').trim();
   const body = String(payload.body || '').trim();
-  const status = 'review' as const;
   const tags = Array.isArray(payload.tags)
     ? payload.tags.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20)
     : [];
@@ -43,10 +42,17 @@ export default defineEventHandler(async (event) => {
       tags,
       breadcrumbs: [],
       departments,
-      status,
+      status: 'pending_review',
       createdAt: now,
       updatedAt: now,
-      authorName: session.name || session.email || 'Администратор'
+      authorName: session.name || session.email || 'Администратор',
+      authorUserId: session.id,
+      comments: [],
+      pendingRevision: null,
+      approvedAt: null,
+      rejectionReason: null,
+      submittedAt: now,
+      closedAt: null
     };
     created = article;
     return {

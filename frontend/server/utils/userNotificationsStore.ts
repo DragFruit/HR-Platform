@@ -14,7 +14,11 @@ export type UserNotificationKind =
   | 'vacation_reservation_expiring'
   | 'vacation_reservation_expiring_manager'
   | 'idea_status_changed'
-  | 'post_vacation_memo';
+  | 'post_vacation_memo'
+  | 'knowledge_article_submitted'
+  | 'knowledge_article_accepted'
+  | 'knowledge_article_revision'
+  | 'knowledge_article_rejected';
 
 export type UserNotification = {
   id: string;

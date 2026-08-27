@@ -1,4 +1,9 @@
-export type AdminKnowledgeArticleStatus = 'review' | 'published';
+export type AdminKnowledgeArticleStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'published'
+  | 'revision_requested'
+  | 'rejected';
 
 export type AdminKnowledgeArticle = {
   id: string;
@@ -11,6 +16,26 @@ export type AdminKnowledgeArticle = {
   createdAt: string;
   updatedAt: string;
   authorName: string;
+  authorUserId?: number | null;
+  comments?: Array<{
+    id: string;
+    authorUserId: number;
+    authorName: string;
+    quote: string;
+    body: string;
+    createdAt: string;
+  }>;
+  pendingRevision?: {
+    title: string;
+    summary: string;
+    body: string;
+    tags: string[];
+    departments: string[];
+    submittedAt: string;
+    status: 'pending_review' | 'revision_requested';
+  } | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
 };
 
 type AdminKnowledgePayload = {
@@ -27,8 +52,20 @@ type UpsertInput = {
 };
 
 const STATUS_LABELS: Record<AdminKnowledgeArticleStatus, string> = {
-  review: 'На проверке',
-  published: 'Опубликовано'
+  draft: 'Черновик',
+  pending_review: 'На проверке',
+  published: 'Опубликовано',
+  revision_requested: 'На доработку',
+  rejected: 'Отклонено'
+};
+
+const normalizeClientStatus = (status: string | undefined): AdminKnowledgeArticleStatus => {
+  if (status === 'published') return 'published';
+  if (status === 'draft') return 'draft';
+  if (status === 'revision_requested') return 'revision_requested';
+  if (status === 'rejected') return 'rejected';
+  if (status === 'pending_review' || status === 'review') return 'pending_review';
+  return 'pending_review';
 };
 
 export function useAdminKnowledge() {
@@ -37,14 +74,16 @@ export function useAdminKnowledge() {
 
   const applyPayload = (payload: AdminKnowledgePayload) => {
     articles.value = Array.isArray(payload.articles)
-      ? [...payload.articles].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      ? [...payload.articles]
+          .map((a) => ({ ...a, status: normalizeClientStatus(a.status as string) }))
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       : [];
   };
 
   const requireArticle = (payload: AdminKnowledgePayload & { article?: AdminKnowledgeArticle }) => {
     const article = payload.article ?? articles.value[0];
     if (!article) throw new Error('Сервер не вернул статью');
-    return article;
+    return { ...article, status: normalizeClientStatus(article.status as string) };
   };
 
   const hydrate = async () => {
@@ -77,6 +116,22 @@ export function useAdminKnowledge() {
     return requireArticle(payload);
   };
 
+  const moderateArticle = async (
+    id: string,
+    action: 'accept' | 'revision' | 'reject',
+    rejectionReason?: string
+  ) => {
+    const payload = await $fetch<AdminKnowledgePayload & { article: AdminKnowledgeArticle }>(
+      `/api/admin/knowledge/${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: { moderateAction: action, rejectionReason }
+      }
+    );
+    applyPayload(payload);
+    return requireArticle(payload);
+  };
+
   const deleteArticle = async (id: string) => {
     const payload = await $fetch<AdminKnowledgePayload>(`/api/admin/knowledge/${encodeURIComponent(id)}`, {
       method: 'DELETE'
@@ -84,7 +139,12 @@ export function useAdminKnowledge() {
     applyPayload(payload);
   };
 
-  const statusLabel = (status: AdminKnowledgeArticleStatus) => STATUS_LABELS[status] || STATUS_LABELS.review;
+  const statusLabel = (status: AdminKnowledgeArticleStatus) =>
+    STATUS_LABELS[status] || STATUS_LABELS.pending_review;
+
+  const needsModeration = (article: AdminKnowledgeArticle) =>
+    article.status === 'pending_review' ||
+    Boolean(article.pendingRevision?.status === 'pending_review');
 
   return {
     articles,
@@ -92,7 +152,9 @@ export function useAdminKnowledge() {
     hydrate,
     createArticle,
     updateArticle,
+    moderateArticle,
     deleteArticle,
-    statusLabel
+    statusLabel,
+    needsModeration
   };
 }

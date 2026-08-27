@@ -90,15 +90,32 @@
           </div>
 
           <div class="kb-queue__actions">
-            <button
-              v-if="article.status === 'review'"
-              type="button"
-              class="button primary"
-              :disabled="publishingId === article.id"
-              @click="publishArticle(article)"
-            >
-              {{ publishingId === article.id ? 'Публикую…' : 'Опубликовать' }}
-            </button>
+            <template v-if="needsModeration(article)">
+              <button
+                type="button"
+                class="kb-pill kb-pill--lime"
+                :disabled="publishingId === article.id"
+                @click="moderate(article, 'accept')"
+              >
+                {{ publishingId === article.id ? '…' : 'Принять' }}
+              </button>
+              <button
+                type="button"
+                class="kb-pill kb-pill--outline"
+                :disabled="publishingId === article.id"
+                @click="moderate(article, 'revision')"
+              >
+                На доработку
+              </button>
+              <button
+                type="button"
+                class="kb-pill kb-pill--dark"
+                :disabled="publishingId === article.id"
+                @click="openReject(article)"
+              >
+                Отклонить
+              </button>
+            </template>
             <button type="button" class="button ghost" @click="startEdit(article)">
               {{ article.id === editingId ? 'В работе' : 'Редактировать' }}
             </button>
@@ -110,12 +127,33 @@
       </ul>
     </section>
   </div>
+
+  <Teleport to="body">
+    <div v-if="rejectTarget" class="kb-reject-layer" @click.self="rejectTarget = null">
+      <div class="kb-reject-modal" role="dialog" aria-modal="true">
+        <h3 class="kb-reject-modal__title">Отклонить статью</h3>
+        <p class="muted">Укажите причину — без неё отклонить нельзя. Статья закроется навсегда.</p>
+        <textarea v-model="rejectReason" class="kb-reject-modal__input" rows="4" maxlength="1000" />
+        <div class="kb-reject-modal__actions">
+          <button type="button" class="kb-pill kb-pill--outline" @click="rejectTarget = null">Отмена</button>
+          <button
+            type="button"
+            class="kb-pill kb-pill--dark"
+            :disabled="rejectReason.trim().length < 3 || publishingId === rejectTarget.id"
+            @click="moderate(rejectTarget, 'reject')"
+          >
+            Отклонить
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import type { AdminKnowledgeArticle, AdminKnowledgeArticleStatus } from '~/composables/useAdminKnowledge';
 
-const { articles, hydrated, hydrate, createArticle, updateArticle, deleteArticle, statusLabel } =
+const { articles, hydrated, hydrate, createArticle, updateArticle, moderateArticle, deleteArticle, statusLabel, needsModeration } =
   useAdminKnowledge();
 
 const editingId = ref<string | null>(null);
@@ -126,6 +164,8 @@ const okText = ref('');
 const loadError = ref('');
 const titleRef = ref<HTMLTextAreaElement | null>(null);
 const leadRef = ref<HTMLTextAreaElement | null>(null);
+const rejectTarget = ref<AdminKnowledgeArticle | null>(null);
+const rejectReason = ref('');
 let savedSnapshot = '';
 
 const form = reactive<{
@@ -139,7 +179,7 @@ const form = reactive<{
   title: '',
   summary: '',
   body: '',
-  status: 'review',
+  status: 'pending_review',
   tags: [],
   departments: []
 });
@@ -234,7 +274,7 @@ const blankForm = () => {
   form.title = '';
   form.summary = '';
   form.body = '';
-  form.status = 'review';
+  form.status = 'pending_review';
   form.tags = [];
   form.departments = [];
 };
@@ -300,7 +340,7 @@ const saveArticle = async () => {
       errorText.value = 'Текст статьи: минимум 20 символов';
       return;
     }
-    const payload = articlePayload(editingId.value ? form.status : 'review');
+    const payload = articlePayload(editingId.value ? form.status : 'pending_review');
     if (editingId.value) {
       const article = await updateArticle(editingId.value, payload);
       fillForm(article);
@@ -318,23 +358,36 @@ const saveArticle = async () => {
   }
 };
 
-const publishArticle = async (article: AdminKnowledgeArticle) => {
+const openReject = (article: AdminKnowledgeArticle) => {
+  rejectTarget.value = article;
+  rejectReason.value = '';
+};
+
+const moderate = async (article: AdminKnowledgeArticle, action: 'accept' | 'revision' | 'reject') => {
+  if (action === 'reject' && rejectReason.value.trim().length < 3) {
+    errorText.value = 'Укажите причину отклонения';
+    return;
+  }
   publishingId.value = article.id;
   errorText.value = '';
   okText.value = '';
   try {
-    const updated = await updateArticle(article.id, {
-      title: article.title,
-      summary: article.summary,
-      body: article.body,
-      tags: article.tags,
-      departments: article.departments ?? [],
-      status: 'published'
-    });
+    const updated = await moderateArticle(
+      article.id,
+      action,
+      action === 'reject' ? rejectReason.value.trim() : undefined
+    );
+    rejectTarget.value = null;
+    rejectReason.value = '';
     if (editingId.value === article.id) fillForm(updated);
-    okText.value = 'Статья опубликована';
+    okText.value =
+      action === 'accept'
+        ? 'Статья принята и опубликована'
+        : action === 'revision'
+          ? 'Возвращено на доработку'
+          : 'Статья отклонена';
   } catch (error: unknown) {
-    errorText.value = apiErrorMessage(error, 'Не удалось опубликовать статью');
+    errorText.value = apiErrorMessage(error, 'Не удалось выполнить модерацию');
   } finally {
     publishingId.value = null;
   }

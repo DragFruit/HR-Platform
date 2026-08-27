@@ -4,6 +4,13 @@
 
 ## 2026-08-27
 
+### База знаний: статьи сотрудников + модерация руководителя
+- На `/knowledge` — FAB карандаш **слева внизу**; панель создания/правок своих статей; у руководителя — статьи прямых подчинённых и режим «Проверить» (инлайн-комментарии, Принять / На доработку / Отклонить с обязательной причиной).
+- Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). Правка опубликованной — через `pendingRevision` (старая версия жива до Accept). RAG только `published`.
+- Уведомления Vibe + Bitrix system notify (`im.notify.system.add`). Админка `/admin/knowledge` — те же действия модерации.
+- Файлы: `knowledgeArticlesStore.ts`, `knowledgeNotifications.ts`, `api/knowledge/articles/*`, `KnowledgeArticleWorkspace.vue`, `useKnowledgeAuthor.ts`, `pages/knowledge/index.vue`, `pages/admin/knowledge.vue`, `useUserNotifications.ts`, docs.
+- Проверка на стейдже: сотрудник Digital → FAB → статья → «На проверку»; руководитель → FAB → «Проверить» → Принять; колокольчик + Bitrix. Прод не трогали.
+
 ### Памятка Design C: текст/CTA не перекрывают котов
 - Layout: масштаб арта и clear zone под series-c (не «наклейка», не наезд на лапы/горшок). Уже колонка copy на tip-слайдах; CTA-ряд слева с зазором до сцены; intro — CTA под горшком справа.
 - PNG/`ART_V` не меняли. Файлы: `main.css` (`.pvm-illust*`, `.pvm-copy`, `.pvm-nav`, `.pvm-cta`).

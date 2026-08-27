@@ -1,6 +1,17 @@
 <template>
-  <div class="kb-wysiwyg" @input="syncFromDom" @mousedown.capture="onEditorMouseDown">
-    <div class="kb-wysiwyg__bar" role="toolbar" aria-label="Форматирование" @mousedown.prevent>
+  <div
+    class="kb-wysiwyg"
+    :class="{ 'kb-wysiwyg--readonly': readonly }"
+    @input="syncFromDom"
+    @mousedown.capture="onEditorMouseDown"
+  >
+    <div
+      v-if="!readonly"
+      class="kb-wysiwyg__bar"
+      role="toolbar"
+      aria-label="Форматирование"
+      @mousedown.prevent
+    >
       <div class="kb-wysiwyg__tools">
       <div class="kb-wysiwyg__combo" @click.stop>
         <button
@@ -64,7 +75,7 @@
       <div
         ref="surfaceRef"
         class="kb-wysiwyg__surface"
-        contenteditable="true"
+        :contenteditable="readonly ? 'false' : 'true'"
         role="textbox"
         aria-multiline="true"
         aria-label="Текст статьи"
@@ -75,7 +86,16 @@
         @click="onSurfaceClick"
         @paste="onPaste"
         @contextmenu="onContextMenu"
+        @touchend="onTouchEndSelection"
       />
+      <button
+        v-if="enableComments && mobileCommentQuote"
+        type="button"
+        class="kb-wysiwyg__mobile-comment"
+        @click="openCommentFromMobile"
+      >
+        Оставить комментарий
+      </button>
     </div>
   </div>
 
@@ -97,12 +117,21 @@
       @mousedown.prevent
     >
       <button
+        v-if="!readonly"
         type="button"
         class="kb-link-menu__btn"
         @pointerdown.stop="beginClipboardPeek"
         @click.stop="openLinkDialog"
       >
         Добавить ссылку
+      </button>
+      <button
+        v-if="enableComments"
+        type="button"
+        class="kb-link-menu__btn"
+        @click.stop="emitCommentFromMenu"
+      >
+        Оставить комментарий
       </button>
     </div>
 
@@ -150,12 +179,25 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits<{ ready: [] }>();
+const props = withDefaults(
+  defineProps<{
+    readonly?: boolean;
+    enableComments?: boolean;
+  }>(),
+  { readonly: false, enableComments: false }
+);
+
+const emit = defineEmits<{
+  ready: [];
+  'request-comment': [payload: { quote: string }];
+}>();
 const model = defineModel<string>({ default: '' });
 
 const surfaceRef = ref<HTMLElement | null>(null);
 const openMenu = ref<'heading' | 'list' | null>(null);
 const linkMenu = ref<{ x: number; y: number } | null>(null);
+const mobileCommentQuote = ref('');
+const commentQuote = ref('');
 const linkDialog = ref(false);
 const linkText = ref('');
 const linkHref = ref('');
@@ -574,13 +616,49 @@ const captureLinkSelection = () => {
   return true;
 };
 
+const captureSelectionQuote = () => {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return '';
+  if (!surfaceRef.value?.contains(sel.anchorNode)) return '';
+  return sel.toString().trim().slice(0, 500);
+};
+
 const onContextMenu = (event: MouseEvent) => {
   const target = asElement(event.target);
   if (target?.closest('[data-kb-code]')) return;
-  if (!captureLinkSelection()) return;
+  const quote = captureSelectionQuote();
+  if (!quote) return;
+  if (!props.readonly && !props.enableComments) {
+    if (!captureLinkSelection()) return;
+  } else if (!props.readonly) {
+    captureLinkSelection();
+  }
+  commentQuote.value = quote;
   event.preventDefault();
-  beginClipboardPeek();
+  if (!props.readonly) beginClipboardPeek();
   linkMenu.value = { x: event.clientX, y: event.clientY };
+};
+
+const emitCommentFromMenu = () => {
+  const quote = commentQuote.value || captureSelectionQuote();
+  linkMenu.value = null;
+  if (!quote) return;
+  emit('request-comment', { quote });
+};
+
+const onTouchEndSelection = () => {
+  if (!props.enableComments) return;
+  window.setTimeout(() => {
+    const quote = captureSelectionQuote();
+    mobileCommentQuote.value = quote;
+  }, 50);
+};
+
+const openCommentFromMobile = () => {
+  const quote = mobileCommentQuote.value || captureSelectionQuote();
+  mobileCommentQuote.value = '';
+  if (!quote) return;
+  emit('request-comment', { quote });
 };
 
 const focusUrlField = () => {

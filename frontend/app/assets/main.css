@@ -6211,6 +6211,140 @@ button.org-unit-head--link:hover {
   color: #111;
 }
 
+.kb-editor__pill[data-status='pending_review'],
+.kb-editor__pill[data-status='review'] {
+  background: #7451f4;
+  color: #fff;
+}
+
+.kb-editor__pill[data-status='draft'] {
+  background: #fff;
+  color: #111;
+  border: 1px solid #111;
+}
+
+.kb-editor__pill[data-status='revision_requested'] {
+  background: #fff;
+  color: #111;
+  outline: 2px solid #ddf365;
+  outline-offset: -2px;
+}
+
+.kb-editor__pill[data-status='rejected'] {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.kb-write-fab {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid #111;
+  background: #ddf365;
+  color: #111;
+  box-shadow: 4px 4px 0 #7451f4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.kb-write-fab:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 #7451f4;
+}
+
+.kb-wysiwyg--readonly .kb-wysiwyg__surface {
+  cursor: text;
+  user-select: text;
+}
+
+.kb-wysiwyg__mobile-comment {
+  margin-top: 10px;
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: #fff;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kb-pill {
+  border: 2px solid #111;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: Golos Text, sans-serif;
+  font-size: 0.85rem;
+}
+
+.kb-pill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.kb-pill--lime {
+  background: #ddf365;
+  color: #111;
+}
+
+.kb-pill--outline {
+  background: #fff;
+  color: #111;
+}
+
+.kb-pill--dark {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.kb-reject-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(10, 8, 16, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.kb-reject-modal {
+  width: min(440px, 100%);
+  background: #eeeee8;
+  border: 3px solid #111;
+  box-shadow: 6px 6px 0 #ddf365;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.kb-reject-modal__title {
+  margin: 0;
+  font-family: Unbounded, sans-serif;
+}
+
+.kb-reject-modal__input {
+  width: 100%;
+  border: 2px solid #111;
+  padding: 10px;
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.kb-reject-modal__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .kb-wysiwyg {
   width: 100%;
   border: 0;
@@ -17178,9 +17312,9 @@ button.button {
   /* Сцена чуть над рядом CTA, чтобы тень/лапы не заходили в кнопку */
   --pvm-art-bottom: calc(var(--pvm-nav-h) + 6px);
   /* Левая зона под CTA */
-  --pvm-cta-max: 46%;
-  /* Текстовая колонка — clear zone справа */
-  --pvm-copy-max: 58%;
+  --pvm-cta-max: 48%;
+  /* Текстовая колонка — шире к series-c, арт справа clear */
+  --pvm-copy-max: 70%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -17434,7 +17568,7 @@ button.button {
   letter-spacing: -0.04em;
   line-height: 1.08;
   color: var(--pvm-ink);
-  max-width: 92%;
+  max-width: 96%;
 }
 
 .pvm-title__line {
@@ -17458,13 +17592,13 @@ button.button {
   margin-bottom: 8px;
   overflow: auto;
   padding-right: 2px;
-  /* Не наезжать на арт справа/снизу (эскиз: текст слева, кот справа) */
-  max-width: min(var(--pvm-copy-max), 14.5rem);
+  /* series-c: колонка шире ~⅔ карточки, снизу clearance под арт */
+  max-width: min(var(--pvm-copy-max), 18.5rem);
   padding-bottom: var(--pvm-art-clearance);
 }
 
 .pvm-card--welcome .pvm-copy {
-  max-width: min(62%, 14rem);
+  max-width: min(72%, 17.5rem);
   padding-bottom: 38%;
 }
 
@@ -17482,27 +17616,31 @@ button.button {
 
 .pvm-slide--fresh .pvm-title,
 .pvm-slide--weekend .pvm-title {
-  max-width: min(78%, 17rem);
+  max-width: min(90%, 20rem);
+}
+
+.pvm-slide--pace .pvm-title {
+  max-width: min(88%, 19rem);
 }
 
 .pvm-slide--pace .pvm-copy {
-  max-width: min(54%, 13.2rem);
-  padding-bottom: 38%;
+  max-width: min(68%, 17.5rem);
+  padding-bottom: 36%;
 }
 
 .pvm-slide--fresh .pvm-copy {
-  /* Широкая сцена со столом — узкая колонка, иначе текст в кота/листья */
-  max-width: min(46%, 11.6rem);
-  padding-bottom: 44%;
+  /* Сцена со столом шире — колонка чуть уже tip1, но не «лента слева» */
+  max-width: min(60%, 15.8rem);
+  padding-bottom: 42%;
 }
 
 .pvm-slide--weekend .pvm-copy {
-  max-width: min(52%, 12.8rem);
+  max-width: min(64%, 16.8rem);
   padding-bottom: 40%;
 }
 
 .pvm-slide--triggers .pvm-copy {
-  max-width: min(54%, 13.2rem);
+  max-width: min(66%, 17.2rem);
   padding-bottom: 38%;
 }
 

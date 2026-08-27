@@ -11,7 +11,11 @@ export type UserNotification = {
     | 'vacation_reservation_expiring'
     | 'vacation_reservation_expiring_manager'
     | 'idea_status_changed'
-    | 'post_vacation_memo';
+    | 'post_vacation_memo'
+    | 'knowledge_article_submitted'
+    | 'knowledge_article_accepted'
+    | 'knowledge_article_revision'
+    | 'knowledge_article_rejected';
   recipient_user_id: number;
   vacation_request_id?: number;
   employee_name: string;
@@ -99,9 +103,16 @@ export function useUserNotifications() {
 
   const isIdeaNotification = (item: UserNotification) => item.kind === 'idea_status_changed';
 
+  const isKnowledgeNotification = (item: UserNotification) =>
+    item.kind === 'knowledge_article_submitted' ||
+    item.kind === 'knowledge_article_accepted' ||
+    item.kind === 'knowledge_article_revision' ||
+    item.kind === 'knowledge_article_rejected';
+
   const notificationLink = (item: UserNotification) => {
     if (item.kind === 'post_vacation_memo') return '/vacations?pvm=tips';
     if (isIdeaNotification(item)) return '/ideas';
+    if (isKnowledgeNotification(item)) return '/knowledge';
     return isManagerAction(item) ? '/vacations?tab=approval' : '/vacations';
   };
 
@@ -133,6 +144,14 @@ export function useUserNotifications() {
         return 'Статус идеи обновлён';
       case 'post_vacation_memo':
         return 'Советы после отпуска';
+      case 'knowledge_article_submitted':
+        return 'Статья на проверку';
+      case 'knowledge_article_accepted':
+        return 'Статья опубликована';
+      case 'knowledge_article_revision':
+        return 'Статья на доработку';
+      case 'knowledge_article_rejected':
+        return 'Статья отклонена';
       default:
         return 'Уведомление';
     }
@@ -149,6 +168,21 @@ export function useUserNotifications() {
         ? ` Комментарий: ${item.status_comment.trim()}`
         : '';
       return `${title}. ${stage}${comment}`;
+    }
+    if (item.kind === 'knowledge_article_submitted') {
+      return 'Ваш сотрудник подготовил материал для статьи в Базу знаний. Вам нужно проверить его на экспертность и полезность';
+    }
+    if (item.kind === 'knowledge_article_accepted') {
+      return 'Поздравляем! Ваша статья прошла проверку и опубликована в Базе знаний.';
+    }
+    if (item.kind === 'knowledge_article_revision') {
+      return 'К сожалению, подготовленный материал не прошел проверку и вернулся обратно для редактирования.';
+    }
+    if (item.kind === 'knowledge_article_rejected') {
+      const reason = item.status_comment?.trim();
+      return reason
+        ? `Материал отклонён и закрыт. Причина: ${reason}`
+        : 'Материал отклонён и закрыт.';
     }
 
     const period = formatPeriod(item.start, item.end);
@@ -203,11 +237,13 @@ export function useUserNotifications() {
     item.kind === 'vacation_updated' ||
     item.kind === 'vacation_deleted' ||
     item.kind === 'vacation_reservation_updated' ||
-    item.kind === 'vacation_reservation_expiring_manager';
+    item.kind === 'vacation_reservation_expiring_manager' ||
+    item.kind === 'knowledge_article_submitted';
 
   const notificationActionLabel = (item: UserNotification) => {
     if (item.kind === 'post_vacation_memo') return 'Открыть';
     if (isIdeaNotification(item)) return 'Банк идей';
+    if (isKnowledgeNotification(item)) return 'База знаний';
     return isManagerAction(item) ? 'Согласование' : 'Открыть отпуска';
   };
 
@@ -228,6 +264,7 @@ export function useUserNotifications() {
     formatNotificationBody,
     formatDate,
     isManagerAction,
-    isIdeaNotification
+    isIdeaNotification,
+    isKnowledgeNotification
   };
 }

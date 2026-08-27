@@ -267,6 +267,26 @@
         </div>
       </div>
     </div>
+
+    <button
+      type="button"
+      class="kb-write-fab"
+      aria-label="Написать статью"
+      title="Написать статью"
+      @click="authorOpen = true"
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path
+          d="M4 20h4.2L18.7 9.5a1.8 1.8 0 0 0 0-2.5l-1.7-1.7a1.8 1.8 0 0 0-2.5 0L4 15.8V20z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+        <path d="M13.2 6.8 17.2 10.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <KnowledgeArticleWorkspace v-model:open="authorOpen" />
   </div>
 </template>
 
@@ -297,6 +317,7 @@ const QUICK_TOPICS = ['Отпуска', 'Адаптация', 'Банк идей
 
 const mode = ref<SearchMode>('ai');
 const filterOpen = ref(false);
+const authorOpen = ref(false);
 const aiDraft = ref('');
 const resultsRef = ref<HTMLElement | null>(null);
 const sentinelRef = ref<HTMLElement | null>(null);
