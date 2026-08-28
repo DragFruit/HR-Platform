@@ -4,10 +4,12 @@ import {
   detectKbAiChitchat,
   emptyKbReplyMode,
   expandQuestionFromHistory,
+  buildKbAiCaseModelHint,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
+  normalizeKbAiQueryTypos,
   parseKbAiModelReply,
   shouldRejectModelOfftopic,
   shouldSkipRagAsOfftopic
@@ -131,8 +133,9 @@ export default defineEventHandler(async (event) => {
 
   const history = normalizeHistory(payload.history);
   const viewer = { role: session.role, department: session.department };
+  const normalizedQuestion = normalizeKbAiQueryTypos(question);
   /** Для RAG: уточнение + предыдущий рабочий вопрос. */
-  const retrievalQuestion = expandQuestionFromHistory(question, history);
+  const retrievalQuestion = expandQuestionFromHistory(normalizedQuestion, history);
 
   if (detectKbAiChitchat(question)) {
     const greeting = /^(прив|здравств|добр|хай|hello|hi)/i.test(question.trim());
@@ -220,8 +223,14 @@ export default defineEventHandler(async (event) => {
 
     const context = buildRagContext(retrieved.hits);
     // Для уточнений модель видит склейку с прошлым вопросом (Programmatic / Контакты), не голое «ещё другие».
-    const modelQuestion =
-      retrievalQuestion !== question ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n') : question;
+    let modelQuestion =
+      retrievalQuestion !== normalizedQuestion
+        ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n')
+        : normalizedQuestion;
+    const caseHint = buildKbAiCaseModelHint(normalizedQuestion, history);
+    if (caseHint) {
+      modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
+    }
     const answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
     // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
     // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
@@ -260,10 +269,14 @@ export default defineEventHandler(async (event) => {
       const context = buildRagContext(lexHits);
       let answer: string;
       try {
-        const modelQuestion =
-          retrievalQuestion !== question
+        let modelQuestion =
+          retrievalQuestion !== normalizedQuestion
             ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n')
-            : question;
+            : normalizedQuestion;
+        const caseHint = buildKbAiCaseModelHint(normalizedQuestion, history);
+        if (caseHint) {
+          modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
+        }
         answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
       } catch {
         answer =

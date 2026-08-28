@@ -31,12 +31,16 @@ new Function('exports', 'module', 'require', result.outputFiles[0].text)(
 
 const {
   isKbClarifyingFollowUp,
+  isKbCaseOrChannelFollowUp,
   expandQuestionFromHistory,
   looksLikeWorkplaceKbQuestion,
   shouldSkipRagAsOfftopic,
   shouldRejectModelOfftopic,
   emptyKbReplyMode,
-  detectKbAiOfftopic
+  detectKbAiOfftopic,
+  normalizeKbAiQueryTypos,
+  sanitizeKbAiAnswerText,
+  buildKbAiCaseModelHint
 } = mod.exports;
 
 const history = [
@@ -85,5 +89,39 @@ assert.equal(shouldSkipRagAsOfftopic('расскажи анекдот', history)
 
 // Оффтоп с follow-up-маркером в рабочем треде не режем до RAG
 assert.equal(shouldSkipRagAsOfftopic('а ещё?', history), false);
+
+const caseHistory = [
+  { role: 'user', text: 'кейсы ecom' },
+  {
+    role: 'assistant',
+    text: 'СДЭК ШОППИНГ, МК Шатура, ECCO…'
+  }
+];
+
+const caseFollowUps = ['клиент в еком на смм', 'а по таргету?', 'смм в еком'];
+for (const q of caseFollowUps) {
+  assert.equal(isKbCaseOrChannelFollowUp(q, caseHistory), true, `case follow-up: ${q}`);
+  assert.equal(shouldSkipRagAsOfftopic(q, caseHistory), false, `case not skip RAG: ${q}`);
+  const expanded = expandQuestionFromHistory(q, caseHistory);
+  assert.match(expanded, /кейс|ecom/i, `case expand: ${q} → ${expanded}`);
+}
+
+assert.match(
+  buildKbAiCaseModelHint('клиент в еком на смм', []),
+  /SMM/i,
+  'SMM hint on first message'
+);
+assert.match(
+  normalizeKbAiQueryTypos('очепятка в доке'),
+  /опечатка/i,
+  'typo normalize'
+);
+assert.equal(
+  sanitizeKbAiAnswerText(
+    'Ссылка: [https://vbi.ru/cases/cdek-shopping/](https://vbi.ru/cases/cdek-shopping/)'
+  ),
+  '',
+  'strip broken markdown links'
+);
 
 console.log('ok: kb dialog follow-up checks passed');

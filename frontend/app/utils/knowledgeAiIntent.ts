@@ -46,10 +46,61 @@ export function detectKbAiCasesQuestion(raw: string): boolean {
 
 /** E-com / ecommerce / еком в вопросе (для буста статей кейсов). */
 const ECOM_TOPIC_RE =
-  /(?<![а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс)(?![а-яёa-z0-9])/iu;
+  /(?<![а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс|эком)(?![а-яёa-z0-9])/iu;
 
 export function detectKbAiEcomTopic(raw: string): boolean {
   return ECOM_TOPIC_RE.test(String(raw || '').trim());
+}
+
+/** Канал / формат в вопросе про кейсы (SMM, таргет, посевы…). */
+const CASE_CHANNEL_TOPIC_RE =
+  /(?<![а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет|медиа)(?![а-яёa-z0-9])/iu;
+
+export function detectKbAiCaseChannelTopic(raw: string): boolean {
+  return CASE_CHANNEL_TOPIC_RE.test(String(raw || '').trim());
+}
+
+/** Частые опечатки и сленг в чате — до RAG и модели. */
+const KB_AI_TYPO_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
+  [/очепятк\w*/gi, 'опечатка'],
+  [/опечятк\w*/gi, 'опечатка'],
+  [/игнориш\w*/gi, 'игнорируешь'],
+  [/заброн\w*/gi, 'забронировать'],
+  [/эйчар/gi, 'HR'],
+  [/еком(?![мерс])/gi, 'ecom']
+];
+
+/** Нормализация опечаток и сокращений в вопросе сотрудника. */
+export function normalizeKbAiQueryTypos(raw: string): string {
+  let t = String(raw || '');
+  if (!t.trim()) return t;
+  for (const [re, rep] of KB_AI_TYPO_REPLACEMENTS) {
+    t = t.replace(re, rep);
+  }
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+/** Убрать markdown-ссылки и дубли URL — кликабельные ссылки только в «Ещё по теме». */
+export function sanitizeKbAiAnswerText(raw: string): string {
+  let t = String(raw || '');
+  if (!t) return t;
+  // [https://...](https://...) — сломанный markdown с дублем URL
+  t = t.replace(/\[https?:\/\/[^\]]+\]\(https?:\/\/[^)]+\)/gi, '');
+  // [текст](url) → url (если текст = url, одна копия)
+  t = t.replace(/\[([^\]]*)\]\((https?:\/\/[^)]+)\)/gi, (_, label, url) => {
+    const l = String(label || '').trim();
+    const u = String(url || '').trim();
+    if (!u) return l;
+    if (!l || l === u || l.replace(/\/$/, '') === u.replace(/\/$/, '')) return u;
+    return `${l} ${u}`;
+  });
+  // «Ссылка: https://…» — дублирует «Ещё по теме»
+  t = t.replace(/(?:^|\n)\s*(?:Ссылка|ссылка на кейс|ссылка)\s*:\s*https?:\/\/[^\s,)]+/gim, '');
+  t = t.replace(/(?:Ссылка|ссылка)\s*:\s*https?:\/\/[^\s,)]+/gi, '');
+  t = t.replace(/(?:^|\n)\s*(?:Ссылка|ссылка на кейс|ссылка)\s*:\s*(?=\n|$)/gim, '');
+  t = t.replace(/(?:Ссылка|ссылка)\s*:\s*$/gim, '');
+  t = t.replace(/(?:^|\s)(?:Ссылка|ссылка)\s*:\s*(?=\s*$)/gim, '');
+  return t.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 const CHITCHAT_RE =
@@ -142,6 +193,41 @@ export function isKbClarifyingFollowUp(raw: string): boolean {
   return /^а\s+.+\?$/iu.test(t) && t.length <= 64;
 }
 
+/** История уже про кейсы / ecom / клиента — уточнение канала или ниши. */
+export function historySuggestsCaseEcomTopic(
+  history: { role?: string; text?: string }[] | undefined
+): boolean {
+  if (!Array.isArray(history) || !history.length) return false;
+  return history.some((h) => {
+    const text = String(h?.text || '');
+    return (
+      detectKbAiCasesQuestion(text) ||
+      detectKbAiEcomTopic(text) ||
+      /(?<![а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(text)
+    );
+  });
+}
+
+/**
+ * Уточнение в диалоге: «клиент в еком на смм» после «кейсы ecom», канал поверх темы.
+ * Не только «ещё?» / «подробнее».
+ */
+export function isKbCaseOrChannelFollowUp(
+  question: string,
+  history: { role?: string; text?: string }[] | undefined
+): boolean {
+  if (!Array.isArray(history) || !history.length) return false;
+  const q = question.trim().replace(/\s+/g, ' ');
+  if (!q) return false;
+  if (isKbClarifyingFollowUp(q)) return true;
+  if (!historySuggestsCaseEcomTopic(history)) return false;
+  if (detectKbAiCaseChannelTopic(q)) return true;
+  const words = q.split(/\s+/).length;
+  if (words <= 12 && (detectKbAiEcomTopic(q) || detectKbAiCasesQuestion(q))) return true;
+  if (words <= 10 && /(?<![а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(q)) return true;
+  return false;
+}
+
 /**
  * Follow-up по базе при живой истории: не принимать OFFTOPIC модели/клиента.
  * Явный оффтоп (погода/коты) без follow-up-маркеров по-прежнему режется раньше.
@@ -156,11 +242,15 @@ export function shouldRejectModelOfftopic(
   if (opts?.hasKbContext) {
     return (
       isKbClarifyingFollowUp(question) ||
+      isKbCaseOrChannelFollowUp(question, history) ||
       looksLikeWorkplaceKbQuestion(question) ||
       historySuggestsWorkplace(history)
     );
   }
-  return isKbClarifyingFollowUp(question) && historySuggestsWorkplace(history);
+  return (
+    (isKbClarifyingFollowUp(question) || isKbCaseOrChannelFollowUp(question, history)) &&
+    historySuggestsWorkplace(history)
+  );
 }
 
 export function historySuggestsWorkplace(
@@ -178,7 +268,12 @@ export function expandQuestionFromHistory(
   history: { role?: string; text?: string }[] | undefined
 ): string {
   const q = question.trim();
-  if (!q || !isKbClarifyingFollowUp(q) || !Array.isArray(history) || !history.length) {
+  if (
+    !q ||
+    !Array.isArray(history) ||
+    !history.length ||
+    (!isKbClarifyingFollowUp(q) && !isKbCaseOrChannelFollowUp(q, history))
+  ) {
     return q;
   }
   const users = history
@@ -190,6 +285,29 @@ export function expandQuestionFromHistory(
   return `${base}\nУточнение: ${q}`;
 }
 
+/** Подсказка модели: не повторять список и отвечать по каналу/нише. */
+export function buildKbAiCaseModelHint(
+  question: string,
+  history: { role?: string; text?: string }[] | undefined
+): string | null {
+  const q = String(question || '').trim();
+  if (!q) return null;
+  const parts: string[] = [];
+  if (detectKbAiCaseChannelTopic(q) || /смм|smm/i.test(q)) {
+    parts.push(
+      'В контексте отфильтруй кейсы ecom по полю «Каналы». Если отдельных кейсов «по SMM» нет — явно: «Кейсы в ecom по SMM пока не добавлены», затем «Близкие к теме:» с 2–4 кейсами и почему (таргет, посевы, VK и т.д. из статьи).'
+    );
+  }
+  if (isKbCaseOrChannelFollowUp(q, history)) {
+    parts.push(
+      'Это продолжение диалога про кейсы — не повторяй verbatim предыдущий ответ; ответь по новому уточнению.'
+    );
+  }
+  if (!parts.length) return null;
+  parts.push('Не пиши URL и markdown-ссылки — ссылки добавит блок «Ещё по теме».');
+  return parts.join(' ');
+}
+
 /**
  * Пустой поиск: явный оффтоп → отказ; иначе «нет в базе» без CTA.
  * Нельзя: «нет слов из whitelist → оффтоп» — ломает рабочие вопросы (эйчар, клиенты…).
@@ -198,7 +316,10 @@ export function emptyKbReplyMode(
   question: string,
   history: { role?: string; text?: string }[] = []
 ): 'offtopic' | 'not_found' {
-  if (isKbClarifyingFollowUp(question) && history.length > 0) {
+  if (
+    (isKbClarifyingFollowUp(question) || isKbCaseOrChannelFollowUp(question, history)) &&
+    history.length > 0
+  ) {
     return 'not_found';
   }
   if (detectKbAiOfftopic(question)) return 'offtopic';
@@ -210,7 +331,12 @@ export function shouldSkipRagAsOfftopic(
   question: string,
   history: { role?: string; text?: string }[] = []
 ): boolean {
-  if (isKbClarifyingFollowUp(question) && history.length > 0) return false;
+  if (
+    (isKbClarifyingFollowUp(question) || isKbCaseOrChannelFollowUp(question, history)) &&
+    history.length > 0
+  ) {
+    return false;
+  }
   return detectKbAiOfftopic(question);
 }
 

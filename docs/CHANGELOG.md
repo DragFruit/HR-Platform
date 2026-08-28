@@ -4,6 +4,15 @@
 
 ## 2026-08-28
 
+### База знаний: ИИ-чат — кейсы ecom/SMM, ссылки, follow-up
+
+- Кейсы ecom с каналом (SMM/смм, таргет, посевы): если прямого кейса нет — явный текст «по SMM пока не добавлены» + близкие с каналами из статьи; не шаблонный список всех ecom.
+- Уточнения в диалоге («клиент в еком на смм» после «кейсы ecom») склеиваются с темой, модель не повторяет verbatim ответ.
+- Markdown-ссылки и «Ссылка: https://…» в тексте ответа срезаются — кликабельные ссылки только в «Ещё по теме».
+- Опечатки/сокращения: очепятка→опечатка, еком→ecom, смм в синонимах RAG.
+- Пути: `knowledgeAiIntent.ts`, `useKnowledgeAiAnswer.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `knowledgeRagSense.ts`, `knowledgeRagLexical.ts`.
+- Проверка: `node scripts/knowledge/check-kb-dialog-followup.mjs`; в чате «клиент в еком на смм», follow-up после «кейсы ecom», «очепятка в доке». Стейдж `:8080`.
+
 ### Памятка Design C: правки текста + welcome layout + inline-цветок (tip1)
 
 - Welcome: блок текста опущен — `padding-top: calc(6.5% + 12px)` у `.pvm-card--welcome .pvm-card__body`.

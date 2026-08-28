@@ -10,6 +10,7 @@ import {
   KB_AI_NOT_FOUND_REPLY,
   KB_AI_OFFTOPIC_REPLY,
   parseKbAiModelReply,
+  sanitizeKbAiAnswerText,
   shouldRejectModelOfftopic
 } from '~/utils/knowledgeAiIntent';
 
@@ -219,6 +220,7 @@ export function useKnowledgeAiAnswer() {
       }
 
       const parsed = parseKbAiModelReply(rawAnswer);
+      parsed.text = sanitizeKbAiAnswerText(parsed.text);
       if (parsed.intent === 'chitchat') {
         return assertKnowledgeAiCitations(textOnlyAnswer(parsed.text || KB_AI_CHITCHAT_REPLY, 'chitchat'));
       }

@@ -28,6 +28,7 @@ import {
   ambiguousBranchesForQuestion,
   applyAvitoAutoScoreAdjust,
   applyCaseEcomScoreAdjust,
+  applyCaseChannelScoreAdjust,
   applySenseScoreAdjust,
   clearSenseForQuestion,
   isAvitoFocusedArticle,
@@ -776,6 +777,7 @@ export async function retrieveKnowledgeDetailed(
       combined = applySenseScoreAdjust(chunk.articleId, combined, q, senseOpts);
       combined = applyAvitoAutoScoreAdjust(chunk.articleId, chunk.title, combined, q);
       combined = applyCaseEcomScoreAdjust(chunk.articleId, combined, q);
+      combined = applyCaseChannelScoreAdjust(chunk.articleId, combined, q, chunk.text);
       // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
       if (
         distinctive.length &&
@@ -1141,6 +1143,8 @@ export async function retrieveKnowledgeLexicalFallback(
       let lex = lexicalScore(article.title, plain, tokens);
       lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
       lex = applyCaseEcomScoreAdjust(article.id, lex, q);
+      const plainSnippet = chunkTexts.join('\n');
+      lex = applyCaseChannelScoreAdjust(article.id, lex, q, plainSnippet);
       return {
         articleId: article.id,
         title: article.title,

@@ -333,6 +333,27 @@ export function applyCaseEcomScoreAdjust(
   return Math.min(1, baseScore + 0.28);
 }
 
+const CASE_CHANNEL_Q_RE =
+  /(?<![а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет)(?![а-яёa-z0-9])/iu;
+
+/** Буст кейсов, где в тексте есть каналы из вопроса (таргет/посевы/SMM). */
+export function applyCaseChannelScoreAdjust(
+  articleId: string,
+  baseScore: number,
+  question: string,
+  snippetText = ''
+): number {
+  const q = String(question || '');
+  if (!CASE_CHANNEL_Q_RE.test(q)) return baseScore;
+  if (!isCaseEcomArticle(articleId)) return baseScore;
+  const blob = String(snippetText || '').toLowerCase();
+  if (!blob) return baseScore;
+  if (/таргет|посев|smm|смм|вконтакт|перфоманс|контекстн/i.test(blob)) {
+    return Math.min(1, baseScore + 0.14);
+  }
+  return baseScore;
+}
+
 /** Описание известных кейсов для доков / ответа заказчику. */
 export const KNOWN_SENSE_CASES_DOC = [
   {
