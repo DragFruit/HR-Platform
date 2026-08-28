@@ -7,7 +7,6 @@ export const LAUNCH_VACATIONS_NOTIFICATIONS_PATH = '/notifications';
 export const LAUNCH_VACATIONS_PROFILE_PATH = '/profile';
 export const LAUNCH_VACATIONS_IDEAS_PATH = '/ideas';
 export const LAUNCH_VACATIONS_KNOWLEDGE_PATH = '/knowledge';
-export const LAUNCH_VACATIONS_VPN_PATH = '/vpn';
 export const LAUNCH_VACATIONS_ADMIN_PATH = '/admin/vacations';
 export const LAUNCH_VACATIONS_ADMIN_HOW_IT_LOOKS_PATH = '/admin/how-it-looks';
 export const LAUNCH_VACATIONS_ADMIN_EMPLOYEES_PATH = '/admin/employees';
@@ -57,9 +56,6 @@ export function useLaunchScope() {
       path === LAUNCH_VACATIONS_KNOWLEDGE_PATH ||
       path.startsWith(`${LAUNCH_VACATIONS_KNOWLEDGE_PATH}/`)
     ) {
-      return true;
-    }
-    if (path === LAUNCH_VACATIONS_VPN_PATH || path.startsWith(`${LAUNCH_VACATIONS_VPN_PATH}/`)) {
       return true;
     }
     if (path === LAUNCH_VACATIONS_ADMIN_PATH || path.startsWith(`${LAUNCH_VACATIONS_ADMIN_PATH}/`)) {
