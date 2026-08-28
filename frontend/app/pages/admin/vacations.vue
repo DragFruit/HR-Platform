@@ -86,7 +86,7 @@ const approvalQueue = computed(() =>
 const approvalStepLabel = (req: VacationRequest) =>
   requestStatusLabel(req, findByName(req.employee));
 
-const approve = (id: number) => approveRequest(id, null, { force: true });
+const approve = (id: number) => approveRequest(id, null, { elevated: true });
 const reject = (id: number) => setRequestStatus(id, 'rejected');
 
 const formatRange = (start: string, end: string) => {
