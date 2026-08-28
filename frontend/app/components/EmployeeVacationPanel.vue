@@ -1,4 +1,6 @@
 <template>
+  <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
+
   <div class="vac-emp-page" :class="embedded ? 'vac-emp-page--embedded' : 'vac-emp-page--fit'">
     <header class="vac-emp-toolbar">
       <form class="vac-emp-toolbar__form" data-tour="vac-create-form" @submit.prevent="submitRequest">
@@ -222,6 +224,8 @@ const onUiModeChange = (mode: 'manager' | 'employee') => {
 };
 
 const { user } = useAuth();
+const runtimeConfig = useRuntimeConfig();
+const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 const { isAdmin } = usePermissions();
 const {
   findByUserForAuth,

@@ -1,5 +1,4 @@
 <template>
-  <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
   <ManagerVacationTrainingOverlay v-if="vacationTrainingEnabled" />
 
   <div v-if="showAsEmployee" class="vacations-employee-shell">

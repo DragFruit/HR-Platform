@@ -151,8 +151,8 @@
               <button
                 class="personnel-password-btn"
                 type="button"
-                title="Пароль Vibe"
-                @click="onSetVibePassword(emp)"
+                title="Логин и пароль Vibe"
+                @click="openVibeCredentials(emp)"
               >
                 🔑
               </button>
@@ -186,6 +186,12 @@
       </table>
     </div>
   </section>
+
+  <VibeCredentialsDialog
+    v-model:open="vibeCredsOpen"
+    :employee="vibeCredsEmployee"
+    @saved="onVibeCredsSaved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -217,32 +223,16 @@ const onRemoveEmployee = async (emp: Employee) => {
   }
 };
 
-const onSetVibePassword = async (emp: Employee) => {
-  const label = emp.name.trim() || `id ${emp.id}`;
-  const password = window.prompt(
-    `Пароль Vibe для «${label}» (не короче 8 символов).\nПусто + OK — сбросить пароль.`
-  );
-  if (password === null) return;
-  try {
-    if (!password.trim()) {
-      await $fetch(`/api/admin/employees/${emp.id}/vibe-password`, {
-        method: 'PUT',
-        body: { clear: true }
-      });
-      window.alert('Пароль Vibe сброшен');
-      return;
-    }
-    await $fetch(`/api/admin/employees/${emp.id}/vibe-password`, {
-      method: 'PUT',
-      body: { password }
-    });
-    window.alert('Пароль Vibe сохранён. Сотрудник входит email + этот пароль.');
-  } catch (err: unknown) {
-    const fetchErr = err as { data?: { statusMessage?: string }; statusMessage?: string };
-    window.alert(
-      fetchErr.data?.statusMessage || fetchErr.statusMessage || 'Не удалось сохранить пароль'
-    );
-  }
+const vibeCredsOpen = ref(false);
+const vibeCredsEmployee = ref<Employee | null>(null);
+
+const openVibeCredentials = (emp: Employee) => {
+  vibeCredsEmployee.value = emp;
+  vibeCredsOpen.value = true;
+};
+
+const onVibeCredsSaved = () => {
+  window.alert('Учётные данные Vibe сохранены. Сотрудник входит по email и паролю.');
 };
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();

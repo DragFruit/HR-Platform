@@ -8,6 +8,7 @@ import {
   buildDockedRecord,
   findDockedMemoRequestId,
   findPostVacationMemoRequest,
+  isMemoRequestKnown,
   listKnownMemoRequestIds,
   readMemoRecord,
   writeMemoRecord
@@ -34,8 +35,14 @@ export function usePostVacationMemo() {
   const ui = useState<PvmUi>('pvm-ui', () => 'hidden');
   const index = useState<number>('pvm-index', () => 0);
   const requestId = useState<number>('pvm-request-id', () => 0);
+  /** Сброс кэша eligibility после записи в localStorage (он не реактивен). */
+  const memoStorageRevision = useState<number>('pvm-storage-revision', () => 0);
   /** Вводная «Вот четыре совета» — только после «Позже» (чип / ?pvm=tips). */
   const showIntro = useState<boolean>('pvm-show-intro', () => true);
+
+  const bumpMemoStorageRevision = () => {
+    memoStorageRevision.value += 1;
+  };
 
   const forcePreview = computed(() => {
     void route.fullPath;
@@ -56,6 +63,7 @@ export function usePostVacationMemo() {
   const allRequests = computed(() => Object.values(state.value.requestsByYear).flat());
 
   const welcomeRequest = computed(() => {
+    memoStorageRevision.value;
     if (!import.meta.client || !isAuthenticated.value || !user.value) return null;
     if (forcePreview.value) {
       return {
@@ -91,6 +99,7 @@ export function usePostVacationMemo() {
   const persistDocked = (id: number) => {
     if (!user.value || id === PREVIEW_REQUEST_ID) return;
     writeMemoRecord(user.value.id, buildDockedRecord(id));
+    bumpMemoStorageRevision();
   };
 
   const persistDone = (id: number) => {
@@ -102,6 +111,7 @@ export function usePostVacationMemo() {
       thanksAt: prev?.thanksAt || todayIso(),
       dockExpires: prev?.dockExpires || todayIso()
     });
+    bumpMemoStorageRevision();
   };
 
   const ensureNotification = async (id: number) => {
@@ -154,7 +164,22 @@ export function usePostVacationMemo() {
   };
 
   const completeCarousel = () => {
-    persistDone(requestId.value);
+    let id = requestId.value;
+    if (id === PREVIEW_REQUEST_ID) {
+      if (forcePreview.value) clearPostVacationMemoPreview();
+      index.value = 0;
+      ui.value = 'hidden';
+      if (openTipsQuery.value) {
+        const { pvm: _pvm, ...rest } = route.query;
+        void router.replace({ path: route.path, query: rest });
+      }
+      return;
+    }
+    if (!id && user.value) {
+      const dockedId = findDockedMemoRequestId(user.value.id);
+      if (dockedId != null) id = dockedId;
+    }
+    if (id) persistDone(id);
     if (forcePreview.value) clearPostVacationMemoPreview();
     index.value = 0;
     ui.value = 'hidden';
@@ -175,6 +200,28 @@ export function usePostVacationMemo() {
   const prev = () => {
     if (index.value <= 0) return;
     index.value -= 1;
+  };
+
+  const resolveWelcomeRequest = () => {
+    if (!import.meta.client || !isAuthenticated.value || !user.value) return null;
+    if (forcePreview.value) {
+      return {
+        id: PREVIEW_REQUEST_ID,
+        employee: employeeName.value,
+        start: '2026-07-01',
+        end: '2026-07-14',
+        status: 'approved' as const,
+        comment: '',
+        createdAt: ''
+      };
+    }
+    if (showOnboarding.value || tenureCelebrationActive.value) return null;
+    return findPostVacationMemoRequest(
+      allRequests.value,
+      employeeName.value,
+      todayIso(),
+      listKnownMemoRequestIds(user.value.id)
+    );
   };
 
   const hydrate = () => {
@@ -198,8 +245,17 @@ export function usePostVacationMemo() {
       showDocked(dockedId);
       return;
     }
-    const welcomeReq = welcomeRequest.value;
+    const welcomeReq = resolveWelcomeRequest();
     if (welcomeReq) {
+      if (isMemoRequestKnown(user.value.id, welcomeReq.id)) {
+        const record = readMemoRecord(user.value.id, welcomeReq.id);
+        if (record?.phase === 'docked' && todayIso() <= record.dockExpires) {
+          showDocked(welcomeReq.id);
+        } else {
+          ui.value = 'hidden';
+        }
+        return;
+      }
       showWelcome(welcomeReq.id);
       return;
     }

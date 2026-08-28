@@ -102,6 +102,12 @@ export const listKnownMemoRequestIds = (userId: number): Set<number> => {
   return new Set(Object.values(bucket).map((row) => row.requestId));
 };
 
+/** Заявка уже показывалась (чип / прочитана до конца) — welcome снова не нужен. */
+export const isMemoRequestKnown = (userId: number, requestId: number): boolean => {
+  if (!import.meta.client) return false;
+  return readMemoRecord(userId, requestId) != null;
+};
+
 export const findDockedMemoRequestId = (userId: number): number | null => {
   if (!import.meta.client) return null;
   let store = readJson<StoreV2>(POST_VACATION_MEMO_STORAGE_KEY, {});

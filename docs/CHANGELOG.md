@@ -4,6 +4,14 @@
 
 ## 2026-08-28
 
+### Фикс: квест-обучение отпусков, учётные данные Vibe, памятка после отпуска
+
+- **Квест отпусков:** `VacationTrainingOverlay` не монтировался на экране сотрудника (`/vacations` → `EmployeeVacationPanel` без обёртки `VacationsManagerExperience`) — режим включался, но карточки шагов не появлялись. Оверлей перенесён в `EmployeeVacationPanel.vue`.
+- **Админ → Сотрудники:** вместо `prompt()` только с паролем — модалка «Логин (email) + пароль» (`VibeCredentialsDialog.vue`). Логин = email в справочнике; пароль — `vibe-passwords.json`.
+- **Памятка после отпуска:** после прочтения до конца welcome не должен повторяться для той же заявки. `hydrate()` читает localStorage заново (не кэш computed); `memoStorageRevision` после `persistDone`/`persistDocked`.
+- Файлы: `EmployeeVacationPanel.vue`, `VacationsManagerExperience.vue`, `VibeCredentialsDialog.vue`, `admin/employees.vue`, `usePostVacationMemo.ts`, `postVacationMemo.ts`.
+- Проверка: localhost `/vacations` → «Начать квест» → карточки шагов; `/admin/employees` → 🔑 → email+пароль; `?pvm=1` → дочитать → перелогин → welcome не повторяется.
+
 ### Памятка: новый арт чипа — кот в шезлонге + капибара (art-c-v23)
 
 - Чип: компактный значок «кот в шезлонге с панамой и очками + капибара в очках» (по референсу заказчика) — neo-brutalist flat, лайм шезлонг, фиолетовый кот, coral панама, жирная чёрная обводка; читается на lavender-градиенте в ~48px. RGBA 256×256.
