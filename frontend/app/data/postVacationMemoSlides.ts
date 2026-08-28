@@ -20,7 +20,7 @@ export type PostVacationMemoSlide = {
   laterCta?: string;
 };
 
-const ART_V = 'art-c-v21';
+const ART_V = 'art-c-v22';
 
 export const POST_VACATION_INLINE_FLOWER_SRC = `/memos/pvm-inline-flower-pot.png?v=${ART_V}`;
 
