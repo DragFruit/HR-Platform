@@ -13,6 +13,13 @@
 - Пути: `knowledgeAiIntent.ts`, `useKnowledgeAiAnswer.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `knowledgeRagSense.ts`, `knowledgeRagLexical.ts`.
 - Проверка: `node scripts/knowledge/check-kb-dialog-followup.mjs`; в чате «клиент в еком на смм», follow-up после «кейсы ecom», «очепятка в доке». Стейдж `:8080`.
 
+### Памятка Design C: welcome padding + прозрачный inline-цветок (fix staging)
+
+- Welcome: блок текста опущен сильнее — `padding-top: calc(6.5% + 32px)` (было +12px).
+- Inline flower tip1: `pvm-inline-flower-pot.png` перегенерирован с RGBA (без белого квадрата); peach `#E2A77A` + lavender `#9B8CC5`.
+- Cache-bust `?v=art-c-v18`. Тексты intro/tip1/tip3/tip4 из коммита 76bd05b без изменений.
+- Проверка: `?pvm=1` — welcome ниже; tip1 горшок без белого фона; intro «не набрасываться на работу». Стейдж `:8080`.
+
 ### Памятка Design C: правки текста + welcome layout + inline-цветок (tip1)
 
 - Welcome: блок текста опущен — `padding-top: calc(6.5% + 12px)` у `.pvm-card--welcome .pvm-card__body`.

@@ -17423,8 +17423,8 @@ button.button {
 }
 
 .pvm-card--welcome .pvm-card__body {
-  /* series-c-01: заказчик опустил блок текста чуть ниже (~12px) */
-  padding-top: calc(6.5% + 12px);
+  /* series-c-01: блок текста заметно ниже шапки (~32px поверх базового 6.5%) */
+  padding-top: calc(6.5% + 32px);
 }
 
 .pvm-illust {
