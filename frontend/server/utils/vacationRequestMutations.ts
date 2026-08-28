@@ -150,7 +150,7 @@ export async function createVacationRequest(
     if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
-    if (employee) {
+    if (employee && session.role !== 'admin') {
       await assertVacationRequestGroupCap(state, employeeName, body.start, body.end);
     }
     request.id = state.nextRequestId++;
@@ -283,7 +283,7 @@ export async function patchVacationRequest(
       );
     }
 
-    if (owner && changesDates) {
+    if (owner && changesDates && session.role !== 'admin') {
       await assertVacationRequestGroupCap(state, found.item.employee, found.item.start, found.item.end);
     }
 
