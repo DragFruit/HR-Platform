@@ -17422,6 +17422,11 @@ button.button {
   color: var(--pvm-ink);
 }
 
+.pvm-card--welcome .pvm-card__body {
+  /* series-c-01: заказчик опустил блок текста чуть ниже (~12px) */
+  padding-top: calc(6.5% + 12px);
+}
+
 .pvm-illust {
   position: absolute;
   right: 1%;
@@ -17601,6 +17606,17 @@ button.button {
 
 .pvm-text:last-child {
   margin-bottom: 0;
+}
+
+.pvm-inline-illust {
+  display: inline-block;
+  vertical-align: -0.35em;
+  width: 1.45em;
+  height: 1.45em;
+  margin: 0 0.08em 0 0.12em;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 .pvm-nav {

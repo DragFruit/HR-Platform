@@ -31,7 +31,7 @@
               </h2>
               <div class="pvm-copy">
                 <p v-for="(para, i) in welcome.paragraphs" :key="i" class="pvm-text">
-                  {{ para }}
+                  <PostVacationMemoParagraph :paragraph="para" />
                 </p>
               </div>
               <div class="pvm-nav pvm-nav--welcome">
@@ -90,7 +90,7 @@
                 </h2>
                 <div class="pvm-copy">
                   <p v-for="(para, i) in item.paragraphs" :key="i" class="pvm-text">
-                    {{ para }}
+                    <PostVacationMemoParagraph :paragraph="para" />
                   </p>
                 </div>
                 <div class="pvm-nav" :class="{ 'pvm-nav--intro': item.id === 'intro' }">

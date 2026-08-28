@@ -4,6 +4,17 @@
 
 ## 2026-08-28
 
+### Памятка Design C: правки текста + welcome layout + inline-цветок (tip1)
+
+- Welcome: блок текста опущен — `padding-top: calc(6.5% + 12px)` у `.pvm-card--welcome .pvm-card__body`.
+- Intro (card 2): новый копирайт про плавный вход после отпуска (2 абзаца).
+- Tip1/pace (card 3): копирайт «свежий взгляд / рутина / стол» + inline ITMO flower-in-pot после «на столе».
+- Tip3/weekend (card 4): дефис в «маленький отпуск - кино…» по макету заказчика.
+- Tip4/triggers (card 5): финал с «!» — «…идеально для этого подходит!».
+- Новый ассет `public/memos/pvm-inline-flower-pot.png`; сегменты абзаца через `PostVacationMemoParagraph.vue`. Cache-bust `?v=art-c-v17`.
+- Файлы: `postVacationMemoSlides.ts`, `PostVacationMemo.vue`, `PostVacationMemoParagraph.vue`, `main.css`.
+- Проверка: `?pvm=1` — welcome ниже; intro/tip1/tip3/tip4 тексты; tip1 — мини-горшок в строке. Стейдж `:8080`. Прод не трогали.
+
 ### Отпуска: admin «+ Добавить отпуск» — через согласование, не instant approve
 
 - Ручное добавление отпуска admin/HR создаёт обычную заявку `pending` и уведомляет текущего согласующего; мгновенный `force approve` после создания убран.
