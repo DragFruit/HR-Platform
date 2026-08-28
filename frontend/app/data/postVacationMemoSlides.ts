@@ -20,7 +20,7 @@ export type PostVacationMemoSlide = {
   laterCta?: string;
 };
 
-const ART_V = 'art-c-v20';
+const ART_V = 'art-c-v21';
 
 export const POST_VACATION_INLINE_FLOWER_SRC = `/memos/pvm-inline-flower-pot.png?v=${ART_V}`;
 
@@ -40,7 +40,7 @@ export const POST_VACATION_WELCOME: PostVacationMemoSlide = {
   cta: 'Прочитать'
 };
 
-/** Чип (свёрнутая памятка): кот + чемодан, без растения. */
+/** Чип (свёрнутая памятка): высококонтрастный значок «после отпуска». */
 export const POST_VACATION_CHIP_SRC = `/memos/pvm-c-art-chip.png?v=${ART_V}`;
 
 export const POST_VACATION_DOCK = {
@@ -121,8 +121,8 @@ export const POST_VACATION_MEMO_SLIDES: PostVacationMemoSlide[] = [
 /** Минимум календарных дней отпуска, чтобы показать памятку (летний, не отгул). */
 export const POST_VACATION_MEMO_MIN_DAYS = 7;
 
-/** Показывать не позже стольких суток после последнего дня отпуска. */
-export const POST_VACATION_MEMO_WINDOW_DAYS = 7;
+/** Показывать welcome не позже стольких рабочих дней после последнего дня отпуска. */
+export const POST_VACATION_MEMO_WINDOW_WORKING_DAYS = 7;
 
 /** Сколько рабочих дней чип живёт в углу после «Позже». */
 export const POST_VACATION_MEMO_DOCK_WORKING_DAYS = 10;

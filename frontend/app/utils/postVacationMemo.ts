@@ -2,15 +2,9 @@ import type { VacationRequest } from '~/composables/useVacations';
 import {
   POST_VACATION_MEMO_DOCK_WORKING_DAYS,
   POST_VACATION_MEMO_MIN_DAYS,
-  POST_VACATION_MEMO_WINDOW_DAYS
+  POST_VACATION_MEMO_WINDOW_WORKING_DAYS
 } from '~/data/postVacationMemoSlides';
-import { addWorkingDaysIso, toIso, todayIso } from '~/utils/vacationCalendar';
-
-export const addDaysIso = (iso: string, days: number): string => {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return toIso(d);
-};
+import { addWorkingDaysIso, todayIso } from '~/utils/vacationCalendar';
 
 export const inclusiveDays = (start: string, end: string): number => {
   const a = new Date(`${start}T00:00:00`);
@@ -134,7 +128,7 @@ export function findPostVacationMemoRequest(
     if (knownIds.has(row.id)) return false;
     if (inclusiveDays(row.start, row.end) < POST_VACATION_MEMO_MIN_DAYS) return false;
     if (today <= row.end) return false;
-    const lastShow = addDaysIso(row.end, POST_VACATION_MEMO_WINDOW_DAYS);
+    const lastShow = addWorkingDaysIso(row.end, POST_VACATION_MEMO_WINDOW_WORKING_DAYS);
     return today <= lastShow;
   });
 
