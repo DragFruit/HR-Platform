@@ -81,8 +81,15 @@
         <div class="topbar-right">
           <AdminNotificationsBell v-if="showAdminNotificationsBell" />
           <VacationNotificationsBell v-else />
-          <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
-          <span class="soft">{{ user?.name }}</span>
+          <NuxtLink
+            v-if="user"
+            to="/profile"
+            class="topbar-profile-link"
+            :aria-label="`Профиль: ${user.name}`"
+          >
+            <UserAvatar :user-id="user.id" :name="user.name" :size="36" />
+            <span class="soft">{{ user.name }}</span>
+          </NuxtLink>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>
           <div v-if="!isAdmin && !isVacationsOnly" class="pill">Баланс: {{ balance }}</div>
           <div v-else-if="isAdmin && !isVacationsOnly" class="pill admin-pill">Режим: администрирование</div>

@@ -7148,9 +7148,30 @@ button.org-unit-head--link:hover {
   gap: 12px;
 }
 
-.topbar-right > .soft {
+.topbar-right > .soft,
+.topbar-profile-link .soft {
   color: var(--text-muted-on-purple);
   font-weight: 600;
+}
+
+.topbar-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.topbar-profile-link:hover .soft,
+.topbar-profile-link:focus-visible .soft {
+  text-decoration: underline;
+}
+
+.topbar-profile-link:focus-visible {
+  outline: 2px solid var(--accent-lime);
+  outline-offset: 2px;
 }
 
 .view-only-badge {
@@ -12360,12 +12381,18 @@ button.emp-name--card:hover {
 
 .vac-emp-error {
   margin: 0;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: #fca5a5;
-  background: rgba(248, 113, 113, 0.1);
-  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--danger);
+  background: #fef0ee;
+  border: 1px solid rgba(196, 74, 54, 0.35);
+  border-radius: 8px;
   flex-shrink: 0;
+}
+
+.vac-emp-error strong {
+  font-weight: 700;
 }
 
 .vac-emp-body {
