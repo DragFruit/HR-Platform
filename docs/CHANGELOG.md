@@ -4,6 +4,13 @@
 
 ## 2026-09-01
 
+### БЗ: корпоративные шрифты TT Hoves Pro Trial
+
+- Статья `kb-corp-fonts-vbi` «Корпоративные шрифты VBI»: Regular + Bold, установка, ссылки на скачивание.
+- Файлы: `frontend/public/knowledge/fonts/TT-Hoves-Pro-Trial-Regular.ttf`, `TT-Hoves-Pro-Trial-Bold.ttf`.
+- Neurobot RAG: синонимы «корп шрифты», «hoves», «TT Hoves» в `knowledgeRagLexical.ts`; рабочий intent в `knowledgeAiIntent.ts`.
+- Проверка: `/knowledge` → статья «Корпоративные шрифты VBI»; нейробот «какие у нас шрифты» / «корпоративные шрифты».
+
 ### Админ: справочник сотрудников — отступы между колонками 8px
 
 - `/admin/employees`: горизонтальный зазор между столбцами таблицы — **8px** (`padding: 3px 4px` на ячейках); исправлено перекрытие общим `.table { padding: 12px 10px }`.
