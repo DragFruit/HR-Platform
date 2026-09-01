@@ -2,6 +2,13 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-09-01
+
+### CI: verify-production-build на Alpine (deploy:production)
+
+- `deploy/scripts/verify-production-build.sh`: `grep --include` заменён на `find` + построчный `grep` — BusyBox grep в job `deploy:production` (Alpine) не понимает `--include`, из‑за этого падала проверка `appEnv`/`launchScope`.
+- Проверка: `NUXT_PUBLIC_APP_ENV=production NUXT_PUBLIC_LAUNCH_SCOPE=vacations npm run build` в `frontend/` → `bash deploy/scripts/verify-production-build.sh`.
+
 ## 2026-08-28
 
 ### UI: контраст ошибки отпусков + ссылка на профиль в шапке

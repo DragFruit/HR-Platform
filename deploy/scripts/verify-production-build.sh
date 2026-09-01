@@ -12,11 +12,15 @@ if [[ ! -d "${OUTPUT_DIR}" ]]; then
 fi
 
 # "appEnv": "production"  |  appEnv:"production"  |  экранированные варианты
+# find + grep по файлам: deploy:production крутится на Alpine (BusyBox grep без --include).
 extract_field() {
   local field="$1"
-  grep -Rho --include='*.mjs' --include='*.js' --include='*.json' \
-    "${field}[\"']\?:[[:space:]]*[\"'][^\"']*[\"']" \
-    "${OUTPUT_DIR}" 2>/dev/null \
+  while IFS= read -r -d '' f; do
+    grep -ho "${field}[\"']\?:[[:space:]]*[\"'][^\"']*[\"']" "$f" 2>/dev/null || true
+  done < <(
+    find "${OUTPUT_DIR}" -type f \( -name '*.mjs' -o -name '*.js' -o -name '*.json' \) \
+      ! -path '*/node_modules/*' -print0 2>/dev/null
+  ) \
     | sed -E "s/.*[\"']([^\"']+)[\"'][[:space:]]*$/\1/" \
     | sort -u || true
 }
