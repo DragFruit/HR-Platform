@@ -26,6 +26,20 @@
 
     <div v-else class="personnel-table-wrap">
       <table class="table personnel-table">
+        <colgroup>
+          <col class="col-avatar" />
+          <col class="col-bitrix" />
+          <col class="col-name" />
+          <col class="col-title" />
+          <col class="col-dept" />
+          <col class="col-legal" />
+          <col class="col-contract" />
+          <col class="col-manager" />
+          <col class="col-date" />
+          <col class="col-role" />
+          <col class="col-key" />
+          <col class="col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th class="col-avatar" aria-label="Аватар" />
@@ -38,6 +52,7 @@
             <th class="col-manager">Руководитель</th>
             <th class="col-date">Дата приёма</th>
             <th class="col-role">Роль</th>
+            <th class="col-key" aria-label="Vibe" />
             <th class="col-actions" aria-label="Действия" />
           </tr>
         </thead>
@@ -165,7 +180,7 @@
                 </option>
               </select>
             </td>
-            <td class="col-actions">
+            <td class="col-key">
               <button
                 class="personnel-password-btn"
                 type="button"
@@ -174,6 +189,8 @@
               >
                 🔑
               </button>
+            </td>
+            <td class="col-actions">
               <button
                 v-if="emp.account_role !== 'admin'"
                 class="personnel-delete-btn"
@@ -416,7 +433,6 @@ onMounted(() => {
   width: 2rem;
   height: 2rem;
   padding: 0;
-  margin-right: 0.25rem;
   border: none;
   border-radius: 8px;
   background: transparent;

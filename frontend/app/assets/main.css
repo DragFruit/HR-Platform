@@ -10553,12 +10553,17 @@ button.emp-name--card:hover {
 .table.personnel-table th,
 .table.personnel-table td {
   vertical-align: top;
-  padding: 3px 4px;
+  padding: 3px 8px 3px 0;
   font-size: 0.75rem;
   line-height: 1.3;
   white-space: normal;
   word-break: break-word;
   border-bottom: none;
+}
+
+.table.personnel-table th:last-child,
+.table.personnel-table td:last-child {
+  padding-right: 0;
 }
 
 .table.personnel-table thead th {
@@ -10567,7 +10572,8 @@ button.emp-name--card:hover {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-muted, #666);
-  padding: 3px 4px 6px;
+  padding-top: 3px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-brutal);
 }
 
@@ -10575,16 +10581,35 @@ button.emp-name--card:hover {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Узкие колонки: width:1px + nowrap — не раздуваются при table-layout:fixed + width:100% */
+/* Узкие колонки — фиксированная ширина через colgroup, без раздувания */
+.personnel-table col.col-avatar {
+  width: 28px;
+}
+
+.personnel-table col.col-bitrix {
+  width: 4.75ch;
+}
+
+.personnel-table col.col-date {
+  width: 6.35rem;
+}
+
+.personnel-table col.col-role {
+  width: 6.75rem;
+}
+
+.personnel-table col.col-key,
+.personnel-table col.col-actions {
+  width: 2rem;
+}
+
 .personnel-table .col-avatar,
 .personnel-table .col-bitrix,
 .personnel-table .col-date,
 .personnel-table .col-role,
+.personnel-table .col-key,
 .personnel-table .col-actions {
-  width: 1px;
   white-space: nowrap;
-  padding-left: 4px;
-  padding-right: 4px;
 }
 
 .personnel-table .col-avatar .user-avatar {
@@ -10633,12 +10658,20 @@ button.emp-name--card:hover {
 }
 
 .personnel-table .col-role .table-input--select {
-  width: auto;
-  min-width: 5.5rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
+.personnel-table .col-key,
 .personnel-table .col-actions {
   text-align: center;
+  vertical-align: middle;
+}
+
+.personnel-table .col-key {
+  padding-right: 8px;
 }
 
 .personnel-table .table-input {
