@@ -4,10 +4,15 @@
 
 ## 2026-09-01
 
+### CI: verify-production-build на Alpine (deploy:production)
+
+- `deploy/scripts/verify-production-build.sh`: `grep --include` заменён на `find` + построчный `grep` — BusyBox grep в job `deploy:production` (Alpine) не понимает `--include`, из‑за этого падала проверка `appEnv`/`launchScope`.
+- Проверка: `NUXT_PUBLIC_APP_ENV=production NUXT_PUBLIC_LAUNCH_SCOPE=vacations npm run build` в `frontend/` → `bash deploy/scripts/verify-production-build.sh`.
+
 ### Release: merge staging → main (GitLab CI)
 
 - Слили `staging` в `main` для production pipeline; конфликты решены в пользу `staging`.
-- Деплой на бой: только GitLab CI — после зелёного `build:production` вручную **Play** у `deploy:production`.
+- Деплoy на бой: только GitLab CI — после зелёного `build:production` вручную **Play** у `deploy:production`.
 - Стейдж по-прежнему: push `staging` → CI `deploy:staging` на `:8080`.
 - Rule: `.cursor/rules/git-only-deploy.mdc`.
 
