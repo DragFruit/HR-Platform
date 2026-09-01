@@ -322,7 +322,7 @@ export function buildKbAiFontModelHint(question: string): string | null {
   if (!q || !detectKbAiCorpFontsQuestion(q)) return null;
   return [
     'Вопрос про корпоративные шрифты VBI (TT Hoves Pro Trial Regular и Bold).',
-    'Ответь только по контексту статьи «Корпоративные шрифты VBI»: начертания, где использовать, как установить.',
+    'Ответь только по контексту статьи «Корпоративные шрифты VBI»: начертания, как установить, скачивание, лицензия Trial.',
     'Не путай с отпуском, регламентами HR и другими темами — это не про отпуск.',
     'Не пиши URL и markdown-ссылки — ссылки добавит блок «Ещё по теме».'
   ].join(' ');
