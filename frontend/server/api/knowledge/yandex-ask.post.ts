@@ -12,6 +12,7 @@ import {
   KB_AI_OFFTOPIC_REPLY,
   normalizeKbAiQueryTypos,
   parseKbAiModelReply,
+  sanitizeKbAiAnswerText,
   shouldRejectModelOfftopic,
   shouldSkipRagAsOfftopic
 } from '../../../app/utils/knowledgeAiIntent';
@@ -72,7 +73,7 @@ async function answerWithOfftopicGuard(
     parsed.intent !== 'offtopic' ||
     !shouldRejectModelOfftopic(question, history, { hasKbContext: true })
   ) {
-    return answer;
+    return finalizeKbAiAnswer(answer);
   }
 
   const retryQ = `${modelQuestion}\n\n(Это уточнение по теме недавнего диалога и фрагменту базы выше. Ответь по контексту: допиши оставшиеся пункты или скажи, что в статье больше нет. Не ставь OFFTOPIC.)`;
@@ -81,7 +82,11 @@ async function answerWithOfftopicGuard(
   if (parsedRetry.intent === 'offtopic') {
     return 'В найденном фрагменте базы больше пунктов по этому уточнению нет. Откройте статью в «Ещё по теме» — там полный список.';
   }
-  return retry;
+  return sanitizeKbAiAnswerText(retry);
+}
+
+function finalizeKbAiAnswer(answer: string): string {
+  return sanitizeKbAiAnswerText(parseKbAiModelReply(answer).text || answer);
 }
 
 function normalizeHistory(raw: HistoryItem[] | undefined): { role: 'user' | 'assistant'; text: string }[] {
@@ -236,7 +241,9 @@ export default defineEventHandler(async (event) => {
     if (fontHint) {
       modelQuestion = `${modelQuestion}\n\n(${fontHint})`;
     }
-    const answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
+    const answer = finalizeKbAiAnswer(
+      await answerWithOfftopicGuard(question, modelQuestion, context, history)
+    );
     // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
     // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
     if (looksLikeKbNotFound(answer)) {
@@ -286,7 +293,9 @@ export default defineEventHandler(async (event) => {
         if (fontHint) {
           modelQuestion = `${modelQuestion}\n\n(${fontHint})`;
         }
-        answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
+        answer = finalizeKbAiAnswer(
+          await answerWithOfftopicGuard(question, modelQuestion, context, history)
+        );
       } catch {
         answer =
           'Кратко по найденным материалам: откройте ссылки ниже — там актуальные регламенты по запросу.';

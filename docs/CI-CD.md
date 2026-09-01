@@ -156,6 +156,40 @@ flowchart LR
 
 ---
 
+## Запуск deploy:production через API
+
+Job `deploy:production` на ветке `main` **manual** — его можно нажать в UI или запустить скриптом (агент/разработчик), если есть Personal Access Token с scope **api**.
+
+### Токен
+
+1. GitLab → [Personal access tokens](https://ilnizumak.beget.app/-/user_settings/personal_access_tokens): scope **api**, срок по политике команды.
+2. Локально (не коммитить): `frontend/.env` → `GITLAB_TOKEN=glpat-…`  
+   или разово: `export GITLAB_TOKEN=glpat-…`
+
+Пример в репозитории: `frontend/.env.example` (закомментировано).
+
+### Скрипт
+
+```bash
+cd "/Users/stasamba/Desktop/VBI HR платформа"
+bash scripts/gitlab-play-deploy-production.sh
+```
+
+Скрипт:
+
+- берёт `GITLAB_TOKEN` из окружения или `frontend/.env` (значение в stdout не выводит);
+- находит **последний** pipeline ref `main` и job `deploy:production` в статусе `manual` / `created`;
+- вызывает `POST /projects/vbi%2Fhrplatform/jobs/:id/play`;
+- опрашивает job до `success` / `failed` и печатает URL job.
+
+Переменные (опционально): `GITLAB_DEPLOY_REF` (по умолчанию `main`), `GITLAB_DEPLOY_POLL_SEC`, `GITLAB_DEPLOY_POLL_MAX`.
+
+Без токена — exit `1` и подсказка, куда добавить `GITLAB_TOKEN`.
+
+**Важно:** это запуск **деплоя на бой** (`45.12.74.25`, порт 80). Перед play убедитесь, что в pipeline успешен `build:production` и изменения действительно должны идти на production (см. правила deploy-production в репозитории).
+
+---
+
 ## Если CI упал
 
 | Job | Частая причина |

@@ -48,7 +48,7 @@
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
             <th class="col-legal">Юр. лицо</th>
-            <th class="col-contract">Форма договора</th>
+            <th class="col-contract">Договор</th>
             <th class="col-manager">Руководитель</th>
             <th class="col-date">Дата приёма</th>
             <th class="col-role">Роль</th>
@@ -132,7 +132,7 @@
                 type="text"
                 class="table-input table-input--compact"
                 placeholder="ТД, ГПХ…"
-                :aria-label="`Форма договора — ${emp.name || 'сотрудник'}`"
+                :aria-label="`Договор — ${emp.name || 'сотрудник'}`"
                 @input="onFieldInput(emp.id, 'contract_form', $event)"
                 @blur="onFieldBlur(emp.id, 'contract_form', $event)"
               />
