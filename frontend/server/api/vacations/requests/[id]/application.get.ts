@@ -1,12 +1,12 @@
-import type { SessionUser } from '../../../utils/credentials';
-import { requireVbiSession } from '../../../utils/session';
-import { findEmployeeByName, findEmployeeForSession } from '../../../utils/employeesStore';
-import { readVacations } from '../../../utils/vacationsStore';
+import type { SessionUser } from '../../../../utils/credentials';
+import { requireVbiSession } from '../../../../utils/session';
+import { findEmployeeByName, findEmployeeForSession } from '../../../../utils/employeesStore';
+import { readVacations } from '../../../../utils/vacationsStore';
 import {
   buildVacationApplicationDocx,
   isLaborContractEmployee,
   vacationApplicationFilename
-} from '../../../utils/vacationApplicationDocx';
+} from '../../../../utils/vacationApplicationDocx';
 
 const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
   Boolean(a && b) && a!.trim().toLowerCase() === b!.trim().toLowerCase();
