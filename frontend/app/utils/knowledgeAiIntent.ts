@@ -88,9 +88,31 @@ export function normalizeKbAiQueryTypos(raw: string): string {
   return t.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Убрать галлюцинации «Где использовать» / список случаев — блок удалён из kb-corp-fonts-vbi.
+ * Модель иногда восстанавливает старый текст из памяти обучения.
+ */
+export function stripKbAiCorpFontsUsageHallucination(raw: string): string {
+  let t = String(raw || '');
+  if (!t) return t;
+  t = t.replace(
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Где\s+использовать|Эти\s+шрифты\s+можно\s+использовать[^\n]*|(?:В\s+)?(?:следующих\s+)?случаях\s+использовани[яе][^\n]*)[^\n]*(?:\n(?:\s*[-*•]\s*[^\n]+|\s*\d+[\.)]\s*[^\n]+)+)/gim,
+    '\n'
+  );
+  t = t.replace(
+    /(?:^|\n)\s*[-*•]\s*(?:презентаци\w*\s+и\s+коммерческ\w*\s+предложен\w*|макет\w*\s+для\s+клиент\w*[^\n]*|внутренн\w*\s+документ\w*[^\n]*)/gim,
+    '\n'
+  );
+  t = t.replace(
+    /(?:^|\n)\s*(?:Эти\s+шрифты\s+можно\s+использовать\s+в\s+следующих\s+случаях|Где\s+использовать)\s*[:.]?\s*(?=\n|$)/gim,
+    '\n'
+  );
+  return t.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 /** Убрать markdown-ссылки и дубли URL — кликабельные ссылки только в «Ещё по теме». */
 export function sanitizeKbAiAnswerText(raw: string): string {
-  let t = String(raw || '');
+  let t = stripKbAiCorpFontsUsageHallucination(raw);
   if (!t) return t;
   // [https://...](https://...) — сломанный markdown с дублем URL
   t = t.replace(/\[https?:\/\/[^\]]+\]\(https?:\/\/[^)]+\)/gi, '');
@@ -323,6 +345,7 @@ export function buildKbAiFontModelHint(question: string): string | null {
   return [
     'Вопрос про корпоративные шрифты VBI (TT Hoves Pro Trial Regular и Bold).',
     'Ответь только по контексту статьи «Корпоративные шрифты VBI»: начертания, как установить, скачивание, лицензия Trial.',
+    'ЗАПРЕЩЕНО: блок «Где использовать», список случаев использования, презентации, коммерческие предложения, макеты для клиентов, внутренние документы — этого нет в статье, не выдумывай.',
     'Не путай с отпуском, регламентами HR и другими темами — это не про отпуск.',
     'Не пиши URL и markdown-ссылки — ссылки добавит блок «Ещё по теме».'
   ].join(' ');
