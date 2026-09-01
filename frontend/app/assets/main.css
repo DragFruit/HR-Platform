@@ -10590,6 +10590,10 @@ button.emp-name--card:hover {
   width: 4.75ch;
 }
 
+.personnel-table col.col-contract {
+  width: 4.5ch;
+}
+
 .personnel-table col.col-date {
   width: 5.2rem;
 }
@@ -10605,6 +10609,7 @@ button.emp-name--card:hover {
 
 .personnel-table .col-avatar,
 .personnel-table .col-bitrix,
+.personnel-table .col-contract,
 .personnel-table .col-date,
 .personnel-table .col-role,
 .personnel-table .col-key,
@@ -10650,7 +10655,16 @@ button.emp-name--card:hover {
 }
 
 .personnel-table .col-contract {
-  width: 8%;
+  width: 4.5ch;
+  max-width: 4.5ch;
+}
+
+.personnel-table .col-contract .table-input {
+  width: 4.5ch;
+  min-width: 0;
+  max-width: 4.5ch;
+  padding: 3px 4px;
+  font-size: 0.6875rem;
 }
 
 .personnel-table .col-manager {
