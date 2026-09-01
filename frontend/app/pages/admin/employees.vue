@@ -1,13 +1,7 @@
 <template>
   <section class="card section-card personnel-admin">
-    <div class="section-head row">
-      <div>
-        <h2 class="section-title">Сотрудники</h2>
-        <p class="muted">
-          Даты трудоустройства и колонка «Руководитель» — путь подчинения и согласования отпусков.
-          Руководителя выбирайте только из списка: от этого зависит, кому уйдёт заявка на согласование.
-          Bitrix ID — для входа, аватарки и синка; новых людей синк сам не добавляет.
-        </p>
+    <div class="section-head row personnel-admin__head">
+      <div class="personnel-admin__status">
         <p v-if="saveStatus === 'saving'" class="save-hint muted">Сохранение…</p>
         <p v-else-if="saveStatus === 'saved'" class="save-hint muted">Сохранено</p>
         <p v-else-if="saveStatus === 'error'" class="save-hint save-hint--error">
@@ -39,6 +33,8 @@
             <th class="col-name">ФИО</th>
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
+            <th class="col-legal">Юр. лицо</th>
+            <th class="col-contract">Форма договора</th>
             <th class="col-manager">Руководитель</th>
             <th class="col-date">Дата приёма</th>
             <th class="col-role">Роль</th>
@@ -103,6 +99,28 @@
                 </option>
                 <option v-for="dep in departmentOptions" :key="dep" :value="dep">{{ dep }}</option>
               </select>
+            </td>
+            <td class="col-legal">
+              <input
+                :value="emp.legal_entity"
+                type="text"
+                class="table-input table-input--compact"
+                placeholder="Юр. лицо"
+                :aria-label="`Юр. лицо — ${emp.name || 'сотрудник'}`"
+                @input="onFieldInput(emp.id, 'legal_entity', $event)"
+                @blur="onFieldBlur(emp.id, 'legal_entity', $event)"
+              />
+            </td>
+            <td class="col-contract">
+              <input
+                :value="emp.contract_form"
+                type="text"
+                class="table-input table-input--compact"
+                placeholder="ТД, ГПХ…"
+                :aria-label="`Форма договора — ${emp.name || 'сотрудник'}`"
+                @input="onFieldInput(emp.id, 'contract_form', $event)"
+                @blur="onFieldBlur(emp.id, 'contract_form', $event)"
+              />
             </td>
             <td class="col-manager" @paste.capture="onManagerPaste(emp.id, $event)">
               <select
@@ -357,6 +375,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.personnel-admin__head {
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.personnel-admin__status {
+  min-height: 1.25rem;
+  flex: 1;
+}
+
 .save-hint {
   margin: 0.35rem 0 0;
   font-size: 0.875rem;

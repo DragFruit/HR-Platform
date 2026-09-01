@@ -36,6 +36,10 @@ export type ServerEmployee = {
   email?: string;
   account_role?: string;
   vacation_opening_balance?: number | null;
+  /** Юридическое лицо работодателя (ручной ввод в админке, не из Bitrix). */
+  legal_entity?: string;
+  /** Форма договора: ТД, ГПХ и т.п. (ручной ввод в админке). */
+  contract_form?: string;
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/employees.json');

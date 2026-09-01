@@ -4,11 +4,29 @@
 
 ## 2026-09-01
 
+### Админ: справочник сотрудников — юр. лицо и форма договора
+
+- `/admin/employees`: колонки **«Юр. лицо»** и **«Форма договора»** (редактируемые, как остальные поля таблицы).
+- Поля в `employees.json`: `legal_entity`, `contract_form` (строка, по умолчанию пусто). **Не синкаются из Bitrix** — только ручной ввод HR.
+- Убран дублирующий заголовок и описательный абзац под шапкой; компактная вёрстка таблицы без горизонтального скролла на ~1280px.
+- Файлы: `pages/admin/employees.vue`, `composables/useEmployees.ts`, `server/utils/employeesStore.ts`, `main.css`.
+- Проверка: `/admin/employees` → заполнить юр. лицо / форму договора → «Сохранено» → обновить страницу.
+
 ### CI: verify-production-build на Alpine (deploy:production)
 
 - `deploy/scripts/verify-production-build.sh`: `grep --include` заменён на `find` + построчный `grep` — BusyBox grep в job `deploy:production` (Alpine) не понимает `--include`, из‑за этого падала проверка `appEnv`/`launchScope`.
 - Проверка: `NUXT_PUBLIC_APP_ENV=production NUXT_PUBLIC_LAUNCH_SCOPE=vacations npm run build` в `frontend/` → `bash deploy/scripts/verify-production-build.sh`.
 
+<<<<<<< Updated upstream
+=======
+### Release: merge staging → main (GitLab CI)
+
+- Слили `staging` в `main` для production pipeline; конфликты решены в пользу `staging`.
+- Деплой на бой: только GitLab CI — после зелёного `build:production` вручную **Play** у `deploy:production`.
+- Стейдж по-прежнему: push `staging` → CI `deploy:staging` на `:8080`.
+- Rule: `.cursor/rules/git-only-deploy.mdc`.
+
+>>>>>>> Stashed changes
 ## 2026-08-28
 
 ### UI: контраст ошибки отпусков + ссылка на профиль в шапке

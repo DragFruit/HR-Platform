@@ -20,6 +20,8 @@ export type Employee = {
   email: string;
   account_role: AccountRole | '';
   vacation_opening_balance?: number | null;
+  legal_entity: string;
+  contract_form: string;
 };
 
 /** Данные входа (синхрон с useAuth / server credentials) */
@@ -107,7 +109,9 @@ export function useEmployees() {
       (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : null),
     email: emp.email || undefined,
     account_role: emp.account_role || undefined,
-    vacation_opening_balance: emp.vacation_opening_balance ?? undefined
+    vacation_opening_balance: emp.vacation_opening_balance ?? undefined,
+    legal_entity: (emp.legal_entity ?? '').trim() || undefined,
+    contract_form: (emp.contract_form ?? '').trim() || undefined
   });
 
   const fromServerShape = (row: {
@@ -123,6 +127,8 @@ export function useEmployees() {
     email?: string;
     account_role?: string;
     vacation_opening_balance?: number | null;
+    legal_entity?: string;
+    contract_form?: string;
   }): Employee =>
     enrichEmployeeRecord({
       id: row.id,
@@ -138,7 +144,9 @@ export function useEmployees() {
         (row.platform_user_id && row.id === row.platform_user_id ? row.id : null),
       email: row.email ?? '',
       account_role: (row.account_role as AccountRole) ?? '',
-      vacation_opening_balance: row.vacation_opening_balance ?? null
+      vacation_opening_balance: row.vacation_opening_balance ?? null,
+      legal_entity: row.legal_entity?.trim() ?? '',
+      contract_form: row.contract_form?.trim() ?? ''
     });
 
   const applyEmployeeList = (list: Employee[]) => {
@@ -323,7 +331,9 @@ export function useEmployees() {
       hired_at: new Date().toISOString().slice(0, 10),
       platform_user_id: null,
       email: '',
-      account_role: ''
+      account_role: '',
+      legal_entity: '',
+      contract_form: ''
     });
     persist();
   };
