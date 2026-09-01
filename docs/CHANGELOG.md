@@ -2,6 +2,15 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-09-01
+
+### Release: merge staging → main (GitLab CI)
+
+- Слили `staging` в `main` для production pipeline; конфликты решены в пользу `staging`.
+- Деплой на бой: только GitLab CI — после зелёного `build:production` вручную **Play** у `deploy:production`.
+- Стейдж по-прежнему: push `staging` → CI `deploy:staging` на `:8080`.
+- Rule: `.cursor/rules/git-only-deploy.mdc`.
+
 ## 2026-08-28
 
 ### UI: контраст ошибки отпусков + ссылка на профиль в шапке
