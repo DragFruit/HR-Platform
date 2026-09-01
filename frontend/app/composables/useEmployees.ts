@@ -2,7 +2,7 @@ import { canApproverReviewRequest } from '~/utils/vacationApproval';
 import { departmentScopeForManager } from '~/utils/departmentTeamScope';
 import { listDepartmentsForUi } from '~/data/departments';
 import { dedupeEmployeeList } from '~/utils/employeeDedupe';
-import { normalizeEmployeeNameKey, resolveManagerFromList } from '~/utils/employeeName';
+import { normalizeEmployeeNameKey, resolveManagerFromList, employeeNamesMatch } from '~/utils/employeeName';
 
 export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
 
@@ -357,7 +357,11 @@ export function useEmployees() {
     return employees.value.find((emp) => emp.platform_user_id === userId) ?? null;
   };
 
-  const findByName = (name: string) => employees.value.find((emp) => emp.name === name) ?? null;
+  const findByName = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    return employees.value.find((emp) => employeeNamesMatch(emp.name, trimmed)) ?? null;
+  };
   const findById = (id: number) => employees.value.find((emp) => emp.id === id) ?? null;
 
   /** Руководитель сотрудника — из поля manager справочника (актуальная версия на платформе). */
@@ -451,7 +455,7 @@ export function useEmployees() {
     const isSelf = (emp: Employee) => {
       if (emp.platform_user_id === user.id) return true;
       if (me && emp.id === me.id) return true;
-      return Boolean(myName && emp.name.trim() === myName);
+      return Boolean(myName && employeeNamesMatch(emp.name, myName));
     };
 
     if (isManager && myName) {

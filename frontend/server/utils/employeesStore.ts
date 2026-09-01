@@ -6,6 +6,7 @@ import {
   mergeQaTestEmployees,
   stripQaTestEmployees
 } from '../../app/data/qaTestDepartment';
+import { employeeNamesMatch } from '../../app/utils/employeeName';
 import type { SessionUser } from './credentials';
 import {
   applyManagerAssignments,
@@ -209,10 +210,10 @@ export async function findEmployeeById(id: number): Promise<ServerEmployee | nul
 }
 
 export async function findEmployeeByName(name: string): Promise<ServerEmployee | null> {
-  const normalized = name.trim().toLowerCase();
-  if (!normalized) return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
   const list = await readEmployees();
-  return list.find((e) => e.name.trim().toLowerCase() === normalized) ?? null;
+  return list.find((e) => employeeNamesMatch(e.name, trimmed)) ?? null;
 }
 
 /** id для user-notifications: как session.id у Bitrix (bitrix_user_id), иначе platform/id. */

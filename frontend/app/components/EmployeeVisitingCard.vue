@@ -7,7 +7,7 @@
         class="emp-card"
         role="dialog"
         aria-modal="true"
-        :aria-label="`Визитка: ${employee.name}`"
+        :aria-label="`Визитка: ${displayName}`"
         :style="cardStyle"
       >
         <!-- Декор рамки как в LOCKED-etalon (квадратики сидят в чёрной полосе) -->
@@ -32,7 +32,7 @@
         <div class="emp-card__face">
           <div class="emp-card__top">
             <div class="emp-card__photo">
-              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="128" />
+              <UserAvatar :user-id="avatarUserId" :name="displayName" :size="128" />
             </div>
 
             <div class="emp-card__info">
@@ -149,6 +149,7 @@ import {
 } from '~/utils/tenureAnniversary';
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
@@ -166,7 +167,7 @@ const employee = computed(() => {
   return findById(id) ?? employees.value.find((e) => e.id === id) ?? null;
 });
 
-const displayName = computed(() => upper(employee.value?.name) || '—');
+const displayName = computed(() => upper(formatEmployeeShortName(employee.value?.name ?? '')) || '—');
 
 const avatarUserId = computed(
   () => employee.value?.platform_user_id ?? employee.value?.bitrix_user_id ?? null

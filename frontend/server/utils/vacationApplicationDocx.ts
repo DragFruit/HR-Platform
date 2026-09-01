@@ -2,7 +2,10 @@ import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
-import { isLaborContractEmployee } from '../../app/data/employeeDirectoryOptions';
+import {
+  isLaborContractEmployee,
+  resolveLegalEntityFullName
+} from '../../app/data/employeeDirectoryOptions';
 import {
   addWorkingDaysIso,
   countInclusiveCalendarDays
@@ -48,7 +51,7 @@ const buildTemplatePayload = (data: VacationApplicationData) => {
   const returnIso = addWorkingDaysIso(data.endDate, 1);
 
   return {
-    legal_entity: data.legalEntity.trim() || '—',
+    legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
     from_line: buildFromLine(data.position, data.employeeName),
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',

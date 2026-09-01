@@ -5,6 +5,31 @@ export const normalizeEmployeeNameKey = (name: string) =>
     .replace(/ё/g, 'е')
     .replace(/\s+/g, ' ');
 
+/**
+ * Фамилия + имя без отчества для UI профиля.
+ * Три и более слов → первые два; иначе как есть.
+ */
+export const formatEmployeeShortName = (name: string): string => {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length >= 3) return `${parts[0]} ${parts[1]}`;
+  return parts.join(' ');
+};
+
+/** Сопоставление ФИО: точное или по фамилии+имени (заявки/сессия vs полное ФИО в справочнике). */
+export const employeeNamesMatch = (a: string, b: string): boolean => {
+  const left = normalizeEmployeeNameKey(a);
+  const right = normalizeEmployeeNameKey(b);
+  if (!left || !right) return false;
+  if (left === right) return true;
+  return (
+    normalizeEmployeeNameKey(formatEmployeeShortName(a)) ===
+    normalizeEmployeeNameKey(formatEmployeeShortName(b))
+  );
+};
+
 /** Сопоставить введённое ФИО с одним из допустимых руководителей (точное совпадение с учётом ё). */
 export const resolveManagerFromList = (
   value: string,

@@ -1,3 +1,4 @@
+import { employeeNamesMatch } from '../../../../app/utils/employeeName';
 import type { SessionUser } from '../../../../utils/credentials';
 import { requireVbiSession } from '../../../../utils/session';
 import { findEmployeeByName, findEmployeeForSession } from '../../../../utils/employeesStore';
@@ -9,7 +10,7 @@ import {
 } from '../../../../utils/vacationApplicationDocx';
 
 const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
-  Boolean(a && b) && a!.trim().toLowerCase() === b!.trim().toLowerCase();
+  Boolean(a && b) && employeeNamesMatch(a!, b!);
 
 const hasRosterWideRights = (session: SessionUser): boolean =>
   session.role === 'admin' || session.role === 'hr';
