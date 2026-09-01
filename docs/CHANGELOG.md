@@ -4,6 +4,34 @@
 
 ## 2026-09-01
 
+### БЗ: neurobot «шрифты компании» → kb-corp-fonts-vbi (не отпуск)
+
+- **Причина:** RAG якорил запрос по слову «компании» (8 букв), а не «шрифты»; статья шрифтов не содержала «компании» → в контекст попадали чужие материалы, GPT отвечал про отпуск.
+- **Исправление:** intent `hasCorpFontsIntent` + hard-prefer `kb-corp-fonts-vbi` в `knowledgeRag.ts`; буст score в `knowledgeRagSense.ts`; подсказка модели в `yandexGpt.ts` / `buildKbAiFontModelHint`; «компании» в generic-токенах; синоним «шрифты компании»; eval-кейс `corp-fonts`.
+- Проверка: `node scripts/test-font-rag.mjs` в `frontend/` — top-1 `kb-corp-fonts-vbi` для «шрифты компании»; нейробот `/knowledge` → TT Hoves Pro Trial.
+
+### БЗ: корпоративные шрифты TT Hoves Pro Trial
+
+- Статья `kb-corp-fonts-vbi` «Корпоративные шрифты VBI»: Regular + Bold, установка, ссылки на скачивание.
+- Файлы: `frontend/public/knowledge/fonts/TT-Hoves-Pro-Trial-Regular.ttf`, `TT-Hoves-Pro-Trial-Bold.ttf`.
+- Neurobot RAG: синонимы «корп шрифты», «hoves», «TT Hoves» в `knowledgeRagLexical.ts`; рабочий intent в `knowledgeAiIntent.ts`.
+- Проверка: `/knowledge` → статья «Корпоративные шрифты VBI»; нейробот «какие у нас шрифты» / «корпоративные шрифты».
+
+### Админ: справочник сотрудников — отступы 8px и ключ Vibe отдельно
+
+- `/admin/employees`: горизонтальный зазор **8px** между всеми колонками (`padding-right: 8px` на ячейках); узкие колонки — фиксированная ширина через `<colgroup>`, без `width: 1px` (не раздувает avatar↔Bitrix и дата↔роль).
+- Кнопка 🔑 Vibe — отдельная колонка `.col-key` между «Роль» и «Удалить», не внутри селекта роли.
+- Файлы: `frontend/app/pages/admin/employees.vue`, `frontend/app/assets/main.css`.
+- Проверка: `/admin/employees` → равномерные 8px между колонками; ключ вне рамки селекта «Роль».
+
+### Админ: справочник сотрудников — юр. лицо и форма договора
+
+- `/admin/employees`: колонки **«Юр. лицо»** и **«Форма договора»** (редактируемые, как остальные поля таблицы).
+- Поля в `employees.json`: `legal_entity`, `contract_form` (строка, по умолчанию пусто). **Не синкаются из Bitrix** — только ручной ввод HR.
+- Убран дублирующий заголовок и описательный абзац под шапкой; компактная вёрстка таблицы без горизонтального скролла на ~1280px.
+- Файлы: `pages/admin/employees.vue`, `composables/useEmployees.ts`, `server/utils/employeesStore.ts`, `main.css`.
+- Проверка: `/admin/employees` → заполнить юр. лицо / форму договора → «Сохранено» → обновить страницу.
+
 ### CI: verify-production-build на Alpine (deploy:production)
 
 - `deploy/scripts/verify-production-build.sh`: `grep --include` заменён на `find` + построчный `grep` — BusyBox grep в job `deploy:production` (Alpine) не понимает `--include`, из‑за этого падала проверка `appEnv`/`launchScope`.

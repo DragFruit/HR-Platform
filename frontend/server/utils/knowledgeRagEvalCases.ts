@@ -236,6 +236,19 @@ export const KNOWLEDGE_RAG_EVAL_CASES: KnowledgeRagEvalCase[] = [
     note: '«уволиться» = та же тема, что «увольнение»'
   },
   {
+    id: 'corp-fonts',
+    canonical: 'корпоративные шрифты VBI',
+    paraphrases: [
+      'шрифты компании',
+      'какой шрифт у компании',
+      'tt hoves pro',
+      'фирменный шрифт vbi',
+      'где скачать шрифты'
+    ],
+    expectAny: ['kb-corp-fonts-vbi'],
+    note: 'TT Hoves Pro Trial — не отпуск и не HR'
+  },
+  {
     id: 'offtopic-weather',
     canonical: 'какая погода завтра в Москве',
     paraphrases: ['расскажи анекдот', 'кто выиграл футбол'],

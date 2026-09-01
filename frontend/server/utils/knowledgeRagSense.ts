@@ -333,6 +333,24 @@ export function applyCaseEcomScoreAdjust(
   return Math.min(1, baseScore + 0.28);
 }
 
+const CORP_FONTS_ARTICLE_ID = 'kb-corp-fonts-vbi';
+
+const CORP_FONTS_Q_RE =
+  /шрифт[а-яё]*\s+компан|компан[а-яё]*\s+шрифт|(?<![а-яёa-z0-9])(?:шрифт[а-яё]*|типограф[а-яё]*|hoves|tt\s*hoves|брендбук|фирменн[а-яё]*\s+шрифт|корпоративн[а-яё]*\s+шрифт)(?![а-яёa-z0-9])/iu;
+
+/** Буст статьи корпоративных шрифтов (TT Hoves). */
+export function applyCorpFontsScoreAdjust(
+  articleId: string,
+  baseScore: number,
+  question: string
+): number {
+  const q = String(question || '');
+  if (!CORP_FONTS_Q_RE.test(q)) return baseScore;
+  if (articleId === CORP_FONTS_ARTICLE_ID) return Math.min(1, baseScore + 0.32);
+  if (/отпуск|day\s*off|отгул/i.test(q)) return baseScore;
+  return baseScore;
+}
+
 const CASE_CHANNEL_Q_RE =
   /(?<![а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет)(?![а-яёa-z0-9])/iu;
 

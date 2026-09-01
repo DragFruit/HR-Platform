@@ -1,13 +1,7 @@
 <template>
   <section class="card section-card personnel-admin">
-    <div class="section-head row">
-      <div>
-        <h2 class="section-title">Сотрудники</h2>
-        <p class="muted">
-          Даты трудоустройства и колонка «Руководитель» — путь подчинения и согласования отпусков.
-          Руководителя выбирайте только из списка: от этого зависит, кому уйдёт заявка на согласование.
-          Bitrix ID — для входа, аватарки и синка; новых людей синк сам не добавляет.
-        </p>
+    <div class="section-head row personnel-admin__head">
+      <div class="personnel-admin__status">
         <p v-if="saveStatus === 'saving'" class="save-hint muted">Сохранение…</p>
         <p v-else-if="saveStatus === 'saved'" class="save-hint muted">Сохранено</p>
         <p v-else-if="saveStatus === 'error'" class="save-hint save-hint--error">
@@ -32,6 +26,20 @@
 
     <div v-else class="personnel-table-wrap">
       <table class="table personnel-table">
+        <colgroup>
+          <col class="col-avatar" />
+          <col class="col-bitrix" />
+          <col class="col-name" />
+          <col class="col-title" />
+          <col class="col-dept" />
+          <col class="col-legal" />
+          <col class="col-contract" />
+          <col class="col-manager" />
+          <col class="col-date" />
+          <col class="col-role" />
+          <col class="col-key" />
+          <col class="col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th class="col-avatar" aria-label="Аватар" />
@@ -39,9 +47,12 @@
             <th class="col-name">ФИО</th>
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
+            <th class="col-legal">Юр. лицо</th>
+            <th class="col-contract">Форма договора</th>
             <th class="col-manager">Руководитель</th>
             <th class="col-date">Дата приёма</th>
             <th class="col-role">Роль</th>
+            <th class="col-key" aria-label="Vibe" />
             <th class="col-actions" aria-label="Действия" />
           </tr>
         </thead>
@@ -104,6 +115,28 @@
                 <option v-for="dep in departmentOptions" :key="dep" :value="dep">{{ dep }}</option>
               </select>
             </td>
+            <td class="col-legal">
+              <input
+                :value="emp.legal_entity"
+                type="text"
+                class="table-input table-input--compact"
+                placeholder="Юр. лицо"
+                :aria-label="`Юр. лицо — ${emp.name || 'сотрудник'}`"
+                @input="onFieldInput(emp.id, 'legal_entity', $event)"
+                @blur="onFieldBlur(emp.id, 'legal_entity', $event)"
+              />
+            </td>
+            <td class="col-contract">
+              <input
+                :value="emp.contract_form"
+                type="text"
+                class="table-input table-input--compact"
+                placeholder="ТД, ГПХ…"
+                :aria-label="`Форма договора — ${emp.name || 'сотрудник'}`"
+                @input="onFieldInput(emp.id, 'contract_form', $event)"
+                @blur="onFieldBlur(emp.id, 'contract_form', $event)"
+              />
+            </td>
             <td class="col-manager" @paste.capture="onManagerPaste(emp.id, $event)">
               <select
                 :value="emp.manager"
@@ -147,7 +180,7 @@
                 </option>
               </select>
             </td>
-            <td class="col-actions">
+            <td class="col-key">
               <button
                 class="personnel-password-btn"
                 type="button"
@@ -156,6 +189,8 @@
               >
                 🔑
               </button>
+            </td>
+            <td class="col-actions">
               <button
                 v-if="emp.account_role !== 'admin'"
                 class="personnel-delete-btn"
@@ -357,6 +392,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.personnel-admin__head {
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.personnel-admin__status {
+  min-height: 1.25rem;
+  flex: 1;
+}
+
 .save-hint {
   margin: 0.35rem 0 0;
   font-size: 0.875rem;
@@ -388,7 +433,6 @@ onMounted(() => {
   width: 2rem;
   height: 2rem;
   padding: 0;
-  margin-right: 0.25rem;
   border: none;
   border-radius: 8px;
   background: transparent;
