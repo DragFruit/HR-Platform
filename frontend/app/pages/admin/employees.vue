@@ -116,26 +116,42 @@
               </select>
             </td>
             <td class="col-legal">
-              <input
+              <select
                 :value="emp.legal_entity"
-                type="text"
-                class="table-input table-input--compact"
-                placeholder="Юр. лицо"
+                class="table-input table-input--select"
                 :aria-label="`Юр. лицо — ${emp.name || 'сотрудник'}`"
-                @input="onFieldInput(emp.id, 'legal_entity', $event)"
-                @blur="onFieldBlur(emp.id, 'legal_entity', $event)"
-              />
+                @change="updateField(emp.id, 'legal_entity', ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">—</option>
+                <option
+                  v-if="emp.legal_entity && !legalEntityOptions.includes(emp.legal_entity as LegalEntityOption)"
+                  :value="emp.legal_entity"
+                >
+                  {{ emp.legal_entity }} (устаревшее)
+                </option>
+                <option v-for="entity in legalEntityOptions" :key="entity" :value="entity">
+                  {{ entity }}
+                </option>
+              </select>
             </td>
             <td class="col-contract">
-              <input
+              <select
                 :value="emp.contract_form"
-                type="text"
-                class="table-input table-input--compact"
-                placeholder="ТД, ГПХ…"
+                class="table-input table-input--select"
                 :aria-label="`Договор — ${emp.name || 'сотрудник'}`"
-                @input="onFieldInput(emp.id, 'contract_form', $event)"
-                @blur="onFieldBlur(emp.id, 'contract_form', $event)"
-              />
+                @change="updateField(emp.id, 'contract_form', ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">—</option>
+                <option
+                  v-if="emp.contract_form && !contractFormOptions.includes(emp.contract_form as ContractFormOption)"
+                  :value="emp.contract_form"
+                >
+                  {{ emp.contract_form }} (устаревшее)
+                </option>
+                <option v-for="form in contractFormOptions" :key="form" :value="form">
+                  {{ form }}
+                </option>
+              </select>
             </td>
             <td class="col-manager" @paste.capture="onManagerPaste(emp.id, $event)">
               <select
@@ -231,8 +247,17 @@
 
 <script setup lang="ts">
 import type { AccountRole, Employee } from '~/composables/useEmployees';
+import {
+  CONTRACT_FORM_OPTIONS,
+  LEGAL_ENTITY_OPTIONS,
+  type ContractFormOption,
+  type LegalEntityOption
+} from '~/data/employeeDirectoryOptions';
 import { roleLabels } from '~/composables/usePermissions';
 import { resolveManagerFromList } from '~/utils/employeeName';
+
+const legalEntityOptions = LEGAL_ENTITY_OPTIONS;
+const contractFormOptions = CONTRACT_FORM_OPTIONS;
 
 const DEBOUNCE_MS = 400;
 

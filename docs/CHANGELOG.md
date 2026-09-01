@@ -4,6 +4,31 @@
 
 ## 2026-09-01
 
+### Отпуска: боевой шаблон заявления Word
+
+- Подключён утверждённый бланк `frontend/server/templates/vacation-application.docx` (из HR-шаблона; жёлтые поля → docxtemplater).
+- Подстановка: юр. лицо, должность+ФИО, даты начала/окончания, календарные дни, выход на работу (первый рабочий день после отпуска).
+- Генерация — только `docxtemplater` + данные справочника/заявки; встроенный fallback `docx` убран.
+- Скрипт пересборки шаблона: `node scripts/prepare-vacation-application-template.mjs`.
+- Файлы: `vacationApplicationDocx.ts`, `server/templates/README.md`.
+- Проверка: ТД + `approved` → «Скачать заявление» → `.docx` с заполненными полями.
+
+### Отпуска: заявление только после согласования (ТД)
+
+- **«Скачать заявление»** (`.docx`) — только для сотрудников с `contract_form === 'ТД'` и заявки со статусом **`approved`** (в списке «Мои заявки»).
+- После «Создать заявку» — только уведомление «Заявка создана», без скачивания.
+- API `GET /api/vacations/requests/:id/application`: 403, если статус не `approved` или не ТД.
+- Файлы: `EmployeeVacationPanel.vue`, `EmployeeVacationAside.vue`, `api/vacations/requests/[id]/application.get.ts`.
+- Проверка: ТД → создать заявку → ссылки нет; руководитель согласует → «Скачать заявление» в aside; прямой GET до согласования → 403.
+- Шаблон Word: `frontend/server/templates/vacation-application.docx` (docxtemplater); без файла — встроенный минимальный `.docx`. Зависимости: `docx`, `docxtemplater`, `pizzip`. Файлы: `vacationApplicationDocx.ts`, `server/templates/README.md`.
+
+### Админ: справочник — селекты «Договор» и «Юр. лицо»
+
+- `/admin/employees`: вместо текстовых полей — `<select>`: договор **СЗ** / **ТД**, юр. лицо **Высокие** / **ВиБиАй** (устаревшие значения остаются в списке).
+- Сохранение в `employees.json` через существующий `PUT /api/employees`.
+- Файлы: `pages/admin/employees.vue`, `data/employeeDirectoryOptions.ts`.
+- Проверка: выбрать значения → «Сохранено» → обновить страницу.
+
 ### БЗ: корпоративные шрифты — убран блок «Где использовать»
 
 - Статья `kb-corp-fonts-vbi`: удалён список случаев использования (презентации, макеты, внутренние документы); остались начертания, установка, ссылки, лицензия Trial.

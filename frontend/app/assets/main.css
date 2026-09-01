@@ -12464,6 +12464,26 @@ button.emp-name--card:hover {
   font-weight: 700;
 }
 
+.vac-emp-application-notice {
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text, #1a1a1a);
+  background: #f4f1ff;
+  border: 1px solid rgba(116, 81, 244, 0.35);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.vac-emp-application-notice__text {
+  font-weight: 600;
+}
+
 .vac-emp-body {
   flex: 1;
   min-height: 0;

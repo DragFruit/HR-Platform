@@ -145,6 +145,14 @@
                 </span>
               </div>
             </div>
+            <a
+              v-if="canDownloadVacationApplication(req)"
+              class="vac-emp-btn vac-emp-btn--ghost vac-emp-btn--sm emp-request-download"
+              :href="vacationApplicationHref(req.id)"
+              download
+            >
+              Скачать заявление
+            </a>
             <div v-if="canManageRequest(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
@@ -227,6 +235,7 @@ import {
   formatReservationPeriod,
   type VacationReservation
 } from '~/utils/vacationReservations';
+import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
 
 const props = defineProps<{
   viewYear: number;
@@ -373,6 +382,14 @@ const balance = computed(() =>
 
 const statusLabel = (req: VacationRequest) =>
   requestStatusLabel(req, currentEmployee.value ?? undefined);
+
+const canDownloadVacationApplication = (req: VacationRequest) =>
+  !isTrainingRequest(req) &&
+  req.status === 'approved' &&
+  isLaborContractEmployee(currentEmployee.value?.contract_form);
+
+const vacationApplicationHref = (requestId: number) =>
+  `/api/vacations/requests/${requestId}/application`;
 
 const formatRequestPeriod = (req: VacationRequest) => {
   const fmt = (iso: string) => {

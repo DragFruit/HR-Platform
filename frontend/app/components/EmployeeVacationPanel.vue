@@ -77,6 +77,10 @@
       <strong>{{ formError.title }}:</strong> {{ formError.text }}
     </p>
 
+    <p v-if="requestCreatedNotice" class="vac-emp-application-notice" role="status">
+      <span class="vac-emp-application-notice__text">Заявка создана.</span>
+    </p>
+
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
         <div
           ref="calendarSlotRef"
@@ -486,6 +490,7 @@ const formAssessment = computed(() => {
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
 const submitting = ref(false);
+const requestCreatedNotice = ref(false);
 
 const formatVacationRange = (start: string, end: string) => {
   const fmt = (iso: string) =>
@@ -564,6 +569,7 @@ watch(
     form.end = '';
     formError.value = null;
     clarifyHint.value = '';
+    requestCreatedNotice.value = false;
   }
 );
 
@@ -694,8 +700,12 @@ const submitRequest = async () => {
   }
 
   submitting.value = true;
+  requestCreatedNotice.value = false;
   try {
     const created = await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
+    if (created) {
+      requestCreatedNotice.value = true;
+    }
     if (created && pendingClarifyReservationId.value) {
       await deleteReservation(pendingClarifyReservationId.value);
       pendingClarifyReservationId.value = null;
