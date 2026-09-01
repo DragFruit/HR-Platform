@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 
 export type ManagerMonthReminderKind = 'mgr_next_month' | 'mgr_current_month';
@@ -45,7 +46,7 @@ const readStore = async (): Promise<StoreState> => {
 const writeStore = async (state: StoreState): Promise<void> => {
   const path = STORE_PATH();
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+  await writeJsonAtomic(path, state);
 };
 
 export const managerMonthReminderKey = (

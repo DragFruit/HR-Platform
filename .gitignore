@@ -26,8 +26,20 @@ deploy/env/*.env
 **/bridge.secret
 !deploy/env/*.example
 
+# Выгрузки и скриншоты с боя — персональные данные сотрудников
+.ocr/
+.prod-import/
+.prod-vacations.json
+
+# Временные HTML скрапы Bitrix /devs/ (migrate читает локально)
+scripts/bitrix/tmp/
+
 # Руководители сотрудников — runtime на сервере, не из репозитория
 frontend/server/data/employee-managers.json
 frontend/server/data/admin-notifications.json
 frontend/server/data/bitrix-oauth-service.json
 frontend/server/data/vpn-keys.json
+frontend/server/data/employee-access-denylist.json
+frontend/server/data/knowledge-rag-index.json
+frontend/server/data/vibe-passwords.json
+frontend/server/data/chatgpt-code-telegram-state.json

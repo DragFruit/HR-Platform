@@ -181,9 +181,27 @@
             <div class="ideas-bank-card__tags">
               <span class="ideas-chip ideas-chip--accent">{{ idea.category }}</span>
               <span class="ideas-chip">{{ formatDate(idea.createdAt) }}</span>
-              <span v-if="idea.attachmentName" class="ideas-chip ideas-chip--file" :title="idea.attachmentName">
+              <button
+                v-if="idea.attachmentName && idea.attachmentStored"
+                type="button"
+                class="ideas-chip ideas-chip--file"
+                :title="idea.attachmentName"
+                @click="openIdeaAttachment(idea)"
+              >
                 файл
-              </span>
+              </button>
+              <label
+                v-else-if="canAttachIdeaFile(idea)"
+                class="ideas-chip ideas-chip--file ideas-chip--upload"
+              >
+                прикрепить файл
+                <input
+                  type="file"
+                  class="ideas-attach__input"
+                  accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  @change="onAttachToIdea(idea.id, $event)"
+                />
+              </label>
             </div>
             <h3 class="ideas-bank-card__title">{{ idea.title }}</h3>
             <p class="ideas-bank-card__text muted">{{ idea.description }}</p>
@@ -421,7 +439,10 @@ const {
   voteIdea,
   userVoteFor,
   canDeleteIdea,
-  deleteIdea
+  canAttachIdeaFile,
+  deleteIdea,
+  openIdeaAttachment,
+  uploadIdeaAttachment
 } = useIdeasBank();
 
 const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
@@ -474,6 +495,7 @@ const createForm = reactive({
   category: IDEA_CATEGORIES[0],
   attachmentName: ''
 });
+const createAttachmentFile = ref<File | null>(null);
 
 const pickAttachment = () => {
   fileInputRef.value?.click();
@@ -482,6 +504,7 @@ const pickAttachment = () => {
 const setAttachmentFile = (file: File | undefined | null) => {
   if (!file) {
     createForm.attachmentName = '';
+    createAttachmentFile.value = null;
     return;
   }
 
@@ -493,6 +516,7 @@ const setAttachmentFile = (file: File | undefined | null) => {
 
   createError.value = '';
   createForm.attachmentName = file.name;
+  createAttachmentFile.value = file;
 
   if (fileInputRef.value) {
     const transfer = new DataTransfer();
@@ -529,6 +553,7 @@ const onAttachDrop = (event: DragEvent) => {
 
 const clearAttachment = () => {
   createForm.attachmentName = '';
+  createAttachmentFile.value = null;
   isAttachDragOver.value = false;
   attachDragDepth = 0;
   if (fileInputRef.value) fileInputRef.value.value = '';
@@ -695,13 +720,16 @@ const submitCreate = async () => {
     return;
   }
 
-  const created = await createIdea({
-    title: createForm.title,
-    description: createForm.description,
-    category: createForm.category,
-    city: 'Москва',
-    attachmentName: createForm.attachmentName || undefined
-  });
+  const created = await createIdea(
+    {
+      title: createForm.title,
+      description: createForm.description,
+      category: createForm.category,
+      city: 'Москва',
+      attachmentName: createForm.attachmentName || undefined
+    },
+    createAttachmentFile.value
+  );
 
   if (!created) {
     createError.value = 'Не удалось сохранить идею. Попробуйте ещё раз.';
@@ -718,6 +746,17 @@ const submitCreate = async () => {
 
 const askDelete = (ideaId: string) => {
   pendingDeleteId.value = ideaId;
+};
+
+const onAttachToIdea = async (ideaId: string, event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const ok = await uploadIdeaAttachment(ideaId, file);
+  input.value = '';
+  if (!ok) {
+    window.alert('Не удалось прикрепить файл');
+  }
 };
 
 const confirmDelete = async () => {

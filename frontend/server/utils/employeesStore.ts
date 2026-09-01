@@ -1,5 +1,6 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { createMutationQueue, writeJsonAtomic } from './atomicJson';
 import { dedupeEmployeeList, employeeIdentityKeys } from '../../app/utils/employeeDedupe';
 import {
   mergeQaTestEmployees,
@@ -13,6 +14,13 @@ import {
   readManagerAssignments,
   writeManagerAssignments
 } from './employeeManagersStore';
+import {
+  clearAccessRevocationForEmployee,
+  isRosterEmployeeDenied,
+  purgeExpiredRevocationArtifacts,
+  readAccessDenylist,
+  revokeEmployeeAccess
+} from './employeeAccessDenylist';
 
 export type ServerEmployee = {
   id: number;
@@ -31,6 +39,7 @@ export type ServerEmployee = {
 };
 
 const DATA_FILE = join(process.cwd(), 'server/data/employees.json');
+const enqueueEmployeesMutation = createMutationQueue();
 
 export const defaultEmployees = (): ServerEmployee[] => [];
 
@@ -39,7 +48,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultEmployees(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultEmployees());
   }
 }
 
@@ -62,11 +71,24 @@ export async function readEmployees(): Promise<ServerEmployee[]> {
   const parsed = JSON.parse(raw) as ServerEmployee[];
   const deduped = dedupeEmployees(parsed);
   if (deduped.length !== parsed.length) {
-    await writeFile(DATA_FILE, JSON.stringify(deduped, null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, deduped);
   }
   const assignments = await readManagerAssignments();
   const withManagers = applyManagerAssignments(deduped, assignments);
-  return mergeQaTestEmployees(withManagers);
+  const denylist = await readAccessDenylist();
+  const withoutDenied = withManagers.filter((row) => !isRosterEmployeeDenied(denylist, row));
+  // Лечим файл, если деплой/синк вернул удалённых
+  if (withoutDenied.length !== withManagers.length) {
+    await enqueueEmployeesMutation(async () => {
+      const again = await readEmployeesRawWithoutQaMerge();
+      const denylistNow = await readAccessDenylist();
+      const cleaned = again.filter((row) => !isRosterEmployeeDenied(denylistNow, row));
+      if (cleaned.length !== again.length) {
+        await writeJsonAtomic(DATA_FILE, cleaned);
+      }
+    });
+  }
+  return mergeQaTestEmployees(withoutDenied);
 }
 
 export type WriteEmployeesOptions = {
@@ -78,18 +100,49 @@ export async function writeEmployees(
   list: ServerEmployee[],
   options: WriteEmployeesOptions = {}
 ): Promise<ServerEmployee[]> {
+  return enqueueEmployeesMutation(async () => {
+    await ensureFile();
+    const previous = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
+    let normalized = dedupeEmployees(stripQaTestEmployees(list));
+
+    const nextIds = new Set(normalized.map((row) => row.id));
+    for (const prev of previous) {
+      if (nextIds.has(prev.id)) continue;
+      await revokeEmployeeAccess(prev, 'removed-from-roster');
+    }
+    const previousIds = new Set(previous.map((row) => row.id));
+    for (const row of normalized) {
+      if (previousIds.has(row.id)) continue;
+      await clearAccessRevocationForEmployee(row);
+    }
+
+    // После clear: старые отзывы не пишем обратно в справочник
+    const denylistAfter = await readAccessDenylist();
+    normalized = normalized.filter((row) => !isRosterEmployeeDenied(denylistAfter, row));
+
+    void purgeExpiredRevocationArtifacts().catch(() => {});
+
+    const currentAssignments = await readManagerAssignments();
+    let mergedAssignments = currentAssignments;
+    if (!options.preserveManagers) {
+      const incomingAssignments = extractManagerAssignments(normalized);
+      mergedAssignments = await mergeManagerAssignments(currentAssignments, incomingAssignments);
+      await writeManagerAssignments(mergedAssignments);
+    }
+    const withManagers = applyManagerAssignments(normalized, mergedAssignments);
+    await writeJsonAtomic(DATA_FILE, withManagers);
+    return withManagers;
+  });
+}
+
+/** Сырой список без QA-слияния — для сравнения удалений. */
+async function readEmployeesRawWithoutQaMerge(): Promise<ServerEmployee[]> {
   await ensureFile();
-  const normalized = dedupeEmployees(stripQaTestEmployees(list));
-  const currentAssignments = await readManagerAssignments();
-  let mergedAssignments = currentAssignments;
-  if (!options.preserveManagers) {
-    const incomingAssignments = extractManagerAssignments(normalized);
-    mergedAssignments = await mergeManagerAssignments(currentAssignments, incomingAssignments);
-    await writeManagerAssignments(mergedAssignments);
-  }
-  const withManagers = applyManagerAssignments(normalized, mergedAssignments);
-  await writeFile(DATA_FILE, JSON.stringify(withManagers, null, 2), 'utf8');
-  return withManagers;
+  const raw = await readFile(DATA_FILE, 'utf8');
+  const parsed = JSON.parse(raw) as ServerEmployee[];
+  const deduped = dedupeEmployees(parsed);
+  const assignments = await readManagerAssignments();
+  return applyManagerAssignments(deduped, assignments);
 }
 
 export async function findEmployeeByPlatformUserId(userId: number): Promise<ServerEmployee | null> {
@@ -127,6 +180,12 @@ export async function findEmployeeForSession(session: SessionUser): Promise<Serv
   const byPlatformId = list.find((e) => e.platform_user_id === session.id);
   if (byPlatformId) return byPlatformId;
 
+  const bitrixId = session.bitrix_user_id ?? session.id;
+  if (bitrixId > 0) {
+    const byBitrix = list.find((e) => e.bitrix_user_id === bitrixId);
+    if (byBitrix) return byBitrix;
+  }
+
   const email = session.email.trim().toLowerCase();
   if (email) {
     const byEmail = list.find((e) => e.email?.trim().toLowerCase() === email);
@@ -152,8 +211,8 @@ export async function findEmployeeByName(name: string): Promise<ServerEmployee |
   return list.find((e) => e.name.trim().toLowerCase() === normalized) ?? null;
 }
 
-/** id для user-notifications: Bitrix/platform id, иначе id из справочника. */
+/** id для user-notifications: как session.id у Bitrix (bitrix_user_id), иначе platform/id. */
 export function employeeNotificationUserId(employee: ServerEmployee): number | null {
-  const uid = employee.platform_user_id ?? employee.bitrix_user_id ?? employee.id;
+  const uid = employee.bitrix_user_id ?? employee.platform_user_id ?? employee.id;
   return uid > 0 ? uid : null;
 }

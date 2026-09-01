@@ -170,7 +170,7 @@ const copy = {
   vpnHint: 'Для входа в ChatGPT, Инстаграмм, Ютуб, PornHub и тд',
   proxyHint:
     'Идеально подходит для Тегерамма, позволяет одновременно использовать Тегерамм и Битрикс',
-  welcome: 'Привет! Я помогу получить доступ. Что вам нужно — VPN или прокси?',
+  welcome: 'Привет! Чем я могу помочь?',
   askDevice:
     'Отлично, VPN. Вам доступны 1 WireGuard и 2 AmneziaWG — одного ключа хватит на разные устройства. Какое именно устройство?',
   proxyBot:
@@ -383,10 +383,11 @@ const loadExistingKeys = async (kind: VpnKind) => {
 };
 
 const pickNeed = (value: Need) => {
+  const label = value === 'vpn' ? 'VPN' : 'Прокси';
   push({
-    id: `need-${value}`,
+    id: `need-${value}-${Date.now()}`,
     from: 'user',
-    text: value === 'vpn' ? 'VPN' : 'Прокси'
+    text: label
   });
   if (value === 'proxy') {
     step.value = 'proxy';

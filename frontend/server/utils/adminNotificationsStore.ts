@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -7,7 +8,12 @@ export type AdminNotificationKind =
   | 'bitrix_employee_title'
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'vpn_peer_delete_failed'
+  | 'sales_best_pick_due'
+  | 'page_feedback'
+  | 'knowledge_ai_degraded'
+  | 'bitrix_notify_failed';
 
 export type AdminNotification = {
   id: string;
@@ -33,6 +39,16 @@ export type AdminNotification = {
   vacation_start?: string;
   vacation_end?: string;
   error_message?: string;
+  /** VPN офбординг */
+  vpn_peer_names?: string[];
+  vpn_panel?: string;
+  /** Лучший специалист продаж — выбор за месяц */
+  sales_period?: string;
+  sales_period_label?: string;
+  /** Оценка страницы */
+  stars?: number;
+  comment?: string;
+  page?: string;
 };
 
 type NotificationsState = {
@@ -56,7 +72,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(emptyState(), null, 2) + '\n', 'utf8');
+    await writeJsonAtomic(DATA_FILE, emptyState());
   }
 }
 
@@ -73,7 +89,7 @@ async function readState(): Promise<NotificationsState> {
 
 async function writeState(state: NotificationsState): Promise<void> {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 export async function listAdminNotifications(filters?: {
@@ -134,7 +150,6 @@ export async function upsertBitrixFieldNotification(input: {
 
   const existing = state.items.find(
     (item) =>
-      !item.admin_seen &&
       (item.kind === 'bitrix_employee_name' || item.kind === 'bitrix_employee_title') &&
       item.employee_id === input.employee_id &&
       item.field === input.field &&
@@ -180,10 +195,7 @@ export async function createTenureGiftOrderNotification(input: {
   const state = await readState();
 
   const existing = state.items.find(
-    (item) =>
-      !item.admin_seen &&
-      item.kind === 'tenure_gift_order' &&
-      item.order_id === input.order_id
+    (item) => item.kind === 'tenure_gift_order' && item.order_id === input.order_id
   );
   if (existing) return existing;
 
@@ -212,10 +224,7 @@ export async function createIdeaSubmittedNotification(input: {
   const state = await readState();
 
   const existing = state.items.find(
-    (item) =>
-      !item.admin_seen &&
-      item.kind === 'idea_submitted' &&
-      item.idea_id === input.idea_id
+    (item) => item.kind === 'idea_submitted' && item.idea_id === input.idea_id
   );
   if (existing) return existing;
 
@@ -247,7 +256,6 @@ export async function createBitrixVacationSyncFailedNotification(input: {
 
   const existing = state.items.find(
     (item) =>
-      !item.admin_seen &&
       item.kind === 'bitrix_vacation_sync_failed' &&
       item.vacation_request_id === input.request_id
   );
@@ -270,6 +278,145 @@ export async function createBitrixVacationSyncFailedNotification(input: {
     vacation_start: input.start,
     vacation_end: input.end,
     error_message: input.error,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createVpnPeerDeleteFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  peer_names: string[];
+  panel?: string;
+  error: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const peers = input.peer_names.map((n) => n.trim()).filter(Boolean);
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'vpn_peer_delete_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    vpn_peer_names: peers,
+    vpn_panel: input.panel,
+    error_message: input.error,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+/** Напоминание 29-го: выбрать лучшего специалиста продаж за месяц (идемпотентно по period). */
+export async function createSalesBestPickDueNotification(input: {
+  period: string;
+  period_label: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const existing = state.items.find(
+    (item) => item.kind === 'sales_best_pick_due' && item.sales_period === input.period
+  );
+  if (existing) return existing;
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'sales_best_pick_due',
+    employee_id: 0,
+    employee_name: 'Отдел продаж',
+    sales_period: input.period,
+    sales_period_label: input.period_label,
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createPageFeedbackNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  stars: number;
+  comment?: string;
+  page?: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'page_feedback',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    stars: input.stars,
+    comment: input.comment || '',
+    page: input.page || '/knowledge',
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+export async function createKnowledgeAiDegradedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  error_message: string;
+  question?: string;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  // не спамим: если за последний час уже есть такое — обновим текст
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const recent = state.items.find(
+    (item) =>
+      item.kind === 'knowledge_ai_degraded' && new Date(item.created_at).getTime() >= hourAgo
+  );
+  if (recent) {
+    recent.error_message = input.error_message;
+    recent.employee_id = input.employee_id;
+    recent.employee_name = input.employee_name;
+    recent.admin_seen = false;
+    recent.created_at = new Date().toISOString();
+    await writeState(state);
+    return recent;
+  }
+
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'knowledge_ai_degraded',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    error_message: input.error_message,
+    page: '/knowledge',
+    comment: input.question ? input.question.slice(0, 200) : '',
+    created_at: new Date().toISOString(),
+    admin_seen: false
+  };
+  state.items.push(notification);
+  await writeState(state);
+  return notification;
+}
+
+/** Bitrix не создал колокольчик согласующему (timestamp вместо ID / ошибка bridge). */
+export async function createBitrixNotifyFailedNotification(input: {
+  employee_id: number;
+  employee_name: string;
+  bitrix_user_id: number;
+  error_message: string;
+  vacation_request_id?: number;
+}): Promise<AdminNotification> {
+  const state = await readState();
+  const notification: AdminNotification = {
+    id: randomUUID(),
+    kind: 'bitrix_notify_failed',
+    employee_id: input.employee_id,
+    employee_name: input.employee_name,
+    bitrix_user_id: input.bitrix_user_id,
+    error_message: input.error_message,
+    vacation_request_id: input.vacation_request_id,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
@@ -8,6 +8,7 @@ import {
   stripQaTestVacationReservations,
   type QaDemoVacationSuppressed
 } from '../../app/data/qaTestVacationSeed';
+import { writeJsonAtomic } from './atomicJson';
 
 export type { VacationRequest, VacationReservation };
 
@@ -52,7 +53,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultVacationState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultVacationState());
   }
 }
 
@@ -81,7 +82,7 @@ function stripQaFromVacationState(state: VacationStoreState): VacationStoreState
 export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {
   await ensureFile();
   const persisted = stripQaFromVacationState(state);
-  await writeFile(DATA_FILE, JSON.stringify(persisted, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, persisted);
   return state;
 }
 
@@ -98,4 +99,35 @@ export async function mutateVacations(
   });
   mutationQueue = run.catch(() => {});
   return run;
+}
+
+function normalizeEmployeeNameKey(name: string): string {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ');
+}
+
+/** Удалить заявки/брони сотрудника по ФИО (после срока хранения 1 год). */
+export async function purgeVacationsForEmployeeName(employeeName: string): Promise<number> {
+  const key = normalizeEmployeeNameKey(employeeName);
+  if (!key) return 0;
+
+  let removed = 0;
+  await mutateVacations((state) => {
+    const next = { ...state, requestsByYear: { ...state.requestsByYear }, reservationsByYear: { ...state.reservationsByYear } };
+    for (const [year, rows] of Object.entries(next.requestsByYear)) {
+      const filtered = rows.filter((row) => normalizeEmployeeNameKey(row.employee) !== key);
+      removed += rows.length - filtered.length;
+      next.requestsByYear[year] = filtered;
+    }
+    for (const [year, rows] of Object.entries(next.reservationsByYear)) {
+      const filtered = rows.filter((row) => normalizeEmployeeNameKey(row.employee) !== key);
+      removed += rows.length - filtered.length;
+      next.reservationsByYear[year] = filtered;
+    }
+    return next;
+  });
+  return removed;
 }

@@ -260,7 +260,23 @@ export const ACHIEVEMENTS_CATALOG: AchievementDef[] = [
     ],
     'leadership',
     120
-  )
+  ),
+
+  // —— Лучший специалист продаж (выбор админа 29-го; reveal — первый рабочий день след. месяца) ——
+  ...([
+    { count: 1, title: 'Лучший специалист продаж', subtitle: 'Перевыполнил план продаж сильнее всех в месяце' },
+    { count: 2, title: 'Лучший специалист продаж ×2', subtitle: 'Признан лучшим в ОП два раза' },
+    { count: 3, title: 'Лучший специалист продаж ×3', subtitle: 'Признан лучшим в ОП три раза' },
+    { count: 4, title: 'Лучший специалист продаж ×4', subtitle: 'Признан лучшим в ОП четыре раза' },
+    { count: 5, title: 'Лучший специалист продаж ×5', subtitle: 'Признан лучшим в ОП пять раз' }
+  ] as const).map((item, index) => ({
+    id: `sales-best-${item.count}`,
+    title: item.title,
+    subtitle: item.subtitle,
+    imageSrc: '/achievements/sales-best.png',
+    section: 'leadership' as const,
+    sortOrder: 130 + index
+  }))
 ];
 
 export type AchievementCatalogItem = AchievementDef & { earned: boolean };

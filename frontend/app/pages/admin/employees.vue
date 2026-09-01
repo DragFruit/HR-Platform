@@ -6,6 +6,7 @@
         <p class="muted">
           Даты трудоустройства и колонка «Руководитель» — путь подчинения и согласования отпусков.
           Руководителя выбирайте только из списка: от этого зависит, кому уйдёт заявка на согласование.
+          Bitrix ID — для входа, аватарки и синка; новых людей синк сам не добавляет.
         </p>
         <p v-if="saveStatus === 'saving'" class="save-hint muted">Сохранение…</p>
         <p v-else-if="saveStatus === 'saved'" class="save-hint muted">Сохранено</p>
@@ -34,6 +35,7 @@
         <thead>
           <tr>
             <th class="col-avatar" aria-label="Аватар" />
+            <th class="col-bitrix" title="ID пользователя в Bitrix24">Bitrix ID</th>
             <th class="col-name">ФИО</th>
             <th class="col-title">Должность</th>
             <th class="col-dept">Отдел</th>
@@ -50,6 +52,20 @@
                 :user-id="emp.platform_user_id ?? emp.bitrix_user_id"
                 :name="emp.name"
                 :size="28"
+              />
+            </td>
+            <td class="col-bitrix">
+              <input
+                :value="emp.bitrix_user_id ?? ''"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="table-input table-input--bitrix"
+                placeholder="ID"
+                autocomplete="off"
+                :aria-label="`Bitrix ID — ${emp.name || 'сотрудник'}`"
+                @input="onBitrixIdInput(emp.id, $event)"
+                @blur="onBitrixIdBlur(emp.id, $event)"
               />
             </td>
             <td class="col-name">
@@ -133,12 +149,20 @@
             </td>
             <td class="col-actions">
               <button
+                class="personnel-password-btn"
+                type="button"
+                title="Логин и пароль Vibe"
+                @click="openVibeCredentials(emp)"
+              >
+                🔑
+              </button>
+              <button
                 v-if="emp.account_role !== 'admin'"
                 class="personnel-delete-btn"
                 type="button"
                 aria-label="Удалить сотрудника"
                 title="Удалить"
-                @click="removeEmployee(emp.id)"
+                @click="onRemoveEmployee(emp)"
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
                   <path
@@ -162,6 +186,12 @@
       </table>
     </div>
   </section>
+
+  <VibeCredentialsDialog
+    v-model:open="vibeCredsOpen"
+    :employee="vibeCredsEmployee"
+    @saved="onVibeCredsSaved"
+  />
 </template>
 
 <script setup lang="ts">
@@ -184,6 +214,27 @@ const {
   reloadLoading
 } = useEmployees();
 
+const onRemoveEmployee = async (emp: Employee) => {
+  const label = emp.name.trim() || `id ${emp.id}`;
+  if (!window.confirm(`Удалить «${label}» из справочника насовсем?`)) return;
+  const result = await removeEmployee(emp.id);
+  if (!result.ok) {
+    window.alert(result.error || 'Не удалось удалить на сервере');
+  }
+};
+
+const vibeCredsOpen = ref(false);
+const vibeCredsEmployee = ref<Employee | null>(null);
+
+const openVibeCredentials = (emp: Employee) => {
+  vibeCredsEmployee.value = emp;
+  vibeCredsOpen.value = true;
+};
+
+const onVibeCredsSaved = () => {
+  window.alert('Учётные данные Vibe сохранены. Сотрудник входит по email и паролю.');
+};
+
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 const fieldKey = (id: number, field: keyof Employee) => `${id}:${field}`;
@@ -193,6 +244,25 @@ const fieldValue = (event: Event) =>
 
 const updateField = (id: number, field: keyof Employee, value: string) => {
   updateEmployee(id, { [field]: value } as Partial<Employee>);
+};
+
+const parseBitrixUserId = (raw: string): number | null | 'invalid' => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (!/^\d+$/.test(trimmed)) return 'invalid';
+  const n = Number(trimmed);
+  if (!Number.isSafeInteger(n) || n <= 0) return 'invalid';
+  return n;
+};
+
+const updateBitrixUserId = (id: number, raw: string) => {
+  const parsed = parseBitrixUserId(raw);
+  if (parsed === 'invalid') {
+    saveStatus.value = 'error';
+    saveError.value = 'Bitrix ID — целое положительное число';
+    return;
+  }
+  updateEmployee(id, { bitrix_user_id: parsed });
 };
 
 const immediateUpdate = (id: number, field: keyof Employee, value: string) => {
@@ -224,6 +294,30 @@ const onFieldInput = (id: number, field: keyof Employee, event: Event) => {
 
 const onFieldBlur = (id: number, field: keyof Employee, event: Event) => {
   immediateUpdate(id, field, fieldValue(event));
+};
+
+const onBitrixIdInput = (id: number, event: Event) => {
+  const key = fieldKey(id, 'bitrix_user_id');
+  const pending = debounceTimers.get(key);
+  if (pending) clearTimeout(pending);
+  const raw = fieldValue(event);
+  debounceTimers.set(
+    key,
+    setTimeout(() => {
+      debounceTimers.delete(key);
+      updateBitrixUserId(id, raw);
+    }, DEBOUNCE_MS)
+  );
+};
+
+const onBitrixIdBlur = (id: number, event: Event) => {
+  const key = fieldKey(id, 'bitrix_user_id');
+  const pending = debounceTimers.get(key);
+  if (pending) {
+    clearTimeout(pending);
+    debounceTimers.delete(key);
+  }
+  updateBitrixUserId(id, fieldValue(event));
 };
 
 const onManagerPaste = (empId: number, event: ClipboardEvent) => {
@@ -285,6 +379,30 @@ onMounted(() => {
   color: var(--text-muted, #888);
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
+}
+
+.personnel-password-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin-right: 0.25rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.personnel-password-btn:hover {
+  background: rgba(116, 81, 244, 0.12);
+}
+
+.col-actions {
+  white-space: nowrap;
 }
 
 .personnel-delete-btn:hover {

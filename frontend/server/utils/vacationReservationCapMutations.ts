@@ -5,7 +5,9 @@ import {
 import type { ReservationMonthlyCapsByGroup } from '../../app/utils/vacationReservationCaps';
 import {
   getReservationMonthBlockReason,
-  reservationCapBlockMessage
+  getReservationRangeBlockReason,
+  reservationCapBlockMessage,
+  type EmployeeReservationCapContext
 } from '../../app/utils/vacationReservationCaps';
 import type { SessionUser } from './credentials';
 import { findEmployeeByName, findEmployeeForSession, readEmployees } from './employeesStore';
@@ -23,6 +25,26 @@ const buildGroupHelpers = async () => {
   };
 };
 
+const toCapContext = (
+  context: NonNullable<ReturnType<typeof resolveEmployeeReservationCapContext>>
+): EmployeeReservationCapContext => ({
+  department: {
+    id: context.department.id,
+    label: context.department.label,
+    memberNames: context.department.members.map((emp) => emp.name)
+  },
+  subgroup: {
+    id: context.subgroup.id,
+    label: context.subgroup.label,
+    memberNames: context.subgroup.members.map((emp) => emp.name)
+  }
+});
+
+const allReservations = (state: VacationStoreState) =>
+  Object.values(state.reservationsByYear).flat();
+
+const allRequests = (state: VacationStoreState) => Object.values(state.requestsByYear).flat();
+
 export async function assertReservationGroupCap(
   state: VacationStoreState,
   employeeName: string,
@@ -36,29 +58,45 @@ export async function assertReservationGroupCap(
   const context = resolveEmployeeReservationCapContext(employee, helpers);
   if (!context) return;
 
-  const yearKey = String(year);
-  const reservations = state.reservationsByYear[yearKey] ?? [];
-  const caps = state.reservationMonthlyCapsByGroup;
-
-  const capContext = {
-    department: {
-      id: context.department.id,
-      label: context.department.label,
-      memberNames: context.department.members.map((emp) => emp.name)
-    },
-    subgroup: {
-      id: context.subgroup.id,
-      label: context.subgroup.label,
-      memberNames: context.subgroup.members.map((emp) => emp.name)
-    }
-  };
-
   const reason = getReservationMonthBlockReason({
-    context: capContext,
+    context: toCapContext(context),
     year,
     month,
-    reservations,
-    caps,
+    reservations: allReservations(state),
+    requests: allRequests(state),
+    caps: state.reservationMonthlyCapsByGroup,
+    excludeEmployee: employeeName
+  });
+
+  if (reason) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: reservationCapBlockMessage(reason)
+    });
+  }
+}
+
+/** Лимит группы/отдела при подаче или сдвиге заявки с датами. */
+export async function assertVacationRequestGroupCap(
+  state: VacationStoreState,
+  employeeName: string,
+  start: string,
+  end: string
+) {
+  const employee = await findEmployeeByName(employeeName);
+  if (!employee) return;
+
+  const helpers = await buildGroupHelpers();
+  const context = resolveEmployeeReservationCapContext(employee, helpers);
+  if (!context) return;
+
+  const reason = getReservationRangeBlockReason({
+    context: toCapContext(context),
+    start,
+    end,
+    reservations: allReservations(state),
+    requests: allRequests(state),
+    caps: state.reservationMonthlyCapsByGroup,
     excludeEmployee: employeeName
   });
 

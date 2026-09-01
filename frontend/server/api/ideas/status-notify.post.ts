@@ -1,4 +1,4 @@
-import { getVbiSession } from '../../utils/session';
+import { requireVbiSession } from '../../utils/session';
 import {
   notifyIdeaAuthorStatusChanged,
   type IdeaNotifyStatus
@@ -12,10 +12,7 @@ const ALLOWED_STATUSES: IdeaNotifyStatus[] = [
 ];
 
 export default defineEventHandler(async (event) => {
-  const session = getVbiSession(event);
-  if (!session) {
-    throw createError({ statusCode: 401, statusMessage: 'Нужна авторизация' });
-  }
+  const session = await requireVbiSession(event);
   if (session.role !== 'admin' && session.role !== 'hr') {
     throw createError({ statusCode: 403, statusMessage: 'Только admin/HR' });
   }
@@ -35,7 +32,6 @@ export default defineEventHandler(async (event) => {
   const authorUserId = Number(body?.author_user_id);
   const authorName = String(body?.author_name || '').trim();
   const status = String(body?.status || '').trim() as IdeaNotifyStatus;
-  const previousStatus = String(body?.previous_status || '').trim();
   const comment = typeof body?.comment === 'string' ? body.comment : undefined;
 
   if (!ideaId || !ideaTitle) {
@@ -47,6 +43,7 @@ export default defineEventHandler(async (event) => {
   if (!ALLOWED_STATUSES.includes(status)) {
     throw createError({ statusCode: 400, statusMessage: 'Некорректный status' });
   }
+  const previousStatus = String(body?.previous_status || '').trim();
   if (previousStatus && previousStatus === status) {
     return { ok: true, skipped: true };
   }

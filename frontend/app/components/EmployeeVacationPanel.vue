@@ -1,4 +1,6 @@
 <template>
+  <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
+
   <div class="vac-emp-page" :class="embedded ? 'vac-emp-page--embedded' : 'vac-emp-page--fit'">
     <header class="vac-emp-toolbar">
       <form class="vac-emp-toolbar__form" data-tour="vac-create-form" @submit.prevent="submitRequest">
@@ -183,6 +185,7 @@
 <script setup lang="ts">
 import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
+import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 import {
   canAddReservationForMonth,
@@ -191,6 +194,7 @@ import {
 import { resolveEmployeeReservationCapContext } from '~/utils/vacationDepartmentGroups';
 import {
   getReservationMonthBlockReason,
+  getReservationRangeBlockReason,
   reservationCapBlockMessage,
   RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
 } from '~/utils/vacationReservationCaps';
@@ -220,6 +224,8 @@ const onUiModeChange = (mode: 'manager' | 'employee') => {
 };
 
 const { user } = useAuth();
+const runtimeConfig = useRuntimeConfig();
+const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 const { isAdmin } = usePermissions();
 const {
   findByUserForAuth,
@@ -258,6 +264,8 @@ const {
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
 const displayRequests = computed(() => mergeRequestsForDisplay(props.viewYear, yearRequests.value));
+/** Для лимитов: только реальные заявки (без учебных), все годы. */
+const capRequests = computed(() => Object.values(state.value.requestsByYear).flat());
 const employeeReservationsList = computed(() => {
   if (!employeeName.value) return [];
   const real = employeeReservations(employeeName.value, props.viewYear);
@@ -338,6 +346,7 @@ const openReservationCapNotice = (monthIndex: number) => {
       year: props.viewYear,
       month: monthIndex + 1,
       reservations: allReservations.value,
+      requests: capRequests.value,
       caps: state.value.reservationMonthlyCapsByGroup,
       excludeEmployee: employeeName.value
     });
@@ -409,6 +418,7 @@ const reservationCapBlockedMonths = computed(() => {
         year: props.viewYear,
         month: monthIndex + 1,
         reservations,
+        requests: capRequests.value,
         caps,
         excludeEmployee: employeeName.value
       })
@@ -453,18 +463,25 @@ const fitTeamTableToSideTabs = async () => {
 
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
-const formAssessment = computed(() =>
-  assessVacationBalance(
+const formAssessment = computed(() => {
+  const y = state.value.primaryYear;
+  const byId = new Map<number, VacationRequest>();
+  for (const yr of [y - 1, y, y + 1]) {
+    for (const req of requestsForYear(yr)) {
+      byId.set(req.id, req);
+    }
+  }
+  return assessVacationBalance(
     employeeName.value,
     hireIso.value,
     form.start,
     form.end,
-    requestsForYear(state.value.primaryYear),
-    state.value.primaryYear,
+    [...byId.values()],
+    y,
     undefined,
     currentEmployee.value?.vacation_opening_balance
-  )
-);
+  );
+});
 
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
@@ -628,6 +645,37 @@ const submitRequest = async () => {
       text: GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE
     };
     return;
+  }
+
+  const capCtx = reservationCapContext.value;
+  if (capCtx) {
+    const capReason = getReservationRangeBlockReason({
+      context: {
+        department: {
+          id: capCtx.department.id,
+          label: capCtx.department.label,
+          memberNames: capCtx.department.members.map((member) => member.name)
+        },
+        subgroup: {
+          id: capCtx.subgroup.id,
+          label: capCtx.subgroup.label,
+          memberNames: capCtx.subgroup.members.map((member) => member.name)
+        }
+      },
+      start: form.start,
+      end: form.end,
+      reservations: allReservations.value,
+      requests: capRequests.value,
+      caps: state.value.reservationMonthlyCapsByGroup,
+      excludeEmployee: employeeName.value
+    });
+    if (capReason) {
+      formError.value = {
+        title: 'Месяц занят в группе',
+        text: reservationCapBlockMessage(capReason)
+      };
+      return;
+    }
   }
 
   if (isTrainingActive.value) {

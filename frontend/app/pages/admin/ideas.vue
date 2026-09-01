@@ -50,9 +50,27 @@
           <div class="ideas-bank-card__tags">
             <span class="ideas-chip ideas-chip--accent">{{ idea.category }}</span>
             <span class="ideas-chip">{{ formatDate(idea.createdAt) }}</span>
-            <span v-if="idea.attachmentName" class="ideas-chip ideas-chip--file" :title="idea.attachmentName">
+            <button
+              v-if="idea.attachmentName"
+              type="button"
+              class="ideas-chip ideas-chip--file"
+              :title="idea.attachmentName"
+              @click="openIdeaAttachment(idea)"
+            >
               файл
-            </span>
+            </button>
+            <label
+              v-if="idea.attachmentName && !idea.attachmentStored"
+              class="ideas-chip ideas-chip--file ideas-chip--upload"
+            >
+              загрузить файл
+              <input
+                type="file"
+                class="ideas-attach__input"
+                accept=".png,.jpg,.jpeg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                @change="onAdminAttach(idea.id, $event)"
+              />
+            </label>
           </div>
           <h3 class="ideas-bank-card__title">{{ idea.title }}</h3>
           <p class="ideas-bank-card__text muted">{{ idea.description }}</p>
@@ -142,7 +160,8 @@
 <script setup lang="ts">
 import type { IdeaStatus } from '~/composables/useIdeasBank';
 
-const { ideas, stats, statusLabel, hydrate, deleteIdea, setIdeaStatus } = useIdeasBank();
+const { ideas, stats, statusLabel, hydrate, deleteIdea, setIdeaStatus, openIdeaAttachment, uploadIdeaAttachment } =
+  useIdeasBank();
 
 const statusFilter = ref<IdeaStatus | 'all'>('all');
 const pendingDeleteId = ref<string | null>(null);
@@ -170,6 +189,17 @@ const statusStages: { value: IdeaStatus; label: string }[] = [
   { value: 'done', label: 'Реализовано' },
   { value: 'rejected', label: 'Отклонено' }
 ];
+
+const onAdminAttach = async (ideaId: string, event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const ok = await uploadIdeaAttachment(ideaId, file);
+  input.value = '';
+  if (!ok) {
+    window.alert('Не удалось загрузить файл');
+  }
+};
 
 const statusConfirmTitle = computed(() => {
   const status = pendingStatus.value?.status;

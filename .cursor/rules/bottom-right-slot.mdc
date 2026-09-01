@@ -1,0 +1,30 @@
+---
+description: Правый нижний угол — один оверлей; кот оценки не появляется, если слот занят
+globs: frontend/app/components/PageRateCatHost.vue,frontend/app/components/KnowledgeRateCat.vue,frontend/app/components/PostVacationMemo.vue,frontend/app/composables/useBottomRightSlot.ts,frontend/app/composables/usePostVacationMemo.ts
+alwaysApply: true
+---
+
+# Правый нижний угол — один оверлей
+
+Поверх страницы в **правом нижнем углу** может жить только один виджет. Если угол занят, **кот оценки не появляется**.
+
+## Как надо
+
+- Слот: `useBottomRightSlot()` (`claim` / `release` / `isOccupied`).
+- Кот: `PageRateCatHost` показывает `KnowledgeRateCat` только если `canShowCat && !isOccupied`.
+- Пока слот занят, кота **не монтировать** (не начинать выезд «за кадром»).
+- Когда слот освободился, кот может появиться по обычным правилам оценки.
+
+## Сейчас занимает
+
+| id | Когда |
+|----|--------|
+| `post-vacation-memo` | памятка не `hidden`: welcome, полёт, чип, карусель |
+
+## Новый виджет в этом углу
+
+1. `claim('свой-id')` на время показа, `release` при скрытии.
+2. Не ставить второй `position: fixed; right/bottom` поверх занятого слота.
+3. Не обходить слот z-index’ом.
+
+Не путать с полноэкранным оверлеем ради затемнения: слот нужен именно для **уголка** (чип, кот). Памятка всё равно занимает слот целиком, пока жива, чтобы кот не выехал под карточку и не столкнулся с чипом.

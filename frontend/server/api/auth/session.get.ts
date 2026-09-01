@@ -1,7 +1,7 @@
-import { getVbiSession, refreshBitrixSessionRoleIfNeeded } from '../../utils/session';
+import { getVbiSessionChecked, refreshBitrixSessionRoleIfNeeded } from '../../utils/session';
 
 export default defineEventHandler(async (event) => {
-  let user = getVbiSession(event);
+  let user = await getVbiSessionChecked(event);
   if (!user) {
     return { ok: false, user: null };
   }

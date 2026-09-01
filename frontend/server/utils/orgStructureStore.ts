@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type {
   OrgExecutive,
@@ -149,7 +150,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultOrgStructureState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultOrgStructureState());
   }
 }
 
@@ -162,7 +163,7 @@ export async function readOrgStructure(): Promise<OrgStructureState> {
 export async function writeOrgStructure(state: OrgStructureState): Promise<OrgStructureState> {
   await ensureFile();
   const normalized = normalizeOrgStructureState(state);
-  await writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, normalized);
   return normalized;
 }
 

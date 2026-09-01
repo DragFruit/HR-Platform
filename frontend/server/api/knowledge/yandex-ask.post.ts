@@ -1,0 +1,303 @@
+import { requireRole } from '../../utils/requireRole';
+import { createKnowledgeAiDegradedNotification } from '../../utils/adminNotificationsStore';
+import {
+  detectKbAiChitchat,
+  emptyKbReplyMode,
+  expandQuestionFromHistory,
+  buildKbAiCaseModelHint,
+  KB_AI_CHITCHAT_REPLY,
+  KB_AI_GREETING_REPLY,
+  KB_AI_NOT_FOUND_REPLY,
+  KB_AI_OFFTOPIC_REPLY,
+  normalizeKbAiQueryTypos,
+  parseKbAiModelReply,
+  shouldRejectModelOfftopic,
+  shouldSkipRagAsOfftopic
+} from '../../../app/utils/knowledgeAiIntent';
+import { yandexChatAnswer, yandexChatAnswerAmbiguous } from '../../utils/yandexGpt';
+import {
+  buildRagAmbiguousContext,
+  buildRagContext,
+  retrieveKnowledgeDetailed,
+  retrieveKnowledgeLexicalFallback
+} from '../../utils/knowledgeRag';
+import { tryAnswerFromOrgStructure } from '../../utils/knowledgeOrgAnswer';
+
+type HistoryItem = { role?: string; text?: string };
+
+type Body = {
+  question?: string;
+  context?: string;
+  history?: HistoryItem[];
+};
+
+export type YandexAskCitation = {
+  id: string;
+  title: string;
+  href?: string;
+};
+
+const SMOKE_PREFIX =
+  'Бот ушёл на перекур, но скоро вернётся. Пока ответы могут быть менее точными.\n\n';
+
+/** Модель отмахнулась «нет в базе» без полезных фактов (не «нет прямого… Однако 1. UIS…»). */
+function looksLikeKbNotFound(answer: string): boolean {
+  const a = String(answer || '').trim();
+  if (!a) return true;
+  if (
+    !/в базе знаний\s+(пока\s+)?нет|нет информации|в базе этого нет|не нашлось|не нашёл|не нашел/i.test(a)
+  ) {
+    return false;
+  }
+  // Отказ с оговоркой «нет прямого» + дальше нумерованный/конкретный ответ из контекста
+  if (/нет\s+прямого/i.test(a) && a.length > 220) return false;
+  if (/\d[\.)]\s+\S/.test(a) && a.length > 180) return false;
+  return true;
+}
+
+/**
+ * Модель сказала OFFTOPIC при живом RAG-контексте и уточнении по теме —
+ * переспрашиваем с явной подсказкой «это продолжение, ответь по контексту».
+ */
+async function answerWithOfftopicGuard(
+  question: string,
+  modelQuestion: string,
+  context: string,
+  history: { role: 'user' | 'assistant'; text: string }[]
+): Promise<string> {
+  const answer = await yandexChatAnswer(modelQuestion, context, { history });
+  const parsed = parseKbAiModelReply(answer);
+  if (
+    parsed.intent !== 'offtopic' ||
+    !shouldRejectModelOfftopic(question, history, { hasKbContext: true })
+  ) {
+    return answer;
+  }
+
+  const retryQ = `${modelQuestion}\n\n(Это уточнение по теме недавнего диалога и фрагменту базы выше. Ответь по контексту: допиши оставшиеся пункты или скажи, что в статье больше нет. Не ставь OFFTOPIC.)`;
+  const retry = await yandexChatAnswer(retryQ, context, { history });
+  const parsedRetry = parseKbAiModelReply(retry);
+  if (parsedRetry.intent === 'offtopic') {
+    return 'В найденном фрагменте базы больше пунктов по этому уточнению нет. Откройте статью в «Ещё по теме» — там полный список.';
+  }
+  return retry;
+}
+
+function normalizeHistory(raw: HistoryItem[] | undefined): { role: 'user' | 'assistant'; text: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { role: 'user' | 'assistant'; text: string }[] = [];
+  for (const item of raw.slice(-8)) {
+    const text = String(item?.text || '').trim();
+    if (!text) continue;
+    const role = item?.role === 'assistant' || item?.role === 'bot' ? 'assistant' : 'user';
+    out.push({ role, text: text.slice(0, 800) });
+  }
+  return out;
+}
+
+/** «Ещё по теме»: сначала источники ответа, затем похожие RAG-хиты. */
+function orderCitations(
+  hits: { articleId: string; title: string; href?: string }[],
+  usedSourceIds: string[] = []
+): YandexAskCitation[] {
+  if (!hits.length) return [];
+  const toCite = (h: { articleId: string; title: string; href?: string }): YandexAskCitation => ({
+    id: h.articleId,
+    title: h.title,
+    ...(h.href ? { href: h.href } : {})
+  });
+  if (!usedSourceIds.length) return hits.map(toCite);
+  const byId = new Map(hits.map((h) => [h.articleId, h]));
+  const used = new Set(usedSourceIds);
+  const primary: YandexAskCitation[] = [];
+  for (const id of usedSourceIds) {
+    const hit = byId.get(id);
+    if (hit) primary.push(toCite(hit));
+  }
+  const related = hits.filter((h) => !used.has(h.articleId)).map(toCite);
+  return [...primary, ...related];
+}
+
+/**
+ * Спросить ИИ: смысл + память диалога; при сбое Yandex — упрощённый ответ + алерт админу.
+ */
+export default defineEventHandler(async (event) => {
+  const session = await requireRole(event, ['employee', 'manager', 'hr', 'admin']);
+
+  const payload = (await readBody<Body>(event)) || {};
+  const question = String(payload.question || '').trim();
+  if (!question) throw createError({ statusCode: 400, statusMessage: 'question обязателен' });
+  if (question.length > 2000) {
+    throw createError({ statusCode: 400, statusMessage: 'question слишком длинный (макс. 2000)' });
+  }
+
+  const history = normalizeHistory(payload.history);
+  const viewer = { role: session.role, department: session.department };
+  const normalizedQuestion = normalizeKbAiQueryTypos(question);
+  /** Для RAG: уточнение + предыдущий рабочий вопрос. */
+  const retrievalQuestion = expandQuestionFromHistory(normalizedQuestion, history);
+
+  if (detectKbAiChitchat(question)) {
+    const greeting = /^(прив|здравств|добр|хай|hello|hi)/i.test(question.trim());
+    return {
+      answer: greeting ? KB_AI_GREETING_REPLY : KB_AI_CHITCHAT_REPLY,
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false,
+      intent: 'chitchat' as const
+    };
+  }
+
+  // Только явный оффтоп (коты/погода/наркотики) — не «нет ключевых слов»
+  if (shouldSkipRagAsOfftopic(question, history)) {
+    return {
+      answer: KB_AI_OFFTOPIC_REPLY,
+      citations: [] as YandexAskCitation[],
+      found: false,
+      ambiguous: false,
+      degraded: false,
+      intent: 'offtopic' as const
+    };
+  }
+
+  // Кто руководит отделом / структура — только из org-structure (+ справочник), не из статей
+  // «Ещё по теме» всегда на сотрудницкую схему, даже если спрашивает admin/HR
+  const orgAnswer = await tryAnswerFromOrgStructure(retrievalQuestion, {
+    orgHref: '/organization'
+  });
+  if (orgAnswer) {
+    return {
+      answer: orgAnswer.answer,
+      people: orgAnswer.people ?? [],
+      citations: orgAnswer.citations,
+      found: true,
+      ambiguous: false,
+      degraded: false,
+      intent: 'org' as const
+    };
+  }
+
+  const alertAdmin = async (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    try {
+      await createKnowledgeAiDegradedNotification({
+        employee_id: session.id,
+        employee_name: session.name || session.email || 'сотрудник',
+        error_message: msg.slice(0, 500),
+        question
+      });
+    } catch (notifyErr) {
+      console.warn('[knowledge-ai] admin notify failed', notifyErr);
+    }
+  };
+
+  try {
+    const retrieved = await retrieveKnowledgeDetailed(retrievalQuestion, { viewer });
+    if (!retrieved.hits.length) {
+      const mode = emptyKbReplyMode(question, history);
+      return {
+        answer: mode === 'offtopic' ? KB_AI_OFFTOPIC_REPLY : KB_AI_NOT_FOUND_REPLY,
+        citations: [] as YandexAskCitation[],
+        found: false,
+        ambiguous: false,
+        degraded: false,
+        intent: mode
+      };
+    }
+
+    if (retrieved.ambiguous && retrieved.branches.length >= 2) {
+      const context = buildRagAmbiguousContext(retrieved.branches);
+      const answer = await yandexChatAnswerAmbiguous(question, context);
+      return {
+        answer,
+        citations: orderCitations(
+          retrieved.branches.map((b) => b.hit),
+          retrieved.usedSourceIds
+        ),
+        found: true,
+        ambiguous: true,
+        degraded: false
+      };
+    }
+
+    const context = buildRagContext(retrieved.hits);
+    // Для уточнений модель видит склейку с прошлым вопросом (Programmatic / Контакты), не голое «ещё другие».
+    let modelQuestion =
+      retrievalQuestion !== normalizedQuestion
+        ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n')
+        : normalizedQuestion;
+    const caseHint = buildKbAiCaseModelHint(normalizedQuestion, history);
+    if (caseHint) {
+      modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
+    }
+    const answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
+    // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
+    // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
+    if (looksLikeKbNotFound(answer)) {
+      return {
+        answer,
+        citations: [] as YandexAskCitation[],
+        found: false,
+        ambiguous: false,
+        degraded: false,
+        intent: 'not_found' as const
+      };
+    }
+    return {
+      answer,
+      citations: orderCitations(retrieved.hits, retrieved.usedSourceIds),
+      found: true,
+      ambiguous: false,
+      degraded: false
+    };
+  } catch (err) {
+    console.warn('[knowledge-ai] primary path failed', err);
+    await alertAdmin(err);
+
+    try {
+      const lexHits = await retrieveKnowledgeLexicalFallback(retrievalQuestion, { viewer });
+      if (!lexHits.length) {
+        return {
+          answer: `${SMOKE_PREFIX}Сейчас не удалось подобрать материалы. Попробуйте чуть позже или вкладку «Поиск».`,
+          citations: [] as YandexAskCitation[],
+          found: false,
+          ambiguous: false,
+          degraded: true
+        };
+      }
+      const context = buildRagContext(lexHits);
+      let answer: string;
+      try {
+        let modelQuestion =
+          retrievalQuestion !== normalizedQuestion
+            ? retrievalQuestion.replace(/\nУточнение:\s*/i, '\n')
+            : normalizedQuestion;
+        const caseHint = buildKbAiCaseModelHint(normalizedQuestion, history);
+        if (caseHint) {
+          modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
+        }
+        answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
+      } catch {
+        answer =
+          'Кратко по найденным материалам: откройте ссылки ниже — там актуальные регламенты по запросу.';
+      }
+      return {
+        answer: `${SMOKE_PREFIX}${answer}`,
+        citations: lexHits.map((h) => ({ id: h.articleId, title: h.title })),
+        found: true,
+        ambiguous: false,
+        degraded: true
+      };
+    } catch (fallbackErr) {
+      console.warn('[knowledge-ai] lexical fallback failed', fallbackErr);
+      return {
+        answer: `${SMOKE_PREFIX}Сервис ответов временно недоступен. Загляните во вкладку «Поиск» или повторите вопрос позже.`,
+        citations: [] as YandexAskCitation[],
+        found: false,
+        ambiguous: false,
+        degraded: true
+      };
+    }
+  }
+});

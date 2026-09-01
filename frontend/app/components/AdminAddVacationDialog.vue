@@ -15,7 +15,7 @@
       >
         <h3 id="vac-admin-add-title" class="vac-admin-add-title">Добавить отпуск</h3>
         <p class="vac-admin-add-hint">
-          Отпуск будет сразу отмечен как согласованный. Можно указать прошедшие даты.
+          Создаётся заявка на согласование — как при подаче сотрудником. Можно указать прошедшие даты.
         </p>
 
         <label class="vac-admin-add-field">
@@ -67,7 +67,7 @@ const emit = defineEmits<{
 }>();
 
 const { departmentsGrouped } = useEmployees();
-const { addRequest, approveRequest, state, viewYear } = useVacations();
+const { addRequest, state, viewYear } = useVacations();
 
 const form = reactive({ employee: '', start: '', end: '' });
 const formError = ref('');
@@ -132,12 +132,6 @@ const submit = async () => {
     });
     if (!created) {
       formError.value = 'Не удалось создать отпуск. Попробуйте ещё раз.';
-      return;
-    }
-
-    const approved = await approveRequest(created.id, null, { force: true });
-    if (!approved) {
-      formError.value = 'Отпуск создан, но не удалось сразу согласовать. Проверьте очередь согласования.';
       return;
     }
 

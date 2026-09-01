@@ -1,4 +1,42 @@
 import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
+import { redactSensitiveText } from './redactSensitive';
+
+/** Таймаут внешних вызовов Bitrix — без него зависший портал держит mutateVacations. */
+const BITRIX_FETCH_TIMEOUT_MS = 20_000;
+
+const bitrixFetch = (url: string, init?: RequestInit): Promise<Response> =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(BITRIX_FETCH_TIMEOUT_MS) });
+
+/** Понятная ошибка, если VPS не достучался до портала (firewall / DNS). */
+function throwIfBitrixUnreachable(err: unknown, label: string): never {
+  const cause = err && typeof err === 'object' && 'cause' in err ? (err as { cause?: unknown }).cause : err;
+  const code =
+    cause && typeof cause === 'object' && 'code' in cause
+      ? String((cause as { code?: string }).code || '')
+      : '';
+  const msg = err instanceof Error ? err.message : String(err);
+  const unreachable =
+    code === 'UND_ERR_CONNECT_TIMEOUT' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    /Connect Timeout|fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT/i.test(msg);
+
+  if (unreachable) {
+    throw createError({
+      statusCode: 503,
+      statusMessage:
+        'Сервер Vibe не достучался до crm.vbi.ru (таймаут сети). ' +
+        'Пока исходящий HTTPS с 45.12.74.25 на портал закрыт — вход логин/пароль не работает. ' +
+        'Используйте «Войти через Битрикс24» (браузер ходит на портал сам) или откройте сеть Vibe→Bitrix.'
+    });
+  }
+
+  throw createError({
+    statusCode: 502,
+    statusMessage: redactSensitiveText(`${label}: ${msg}`)
+  });
+}
 
 export type BitrixTokenResponse = {
   access_token: string;
@@ -48,11 +86,16 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
     redirect_uri: redirectUri
   });
 
-  const response = await fetch(`${bitrixPortalUrl}/oauth/token/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  });
+  let response: Response;
+  try {
+    response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+  } catch (err) {
+    throwIfBitrixUnreachable(err, 'Bitrix OAuth');
+  }
 
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
@@ -63,7 +106,65 @@ export async function exchangeBitrixCode(code: string, redirectUri: string): Pro
         'Откройте dev-приложение в Битриксе, скопируйте ключи заново в frontend/.env (без кавычек и пробелов). ' +
         `Client ID в запросе: ${bitrixClientId}`;
     }
-    throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth: ${message}` });
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth: ${message}`)
+    });
+  }
+  return data;
+}
+
+/**
+ * Вход логин/пароль портала без редиректа и без PHP на коробке.
+ * Только HTTP к уже существующему /oauth/token/ (правки Bitrix не нужны).
+ * Если портал не отдаёт grant_type=password — вернётся понятная ошибка.
+ */
+export async function exchangeBitrixPassword(
+  username: string,
+  password: string
+): Promise<BitrixTokenResponse> {
+  const { bitrixPortalUrl, bitrixClientId, bitrixClientSecret } = getBitrixConfig();
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    client_id: bitrixClientId,
+    client_secret: bitrixClientSecret,
+    username: username.trim(),
+    password
+  });
+
+  let response: Response;
+  try {
+    response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+  } catch (err) {
+    throwIfBitrixUnreachable(err, 'Bitrix OAuth password');
+  }
+
+  const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
+  if (!response.ok || !data.access_token) {
+    const err = String(data.error || '');
+    const desc = String(data.error_description || data.error || `HTTP ${response.status}`);
+    if (err === 'unsupported_grant_type' || /unsupported_grant_type/i.test(desc)) {
+      throw createError({
+        statusCode: 501,
+        statusMessage:
+          'Портал Bitrix не принимает вход по паролю для этого приложения (grant_type=password). ' +
+          'Без правок на crm.vbi.ru остаётся только «Войти через Битрикс24».'
+      });
+    }
+    if (err === 'invalid_grant' || /invalid_grant|wrong/i.test(desc)) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Неверный логин или пароль Bitrix'
+      });
+    }
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth password: ${desc}`)
+    });
   }
   return data;
 }
@@ -77,7 +178,7 @@ export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTo
     refresh_token: refreshToken
   });
 
-  const response = await fetch(`${bitrixPortalUrl}/oauth/token/`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
@@ -86,7 +187,10 @@ export async function refreshBitrixToken(refreshToken: string): Promise<BitrixTo
   const data = (await response.json()) as BitrixTokenResponse & { error?: string; error_description?: string };
   if (!response.ok || !data.access_token) {
     const message = data.error_description || data.error || `HTTP ${response.status}`;
-    throw createError({ statusCode: 502, statusMessage: `Bitrix OAuth refresh: ${message}` });
+    throw createError({
+      statusCode: 502,
+      statusMessage: redactSensitiveText(`Bitrix OAuth refresh: ${message}`)
+    });
   }
   return data;
 }
@@ -97,7 +201,7 @@ export async function bitrixOAuthRequest<T>(
   accessToken: string
 ): Promise<BitrixRestResponse<T>> {
   const { bitrixPortalUrl } = getBitrixConfig();
-  const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...params, auth: accessToken })
@@ -111,7 +215,7 @@ export async function bitrixRest<T>(
   accessToken: string
 ): Promise<T> {
   const { bitrixPortalUrl } = getBitrixConfig();
-  const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+  const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...params, auth: accessToken })
@@ -138,7 +242,7 @@ export async function bitrixRestAll<T extends Record<string, unknown>>(
 
   for (;;) {
     const { bitrixPortalUrl } = getBitrixConfig();
-    const response = await fetch(`${bitrixPortalUrl}/rest/${method}.json`, {
+    const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...params, auth: accessToken, start })
@@ -181,7 +285,7 @@ export async function bitrixWebhookRest<T>(
 
 async function bitrixWebhookRequest<T>(method: string, params: Record<string, unknown>): Promise<BitrixRestResponse<T>> {
   const base = getBitrixWebhookUrl();
-  const response = await fetch(`${base}/${method}.json`, {
+  const response = await bitrixFetch(`${base}/${method}.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params)

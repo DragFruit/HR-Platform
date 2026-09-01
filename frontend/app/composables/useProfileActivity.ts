@@ -42,57 +42,57 @@ export const PROFILE_ACTIVITY_KIND_META: Record<
 > = {
   store: {
     label: 'Магазин',
-    iconSrc: '/activity/icons/activity-icon-store.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-store.png?v=4',
     badgeTone: 'lime'
   },
   talk: {
     label: 'Выступление',
-    iconSrc: '/activity/icons/activity-icon-talk.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-talk.png?v=4',
     badgeTone: 'purple'
   },
   learning: {
     label: 'Обучение',
-    iconSrc: '/activity/icons/activity-icon-learning.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-learning.png?v=4',
     badgeTone: 'lime'
   },
   idea: {
     label: 'Идея',
-    iconSrc: '/activity/icons/activity-icon-idea.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-idea.png?v=4',
     badgeTone: 'lime'
   },
   achievement: {
     label: 'Достижение',
-    iconSrc: '/activity/icons/activity-icon-achievement.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-achievement.png?v=4',
     badgeTone: 'purple'
   },
   promotion: {
     label: 'Повышение',
-    iconSrc: '/activity/icons/activity-icon-achievement.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-achievement.png?v=4',
     badgeTone: 'purple'
   },
   mentor: {
     label: 'Наставник',
-    iconSrc: '/activity/icons/activity-icon-recognition.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-recognition.png?v=4',
     badgeTone: 'lime'
   },
   practice: {
     label: 'Практика',
-    iconSrc: '/activity/icons/activity-icon-learning.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-learning.png?v=4',
     badgeTone: 'purple'
   },
   recognition: {
     label: 'Признание',
-    iconSrc: '/activity/icons/activity-icon-recognition.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-recognition.png?v=4',
     badgeTone: 'purple'
   },
   welcome: {
     label: 'Велком',
-    iconSrc: '/activity/icons/activity-icon-other.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-other.png?v=4',
     badgeTone: 'lime'
   },
   other: {
     label: 'Другое',
-    iconSrc: '/activity/icons/activity-icon-other.png?v=3',
+    iconSrc: '/activity/icons/activity-icon-other.png?v=4',
     badgeTone: 'lime'
   }
 };
@@ -344,6 +344,16 @@ export function useProfileActivity() {
     }
 
     return [...byId.values()]
+      .filter((row) => {
+        // Интрига: будущие dated-события (в т.ч. sales-best до reveal) не показываем
+        const day = String(row.occurred_at || '').slice(0, 10);
+        if (!day) return true;
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return day <= `${y}-${m}-${d}`;
+      })
       .sort((a, b) => {
         const diff = parseOccurredAtMs(b.occurred_at) - parseOccurredAtMs(a.occurred_at);
         if (diff !== 0) return diff;

@@ -54,7 +54,7 @@ flowchart TB
 ### Поэтапный запуск (`useLaunchScope.ts`)
 
 - Env: `NUXT_PUBLIC_LAUNCH_SCOPE` — `full` (по умолчанию) или `vacations`.
-- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре, разделы «График отпусков», «Как выглядит» (превью UI руководителя), «Сотрудники», уведомления, идеи, профиль, **VPN** (`/vpn`).
+- В режиме `vacations`: сотрудник — `/vacations`; админ — переключатель в сайдбаре. Whitelist боя: отпуска, уведомления, профиль, идеи, **база знаний** (`/knowledge`, `/admin/knowledge`), сотрудники, оргструктура админки. С замком: VPN, «Как выглядит».
 - **Хардлок боя:** хост `45.12.74.25` без порта `:8080` всегда `vacations` (`utils/productionHost.ts`), даже если в бандле ошибочно `full` / `appEnv=development`.
 
 ### Окружения и деплой
@@ -66,11 +66,16 @@ flowchart TB
 - Клиентские ассеты `public/_nuxt`: при деплое **без** `--delete` (Вебвизор тянет CSS по старым URL ~15 суток); файлы старше 20 дней чистятся.
 - На сервере: `deploy/systemd/`, `deploy/nginx/`, порты 3300 (бой) / 3301 (тест).
 - **Данные на production/staging** — рабочие: `employees.json` merge (`merge-employees-seed.mjs`, сервер + overlay руководителей); `vacations.json` и `ideas.json` при деплое не перезаписываются, если файл уже на сервере.
+- **Бэкап отпусков:** еженедельный снапшот `vacations.json` → `server/data/backups/vacations/` (`vbi-hr-vacations-backup.timer`, 12 копий). Скрипт `deploy/scripts/run-vacations-backup.sh` (копия файла, без HTTP).
+- **Памятка после отпуска:** `PostVacationMemo.vue` в `app.vue`; правило в `postVacationMemo.ts`; ключ `vbi-post-vacation-memo-v2`. UI Design C: lavender card + folder-tabs 1–5 (декор) + арт `/memos/pvm-c-art-*.png` (без текста). Welcome → **Прочитать** сразу в совет 1; **Позже** → чип 10 рабочих дней → карусель с вводной «Вот четыре совета», затем 4 совета. Превью `?pvm=1`; повтор из уведомлений `?pvm=tips`. Уведомление `post_vacation_memo` (`POST /api/notifications/post-vacation-memo`). Пока памятка жива, занимает слот `useBottomRightSlot` — кот оценки не выезжает.
+- **Кот оценки:** `PageRateCatHost` + `KnowledgeRateCat`; не монтируется, если `useBottomRightSlot().isOccupied`.
 
 ### Битрикс24 (коробка)
 
 - OAuth 2.0 локального приложения: `GET /api/auth/bitrix` → портал → `GET /api/auth/bitrix/callback`.
-- Синк сотрудников при входе: `server/utils/bitrixSync.ts` → `server/data/employees.json`.
+- Вход разрешён **только** если Bitrix user id есть в `employees.json`; иначе 403 (экстранет/гости).
+- Синк при входе: `bitrixSync.ts` → обновляет уже заведённых, `importNew` по умолчанию **false**.
+- Сессия: подписанная cookie (`sessionToken.ts`), TTL 8ч, Secure на staging/prod, sliding refresh в `requireVbiSession`.
 - Сессия: cookie `vbi-session`, `auth_source: 'bitrix'`, `id` = `bitrix_user_id`.
 - Env (сервер): `BITRIX_PORTAL_URL`, `BITRIX_CLIENT_ID`, `BITRIX_CLIENT_SECRET` — см. [BITRIX.md](BITRIX.md).
 
@@ -119,6 +124,10 @@ flowchart TB
 - `vacations.vue` — employee UI или `VacationsManagerExperience` (manager/hr)
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
+- `knowledge/index.vue` — поиск / чат ИИ; FAB «написать» слева внизу → `/knowledge/write` (`KnowledgeArticleWorkspace.vue`: редактор как у админа + свои статьи / команда / ревью). `knowledge/[id].vue` — статья. Сид `data/knowledgeBaseCatalog.ts`. Поиск: `utils/knowledgeSearch.ts`, `useKnowledgeSearch`. ИИ: `useKnowledgeAiAnswer` + `POST /api/knowledge/yandex-ask`, `useKnowledgeAiChat`. Оценка страницы: `POST /api/knowledge/feedback` → админ-уведомление `page_feedback` + imbot Драго. Подсказки: `knowledgeSearchPhrases.ts`.
+- Статьи сотрудников: страница `/knowledge/write`; `useKnowledgeAuthor` + API `GET/POST /api/knowledge/articles`, `PATCH …/:id`, `POST …/submit|moderate|comments`. Модель: `authorUserId`, `comments[]`, `pendingRevision`, статусы `draft|pending_review|published|revision_requested|rejected`. Notify: `knowledgeNotifications.ts` → `createUserNotification` + `notifyBitrixSystemUser` (как отпуска/идеи); bell link → `/knowledge/write`.
+- Картинки статей: HTML `src="/knowledge/article-{bitrixId}/…"` → файлы в `frontend/public/knowledge/article-*/` **обязательно в git** вместе с `server/data/knowledge-articles.json`. Деплой: `merge-knowledge-articles-seed.mjs` не затирает админские правки целиком, но обновляет `body`/`coverImage`, если сид несёт локальные `/knowledge/article-…`, на сервере остался Bitrix-chrome `/devs/asset/`, или `body` на сервере экранирован (`&lt;a` / `&lt;br` — артефакт старого markdown-детекта в WYSIWYG). Платформенные статьи Vibe (`kb-vibe-vacations-digital`, `kb-vibe-vacations-other`, `kb-vibe-ideas`) и кейсы ecom (`kb-case-ecom-*`, `kb-case-ecom-index`; MD в `docs/knowledge-cases/ecom/`) всегда берутся из сида; retired id (`kb-vibe-vacations`) с целевого файла снимается. Тела без блочных тегов нормализуются в `knowledgeArticleHtml.ts` (decode + обёртка `<div>`). Перенос из Bitrix: `scripts/bitrix/scrape-devs-articles.mjs` → `migrate-devs-to-knowledge.mjs` (временные HTML в `scripts/bitrix/tmp/`, в git не кладём).
+- **RAG (поиск по смыслу) для «Спросить ИИ»:** эмбеддинги Yandex (`text-search-doc` / `text-search-query`) + гибрид со словесным score + осторожная переформулировка (`knowledgeRagRewrite.ts`, `knowledgeRagLexical.ts`). HTML → plain **с сохранением строк** (`stripHtml`), иначе шапки секций «Контактов» не детектятся. Длинные статьи режутся по underscore-разделителям и шапкам блоков (Programmatic, юристы, дизайнеры, Яндекс, переводы, UTM/коллтрекинг, акты YDirect/VKR, списания AFINA, разделы DayOFFF…). Якорь секции Контактов → только `kb-20409`; UTM → `kb-23420`; акты РП → `kb-31980`; списания → `kb-28468`. Индекс `server/data/knowledge-rag-index.json` (не в git, `INDEX_VERSION=6`). Endpoint `POST /api/knowledge/yandex-ask` сам подбирает фрагменты; `expandQuestionFromHistory` / `knowledgeAiIntent` склеивают уточнения («ещё другие», «это все?») с прошлым вопросом; guard против ложного OFFTOPIC при живом контексте. Вопросы про руководителей/отделы — `knowledgeOrgAnswer.ts` из `org-structure.json` + цитата «Структура». Пересборка: мутации статей, `POST /api/admin/knowledge/rag-reindex`, cron `knowledge-rag-reindex`. Eval: `POST /api/admin/knowledge/rag-eval`, кейсы `knowledgeRagEvalCases.ts`; локально `scripts/knowledge/check-rag-contacts.mjs`, `check-rag-access-utm.mjs`, `check-rag-dayoff-acts-writeoffs.mjs`, `check-kb-dialog-followup.mjs`, `check-kb-cases-fallback.mjs`, `check-kb-auto-avito.mjs`.
 
 ### Админ
 
@@ -127,6 +136,7 @@ flowchart TB
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue` (календарь + очередь согласования)
 - `admin/how-it-looks.vue` — превью как у руководителя; на бое с замком после выката рук-ам
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
+- `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
 - `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
@@ -154,7 +164,7 @@ review (На рассмотрении)
 
 Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
 
-Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json`. На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
+Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), вложения `server/data/idea-attachments/{ideaId}/`, очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `GET/POST /api/ideas/:id/file`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json` (идемпотентность по ключу события, `admin_seen` не сбрасывается при повторном синке). На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
 
 Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` остаются, но создание/статус шлют уведомления из server mutations.
 
@@ -227,6 +237,8 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Сервер: `employeesStore.ts` + `employeeManagersStore.ts` — при чтении подмешивается `employee-managers.json`; при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
 
+Удаление из справочника: `writeEmployees` пишет denylist (`employeeAccessDenylist.ts` → `employee-access-denylist.json`, в `.gitignore`), сбрасывает сессию через проверку в `requireVbiSession` / `session.get`, блокирует `loginSessionFromBitrix` и демо-логин; `bitrixSync` и merge деплоя (`merge-employees-seed.mjs` + denylist) пропускают denylist-id; `readEmployees` не отдаёт их в список. Повторное добавление в справочник снимает отзыв. Каскад: VPN (панель + учёт), уведомления, адаптация, лента; аватар/отпуска — отложенный purge по `*_purge_at`.
+
 ### Заявки на отпуск (API)
 
 | Endpoint | Назначение |
@@ -245,7 +257,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 **Предварительная бронь** (`VacationReservation` в `vacationReservations.ts`): месяц + длительность без `start`/`end`; не влияет на баланс и approval; отображается полосатыми плашками; конвертация в заявку через «Уточнить даты» в `EmployeeVacationAside`.
 
-**Лимиты броней** (`vacationReservationCaps.ts`, `vacationDepartmentGroups.ts`): для grouped-отделов (Digital) — пул на весь отдел (`digital-department`, по умолчанию 5 броней/мес., переопределяется в `reservationMonthlyCapsByGroup`) и не более 1 брони в месяц внутри подгруппы (`digital-tskhai`, `digital-popov`, …). Проверка на `POST /api/vacations/reservations` и в UI (`EmployeeYearCalendar` — серая `+бронь`). Демо QA использует тот же механизм только на localhost (`qa-department`).
+**Лимиты броней** (`vacationReservationCaps.ts`, `vacationDepartmentGroups.ts`): для grouped-отделов (Digital) — пул на весь отдел (`digital-department`, по умолчанию 5 слотов/мес.) и не более 1 слота в месяц внутри подгруппы. Слот = бронь **или** заявка `pending`/`approved` на этот месяц. Проверка на `POST /api/vacations/reservations`, `POST/PATCH` заявок и в UI (`EmployeeYearCalendar` — серая `+бронь`; форма заявки). Демо QA — тот же механизм на localhost (`qa-department`).
 
 **Пересечение отпусков групхедов** (`vacationGroupLeadOverlap.ts`): в Digital одновременно не более одного руководителя группы (type `lead` в `vacationDepartmentGroups`) в отпуске на пересекающиеся даты; проверка при создании/смене дат заявки и предупреждение в форме сотрудника. Админ системы (`session.role === 'admin'`) правило не блокирует (`vacationRequestMutations.ts`).
 
@@ -254,15 +266,16 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | Endpoint | Назначение |
 |----------|------------|
 | `GET /api/notifications` | Уведомления текущего пользователя по отпускам |
+| `POST /api/notifications/post-vacation-memo` | Памятка после отпуска (идемпотентно на заявку) |
 | `DELETE /api/notifications/:id` | Закрыть (удалить) уведомление |
 | `PATCH /api/notifications/:id/seen` | Прочитано |
 | `PATCH /api/notifications/seen-all` | Прочитать все |
 
-Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа).
+Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа); после «Позже» / «Прочитать» на памятке — `post_vacation_memo`.
 
 Хранение: до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
 
-Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём; чат только при `BITRIX_VACATION_NOTIFY_CHAT_FALLBACK=true` (для отпусков; для идей чат не используется).
+Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): только `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём. Личный чат (`im.message.add`) для согласования **не используется** (см. правило `bitrix-vacation-notify-no-chat`).
 
 Клиент: `VacationNotificationsBell.vue` (режим сотрудника), `pages/notifications.vue`. Админские Bitrix-уведомления — отдельно (`AdminNotificationsBell`, `/admin/notifications`).
 
@@ -283,6 +296,22 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `deploy/systemd/vbi-hr-vacation-*.timer` | 12:00 МСК (сотрудник), 11:15 МСК 1-е/15-е (руководитель) |
 
 Защита: заголовок `X-Cron-Token` = `VACATION_PRE_REMINDER_CRON_SECRET` / `CRON_SECRET`.
+
+### Коды ChatGPT → Telegram (cron)
+
+IMAP → корпоративный Telegram. Общий util: `openaiChatgptMailCode.ts` (окно ~1 ч). Кнопки в `/vpn` больше нет. Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+
+| API | Назначение |
+|-----|------------|
+| `POST /api/cron/chatgpt-code-telegram` | Новые коды из почты → Telegram (`dry_run=1`) |
+
+| Файл | Роль |
+|------|------|
+| `chatgptCodeTelegram.ts` / `…State.ts` | Пайплайн + дедуп `chatgpt-code-telegram-state.json` |
+| `telegramBot.ts` | Bot API `sendMessage` |
+| `deploy/systemd/vbi-hr-chatgpt-code-telegram.timer` | каждые 2 мин |
+
+Защита: `X-Cron-Token` = `CRON_SECRET`. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` \| `TELEGRAM_CHANNEL_ID`, `EMAIL_*`.
 
 Идеи: `GET/POST /api/ideas`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id` (очередь в `ideas.json`; notify встроен в mutations). Legacy: `POST /api/ideas/notify`, `POST /api/ideas/status-notify`.
 
@@ -377,7 +406,7 @@ OrgLink        // from/to ports + optional mid
 **Переход на новый год:** остаток на 31.12.N (`calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
 
 - Код: `server/utils/vacationYearRollover.ts`
-- CLI: `node scripts/rollover-vacation-year.mjs 2026 2027` (cwd: `frontend/`)
+- CLI (из корня репозитория): `node scripts/rollover-vacation-year.mjs 2026 2027`
 - API: `POST /api/admin/vacations/rollover` `{ fromYear, toYear }` (admin/hr)
 
 ---
@@ -397,6 +426,8 @@ OrgLink        // from/to ports + optional mid
 | `vbi-org-structure-v1` | `useOrgStructure` — локальный кэш; источник правды `server/data/org-structure.json`, API `/api/org-structure` |
 | `vbi-tasks-state` | `useTasks` |
 | `vbi-wallet-state-v1` | `useWallet` — транзакции валюты (в т.ч. юбилеи стажа `tenure-milestone-{userId}-{N}y`) |
+| `vbi-kb-ai-chat-v1` | `useKnowledgeAiChat` — диалог ИИ базы знаний, TTL 24 ч |
+| `vbi-kb-page-rating-v1` | оценка удобства `/knowledge` (один раз на браузер) |
 
 Идеи: сервер `server/data/ideas.json` (не localStorage). Устаревшие ключи `vbi-ideas-bank-v2` / `vbi-ideas-votes-v1-*` больше не используются.
 
@@ -410,9 +441,8 @@ OrgLink        // from/to ports + optional mid
 
 ## Стили
 
-- Единый файл: `app/assets/main.css` (~5700 строк).
+- Единый файл: `app/assets/main.css` (~15 000 строк).
 - Токены: neo-brutalist light UI (`--page-bg`, `--border-brutal`), фиолетовый topbar (`--hero-purple`), лайм (`--accent-lime`), vacation-pill (см. раздел «Отпуска»).
-- `platform-base.css` — **не используется** в сборке (остаток эксперимента Miro); можно удалить при уборке.
 
 Подключение: `nuxt.config.ts` → `css: ['~/assets/main.css']`.
 
@@ -425,20 +455,19 @@ npm run build  →  frontend/.output/server/index.mjs
 NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 ```
 
-`Open Frontend.command` освобождает порты 3000/3300, собирает и открывает браузер.
+`Open Frontend.command` (macOS) освобождает порты 3000/3300, собирает и открывает браузер. На Windows — `cd frontend && npm run dev`.
 
 ---
 
 ## Backend
 
-- **Адаптация и сессия** — реализованы в Nitro (`frontend/server/`).
-- Папка `backend/` зарезервирована для выноса wallet/tasks/store при необходимости.
+Вся серверная логика (сессия, Bitrix, отпуска, идеи, адаптация) — в Nitro (`frontend/server/`). Отдельной папки `backend/` в репозитории нет.
 
 ---
 
-## Известные ограничения демо
+## Известные ограничения
 
-- Нет реальной аутентификации (пароли в коде).
-- Данные локальны браузеру.
-- Роли `hr` в auth есть, но UI в основном `employee` / `admin` + manager для отпусков.
+- На **production** вход только через Bitrix OAuth для людей из справочника; демо-логин API отключён. Локально/staging — Bitrix + демо-аккаунты.
+- Cookie-сессия подписана HMAC (`VBI_SESSION_SECRET`), TTL 8ч со sliding.
+- Роль `hr` в auth есть; UI в основном `employee` / `admin` + manager для отпусков.
 - `useMockData` и `useTasks` частично дублируют типы с `useWallet` (warning Nuxt duplicated imports — не критично).

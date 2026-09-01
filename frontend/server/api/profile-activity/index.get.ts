@@ -3,9 +3,13 @@ import {
   listProfileActivity,
   PROFILE_ACTIVITY_KINDS
 } from '../../utils/profileActivityStore';
+import { publishRevealedSalesBestActivities } from '../../utils/salesBestAwardsStore';
 
 export default defineEventHandler(async (event) => {
   await requireVbiSession(event);
+  // Автономия: если наступил reveal_on — событие сразу в ленте
+  await publishRevealedSalesBestActivities().catch(() => {});
+
   const query = getQuery(event);
   const employeeId = Number(query.employee_id);
   const platformUserId = Number(query.platform_user_id);

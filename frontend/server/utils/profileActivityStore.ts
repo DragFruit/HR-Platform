@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import seed from '../data/profile-activity.json';
@@ -17,7 +18,7 @@ export type ProfileActivityKind =
   | 'welcome'
   | 'other';
 
-export type ProfileActivitySource = 'manual' | 'seed';
+export type ProfileActivitySource = 'manual' | 'seed' | 'auto';
 
 export type ProfileActivity = {
   id: string;
@@ -79,7 +80,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({ items: seedItems() }, null, 2) + '\n', 'utf8');
+    await writeJsonAtomic(DATA_FILE, { items: seedItems() });
   }
 }
 
@@ -101,7 +102,7 @@ async function readState(): Promise<ActivityState> {
 
 async function writeState(state: ActivityState) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 export async function listProfileActivity(filters?: {
@@ -164,6 +165,46 @@ export async function createProfileActivity(input: {
   return item;
 }
 
+/** Идемпотентная авто-запись (например reveal ачивки) — по стабильному id. */
+export async function upsertAutoProfileActivity(input: {
+  id: string;
+  employee_id: number;
+  platform_user_id?: number | null;
+  kind: string;
+  text: string;
+  occurred_at: string;
+}): Promise<ProfileActivity> {
+  const text = String(input.text || '').trim();
+  if (text.length < 3) {
+    throw createError({ statusCode: 400, statusMessage: 'Текст — минимум 3 символа' });
+  }
+  let occurred = new Date(input.occurred_at.includes('T') ? input.occurred_at : `${input.occurred_at}T12:00:00`);
+  if (Number.isNaN(occurred.getTime())) occurred = new Date();
+
+  const state = await readState();
+  const existingIdx = state.items.findIndex((row) => row.id === input.id);
+  const item: ProfileActivity = {
+    id: input.id,
+    employee_id: input.employee_id,
+    platform_user_id: input.platform_user_id ?? null,
+    kind: normalizeProfileActivityKind(input.kind),
+    text,
+    occurred_at: occurred.toISOString(),
+    source: 'auto',
+    created_at:
+      existingIdx >= 0 ? state.items[existingIdx]!.created_at : new Date().toISOString(),
+    created_by_name: 'system'
+  };
+
+  if (existingIdx >= 0) {
+    state.items[existingIdx] = item;
+  } else {
+    state.items.push(item);
+  }
+  await writeState(state);
+  return item;
+}
+
 export async function deleteProfileActivity(id: string): Promise<boolean> {
   const state = await readState();
   const next = state.items.filter((row) => row.id !== id);
@@ -171,4 +212,28 @@ export async function deleteProfileActivity(id: string): Promise<boolean> {
   state.items = next;
   await writeState(state);
   return true;
+}
+
+/** Удалить всю ленту профиля сотрудника (офбординг). */
+export async function deleteProfileActivityForEmployee(ids: {
+  employee_id?: number;
+  platform_user_ids?: number[];
+}): Promise<number> {
+  const employeeId = ids.employee_id;
+  const platformIds = new Set(
+    (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
+  );
+  if (employeeId && employeeId > 0) platformIds.add(employeeId);
+
+  const state = await readState();
+  const before = state.items.length;
+  state.items = state.items.filter((row) => {
+    if (employeeId && row.employee_id === employeeId) return false;
+    if (row.platform_user_id && platformIds.has(row.platform_user_id)) return false;
+    if (platformIds.has(row.employee_id)) return false;
+    return true;
+  });
+  const removed = before - state.items.length;
+  if (removed) await writeState(state);
+  return removed;
 }

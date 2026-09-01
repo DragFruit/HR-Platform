@@ -1,6 +1,6 @@
 import type { VacationRequest, VacationStoreState } from './vacationsStore';
 import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
-import { isBitrixWebhookConfigured, getBitrixWebhookUrl } from './bitrixConfig';
+import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
 import { getBitrixServiceAccessToken, hasBitrixOAuthServiceToken } from './bitrixOAuthServiceToken';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
@@ -489,31 +489,14 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
   return { absenceId, method };
 };
 
-const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {
-  if (request.status !== 'approved') return false;
-  if (!previous) return true;
-
-  const datesChanged = previous.start !== request.start || previous.end !== request.end;
-  const newlyApproved = previous.status !== 'approved';
-  if (newlyApproved || datesChanged) return true;
-
-  // Уже согласовано и даты те же: синкаем только если прошлый раз failed/skipped
-  // или ещё ни разу не синкнули. Не гоняем всю базу при каждом чужом approve.
-  if (request.bitrix_sync_status === 'failed' || request.bitrix_sync_status === 'skipped') {
-    return true;
-  }
-  if (!request.bitrix_absence_id || request.bitrix_sync_status !== 'synced') {
-    return true;
-  }
-
-  return false;
-};
-
 const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
   const iblockId = await resolveAbsenceIblockId();
   if (!iblockId) {
-    throw new Error('Не задан BITRIX_ABSENCE_IBLOCK_ID');
+    throw new Error(
+      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.'
+    );
   }
+
   await bitrixVacationRest<boolean>('lists.element.delete', {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
@@ -521,12 +504,14 @@ const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
   });
 };
 
+/** Владелец входящего вебхука: /rest/<userId>/<secret>/ */
 const webhookOwnerUserId = (): number | null => {
   const match = getBitrixWebhookUrl().match(/\/rest\/(\d+)\//);
   const id = Number(match?.[1]);
   return Number.isFinite(id) && id > 0 ? id : null;
 };
 
+/** Legacy-записи, созданные когда пальму писали через calendar.event.add. */
 const deleteViaCalendarEvent = async (eventId: number): Promise<void> => {
   const ownerUserId = webhookOwnerUserId();
   if (!ownerUserId) {
@@ -550,6 +535,26 @@ export const removeVacationAbsenceFromBitrix = async (request: VacationRequest):
   }
 
   await deleteViaAbsenceIblock(absenceId);
+};
+
+const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): boolean => {
+  if (request.status !== 'approved') return false;
+  if (!previous) return true;
+
+  const datesChanged = previous.start !== request.start || previous.end !== request.end;
+  const newlyApproved = previous.status !== 'approved';
+  if (newlyApproved || datesChanged) return true;
+
+  // Уже согласовано и даты те же: синкаем только если прошлый раз failed/skipped
+  // или ещё ни разу не синкнули. Не гоняем всю базу при каждом чужом approve.
+  if (request.bitrix_sync_status === 'failed' || request.bitrix_sync_status === 'skipped') {
+    return true;
+  }
+  if (!request.bitrix_absence_id || request.bitrix_sync_status !== 'synced') {
+    return true;
+  }
+
+  return false;
 };
 
 /** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */

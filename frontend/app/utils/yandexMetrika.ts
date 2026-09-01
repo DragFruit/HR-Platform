@@ -1,6 +1,6 @@
 /** CSP frame-ancestors для карты кликов и Вебвизора (iframe на metrika.yandex.*). */
-export const YANDEX_METRIKA_FRAME_ANCESTORS_CSP = [
-  "frame-ancestors 'self'",
+export const YANDEX_METRIKA_FRAME_ANCESTORS = [
+  "'self'",
   'https://metrika.yandex.ru',
   'https://metrika.yandex.by',
   'https://metrika.yandex.com',
@@ -13,6 +13,34 @@ export const YANDEX_METRIKA_FRAME_ANCESTORS_CSP = [
   'https://*.metrika.yandex.ru',
   'https://*.metrika.yandex.by'
 ].join(' ');
+
+/** @deprecated use buildAppContentSecurityPolicy */
+export const YANDEX_METRIKA_FRAME_ANCESTORS_CSP = `frame-ancestors ${YANDEX_METRIKA_FRAME_ANCESTORS}`;
+
+/**
+ * Базовый CSP приложения: режет inline XSS-векторы чужих доменов,
+ * оставляет Яндекс.Метрику, Google Fonts и Bitrix-портал.
+ */
+export function buildAppContentSecurityPolicy(options?: { upgradeInsecure?: boolean }): string {
+  const directives = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    `frame-ancestors ${YANDEX_METRIKA_FRAME_ANCESTORS}`,
+    "script-src 'self' 'unsafe-inline' https://mc.yandex.ru https://yandex.ru https://*.yandex.ru https://*.yandex.net",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https://mc.yandex.ru https://*.yandex.ru https://*.yandex.net",
+    "connect-src 'self' https://mc.yandex.ru https://*.yandex.ru https://*.yandex.net https://crm.vbi.ru wss://mc.yandex.ru",
+    "frame-src https://mc.yandex.ru https://*.yandex.ru https://webvisor.com https://*.webvisor.com",
+    "form-action 'self'",
+    "worker-src 'self' blob:"
+  ];
+  if (options?.upgradeInsecure) {
+    directives.push('upgrade-insecure-requests');
+  }
+  return directives.join('; ');
+}
 
 /** Сниппет Яндекс Метрики для вставки в <head> (ранняя загрузка, SPA + SSR). */
 export const YANDEX_METRIKA_DEFAULT_ID = '110244372';

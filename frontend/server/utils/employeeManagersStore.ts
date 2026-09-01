@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { ServerEmployee } from './employeesStore';
 
@@ -24,7 +25,7 @@ async function ensureManagersFile() {
   try {
     await readFile(MANAGERS_FILE, 'utf8');
   } catch {
-    await writeFile(MANAGERS_FILE, JSON.stringify(emptyAssignments(), null, 2) + '\n', 'utf8');
+    await writeJsonAtomic(MANAGERS_FILE, emptyAssignments());
   }
 }
 
@@ -54,7 +55,7 @@ export async function writeManagerAssignments(assignments: ManagerAssignments): 
     const value = String(manager || '').trim();
     if (key && value) normalized.byName[key] = value;
   }
-  await writeFile(MANAGERS_FILE, JSON.stringify(normalized, null, 2) + '\n', 'utf8');
+  await writeJsonAtomic(MANAGERS_FILE, normalized);
 }
 
 export function extractManagerAssignments(list: ServerEmployee[]): ManagerAssignments {

@@ -58,6 +58,20 @@ echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo chown -R '${DEPLOY_USER}:www-data' '${DEPLOY_PATH}'"
 "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/.output' '${DEPLOY_PATH}/.output/public/_nuxt' '${DEPLOY_PATH}/server/data'"
 
+# Снимок предыдущего артефакта для отката (один уровень назад).
+echo "→ backup ${DEPLOY_PATH}/.output → .output.prev"
+"${SSH_CMD[@]}" "${REMOTE}" bash -s -- "${DEPLOY_PATH}" <<'REMOTE_BACKUP'
+set -euo pipefail
+DEPLOY_PATH="$1"
+if [[ -f "${DEPLOY_PATH}/.output/server/index.mjs" ]]; then
+  rm -rf "${DEPLOY_PATH}/.output.prev"
+  cp -a "${DEPLOY_PATH}/.output" "${DEPLOY_PATH}/.output.prev"
+  echo "  saved previous build"
+else
+  echo "  skip backup (no previous .output)"
+fi
+REMOTE_BACKUP
+
 # Вебвизор Яндекс.Метрики при воспроизведении тянет CSS/JS с live-сайта по URL из момента визита.
 # Если rsync --delete сносит старые хеши в public/_nuxt, записи выглядят «сломанными»
 # (дефолтные кнопки, UI в углу, гигантские артефакты) — хотя пользователи видели нормальный сайт.
@@ -79,17 +93,19 @@ REMOTE_MANAGERS="${REMOTE_DATA}/employee-managers.json"
 
 "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_MANAGERS}' || printf '%s\\n' '{\"byId\":{},\"byName\":{}}' > '${REMOTE_MANAGERS}'"
 
-for seed in adaptation-track.json employees.json vacations.json ideas.json org-structure.json; do
+for seed in adaptation-track.json employees.json vacations.json ideas.json org-structure.json knowledge-articles.json; do
   if [[ ! -f "${SEED_DATA_DIR}/${seed}" ]]; then
     continue
   fi
 
   if [[ "${seed}" == "employees.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
-    echo "→ merge ${seed} (production — данные с сервера, +новые из репо, руководители из overlay)"
+    echo "→ merge ${seed} (production — данные с сервера, +новые из репо, без denylist, руководители из overlay)"
     INCOMING="${REMOTE_DATA}/.employees-incoming.json"
+    REMOTE_DENYLIST="${REMOTE_DATA}/employee-access-denylist.json"
     "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${INCOMING}"
     "${SCP_CMD[@]}" "${MERGE_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/merge-employees-seed.mjs"
-    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-employees-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' '${REMOTE_MANAGERS}' && rm -f '${INCOMING}'"
+    "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DENYLIST}' || printf '%s\\n' '{\"entries\":[]}' > '${REMOTE_DENYLIST}'"
+    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-employees-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' '${REMOTE_MANAGERS}' '${REMOTE_DENYLIST}' && rm -f '${INCOMING}'"
     continue
   fi
 
@@ -105,6 +121,15 @@ for seed in adaptation-track.json employees.json vacations.json ideas.json org-s
 
   if [[ "${seed}" == "org-structure.json" ]] && "${SSH_CMD[@]}" "${REMOTE}" "test -f '${REMOTE_DATA}/${seed}'"; then
     echo "→ skip ${seed} (оргструктура остаётся с сервера)"
+    continue
+  fi
+
+  if [[ "${seed}" == "knowledge-articles.json" ]]; then
+    INCOMING="${REMOTE_DATA}/.knowledge-articles-incoming.json"
+    MERGE_KB_SCRIPT="${ROOT}/deploy/scripts/merge-knowledge-articles-seed.mjs"
+    "${SCP_CMD[@]}" "${SEED_DATA_DIR}/${seed}" "${REMOTE}:${INCOMING}"
+    "${SCP_CMD[@]}" "${MERGE_KB_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/merge-knowledge-articles-seed.mjs"
+    "${SSH_CMD[@]}" "${REMOTE}" "node '${DEPLOY_PATH}/merge-knowledge-articles-seed.mjs' '${REMOTE_DATA}/${seed}' '${INCOMING}' && rm -f '${INCOMING}'"
     continue
   fi
 
@@ -158,7 +183,47 @@ if [[ -f "${MANAGER_CURRENT_SCRIPT}" ]]; then
   "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacation-manager-current-month-reminders.sh'"
 fi
 
+SALES_BEST_SCRIPT="${ROOT}/deploy/scripts/run-sales-best-pick-due.sh"
+if [[ -f "${SALES_BEST_SCRIPT}" ]]; then
+  echo "→ установка run-sales-best-pick-due.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${SALES_BEST_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-sales-best-pick-due.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-sales-best-pick-due.sh'"
+fi
+
+VACATIONS_BACKUP_SCRIPT="${ROOT}/deploy/scripts/run-vacations-backup.sh"
+if [[ -f "${VACATIONS_BACKUP_SCRIPT}" ]]; then
+  echo "→ установка run-vacations-backup.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts' '${DEPLOY_PATH}/server/data/backups/vacations'"
+  "${SCP_CMD[@]}" "${VACATIONS_BACKUP_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-vacations-backup.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-vacations-backup.sh'"
+fi
+
+CHATGPT_TG_SCRIPT="${ROOT}/deploy/scripts/run-chatgpt-code-telegram.sh"
+if [[ -f "${CHATGPT_TG_SCRIPT}" ]]; then
+  echo "→ установка run-chatgpt-code-telegram.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${CHATGPT_TG_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-chatgpt-code-telegram.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-chatgpt-code-telegram.sh'"
+fi
+
+echo "→ права на server/data (процесс deploy пишет atomic tmp при логине/синке)"
+"${SSH_CMD[@]}" "${REMOTE}" "chown -R deploy:deploy '${DEPLOY_PATH}/server/data' && chmod -R u+rwX,g+rwX '${DEPLOY_PATH}/server/data'"
+
 echo "→ перезапуск ${SERVICE}"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo systemctl restart '${SERVICE}' && sudo systemctl is-active '${SERVICE}'"
+
+RAG_SCRIPT="${ROOT}/deploy/scripts/run-knowledge-rag-reindex.sh"
+if [[ -f "${RAG_SCRIPT}" ]]; then
+  echo "→ установка run-knowledge-rag-reindex.sh + прогрев RAG"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/deploy-scripts'"
+  "${SCP_CMD[@]}" "${RAG_SCRIPT}" "${REMOTE}:${DEPLOY_PATH}/deploy-scripts/run-knowledge-rag-reindex.sh"
+  "${SSH_CMD[@]}" "${REMOTE}" "chmod +x '${DEPLOY_PATH}/deploy-scripts/run-knowledge-rag-reindex.sh'"
+  # staging → 3301, production → 3300 (как в systemd unit)
+  NITRO_PORT_DEFAULT=3300
+  if [[ "$ENV" == "staging" ]]; then NITRO_PORT_DEFAULT=3301; fi
+  sleep 3
+  "${SSH_CMD[@]}" "${REMOTE}" "cd '${DEPLOY_PATH}' && export NITRO_PORT='${NITRO_PORT_DEFAULT}' && bash deploy-scripts/run-knowledge-rag-reindex.sh" || true
+fi
 
 echo "✓ Готово: ${ENV} на ${DEPLOY_HOST}"

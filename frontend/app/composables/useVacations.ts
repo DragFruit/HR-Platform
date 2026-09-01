@@ -383,7 +383,7 @@ export function useVacations() {
   const approveRequest = async (
     id: number,
     approverEmployeeName: string | null,
-    options?: { force?: boolean }
+    options?: { force?: boolean; elevated?: boolean }
   ) => {
     const found = findRequestById(id);
     if (!found || found.item.status !== 'pending') return false;
@@ -393,6 +393,7 @@ export function useVacations() {
 
     if (
       !options?.force &&
+      !options?.elevated &&
       (!approverEmployeeName ||
         !canApproverReviewRequest(approverEmployeeName, found.item, employee))
     ) {

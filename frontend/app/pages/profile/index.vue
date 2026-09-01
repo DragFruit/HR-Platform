@@ -221,7 +221,7 @@
     </nav>
   </section>
 
-  <!-- P1–P2: ачивки / активность / команда (раскладка от размера команды) -->
+  <!-- P1–P2: второй экран — ачивки + команда + активность в одном fold -->
   <div
     class="profile-grid-2"
     :class="{
@@ -368,26 +368,28 @@
     >
       <h3 class="profile-hub-card__title profile-team__title">{{ teamTitle }}</h3>
 
-      <ul v-if="teamDisplayMembers.length" class="profile-team__row">
-        <li
-          v-for="member in teamDisplayMembers"
-          :key="member.id"
-          class="profile-team__member"
-          :class="{ 'profile-team__member--manager': member.isManager }"
-        >
-          <button
-            type="button"
-            class="profile-team__member-link"
-            @click="openEmployeeVisitingCard(member, $event)"
+      <div v-if="teamDisplayMembers.length" class="profile-team__scroll">
+        <ul class="profile-team__row">
+          <li
+            v-for="member in teamDisplayMembers"
+            :key="member.id"
+            class="profile-team__member"
+            :class="{ 'profile-team__member--manager': member.isManager }"
           >
-            <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
-              <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
-              <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
-            </div>
-            <span class="profile-team__name">{{ member.name }}</span>
-          </button>
-        </li>
-      </ul>
+            <button
+              type="button"
+              class="profile-team__member-link"
+              @click="openEmployeeVisitingCard(member, $event)"
+            >
+              <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
+                <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
+                <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
+              </div>
+              <span class="profile-team__name">{{ member.name }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <p v-else class="muted profile-team__empty">{{ teamEmptyText }}</p>
     </section>
@@ -529,6 +531,7 @@
 <script setup lang="ts">
 import type { AvatarCharacterId } from '~/composables/useAvatars';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import type { VacationRequest } from '~/composables/useVacations';
 import { profileTeamHeading } from '~/utils/profileTeamTitle';
 import {
   findUpcomingVacationWithinDays,
@@ -572,11 +575,13 @@ const activityScrollRef = ref<HTMLElement | null>(null);
 const activityListRef = ref<HTMLElement | null>(null);
 const activityScrollMaxHeight = ref<number | null>(null);
 
-/** Высота поля = 6.5 строк активности (хвост полстроки). */
+/** Высота поля = 6.5 строк (только чужой профиль без fold-сетки). */
 const ACTIVITY_SLOT_ROWS = 6.5;
 const ACTIVITY_ROW_FALLBACK_PX = 72;
 
 const activityScrollStyle = computed(() => {
+  /* Свой профиль: высоту даёт второй экран (CSS fold), не фиксированные 6.5 строк */
+  if (isOwnProfile.value) return {};
   const height = activityScrollMaxHeight.value ?? Math.round(ACTIVITY_ROW_FALLBACK_PX * ACTIVITY_SLOT_ROWS);
   return {
     height: `${height}px`,
@@ -873,7 +878,13 @@ const vacationStat = computed(() => {
     return { value: '—', planned: 0 };
   }
   const year = new Date().getFullYear();
-  const requests = employeeRequests(name, year);
+  const byId = new Map<number, VacationRequest>();
+  for (const yr of [year - 1, year, year + 1]) {
+    for (const req of employeeRequests(name, yr)) {
+      byId.set(req.id, req);
+    }
+  }
+  const requests = [...byId.values()];
   const result = calcEmployeeBalance(
     name,
     emp.hired_at,

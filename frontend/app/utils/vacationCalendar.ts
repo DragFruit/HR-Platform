@@ -14,6 +14,17 @@ const RU_PROD_CAL_OFF_BY_YEAR: Record<number, Set<string>> = {
     '2026-02-21', '2026-02-22', '2026-02-23', '2026-03-07', '2026-03-08', '2026-03-09',
     '2026-05-01', '2026-05-02', '2026-05-03', '2026-05-09', '2026-05-10', '2026-05-11',
     '2026-06-12', '2026-06-13', '2026-06-14', '2026-11-04', '2026-12-31'
+  ]),
+  // Проект Минтруда / Правительство РФ о переносах 2027 (как у 2026 — длинные «каникулы», не только ст. 112).
+  2027: new Set([
+    '2027-01-01', '2027-01-02', '2027-01-03', '2027-01-04', '2027-01-05',
+    '2027-01-06', '2027-01-07', '2027-01-08', '2027-01-09', '2027-01-10',
+    '2027-02-21', '2027-02-22', '2027-02-23',
+    '2027-03-06', '2027-03-07', '2027-03-08',
+    '2027-05-01', '2027-05-02', '2027-05-03', '2027-05-08', '2027-05-09', '2027-05-10',
+    '2027-06-12', '2027-06-13', '2027-06-14',
+    '2027-11-04', '2027-11-05', '2027-11-06', '2027-11-07',
+    '2027-12-31'
   ])
 };
 
@@ -66,6 +77,41 @@ export const isRuHoliday = (iso: string) => {
   const y = Number(iso.slice(0, 4));
   const set = RU_PROD_CAL_OFF_BY_YEAR[y];
   return Boolean(set?.has(iso));
+};
+
+/** Рабочий день: не сб/вс и не день из производственного календаря РФ. */
+export const isRuWorkingDay = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return false;
+  return !isWeekendDay(d) && !isRuHoliday(iso);
+};
+
+/** Дата через N рабочих дней после `iso` (сам `iso` не считается). */
+export const addWorkingDaysIso = (iso: string, days: number): string => {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime()) || days <= 0) return iso;
+  let left = days;
+  let guard = 0;
+  while (left > 0 && guard < 400) {
+    d.setDate(d.getDate() + 1);
+    guard += 1;
+    if (isRuWorkingDay(toIso(d))) left -= 1;
+  }
+  return toIso(d);
+};
+
+/**
+ * Первый рабочий день месяца (код, не «на глаз»).
+ * month — 1..12. Идём с 1-го числа вперёд (обычно 1 / 2 / 3).
+ */
+export const firstWorkingDayOfMonth = (year: number, month1to12: number): string => {
+  const cursor = new Date(year, month1to12 - 1, 1);
+  for (let i = 0; i < 14; i += 1) {
+    const iso = toIso(cursor);
+    if (isRuWorkingDay(iso)) return iso;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return toIso(new Date(year, month1to12 - 1, 1));
 };
 
 export const isInRangePreview = (
@@ -228,6 +274,31 @@ export const countVacationBillableDays = (startStr: string, endStr: string) => {
     cursor.setDate(cursor.getDate() + 1);
   }
   return n;
+};
+
+/** Обрезать диапазон до календарного года; null если пересечения нет. */
+export const clipIsoRangeToYear = (
+  startStr: string,
+  endStr: string,
+  year: number
+): [string, string] | null => {
+  const yStart = `${year}-01-01`;
+  const yEnd = `${year}-12-31`;
+  const lo = startStr > yStart ? startStr : yStart;
+  const hi = endStr < yEnd ? endStr : yEnd;
+  if (!lo || !hi || lo > hi) return null;
+  return [lo, hi];
+};
+
+/** Billable-дни заявки, попадающие в указанный календарный год. */
+export const countVacationBillableDaysInYear = (
+  startStr: string,
+  endStr: string,
+  year: number
+) => {
+  const clipped = clipIsoRangeToYear(startStr, endStr, year);
+  if (!clipped) return 0;
+  return countVacationBillableDays(clipped[0], clipped[1]);
 };
 
 export const vacationRangesOverlap = (

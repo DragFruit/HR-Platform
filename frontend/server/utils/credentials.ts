@@ -2,7 +2,7 @@ import { applyQaDemoSessionOverrides } from '../../app/data/qaTestDepartment';
 
 export type AuthRole = 'employee' | 'manager' | 'hr' | 'admin';
 
-export type AuthSource = 'demo' | 'bitrix';
+export type AuthSource = 'demo' | 'bitrix' | 'vibe';
 
 export type SessionUser = {
   id: number;
@@ -62,7 +62,7 @@ const credentials: Credential[] = [
     name: 'Алина',
     email: 'alina@vbi.local',
     password: 'employee123',
-    role: 'employee',
+    role: 'manager',
     department: 'Команда'
   },
   {

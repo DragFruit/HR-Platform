@@ -3,7 +3,12 @@ export type AdminNotificationKind =
   | 'bitrix_employee_title'
   | 'bitrix_vacation_sync_failed'
   | 'tenure_gift_order'
-  | 'idea_submitted';
+  | 'idea_submitted'
+  | 'vpn_peer_delete_failed'
+  | 'sales_best_pick_due'
+  | 'page_feedback'
+  | 'knowledge_ai_degraded'
+  | 'bitrix_notify_failed';
 
 export type AdminNotification = {
   id: string;
@@ -25,12 +30,32 @@ export type AdminNotification = {
   vacation_start?: string;
   vacation_end?: string;
   error_message?: string;
+  vpn_peer_names?: string[];
+  vpn_panel?: string;
+  sales_period?: string;
+  sales_period_label?: string;
+  stars?: number;
+  comment?: string;
+  page?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
   name: 'ФИО',
   title: 'должность'
 };
+
+const PAGE_FEEDBACK_LABELS: Record<string, string> = {
+  '/knowledge': 'База знаний',
+  '/vacations': 'Отпуска',
+  '/ideas': 'Банк идей',
+  '/vpn': 'VPN',
+  '/profile': 'Профиль'
+};
+
+function pageFeedbackLabel(page?: string) {
+  if (!page) return 'Раздел';
+  return PAGE_FEEDBACK_LABELS[page] || page;
+}
 
 export function useAdminNotifications() {
   const notifications = useState<AdminNotification[]>('admin-notifications', () => []);
@@ -70,6 +95,9 @@ export function useAdminNotifications() {
   };
 
   const formatNotificationTitle = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      return 'Выберите лучшего специалиста продаж';
+    }
     if (item.kind === 'tenure_gift_order') {
       return `Собрать юбилейный набор (${item.years ?? '—'} лет)`;
     }
@@ -79,11 +107,32 @@ export function useAdminNotifications() {
     if (item.kind === 'bitrix_vacation_sync_failed') {
       return 'Отпуск не ушёл в Bitrix';
     }
+    if (item.kind === 'vpn_peer_delete_failed') {
+      return 'Не удалось удалить VPN-ключи';
+    }
+    if (item.kind === 'page_feedback') {
+      const section = pageFeedbackLabel(item.page);
+      return `Оценка «${section}»: ${item.stars ?? '—'}/5`;
+    }
+    if (item.kind === 'knowledge_ai_degraded') {
+      return 'ИИ базы знаний: сбой Yandex';
+    }
+    if (item.kind === 'bitrix_notify_failed') {
+      return 'Bitrix: колокольчик не создан';
+    }
     const label = item.field ? fieldLabels[item.field] : 'данные';
     return `Изменение ${label} в Битрикс24`;
   };
 
   const formatNotificationBody = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      const period = item.sales_period_label || item.sales_period || 'текущий месяц';
+      return (
+        `Напоминание: выберите лучшего специалиста продаж за ${period}. ` +
+        'Лучший — тот, кто выше всех перевыполнил план. ' +
+        'Ачивка у победителя появится в первый рабочий день следующего месяца (интрига до reveal). Можно перевыбрать.'
+      );
+    }
     if (item.kind === 'tenure_gift_order') {
       return `${item.employee_name} использовал(а) купон на набор «${item.years} лет». Соберите подарок: медаль, вино ${item.years} лет выдержки и премию.`;
     }
@@ -96,6 +145,33 @@ export function useAdminNotifications() {
           ? `${item.vacation_start} — ${item.vacation_end}`
           : 'даты неизвестны';
       return `${item.employee_name}: ${period}. ${item.error_message || 'Ошибка синка'}. Проверьте вебхук / добавьте отсутствие вручную.`;
+    }
+    if (item.kind === 'vpn_peer_delete_failed') {
+      const peers = (item.vpn_peer_names || []).join(', ') || 'пиры';
+      const panel = item.vpn_panel ? ` (${item.vpn_panel})` : '';
+      return `${item.employee_name}: удалите вручную в админке VPN${panel}: ${peers}. ${item.error_message || ''}`.trim();
+    }
+    if (item.kind === 'page_feedback') {
+      const note = item.comment?.trim();
+      return note
+        ? `${item.employee_name}: «${note}»`
+        : `${item.employee_name} оценил(а) страницу, комментария нет.`;
+    }
+    if (item.kind === 'knowledge_ai_degraded') {
+      const q = item.comment?.trim();
+      return (
+        `${item.employee_name}: помощник БЗ перешёл в упрощённый режим. ` +
+        `${item.error_message || 'Ошибка Yandex'}` +
+        (q ? ` Вопрос: «${q}».` : '')
+      );
+    }
+    if (item.kind === 'bitrix_notify_failed') {
+      return (
+        `Согласующему «${item.employee_name}» (Bitrix id ${item.bitrix_user_id ?? '—'}) ` +
+        `не ушёл колокольчик в Bitrix. В Vibe уведомление есть. ` +
+        `${item.error_message || ''} ` +
+        `Нужен мост vbihr|vacation или проверка учётки на crm.vbi.ru (см. docs/BITRIX.md).`
+      ).trim();
     }
     const label = item.field ? fieldLabels[item.field] : 'поле';
     return `${item.employee_name}: на платформе «${item.platform_value || '—'}», в Битрикс «${item.bitrix_value || '—'}». Обновите вручную в справочнике сотрудников.`;
@@ -116,16 +192,29 @@ export function useAdminNotifications() {
   };
 
   const notificationActionLabel = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') return 'Выбрать';
     if (item.kind === 'tenure_gift_order') return 'К уведомлению';
     if (item.kind === 'idea_submitted') return 'Банк идей';
     if (item.kind === 'bitrix_vacation_sync_failed') return 'Отпуска';
+    if (item.kind === 'vpn_peer_delete_failed') return 'Уведомления';
+    if (item.kind === 'page_feedback') return pageFeedbackLabel(item.page);
+    if (item.kind === 'knowledge_ai_degraded') return 'База знаний';
+    if (item.kind === 'bitrix_notify_failed') return 'Отпуска';
     return 'Справочник';
   };
 
   const notificationActionTo = (item: AdminNotification) => {
+    if (item.kind === 'sales_best_pick_due') {
+      const q = item.sales_period ? `?period=${encodeURIComponent(item.sales_period)}` : '';
+      return `/admin/sales-best${q}`;
+    }
     if (item.kind === 'tenure_gift_order') return '/admin/notifications';
     if (item.kind === 'idea_submitted') return '/admin/ideas';
     if (item.kind === 'bitrix_vacation_sync_failed') return '/admin/vacations';
+    if (item.kind === 'vpn_peer_delete_failed') return '/admin/notifications';
+    if (item.kind === 'page_feedback') return item.page || '/knowledge';
+    if (item.kind === 'knowledge_ai_degraded') return '/admin/knowledge';
+    if (item.kind === 'bitrix_notify_failed') return '/admin/vacations';
     return '/admin/employees';
   };
 

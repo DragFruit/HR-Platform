@@ -9,13 +9,13 @@
 ## Быстрый старт
 
 1. **macOS:** дважды кликните **`Open Frontend.command`** в корне проекта.
-2. **Windows:** дважды кликните **`Open Frontend.bat`** (нужен [Node.js LTS](https://nodejs.org/)).
+2. **Windows / любой ОС:** в терминале `cd frontend && npm install && npm run dev` (нужен [Node.js LTS](https://nodejs.org/)).
 3. Откроется локальный фронт — войдите через Bitrix или демо (если включён QA).
-4. Чтобы остановить сервер — закройте окно терминала, которое открыл скрипт.
+4. Чтобы остановить сервер — закройте окно терминала / `Ctrl+C`.
 
 **Полная платформа** (staging / локально): `cd frontend && npm run dev`.
 
-**Только график отпусков** (как на production / IP `45.12.74.25`): `npm run dev:vacations` или `NUXT_PUBLIC_LAUNCH_SCOPE=vacations`.
+**Бой** сейчас по IP `http://45.12.74.25` (порт 80); домен `vibe.vbi.ru` — целевой бренд-URL продукта.
 
 Альтернатива из терминала:
 
@@ -58,27 +58,27 @@ npm run dev:vacations   # только отпуска + демо QA
 
 ```
 VBI HR платформа/
-├── Open Frontend.command   # Сборка + запуск на :3300
+├── Open Frontend.command   # macOS: сборка + запуск
 ├── README.md               # Этот файл
 ├── docs/
 │   ├── ARCHITECTURE.md     # Архитектура, модули, localStorage
 │   ├── CHANGELOG.md        # История версий и фич
+│   ├── PRODUCT.md          # Бизнес-правила
 │   └── DEPLOYMENT.md       # GitLab CI, VPS, nginx, systemd
 ├── deploy/                 # Выкладка на сервер (см. DEPLOYMENT.md)
 │   ├── nginx/
 │   ├── systemd/
 │   └── scripts/
 ├── .gitlab-ci.yml          # Сборка и deploy на VPS
-├── frontend/               # Nuxt 4 приложение (основной код)
+├── frontend/               # Nuxt 4 + Nitro (UI и API)
 │   └── app/
 │       ├── app.vue         # Shell: auth, sidebar, NuxtPage
-│       ├── assets/main.css # Дизайн-система (фиолетовая тема)
+│       ├── assets/main.css # Дизайн-система
 │       ├── components/     # UI-компоненты
 │       ├── composables/    # Бизнес-логика и состояние
 │       ├── pages/          # Маршруты
 │       └── plugins/        # Клиентская инициализация данных
-├── backend/                # Зарезервировано (пока пусто)
-└── _vacation_source/       # Референс «График отпусков» (Bitrix/HTML)
+└── scripts/                # CLI (rollover года и др.)
 ```
 
 ---
@@ -141,6 +141,12 @@ Bitrix-бот и systemd timers: **[docs/BITRIX.md](docs/BITRIX.md)**.
 
 ---
 
+## Коды ChatGPT → Telegram
+
+Параллельно кнопке в `/vpn`: почта → бот → корпоративный канал (каждые 2 мин). Настройка бота, env, cron: **[docs/CHATGPT-TELEGRAM.md](docs/CHATGPT-TELEGRAM.md)**.
+
+---
+
 ## Технологии
 
 | Слой | Стек |
@@ -175,8 +181,8 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 
 | Ветка | Стенд | Модули | `NUXT_PUBLIC_LAUNCH_SCOPE` |
 |-------|-------|--------|----------------------------|
-| `staging` | Тест | Вся платформа | `full` |
-| `main` | Бой | Только график отпусков | `vacations` |
+| `staging` | Стейдж `:8080` | Вся платформа | `full` |
+| `main` | Бой `:80` | Пилот: отпуска + whitelist (идеи, **база знаний**, …); VPN с замком | `vacations` |
 
 **Публикация (2 задачи):** [docs/CI-CD.md](docs/CI-CD.md) — `scripts/push-to-gitlab.sh` (Mac→Git), GitLab CI (Git→сервер).
 
@@ -184,8 +190,7 @@ DevTools → Application → Local Storage → удалить ключи `vbi-*`
 
 ## Дальнейшее развитие
 
-- Подключение **backend** (сейчас папка `backend/` пустая).
-- Реальный API вместо `localStorage`.
+- Больше данных с сервера (Nitro / `server/data`), меньше опоры на `localStorage`.
 - Синхронизация оргструктуры с Bitrix / 1С (по необходимости).
 
 При добавлении фич обновляйте **`docs/CHANGELOG.md`** и при необходимости разделы в этом README и `ARCHITECTURE.md` (см. правило Cursor `.cursor/rules/docs-maintenance.mdc`).

@@ -1,5 +1,3 @@
-import { findKnowledgeCard } from '~/data/knowledgeBaseCatalog';
-
 export type PlatformRole = 'employee' | 'admin';
 
 export type NavItem = {
@@ -35,7 +33,9 @@ const adminNav: NavItem[] = [
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
   { to: '/admin/activity', label: 'Активность' },
+  { to: '/admin/sales-best', label: 'Лучший ОП' },
   { to: '/admin/ideas', label: 'Банк идей' },
+  { to: '/admin/knowledge', label: 'База знаний' },
   profileNavItem
 ];
 
@@ -95,7 +95,10 @@ export function usePlatformContext() {
     if (ready) syncRoleFromAuth();
   });
 
-  watch([role, () => route.path], guardRoute, { immediate: true });
+  // authReady в зависимостях: иначе после восстановления сессии роль
+  // может остаться той же ('employee') и watcher на role не сработает —
+  // замок меню не сработает на прямой ссылке.
+  watch([role, () => route.path, authReady], guardRoute, { immediate: true });
 
   const profilePageTitles: Record<string, string> = {
     '/profile': 'Профиль',
@@ -121,10 +124,6 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/ideas') || route.path.startsWith('/admin/ideas')) {
       return 'Банк идей';
-    }
-    if (route.path.startsWith('/knowledge/')) {
-      const id = route.path.slice('/knowledge/'.length).split('/')[0] ?? '';
-      return findKnowledgeCard(id)?.title ?? 'База знаний';
     }
     if (route.path.startsWith('/knowledge')) {
       return 'База знаний';

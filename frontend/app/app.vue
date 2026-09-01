@@ -81,8 +81,15 @@
         <div class="topbar-right">
           <AdminNotificationsBell v-if="showAdminNotificationsBell" />
           <VacationNotificationsBell v-else />
-          <UserAvatar v-if="user" :user-id="user.id" :name="user.name" :size="36" />
-          <span class="soft">{{ user?.name }}</span>
+          <NuxtLink
+            v-if="user"
+            to="/profile"
+            class="topbar-profile-link"
+            :aria-label="`Профиль: ${user.name}`"
+          >
+            <UserAvatar :user-id="user.id" :name="user.name" :size="36" />
+            <span class="soft">{{ user.name }}</span>
+          </NuxtLink>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>
           <div v-if="!isAdmin && !isVacationsOnly" class="pill">Баланс: {{ balance }}</div>
           <div v-else-if="isAdmin && !isVacationsOnly" class="pill admin-pill">Режим: администрирование</div>
@@ -104,20 +111,26 @@
     <AppSiteFooter />
 
     <FirstLoginOnboarding
-      v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive"
+      v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive && !pvmPreview"
       :user-name="user.name"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
     />
 
+    <PostVacationMemo v-if="isAuthenticated && user" />
+
     <TenureCelebrationOverlay v-if="isAuthenticated && user" />
     <EmployeeVisitingCard v-if="isAuthenticated" />
+    <ClientOnly>
+      <PageRateCatHost v-if="isAuthenticated" />
+    </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
 import { PLATFORM_NAME } from '~/data/platformBrand';
+import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
@@ -138,6 +151,18 @@ const showAdminNotificationsBell = computed(
 const route = useRoute();
 const router = useRouter();
 const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
+const pvmPreview = computed(() => {
+  void route.fullPath;
+  return isPostVacationMemoPreview();
+});
+const homeLocation = () => {
+  const pvm = String(route.query.pvm || '');
+  const keep = pvm === 'tips' ? 'tips' : pvmPreview.value || pvm === '1' ? '1' : '';
+  return {
+    path: resolveHomePath(),
+    query: keep ? { pvm: keep } : {}
+  };
+};
 
 const isNavItemActive = (to: string) => {
   if (to === '/') return route.path === '/';
@@ -157,9 +182,41 @@ const isNavItemActive = (to: string) => {
 const resolveHomePath = () => homePath(user.value?.role === 'admin');
 
 const clearAuthQuery = () => {
-  if (!route.query.auth && !route.query.auth_error) return;
-  const { auth: _a, auth_error: _e, ...rest } = route.query;
+  if (!route.query.auth && !route.query.auth_error && !route.query.ticket && !route.query.bitrix_notify) {
+    return;
+  }
+  const { auth: _a, auth_error: _e, ticket: _t, bitrix_notify: _n, ...rest } = route.query;
   router.replace({ path: route.path, query: rest });
+};
+
+const exchangeBitrixTicket = async () => {
+  const raw = route.query.ticket;
+  const ticket = Array.isArray(raw) ? String(raw[0] || '') : String(raw || '');
+  if (!ticket) return false;
+  try {
+    const res = await $fetch<{ ok: boolean; user: import('~/composables/useAuth').AuthSessionUser }>(
+      '/api/auth/bitrix-ticket',
+      { method: 'POST', body: { ticket } }
+    );
+    if (res.ok && res.user) {
+      user.value = res.user;
+      if (import.meta.client) {
+        localStorage.setItem('vbi-auth-session', JSON.stringify(res.user));
+      }
+      return true;
+    }
+  } catch {
+    /* ticket spent / expired */
+  }
+  return false;
+};
+
+const restoreSessionWithRetry = async () => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await restoreSession();
+    if (isAuthenticated.value) return;
+    await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+  }
 };
 
 const handleBitrixReturn = async () => {
@@ -167,32 +224,40 @@ const handleBitrixReturn = async () => {
 
   finishingBitrixLogin.value = true;
 
-  if (!isAuthenticated.value) {
-    await restoreSession();
-  }
+  try {
+    await exchangeBitrixTicket();
 
-  if (!isAuthenticated.value) {
+    if (!isAuthenticated.value) {
+      await restoreSessionWithRetry();
+    }
+
+    if (!isAuthenticated.value) {
+      clearAuthQuery();
+      await router.replace({
+        path: route.path,
+        query: {
+          auth_error:
+            'Сессия после Битрикс не сохранилась. Нажмите «Войти через Битрикс24» ещё раз.'
+        }
+      });
+      return true;
+    }
+
+    syncRoleFromAuth();
+    // Сначала снимаем экран «Завершаем вход…», bootstrap не должен его блокировать.
     finishingBitrixLogin.value = false;
     clearAuthQuery();
-    await router.replace({
-      path: route.path,
-      query: { auth_error: 'Сессия после Битрикс не сохранилась. Нажмите «Войти через Битрикс24» ещё раз.' }
-    });
+    await router.replace(homeLocation());
+    await bootstrapAppData();
     return true;
+  } finally {
+    finishingBitrixLogin.value = false;
   }
-
-  syncRoleFromAuth();
-  await bootstrapAppData();
-  clearAuthQuery();
-  await router.replace(resolveHomePath());
-  finishingBitrixLogin.value = false;
-  return true;
 };
 
 onMounted(async () => {
-  if (!authReady.value) {
-    await restoreSession();
-  }
+  // Всегда заново — ранняя сессия из plugin может быть перетёрта SSR payload.
+  await restoreSession();
 
   if (await handleBitrixReturn()) {
     return;
@@ -205,7 +270,7 @@ onMounted(async () => {
 const onLoginSuccess = async () => {
   syncRoleFromAuth();
   await bootstrapAppData();
-  await router.replace(resolveHomePath());
+  await router.replace(homeLocation());
 };
 
 const onOnboardingComplete = (characterId: import('~/composables/useAvatars').AvatarCharacterId) => {

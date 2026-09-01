@@ -2,14 +2,1079 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-08-28
+
+### UI: контраст ошибки отпусков + ссылка на профиль в шапке
+
+- **Отпуска:** `.vac-emp-error` — тёмный `var(--danger)` на светлом фоне `#fef0ee` с рамкой (вместо бледного `#fca5a5`).
+- **Шапка:** аватар и имя в topbar — `NuxtLink` на `/profile`; колокольчик уведомлений без изменений.
+- Файлы: `main.css`, `app.vue`.
+- Проверка: `/vacations` → ошибка валидации/учебного режима читается; клик по аватару/имени в шапке → `/profile`.
+
+### Памятка: откат арта чипа — кот + капибара (art-c-v23)
+
+- Вернул утверждённый заказчиком арт чипа (36d8f26): кот в шезлонге + капибара; отменён ошибочный чемодан art-c-v24 (768c03e).
+- Cache-bust снова `?v=art-c-v23`. Файлы: `public/memos/pvm-c-art-chip.png`, `postVacationMemoSlides.ts`.
+- Проверка: `?pvm=1` → Позже → чип с котом и капибарой.
+
+### Памятка: арт чипа — минималистичный чемодан (art-c-v24)
+
+- Чип: компактный rolling suitcase (белый корпус, лайм ручка/колёса, coral багажный ярлык, жирная чёрная обводка) — замена зонт+солнце и кот+капибара; читается на lavender-градиенте в ~48px. RGBA 256×256, ~32 KB.
+- Cache-bust `?v=art-c-v24`. Тексты чипа без изменений.
+- Файлы: `public/memos/pvm-c-art-chip.png`, `postVacationMemoSlides.ts`.
+- Проверка: `:8080/?pvm=1` → Позже → чип с новым значком.
+
+### Фикс: квест-обучение отпусков, учётные данные Vibe, памятка после отпуска
+
+- **Квест отпусков:** `VacationTrainingOverlay` не монтировался на экране сотрудника (`/vacations` → `EmployeeVacationPanel` без обёртки `VacationsManagerExperience`) — режим включался, но карточки шагов не появлялись. Оверлей перенесён в `EmployeeVacationPanel.vue`.
+- **Админ → Сотрудники:** вместо `prompt()` только с паролем — модалка «Логин (email) + пароль» (`VibeCredentialsDialog.vue`). Логин = email в справочнике; пароль — `vibe-passwords.json`.
+- **Памятка после отпуска:** после прочтения до конца welcome не должен повторяться для той же заявки. `hydrate()` читает localStorage заново (не кэш computed); `memoStorageRevision` после `persistDone`/`persistDocked`.
+- Файлы: `EmployeeVacationPanel.vue`, `VacationsManagerExperience.vue`, `VibeCredentialsDialog.vue`, `admin/employees.vue`, `usePostVacationMemo.ts`, `postVacationMemo.ts`.
+- Проверка: localhost `/vacations` → «Начать квест» → карточки шагов; `/admin/employees` → 🔑 → email+пароль; `?pvm=1` → дочитать → перелогин → welcome не повторяется.
+
+### Памятка: новый арт чипа — кот в шезлонге + капибара (art-c-v23)
+
+- Чип: компактный значок «кот в шезлонге с панамой и очками + капибара в очках» (по референсу заказчика) — neo-brutalist flat, лайм шезлонг, фиолетовый кот, coral панама, жирная чёрная обводка; читается на lavender-градиенте в ~48px. RGBA 256×256.
+- Cache-bust `?v=art-c-v23`. Тексты чипа без изменений.
+- Файлы: `public/memos/pvm-c-art-chip.png`, `postVacationMemoSlides.ts`.
+- Проверка: `:8080/?pvm=1` → Позже → чип с новым значком.
+
+### Памятка: новый арт чипа — чемодан (art-c-v22)
+
+- Чип: компактный значок rolling suitcase (белый корпус, лайм ручка/колёса, coral багажный ярлык, жирная чёрная обводка) вместо зонт+солнце — читается на lavender-градиенте в ~48px. RGBA 256×256, ~32 KB.
+- Cache-bust `?v=art-c-v22`. Тексты чипа без изменений.
+- Файлы: `public/memos/pvm-c-art-chip.png`, `postVacationMemoSlides.ts`.
+- Проверка: `:8080/?pvm=1` → Позже → чип с новым значком.
+
+### Памятка: окно welcome — 7 рабочих дней + новый арт чипа (art-c-v21)
+
+- Welcome показывается после дня окончания отпуска, но не позже **7 рабочих дней** (как чип — через `addWorkingDaysIso`, с учётом выходных и праздников РФ). Константа `POST_VACATION_MEMO_WINDOW_WORKING_DAYS`.
+- Чип: новый значок «зонт + солнце» (лайм + coral) вместо фиолетового кота+чемодана — читается на lavender-градиенте. Cache-bust `?v=art-c-v21`.
+- Файлы: `postVacationMemo.ts`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-chip.png`, `docs/PRODUCT.md`.
+- Проверка: после отпуска ≥7 дней — welcome в пределах 7 раб. дней; чип с новым артом на `:8080/?pvm=1` → Позже.
+
+### Памятка Design C: fix — тексты pace и fresh не перепутаны
+
+- `pace` («Войди в ритм плавно», tip1): восстановлен копирайт про плавный вход в ритм (не набрасываться на задачи, войти в курс дела) — как в `series-c-03-tip1`.
+- `fresh` («Посмотри на работу свежим взглядом», tip2): копирайт «новый угол / рутина / стол» + inline-горшок после «на столе» (раньше ошибочно стоял на `pace` в 76bd05b).
+- Остальные слайды без изменений. Cache-bust `?v=art-c-v20`.
+- Файл: `postVacationMemoSlides.ts`.
+- Проверка: `?pvm=1` → tip1 «Войди в ритм плавно» — про ритм; tip2 — свежий взгляд + горшок. Стейдж `:8080`.
+
+### Памятка Design C: сжатие PNG-иллюстраций
+
+- Оптимизированы 8 ассетов `public/memos/pvm-*.png` (sharp palette PNG, quality 92): суммарно ~2.32 MB → ~1.08 MB (−53%).
+- Inline-цветок `pvm-inline-flower-pot.png` — lossless RGBA (прозрачность сохранена).
+- Cache-bust `?v=art-c-v19`. Проверка: `?pvm=1` на стейдже `:8080`.
+
+### VPN: замок в меню на бое
+
+- `/vpn` убран из whitelist пилота `LAUNCH_SCOPE=vacations` — в меню замок и подсказка «Раздел скоро откроется»; прямой URL редиректит на главную пилота.
+- Стейдж `:8080` (`launchScope=full`) — VPN по-прежнему открыт.
+- Файлы: `useLaunchScope.ts`, `docs/PRODUCT.md`, `.cursor/rules/production-nav-locks.mdc`.
+- Проверка: бой `http://45.12.74.25/` — пункт VPN с замком; стейдж `:8080/vpn` — помощник открывается.
+
+### База знаний: ИИ-чат — кейсы ecom/SMM, ссылки, follow-up
+
+- Кейсы ecom с каналом (SMM/смм, таргет, посевы): если прямого кейса нет — явный текст «по SMM пока не добавлены» + близкие с каналами из статьи; не шаблонный список всех ecom.
+- Уточнения в диалоге («клиент в еком на смм» после «кейсы ecom») склеиваются с темой, модель не повторяет verbatim ответ.
+- Markdown-ссылки и «Ссылка: https://…» в тексте ответа срезаются — кликабельные ссылки только в «Ещё по теме».
+- Опечатки/сокращения: очепятка→опечатка, еком→ecom, смм в синонимах RAG.
+- Пути: `knowledgeAiIntent.ts`, `useKnowledgeAiAnswer.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `knowledgeRagSense.ts`, `knowledgeRagLexical.ts`.
+- Проверка: `node scripts/knowledge/check-kb-dialog-followup.mjs`; в чате «клиент в еком на смм», follow-up после «кейсы ecom», «очепятка в доке». Стейдж `:8080`.
+
+### Памятка Design C: welcome padding + прозрачный inline-цветок (fix staging)
+
+- Welcome: блок текста опущен сильнее — `padding-top: calc(6.5% + 32px)` (было +12px).
+- Inline flower tip1: `pvm-inline-flower-pot.png` перегенерирован с RGBA (без белого квадрата); peach `#E2A77A` + lavender `#9B8CC5`.
+- Cache-bust `?v=art-c-v18`. Тексты intro/tip1/tip3/tip4 из коммита 76bd05b без изменений.
+- Проверка: `?pvm=1` — welcome ниже; tip1 горшок без белого фона; intro «не набрасываться на работу». Стейдж `:8080`.
+
+### Памятка Design C: правки текста + welcome layout + inline-цветок (tip1)
+
+- Welcome: блок текста опущен — `padding-top: calc(6.5% + 12px)` у `.pvm-card--welcome .pvm-card__body`.
+- Intro (card 2): новый копирайт про плавный вход после отпуска (2 абзаца).
+- Tip1/pace (card 3): копирайт «свежий взгляд / рутина / стол» + inline ITMO flower-in-pot после «на столе».
+- Tip3/weekend (card 4): дефис в «маленький отпуск - кино…» по макету заказчика.
+- Tip4/triggers (card 5): финал с «!» — «…идеально для этого подходит!».
+- Новый ассет `public/memos/pvm-inline-flower-pot.png`; сегменты абзаца через `PostVacationMemoParagraph.vue`. Cache-bust `?v=art-c-v17`.
+- Файлы: `postVacationMemoSlides.ts`, `PostVacationMemo.vue`, `PostVacationMemoParagraph.vue`, `main.css`.
+- Проверка: `?pvm=1` — welcome ниже; intro/tip1/tip3/tip4 тексты; tip1 — мини-горшок в строке. Стейдж `:8080`. Прод не трогали.
+
+### Отпуска: admin «+ Добавить отпуск» — через согласование, не instant approve
+
+- Ручное добавление отпуска admin/HR создаёт обычную заявку `pending` и уведомляет текущего согласующего; мгновенный `force approve` после создания убран.
+- Панель «Заявки на согласование» в `/admin/vacations`: «Согласовать» проходит цепочку по этапам (Digital: manager → director), не переводит сразу в `approved`.
+- Пути: `AdminAddVacationDialog.vue`, `useVacations.ts` (`elevated` в `approveRequest`), `pages/admin/vacations.vue`, `docs/PRODUCT.md`.
+- Проверка: admin → «+ Добавить отпуск» для сотрудника Digital → заявка `pending` в очереди → «Согласовать» дважды (групхед → директор) → `approved`.
+
+### Отпуска: админ обходит лимит месяца при ручном добавлении
+
+- «+ Добавить отпуск» в `/admin/vacations` больше не отклоняется сервером, если месяц отдела уже занят бронями/заявками коллег (лимит 5/1 остаётся для сотрудников).
+- Пути: `vacationRequestMutations.ts` (`assertVacationRequestGroupCap` пропускается для `role=admin` при create/patch дат).
+- Проверка: админ → график → сотрудник Digital, месяц с 5 коллегами в отпуске/брони → «+ Добавить отпуск» на этот месяц → успех.
+
+## 2026-08-27
+
+### Памятка Design C: карточка ниже на 10px
+- `.pvm-stage`: aspect `879/1279` → `879/1257` (−10px высоты при width 400px). Центрирование overlay (`place-items: center`) без изменений.
+- Файлы: `main.css`. Проверка: `?pvm=1` — карточка чуть ниже, по центру. Стейдж `:8080`. Прод не трогали.
+
+### База знаний: блок «код» — менее скруглённый нижний левый угол
+- `.kb-code`: `border-bottom-left-radius: 6px` (остальные углы 24px). Редактор и просмотр статьи.
+- Файлы: `main.css`. Проверка: статья с блоком кода — BL угол прямее. Стейдж `:8080`. Прод не трогали.
+
+### Памятка Design C: без нумерованных табов + скруглённый верхний левый угол
+- Убраны декоративные folder-tabs 1–5 сверху карточки (welcome и карусель).
+- У `.pvm-card` все углы с `--pvm-radius` (в т.ч. верхний левый — раньше был острый под табом 1).
+- Навигация без изменений: Позже/Прочитать, Назад/Дальше/Спасибо, свайп.
+- Файлы: `PostVacationMemo.vue`, `main.css`, `postVacationMemoSlides.ts`, `docs/PRODUCT.md`.
+- Проверка: `?pvm=1` — нет ряда 1–5, все слайды со скруглённым TL; CTA работают. Стейдж `:8080`. Прод не трогали.
+
+### Памятка Design C: широкий текст + tip2/tip3 без тёмной кромки (art-c-v16)
+- Layout: `.pvm-copy` почти на всю ширину (`max-width: 96%`) — заполняет пустое правое поле над артом (красная аннотация на tip3). Узкая левая колонка снята. Снизу clearance под арт; CTA слева без наезда.
+- Арт tip2/tip3: с PNG снят/осветлён тёмный контурный fringe. Cache-bust `?v=art-c-v16`.
+- CSS: у `.pvm-illust` без `border`/`outline`/`box-shadow`/`filter`.
+- Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-tip{2,3}.png`.
+- Проверка: `?pvm=tips` → таб 4 (tip3) — текст широкий вправо над котом; tip2/tip3 без чёрной обводки. Стейдж `:8080`, hard refresh. Прод не трогали.
+
+### База знаний: блок «код» — тёмно-синий фон
+- `.kb-code` фон `#111` → `#0d1b2a` (near-black navy, ITMO). Общие стили WYSIWYG: редактор сотрудника/админа и просмотр статьи.
+- Файлы: `main.css`. Проверка: `/knowledge/write` и статья с блоком кода. Стейдж `:8080`. Прод не трогали.
+
+### База знаний: редактор статей — отдельная страница + тихий FAB
+- FAB карандаша на `/knowledge`: крем `#eeeee8` + чёрная рамка (лайм только на hover), по-прежнему `absolute` слева внизу внутри `.kb-page--search`.
+- Клик ведёт на **`/knowledge/write`** — полноценная страница в стиле `/admin/knowledge` (редактор + списки: свои / команда; ревью руководителя на той же странице). Без оверлея поверх поиска.
+- Уведомления по статьям открывают `/knowledge/write`. Путь уже в whitelist `startsWith('/knowledge/')`.
+- Файлы: `pages/knowledge/write.vue`, `KnowledgeArticleWorkspace.vue`, `knowledge/index.vue`, `main.css`, `useUserNotifications.ts`, docs.
+- Проверка: стейдж `/knowledge` → FAB → `/knowledge/write`; руководитель — «Проверить». Прод не трогали.
+
+### База знаний ИИ: кейсы ecom в RAG (stub снят)
+- Из PDF «сборник кейсов VBI ECOM» извлечено **11** кейсов Ecommerce (+ обзор). MD: `docs/knowledge-cases/ecom/*.md`. Исключён Грузовичкоф (логистика).
+- Статьи БЗ (published, `departments: []`): `kb-case-ecom-*` + `kb-case-ecom-index`; platform-owned в `merge-knowledge-articles-seed.mjs`.
+- Stub «Пока что я не умею работать с кейсами…» снят: вопросы про кейсы идут через RAG/GPT. **авто ≠ Авито** сохранён.
+- Промпт продаж: 1–3 похожих подробно → короткий список других ecom → папка Bitrix кейсов. Буст хитов `applyCaseEcomScoreAdjust`.
+- Проверка: `node scripts/knowledge/check-kb-cases-fallback.mjs`; `node scripts/knowledge/check-kb-auto-avito.mjs`. Стейдж `:8080` — «нужен кейс ecom, проблема с ДРР / фидом». Прод не трогали.
+
+### База знаний: FAB карандаша внутри контента раздела
+- `.kb-write-fab`: `position: absolute` внутри `.kb-page--search` (bottom-left), вместо `fixed` к viewport — круг больше не сидит на границе сайдбара.
+- Правый нижний угол (кот оценки) не трогали.
+- Файлы: `main.css`. Проверка: `/knowledge` — лаймовый FAB слева внизу в области контента. Стейдж `:8080`. Прод не трогали.
+
+### Памятка Design C: шире текст + без чёрной обводки арта (art-c-v15)
+- Layout: колонка copy/title на tip-слайдах уже расширена к series-c в `main.css` (не узкая лента слева); clearance до арта и CTA слева сохранены.
+- Арт: с PNG снят baked black stroke/fringe (особенно tip2–3 после Black→alpha); край смягчён; горшки/текстура/cutouts сохранены. Cache-bust `?v=art-c-v15`.
+- CSS: у `.pvm-illust` по-прежнему без `border`/`outline`/`box-shadow`/`filter`.
+- Файлы: `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png` (+ layout уже в `main.css`).
+- Проверка: `?pvm=tips` — tip1/tip2 шире текст, без чёрной кромки на котах. Стейдж `http://45.12.74.25:8080/?pvm=1` (hard refresh). Прод не трогали.
+
+### База знаний: статьи сотрудников + модерация руководителя
+- На `/knowledge` — FAB карандаш **слева внизу**; панель создания/правок своих статей; у руководителя — статьи прямых подчинённых и режим «Проверить» (инлайн-комментарии, Принять / На доработку / Отклонить с обязательной причиной).
+- Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). Правка опубликованной — через `pendingRevision` (старая версия жива до Accept). RAG только `published`.
+- Уведомления Vibe + Bitrix system notify (`im.notify.system.add`). Админка `/admin/knowledge` — те же действия модерации.
+- Файлы: `knowledgeArticlesStore.ts`, `knowledgeNotifications.ts`, `api/knowledge/articles/*`, `KnowledgeArticleWorkspace.vue`, `useKnowledgeAuthor.ts`, `pages/knowledge/index.vue`, `pages/admin/knowledge.vue`, `useUserNotifications.ts`, docs.
+- Проверка на стейдже: сотрудник Digital → FAB → статья → «На проверку»; руководитель → FAB → «Проверить» → Принять; колокольчик + Bitrix. Прод не трогали.
+
+### Памятка Design C: текст/CTA не перекрывают котов
+- Layout: масштаб арта и clear zone под series-c (не «наклейка», не наезд на лапы/горшок). Уже колонка copy на tip-слайдах; CTA-ряд слева с зазором до сцены; intro — CTA под горшком справа.
+- PNG/`ART_V` не меняли. Файлы: `main.css` (`.pvm-illust*`, `.pvm-copy`, `.pvm-nav`, `.pvm-cta`).
+- Проверка: localhost/`?pvm=1` и `?pvm=tips` — 6 слайдов без перекрытия текста/кнопок с артом. Стейдж `http://45.12.74.25:8080/?pvm=1` (hard refresh). Прод не трогали.
+
+### VPN: убрана кнопка «Код ChatGPT»
+- В помощнике `/vpn` больше нет чипа и ветки «Код ChatGPT» (проверка почты OpenAI). Остались только VPN и Прокси с прежними инструкциями.
+- Удалён `POST /api/vpn/chatgpt-code`. Коды в Telegram (cron) без изменений.
+- Файлы: `pages/vpn/index.vue`, удалён `api/vpn/chatgpt-code.post.ts`; `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/CHATGPT-TELEGRAM.md`.
+- Проверка: стейдж `http://45.12.74.25:8080/vpn` и бой `http://45.12.74.25/vpn` — два чипа, без ChatGPT.
+
+### Памятка Design C: tip2–4 cutouts + крупнее арт (art-c-v14)
+- Арт: заказчикские cutouts → `pvm-c-art-tip2.png` (кот+стол/ноут), `pvm-c-art-tip3.png` (идущий кот+растение/боулинг/билет), `pvm-c-art-tip4.png` (кот+блокнот+растение). Black→true alpha; горшки и ground-band сохранены; без шахматки/рамки. welcome/intro/tip1/chip без смены ассетов.
+- Layout: `.pvm-illust` увеличен под пропорции series-c (~64% ширины / ~44% высоты вместо ~46%/28% и капа ~200px); tip-copy чуть уже + больше `padding-bottom`, чтобы текст не наезжал на сцену.
+- Cache-bust `?v=art-c-v14`. Файлы: `public/memos/pvm-c-art-tip{2,3,4}.png`, `postVacationMemoSlides.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — tip2–4 новый арт, коты заметно крупнее на всех слайдах. Прод не трогали.
+
+### Памятка Design C: новые cutouts welcome/intro/tip1 + чип (art-c-v13)
+- Арт: заказчикские cutouts → `pvm-c-art-welcome.png` (потягивающийся кот), `pvm-c-art-intro.png` (смотрит вправо), `pvm-c-art-tip1.png` (глаза закрыты), новый `pvm-c-art-chip.png` (кот+чемодан без растения). Black→true alpha; cream-горшки и фиолетовая ground-band сохранены. tip2–tip4 без смены.
+- UI: чип/свёртка берёт `POST_VACATION_CHIP_SRC`, не welcome; у `.pvm-illust` явно без рамки; `.pvm-card__paper` — сильнее vertical linen (как series-c-01).
+- Cache-bust `?v=art-c-v13`. Файлы: `public/memos/pvm-c-art-{welcome,intro,tip1,chip}.png`, `postVacationMemoSlides.ts`, `PostVacationMemo.vue`, `usePostVacationMemo.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome/intro/tip1 новые позы, горшок виден, нет чёрного/шахматки/рамки; «Позже» → чип без растения. Прод не трогали.
+
+### База знаний ИИ: отпуск Bitrix+Vibe + порядок «Ещё по теме»
+- Sense отпуска отдаёт **обе** статьи аудитории: Digital → `kb-21301` + `kb-vibe-vacations-digital`; SEO → `kb-24611` + `kb-vibe-vacations-other`; остальные отделы → `kb-vibe-vacations-other`. Без слова отдела в вопросе sense берётся из `department` сессии.
+- Retrieval больше не обрезает clear-sense до одной Bitrix-статьи; в контекст GPT попадают оба источника.
+- «Ещё по теме»: сначала `usedSourceIds` (источники ответа), затем похожие RAG-хиты (`orderHitsForCitations` / `yandex-ask.post.ts`).
+- Промпт GPT: явно просит объединять Bitrix-регламент и Vibe в один ответ.
+- Eval: `expectAll` + кейсы viewer; локально `node scripts/knowledge/check-rag-vacation-dual.mjs`.
+- Файлы: `knowledgeRagSense.ts`, `knowledgeRag.ts`, `knowledgeRagEvalCases.ts`, `rag-eval.post.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `docs/PRODUCT.md`.
+- Проверка на стейдже: Digital «как уйти в отпуск» → в ответе правила Bitrix и шаги Vibe; «Ещё по теме» — обе статьи первыми.
+
+### Памятка Design C: без шахматки, горшки + тень (art-c-v12)
+- Причина: на стейдже после art-c-v11 у welcome снова была видимая шахматка (baked gray/white); прошлые «anti-dust» проходы могли съедать светлые горшки.
+- Арт: все 6 `pvm-c-art-*.png` пересобраны из чистого pre-dust v9 (коты/позы те же) + true alpha без checkerboard; светлые горшки сохранены/добавлены у растений (tip3/tip4 — cream pot под листьями); мягкий violet oval запечён под сценой; белая «пыль» пола убрана, чтобы тень читалась на lavender.
+- Cache-bust `?v=art-c-v12`. Файлы: `public/memos/pvm-c-art-*.png`, `postVacationMemoSlides.ts`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + tip1 + tip3: нет шахматки, горшок и тень видны. Прод не трогали.
+
+### База знаний ИИ: fallback на кейсы + авто ≠ Авито
+- Пока кейсы не в статьях БЗ: вопросы с «кейс/кейсы/case study» → фиксированный ответ без RAG/GPT и без «Ещё по теме».
+- Текст: «Пока что я не умею работать с кейсами, но уже прохожу обучение! Скоро смогу ответить на все ваши вопросы по ним.»
+- **авто ≠ Авито:** «авто/автотематика/машины» не ведут на статью Авито (`kb-30126`); «авито/avito» — маркетплейс. Lexical: целое слово «авто», без `includes` в «авторизация». Rewrite/GPT не подменяют одно другим.
+- Файлы: `knowledgeAiIntent.ts`, `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`, `knowledgeRagSense.ts`, `knowledgeRagLexical.ts`, `knowledgeRag.ts`, `knowledgeRagRewrite.ts`, `yandexGpt.ts`, `docs/PRODUCT.md`.
+- Проверка: `node scripts/knowledge/check-kb-cases-fallback.mjs`; `node scripts/knowledge/check-kb-auto-avito.mjs`; чат «где взять кейс по авто тематике?» → точный fallback, без ссылки на Авито-специалистов.
+
+### Памятка Design C: горшки + тень в PNG (art-c-v11)
+- Причина: pass art-c-v10 (убрать белую пыль) вместе с пылью стёр светлые горшки; CSS `drop-shadow` на lavender почти не читался.
+- Арт: восстановлены светлые горшки у растений на всех 6 `pvm-c-art-*.png` из pre-v10 (art-c-v8), без перерисовки котов; в PNG запечён мягкий violet oval под группой; бумажная текстура сохранена.
+- CSS: слабый `filter: drop-shadow` у `.pvm-illust` снят (тень в растре). Cache-bust `?v=art-c-v11`.
+- Файлы: `public/memos/pvm-c-art-*.png`, `postVacationMemoSlides.ts`, `main.css`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + tip1 + tip3: горшок и тень видны. Прод не трогали.
+
+### Памятка Design C: текстура, тень, кнопки, регистр заголовка
+- Бумага: сильнее vertical linen на `.pvm-card__paper` (noise + зерно).
+- Тень: с PNG убрана белая пыль под лапами; под `.pvm-illust` — soft violet `drop-shadow` (кот/пропсы те же).
+- Кнопки: «Прочитать»/«Дальше»/«Спасибо» и «Позже»/«Назад» ~4px компактнее; у CTA тонкая обводка `1px`.
+- Арт: небольшой inset от правого края (`right: 2.5–3.5%`), без агрессивного сдвига от кнопок.
+- Tip 3: «свежим взглядом» вместо ALL CAPS `СВЕЖИМ ВЗГЛЯДОМ`.
+- Cache-bust `?v=art-c-v10`. Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + tip «свежим взглядом».
+
+### Памятка Design C: прозрачный арт + clearance CTA
+- Арт: убран baked-in checkerboard на всех 6 `pvm-c-art-*.png` — true alpha, только кот+пропсы.
+- Layout: `--pvm-art-bottom`, nav `max-width` слева, арт уже и выше CTA — «Прочитать»/«Дальше» не наезжают на иллюстрацию.
+- Cache-bust `?v=art-c-v9`. Файлы: `main.css`, `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + intro + tip1–4.
+
+## 2026-08-26
+
+### Памятка Design C: кнопки не перекрывают арт + горшки
+- Layout: у `.pvm-illust` `bottom: var(--pvm-art-clearance)` (72px) — арт выше полосы CTA; уменьшены `max-height`/`width`, у `.pvm-nav` `min-height`. Кнопки Дальше/Спасибо/Прочитать не наезжают на кота/чемодан/растение.
+- Арт: на всех 6 `pvm-c-art-*.png` растения в белом/светлом горшке (как series-c). Cache-bust `?v=art-c-v8`.
+- Файлы: `main.css` (`.pvm-*`), `postVacationMemoSlides.ts`, `public/memos/pvm-c-art-*.png`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh) — welcome + intro + tip1–4. Прод не трогали.
+
+### Памятка Design C: перенос переделан (арт + вёрстка)
+- Перенос Design C переделан: чистые сцены `pvm-c-art-*.png` (кот+пропсы, без текста в растре), UI в Vue.
+- Табы 1–5 декоративные (`pointer-events: none`): inactive — белый квадрат цифры, вокруг прозрачно; active — lavender + белая цифра, слит с карточкой.
+- Overlay слабее: `rgba(…,0.14)` + `blur(2.5px)`. Пропорции card AR series-c, Unbounded, «С возвращением!» nowrap, lime pills.
+- Cache-bust `?v=art-c-v7`. Flow без изменений (welcome / Позже→чип / intro / tips, `?pvm=1`).
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` (hard refresh). Прод не трогали.
+
+### Памятка Design C: арт и вёрстка 1:1 с series-c
+- Проблема: на стейдже layout кривой, в растре артефакты текста («ся позже»), кропы не совпадали с эскизами.
+- Арт с нуля (только сцена кот+пропсы, без UI/текста): `/memos/pvm-c-art-welcome.png` … `pvm-c-art-tip4.png`. Старые `pvm-c-*.png` больше не используются.
+- Вёрстка: AR карточки как series-c (879∶1279), lavender `#c9bddc`, paper grain, табы (active слит / inactive белый квадрат, `pointer-events: none`), kicker lime, Unbounded + titleLines, «С возвращением!» nowrap, footer Позже/Прочитать и Назад/Дальше/Спасибо.
+- Overlay: `blur(2px)` + лёгкое затемнение.
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: localhost/`?pvm=1` и `http://45.12.74.25:8080/?pvm=1` — сверка с `docs/design-refs/post-vacation-memo/series-c-01…06`.
+
+### Памятка после отпуска: Design C на стейдже
+- UI: lavender folder-карточка, paper texture (CSS), иллюстрации Vibe отдельно от текста (`/memos/pvm-c-welcome.png` … `pvm-c-tip4.png`).
+- Табы 1–5 только визуал (`pointer-events: none`); welcome/intro → 1, tip1–4 → 2–5; неактивные — белый квадрат, вокруг прозрачно.
+- Overlay: слабее затемнение + `blur(3px)` (страница читается за карточкой).
+- Flow без изменений: **Прочитать** → советы без intro; **Позже** → чип → intro → 4 совета. Превью `?pvm=1`.
+- Файлы: `PostVacationMemo.vue`, `postVacationMemoSlides.ts`, `.pvm-*` в `main.css`, `docs/PRODUCT.md`.
+- Проверка: `http://45.12.74.25:8080/?pvm=1` — табы не кликаются, CTA работают; Позже → чип → tips.
+
+### Памятка: cover на стейдже + направления ITMO
+- Факт: `post-vacation-cover.png` на стейдже `:8080` уже = очки+пальма (sha256 `b2176025…`, 1 105 111 байт = `sketch-old-cat-glasses-palm.png`). Прод `:80` пока старый (916 172).
+- Cache-bust: `postVacationMemoSlides.ts` → `?v=glasses-palm` на welcome/intro, чтобы браузер не держал старый PNG по тому же URL.
+- Арт-дирекшн (эскизы, без внедрения UI): `docs/design-refs/post-vacation-memo/direction-itmo-frame-card.png`, `direction-modern-type-card.png`, `direction-sticker-in-itmo-scene.png`.
+- Проверка: `http://45.12.74.25:8080/memos/post-vacation-cover.png` — Content-Length 1105111; `?pvm=1` hard refresh.
+
+### Памятка: cover — кот в очках + пальма
+- Product cover welcome/intro: `frontend/public/memos/post-vacation-cover.png` ← эскиз `sketch-old-cat-glasses-palm.png` (очки на лбу, пальма, лайм-тень).
+- Эталон: `docs/design-refs/post-vacation-memo/cover.png`. Пути в `postVacationMemoSlides.ts` без смены (`/memos/post-vacation-cover.png`).
+- Проверка: стейдж `?pvm=1` — welcome и intro с новым артом.
+
+### База знаний ИИ: уточнения в диалоге («ещё другие», «это все?»)
+- Симптом: после списка программатиков вопрос «напиши ещё другие…» → отказ «только по Базе знаний».
+- Причина: follow-up не распознавался (`isKbClarifyingFollowUp`), «программатик» не был workplace-hint → RAG/модель без склейки с темой; модель ставила OFFTOPIC на «другие».
+- Фикс: шире детект уточнений + workplace (programmatic/контакты…); склейка с прошлым вопросом уходит в GPT; retry/guard против ложного OFFTOPIC при живом RAG; клиент не принимает OFFTOPIC на уточнении в треде.
+- Файлы: `knowledgeAiIntent.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `useKnowledgeAiAnswer.ts`, `scripts/knowledge/check-kb-dialog-followup.mjs`.
+- Проверка: `node scripts/knowledge/check-kb-dialog-followup.mjs`; на стейдже чат — программатики → «это все?» → «напиши ещё другие…» (дописать остаток или «в статье больше нет», не шаблонный отказ). Погода/анекдот по-прежнему отказ.
+
+### База знаний ИИ: DayOfff + акты РП + списания AFINA
+- DayOfff: sense до hard-якорей (взять → отгул `kb-30077`, войти → SaaS `kb-27877`, неясно → два ответа); синоним «дейоф» ↔ dayofff; нарезка разделов SaaS.
+- Акты (`kb-31980`): интент «акты / YDirect / VKR» не уводит в «Контакты»; секции Яндекс / VKR / Add Cost SMM; `INDEX_VERSION = 6`.
+- Списания (`kb-28468`): «списания в afina» больше не sense-доступы; якоря Прочее (PPC) / доп.расходы SMM / комментарии.
+- Регрессия: Контакты / доступы / UTM сохранены. Проверка: `node scripts/knowledge/check-rag-dayoff-acts-writeoffs.mjs`, `check-rag-access-utm.mjs`.
+
+### Памятка: cover welcome — 310×340 + padding-bottom 100
+- `.pvm-visual--welcome .pvm-cover`: ширина **310px**, высота **340px** (`border-box`), **padding-bottom: 100px** (контент 240px). Как в DevTools-эталоне.
+- Проверка: `?pvm=1` — кот+чемодан, снизу 100px поля до «С возвращением!».
+
+### База знаний: отпуска в Vibe — две статьи
+- Общую `kb-vibe-vacations` («Всем») сняли. Вместо неё:
+  - `kb-vibe-vacations-digital` — только Digital (двухэтапное согласование, лимиты на месяц);
+  - `kb-vibe-vacations-other` — остальные отделы, без этих пометок.
+- Merge на деплое удаляет retired id и обновляет платформенные Vibe-статьи из сида (`merge-knowledge-articles-seed.mjs`).
+- Проверка: сотрудник Digital видит только Digital-статью; SEO/DEV и др. — «Отпуска в Vibe» без лимитов и двух этапов.
+
+### Памятка: welcome — полный текст + cover 340×340
+- Вернули приветственный абзац; блок советов без «о том»; cover welcome/intro зафиксирован **340×340** (кот+чемодан). Проверка: `?pvm=1`, `?pvm=tips`.
+
+### Памятка после отпуска: welcome доведён
+- Welcome: crop кота+чемодана (`object-fit: contain`, `object-position: center bottom`); текст двух фраз без «о том».
+- **Прочитать** → сразу совет 1; вводная «Вот четыре совета» только после **Позже** (чип / `?pvm=tips`), арт — тот же `post-vacation-cover.png` (не дракон).
+- Последний совет: «идеално» дословно по ТЗ.
+- Файлы: `postVacationMemoSlides.ts`, `usePostVacationMemo.ts`, `PostVacationMemo.vue`, `main.css`.
+- Проверка: `?pvm=1` → Прочитать / Позже+чип; `/vacations?pvm=tips`.
+
+### База знаний: статьи про разделы Vibe (отпуска, банк идей)
+- В `server/data/knowledge-articles.json` опубликованы общие статьи: `kb-vibe-vacations` («Отпуска в Vibe»), `kb-vibe-ideas` («Банк идей в Vibe»).
+- Текст из `docs/PRODUCT.md` (заявка vs бронь, этапы, баланс; этапы идей; топ-5 авторов только по реализованным `done`).
+- При деплое подхватываются merge-seed’ом (`merge-knowledge-articles-seed.mjs`).
+- Проверка: статьи в `/knowledge` и `/admin/knowledge`; чат ИИ — «как оформить отпуск в вайбе», «что такое бронь», «как пользоваться банком идей».
+
+### База знаний ИИ: доступы (AFINA / гостевые / ОП) + регламент UTM
+- Sense «доступы»: «как зайти в афину» без слова «доступ»; гостевой+Директ → гостевые (не ambiguous); clear sense оставляет **одну** статью в контексте.
+- UTM (`kb-23420`): короткий якорь `utm` больше не отбрасывается; интент UIS/Roistat/Calltouch → регламент тегирования, не Контакты/гостевые; нарезка секций коллтрекинга; lookalike `Calltouсh`; вопрос «когда … Calltouch» поднимает блок «обязательно размечать», не шаблоны РК; отказ «нет прямого ответа…» с фактами дальше не обнуляет citations; `INDEX_VERSION = 5`.
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `knowledgeRagSense.ts`, `knowledgeRagEvalCases.ts`, `yandex-ask.post.ts`, `yandexGpt.ts`, `scripts/knowledge/check-rag-access-utm.mjs`.
+- Проверка: `node scripts/knowledge/check-rag-access-utm.mjs`; на стейдже чат под Драго — вопросы по доступам и UTM.
+
+## 2026-08-25
+
+### База знаний ИИ: починка индекса + якоря секций «Контактов»
+- **Регрессия:** в `ed7e4a9` случайно удалили `INDEX_FILE` / `INDEX_VERSION` → RAG-индекс не читался/не писался, чат уходил в lexical fallback («в базе нет», DayOfff/маркетплейсы в цитатах).
+- Восстановлены константы индекса; `INDEX_VERSION = 4` (новая нарезка).
+- `stripHtml` снова **сохраняет переносы строк** — иначе шапки «Дизайнеры» / «Юристы» схлопывались и `rareTokenHeadingHits` всегда был 0.
+- Нарезка секций обобщена (не только `Programmatic`): юристы, бюро переводов, дизайнеры, Яндекс Менеджер, Google 360, Click.ru, наружка.
+- Якорь секции Контактов (в т.ч. «Менеджер Яндекса») → только `kb-20409`.
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `scripts/knowledge/check-rag-contacts.mjs`.
+- Проверка: `node scripts/knowledge/check-rag-contacts.mjs`; после деплоя стейджа — переиндекс (cron/admin) и 6 вопросов чата под Драго.
+
+### Telegram: текст поста с кодом ChatGPT
+- Шаблон: «Кто просил код от chatGPT?» + строка с кодом (`chatgptCodeTelegram.ts`).
+- Env без изменений: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`|`TELEGRAM_CHANNEL_ID` (см. `.env.example`).
+- Проверка: `…/api/cron/chatgpt-code-telegram?dry_run=1`; боевой пост — после chat_id на стенде.
+
+### База знаний ИИ: якоря всех блоков «Контактов»
+- «Кому писать / контакты» → только статья «Контакты» (`kb-20409`), не КЛАДОВКА/регламенты/Метрика.
+- Hard retrieval обобщён: не только `Programmatic`, но юристы / Яндекс / дизайнеры / переводы / Click.ru и др. при интенте «кому писать / контакты».
+- Шапка секции = короткая строка с якорем в начале или «А / Б»; регламенты дизайна/юристов и DayOfff mid-body не считаются шапкой.
+- Слабые якоря (`агентства`, `менеджера`, `контакты`) уступают доменным (`яндекса`, `юристу`).
+- Файлы: `knowledgeRagLexical.ts`, `knowledgeRag.ts`, `yandexGpt.ts`, `scripts/knowledge/check-rag-contacts.mjs`.
+- Проверка: `node scripts/knowledge/check-rag-contacts.mjs`; на стейдже чат под Драго — 6 вопросов по Контактам.
+
+
+### ChatGPT-коды → корпоративный Telegram (параллельно /vpn)
+- Cron каждые ~2 мин: IMAP (те же критерии, окно ~1 ч) → `sendMessage` бота в канал.
+- Дедуп: `server/data/chatgpt-code-telegram-state.json`. UI «Код ChatGPT» в `/vpn` не трогали.
+- Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`|`TELEGRAM_CHANNEL_ID`, плюс `EMAIL_*`, `CRON_SECRET`.
+- Файлы: `api/cron/chatgpt-code-telegram.post.ts`, `utils/chatgptCodeTelegram*.ts`, `telegramBot.ts`, `deploy/scripts/run-chatgpt-code-telegram.sh`, systemd timer, `docs/CHATGPT-TELEGRAM.md`.
+- Проверка: `curl -X POST -H "X-Cron-Token: …" '…/api/cron/chatgpt-code-telegram?dry_run=1'`.
+
+### База знаний: кейсы по блокам «Контактов»
+- В `knowledgeRagEvalCases` — Programmatic, юристы, Яндекс, Google 360, дизайнеры, переводчики, Click.ru, наружка.
+- Локальный прогон фрагментов: `node scripts/knowledge/check-rag-contacts.mjs` (без Yandex).
+
+### VPN: кнопка «Код ChatGPT» из корпоративной почты
+- В помощнике `/vpn`: приветствие «Привет! Чем я могу помочь?»; чип **Код ChatGPT** рядом с VPN/Прокси.
+- Сервер читает IMAP (`EMAIL_LOGIN` + `EMAIL_PASSWORD` или `PASSWORD`), письма `noreply@tm.openai.com`, код после `Please use the following code to help verify your identity:`.
+- Стек за последний час: первый запрос — самый свежий; **Код не подошёл** — предыдущий; иначе «Больше кодов не приходило» / «Код не пришёл».
+- Файлы: `pages/vpn/index.vue`, `api/vpn/chatgpt-code.post.ts`, `utils/openaiChatgptMailCode.ts`. На сервере те же env.
+
+## 2026-08-24
+
+### База знаний ИИ: ответ на все части вопроса + контакты
+- Успех: вопрос про Programmatic тянет блок из «Контактов» (площадки). Доработка промпта: отвечать на каждый вопрос в сообщении; «кому писать» → ФИО + контакт, не только названия.
+- Файл: `yandexGpt.ts`.
+
+### База знаний ИИ: Programmatic → только «Контакты»
+- Ложные совпадения: разрез mid-line давал DayOfff «заголовок»; `программатик` ловился внутри `программатики` в AFINA.
+- Якорь-секция = латинский `Programmatic` с начала строки; в «Ещё по теме» остаётся «Контакты». Промпт: до 5 ФИО + специализация + контакт из контекста.
+- Индекс RAG v3. Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `yandexGpt.ts`.
+
+### CI: артефакт build без 413 (картинки БЗ)
+- Падение `build:staging` с `413 Request Entity Too Large` / `FATAL: too large`: в artifacts не кладём `frontend/.output/public/knowledge` (~100MB); перед деплоем подмешиваем из checkout.
+- Файлы: `.gitlab-ci.yml`, `deploy/scripts/deploy-from-ci.sh`, `docs/CI-CD.md`.
+
+### База знаний ИИ: якорь Programmatic сильнее случайного совпадения
+- «programmatic» вскользь в DayOfff больше не перебивает блок Programmatic в «Контактах».
+- По сильному якорю (латиница / длинное слово) сначала ищем фрагменты с заголовком секции, без семантики «расчётов→коллтрекинг».
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`. Проверка: `node scripts/knowledge/check-rag-morphology.mjs`; чат про Programmatic → «Контакты», не UTM/DayOfff.
+
+### База знаний ИИ: длинная статья «Контакты» — ответ по нужному блоку
+- Вопрос про программатики больше не уезжает в Яндекс.Метрику: из «Контактов» в контекст берётся блок Programmatic, а не первые абзацы.
+- Синоним программатик ↔ programmatic; якорь запроса обязателен (писать/лучше не считаются смыслом).
+- Файлы: `knowledgeRag.ts`, `knowledgeRagLexical.ts`, `yandexGpt.ts`. Проверка: `node scripts/knowledge/check-rag-morphology.mjs`; чат «какие есть программатики…» → astralab/solta/adheads/hybrid, не partners@metrika.ru.
+
+### База знаний ИИ: «привет» больше не ищет статьи
+- Приветствие не уходит в RAG: `\b` в JS не ловит кириллицу, «привет» склеивалось с «приветствие» в регламенте писем.
+- Стеммер не считает общей основой разные лексемы с общим началом (привет ≠ приветствие); увольнение/уволиться по-прежнему находятся.
+- Файлы: `knowledgeAiIntent.ts`, `yandex-ask.post.ts`, `knowledgeRagLexical.ts`. Проверка: `node scripts/knowledge/check-rag-morphology.mjs`; чат «привет» → «Здравствуйте!…», без статьи про письма.
+
+### База знаний открыта на проде
+- Снят замок с `/knowledge` и `/admin/knowledge` в пилоте `LAUNCH_SCOPE=vacations` (меню без «Скоро»).
+- Файл: `useLaunchScope.ts`. Проверка: бой `http://45.12.74.25/knowledge` — раздел открывается; остальные черновики по-прежнему с замком.
+
+### Админка базы знаний: картинки в редакторе можно растянуть
+- В WYSIWYG клик по картинке — ручка, ширина с сохранением пропорций.
+- Файл: `KnowledgeWysiwygEditor.vue`.
+
+### База знаний ИИ: поиск по словоформам
+- Словесный слой RAG сравнивает основу слова, не только точное вхождение: «уволиться» находит «увольнение».
+- Фильтр «значимых слов» больше не отбрасывает семантический hit из‑за другой формы.
+- Файлы: `knowledgeRagLexical.ts`. Проверка: `node scripts/knowledge/check-rag-morphology.mjs`.
+
+### База знаний ИИ: «как уволиться» = увольнение
+- Синонимы: уволиться / уволится / хочу уволиться / процесс увольнения → статьи про увольнение.
+- Файлы: `knowledgeRagLexical.ts`, `knowledgeAiIntent.ts`, `knowledgeRagEvalCases.ts`.
+- Проверка: `node scripts/knowledge/check-rag-rewrite-safety.mjs`; чат «как уволиться» → не «нет в базе», а статьи про увольнение.
+
+### База знаний ИИ: «Структура» ведёт на сотрудницкую схему
+- В «Ещё по теме» ссылка **Структура** всегда `/organization`, даже если спрашивает admin/HR (не `/admin/organization`).
+- Файл: `yandex-ask.post.ts`. Проверка: чат → «кто руководит…» → клик «Структура» → `/organization`.
+
+### База знаний ИИ: Bitrix-квадратик у ФИО
+- В ответах про людей (руководитель отдела / «кто такой …») сразу после ФИО — квадратик ↗ в профиль Bitrix (как в визитке).
+- Файлы: `knowledgeOrgAnswer.ts`, `useKnowledgeAiAnswer.ts`, `knowledge/index.vue`, `main.css`.
+- Проверка: «кто руководит отделом разработки» → Музыка Сергей + ↗; «кто такой Ревзина» → ФИО + должность + ↗.
+
+### База знаний ИИ: руководители отделов из Структуры
+- Вопросы «кто руководит…», гендир, состав отдела — ответ из `org-structure.json` (не из статей RAG).
+- В «Ещё по теме» — ссылка **Структура** (`/organization`; с 2026-08-24 не админка).
+- Файлы: `knowledgeOrgAnswer.ts`, `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`, `knowledge/index.vue`.
+- Проверка: `python3 frontend/scripts/check-knowledge-org-answer.py`; в чате «кто руководит отделом разработки» → Музыка Сергей + ссылка Структура (не Новоторцева).
+
+### Памятка: старый кот снова на «С возвращением!»
+- Welcome: `/memos/post-vacation-cover.png`. Вводная «Вот четыре совета»: `/memos/post-vacation-cover-dragon-awake.png`.
+- Файл: `postVacationMemoSlides.ts`. Проверка: `?pvm=1` — на первой карточке прежний кот, на intro — текущий арт советов.
+
+### База знаний: HTML-статьи без «сырого кода» ссылок
+- Причина: редактор считал Bitrix-тело без `<p>`/`<div>` маркдауном и экранировал `<a>`/`<br>` → на странице статьи теги как текст.
+- Фикс: детект inline-HTML + раскодирование `&lt;…&gt;` при чтении; сид обёрнут в `<div>`; merge на деплое обновляет экранированные `body`.
+- Файлы: `knowledgeArticleHtml.ts`, `KnowledgeWysiwygEditor.vue`, `knowledge-articles.json`, `merge-knowledge-articles-seed.mjs`.
+- Проверка: `/knowledge` → «Чек-листы» — кликабельные ссылки, без видимых `<a href=…>`.
+
+### Банк идей: «Удалить» только у автора (вид сотрудника)
+- На `/ideas` кнопка «Удалить» только у своей идеи. Админ в режиме сотрудника чужие не удаляет.
+- Чужие идеи снимает admin/HR на `/admin/ideas`.
+- Проверка: зайти сотрудником (или админом в режиме «Сотрудник») → у карточки Малковой нет «Удалить»; у своей — есть.
+
+### Уведомления: «прочитано» больше не сбрасывается + вложения идей
+- Админ-колокольчик: после «прочитано» синк Bitrix / повторный вход не создаёт ту же запись заново.
+- Сотрудник: mark/list учитывает все id сессии (bitrix/platform), иначе `seen` не писался.
+- Банк идей: файл реально сохраняется (`server/data/idea-attachments/`); плашка «файл» открывает его. Старые идеи с одним именем — загрузка в админке.
+- Проверка: отметить уведомление → выйти/войти → остаётся прочитанным; идея с файлом → клик «файл» открывает.
+
+### Отпуска: лимит группы считает бронь и заявку вместе
+- Слот месяца в Digital/QA: бронь **или** заявка (`pending`/`approved`) на этот месяц. 1 человек в подгруппе, 5 на отдел.
+- Раньше заявка проходила поверх чужой брони в той же группе.
+- Существующие записи не трогали.
+- Файлы: `vacationReservationCaps.ts`, `vacationReservationCapMutations.ts`, `vacationRequestMutations.ts`, `EmployeeVacationPanel.vue`.
+- Проверка: `node frontend/scripts/test-vacation-reservation-caps.mjs`; коллега с бронью на месяц → `+бронь` серая и новая заявка на этот месяц отклоняется.
+
+## 2026-08-21
+
+### База знаний ИИ: не клеить чужие статьи к «нет в базе»
+- «Дни рождения клиентов» есть в AFINA (`ДР клиентов` в kb-20520); раньше семантика тянула поступления/отчёты по слову «клиент».
+- Retrieval: синонимы ДР + фильтр по значимым словам запроса; если модель пишет «нет информации» — цитаты не отдаём.
+- Проверка: `/knowledge` → «где могу посмотреть дни рождения клиентов?» → AFINA / меню ДР, без блока про поступления.
+
+### База знаний ИИ: рабочие вопросы снова в поиск
+
+- Убран whitelist «нет ключевых слов → OFFTOPIC» (ломал эйчар/клиенты/Афина).
+- В оффтоп до RAG — только явный мусор (коты, наркотики, погода…).
+
+### База знаний ИИ: память уточнений снова работает
+
+- «а ещё?» / «а какие ещё изменения?» не режем как оффтоп, если в истории был рабочий вопрос.
+- RAG ищет по склейке «прошлый вопрос + уточнение».
+
+### База знаний ИИ: оффтоп без «допишите статью»
+
+- Нерабочие вопросы (коты, покупки, наркотики, «люблю…») → OFFTOPIC, без CTA про статьи/HR.
+- «Нет в базе» для рабочих тем — только факт, без предложения дописать (при сомнении не предлагаем).
+
+### База знаний ИИ: привет без Yandex + троттлинг embeddings
+
+- «привет / как дела» — локальный chitchat, без RAG (раньше уходило в Yandex → 429 → «перекур»).
+- Embeddings: очередь ~120 мс + retry на 429 (лимит 10 req/s).
+
+### Вход по паролю Vibe (локальные хеши, без Bitrix)
+
+- Паролей Bitrix на Vibe **нет** и не было — только демо `*.vbi.local` и OAuth.
+- Новый файл `server/data/vibe-passwords.json` (scrypt): HR задаёт пароль в Админ → Сотрудники (🔑).
+- `POST /api/auth/vibe-login` сравнивает ввод с хешем и выдаёт cookie-сессию Vibe. Портал не вызывается.
+- Кнопка «Войти через Битрикс24» остаётся запасным путём.
+
+### Вход логин/пароль Bitrix без правок портала + авто-RAG после деплоя
+
+- Форма на экране входа → `POST /api/auth/bitrix-password` → OAuth `grant_type=password` на уже существующий `/oauth/token/` → cookie-сессия **Vibe** (без PHP/модулей на crm.vbi.ru).
+- Если портал не отдаёт password grant — кнопка «Войти через Битрикс24» остаётся; выключить форму: `BITRIX_PASSWORD_LOGIN=0`.
+- После деплоя: Nitro warm-plugin + `deploy-scripts/run-knowledge-rag-reindex.sh` (CRON_SECRET, localhost).
+- Cron/imbot stub остаются «открытыми» осознанно: cron — секрет + обычно loopback; imbot — Bitrix бьёт в URL без cookie Vibe.
+- Колокольчик у ~11 учёток: без правок портала / моста не чинится; в Vibe уведомление есть, админу — алерт при FAIL.
+
+### База знаний: явный ответ «нет в базе» + приглашение дописать
+
+- Не путать с offtopic (погода/шутки). Текст предлагает дописать статью или написать HR.
+- Аудит доступа: UI без логина не открывается; бизнес-API под сессией (исключения: auth, cron+секрет, stub imbot).
+- При FAIL колокольчика Bitrix у согласующего — алерт админу (в Vibe уведомление уже есть). Корневой фикс — мост `vbihr|vacation`.
+
+### База знаний: память диалога, отделы, перекур при сбое ИИ
+
+- Небольшая память чата (последние реплики) уходит в `yandex-ask`.
+- Видимость статей по отделам (общие = всем; иначе только свой отдел); шильдики ITMO; правка в админке.
+- При сбое Yandex: алерт админу + текст «Бот ушёл на перекур…» и упрощённый ответ.
+- Доп. двусмысленности: доступы (AFINA / гостевые / продажи), отпуск Digital vs SEO.
+
+### База знаний: «дейоф» — по смыслу вопроса (отгул | SaaS), при сомнении два ответа
+
+- `knowledgeRagSense`: «взять дейоф» → отгул; «войти в дейоф» → DayOFFF; неясно → два ответа.
+- Не жёсткий синоним dayoff=отгул; смотрим общий смысл фразы.
+
+### База знаний: DayOff ≠ отгул в синонимах RAG
+
+- DayOFFF / дейоф — внутренний SaaS (`kb-27877`); отгул — отдельная статья (`kb-30077`). В `knowledgeRagLexical` группы разведены.
+
+### База знаний: гибрид смысл+слова и осторожная переформулировка
+
+- Retrieval для ИИ: cosine + словесный score; синонимы и нейро-rewrite только если `isRewriteSafe` (не уводит тему).
+- Кейсы на перефразах + `POST /api/admin/knowledge/rag-eval`; локально `scripts/knowledge/check-rag-rewrite-safety.mjs`.
+- Сниппеты в UI не добавляли; фильтр по отделам — позже жёстким разделением данных.
+
+### База знаний: RAG — поиск по смыслу для «Спросить ИИ»
+
+- **Продуктовое правило:** ИИ подбирает статьи по смыслу вопроса, не по совпадению слов (см. PRODUCT §10.0).
+- Эмбеддинги Yandex Cloud (`emb://…/text-search-doc|query`), индекс чанков на сервере, контекст собирается в `yandex-ask` (клиент не шлёт сырой context).
+- Классическая вкладка «Поиск» пока по словам.
+- Файлы: `yandexEmbeddings.ts`, `knowledgeRag.ts`, `yandex-ask.post.ts`, `useKnowledgeAiAnswer.ts`.
+
+### База знаний: длинные заголовки в админ-редакторе не обрезаются
+
+- Причина: однострочный `input` в колонке `max-width: 720px` — хвост названия уезжал за край поля.
+- Заголовок — `textarea` с автовысотой и переносом; колонка редактора на всю ширину карточки.
+- Файлы: `admin/knowledge.vue`, `main.css`.
+
+## 2026-08-20
+
+### База знаний: «Спросить ИИ» слева и по умолчанию
+
+- На `/knowledge` вкладки: **Спросить ИИ** | Поиск; старт в режиме ИИ.
+- Файл: `pages/knowledge/index.vue`.
+
+### База знаний: убраны пустые разделы меню Bitrix
+
+- Из сида удалены `kb-2890` / `kb-2982` (пустой `<h2>`, не статьи) — в UI было 177 из‑за фильтра `title`.
+- Migrate пропускает такие записи. В сиде теперь **177** статей.
+
+### База знаний: полный перенос статей из Bitrix `/devs/`
+
+- Скрапинг дерева меню `/devs/` → `knowledge-articles.json` + картинки в `frontend/public/knowledge/article-*/` (после чистки пустых разделов — 177).
+- Скрипты: `scripts/bitrix/scrape-devs-articles.mjs` (все ссылки из меню / `--only-missing`), `migrate-devs-to-knowledge.mjs` (body без chrome, локальные PNG).
+- На **проде** раздел `/knowledge` по-прежнему с замком (`LAUNCH_SCOPE=vacations`); данные и код уже на бой для открытия позже.
+- Проверка на стейдже (`:8080`): `/knowledge` — ~179 статей, картинки открываются.
+
+### База знаний: починка картинок в статьях
+
+- **Причина:** после миграции HTML ссылался на `/knowledge/article-*/…`, но папки с PNG лежали только локально (untracked) и не попали в git → на стейдже 404. Merge сида не перезаписывал `body` у уже существующих статей.
+- В репозиторий добавлены ассеты `frontend/public/knowledge/article-{20409,20520,22925,27095,27877}/`.
+- Из тел статей убран мусор Bitrix (`<link>`/`<script>` на `/devs/asset/...`).
+- Merge на деплое: `merge-knowledge-articles-seed.mjs` обновляет `body`/`coverImage`, если в сиде есть локальные `/knowledge/article-…` или на сервере остался chrome `/devs/asset/`.
+- Правило: картинки статей **всегда коммитить** вместе с правкой `knowledge-articles.json`; иначе пути в HTML есть, файлов на стенде нет.
+- Проверка: статья с картинками на `:8080` (например AFINA / DayOff) — PNG открываются, не 404.
+
+### База знаний: тон и структура ответа ИИ (этап 4)
+
+- Промпт: вежливо, по делу, без воды; без «открой статью» / «если нужно уточнение».
+- Формат пузыря: ответ модели → пустая строка → `Ещё по теме:` + кликабельные статьи через запятую.
+- «Ещё по теме» для ИИ строже обычного поиска: нужно совпадение нескольких слов запроса / сильный score (чтобы «контакты» в чужой статье не тянуло SEO/ОП).
+- Chitchat («спасибо», «отлично») → короткий ответ без статей; оффтоп (погода и т.п.) → отказ «только по Базе знаний», **без** блока «Ещё по теме» (фикс детекта кириллицы).
+- Грубость / «ты не то говоришь» → «Прошу прощения, уточните вопрос…», без статей.
+- Бессмыслица («мяу») и пустой поиск по базе → тот же отказ, что на оффтоп; без подстановки случайной статьи.
+- Чат ИИ: автоскролл к новому ответу; пока ищет — волна из 3 фиолетовых кружков слева.
+- Файлы: `yandexGpt.ts`, `useKnowledgeAiAnswer.ts`, `useKnowledgeAiChat.ts`, `knowledge/index.vue`, `knowledgeAiIntent.ts`, `knowledgeSearch.ts`, `main.css`.
+
+### База знаний: Yandex GPT выкачен на стейдж
+
+- Endpoint `POST /api/knowledge/yandex-ask` + `yandexGpt.ts`; чат «Спросить ИИ» зовёт модель, при ошибке — шаблонный ответ.
+- Env: `YANDEX_GPT_FOLDER_ID`, `YANDEX_GPT_API_KEY` (или IAM), опционально `YANDEX_GPT_MODEL_URI`.
+- Проверка: `/knowledge` на `:8080` → «Спросить ИИ».
+
+### VPN: Бельгия Ahost (`188.190.10.62`)
+
+- AmneziaWG: `http://188.190.10.62:51821` (UDP 51820). WireGuard: `http://188.190.10.62:51831` (UDP 51830).
+- Хостинг — **Ahost**. Из Vibe выдаём только с этого сервера.
+- Имена пиров: WireGuard и AmneziaWG — `Фамилия_Belg_Ahost`; второй Amnezia — `_2`.
+- Миграция ключей на Бельгию; учёт в `vpn-keys.json` обновлён. Кому нужен свежий конфиг — заново скачать из `/vpn`.
+- Env: `WG_EASY_*`, `AWG_EASY_*`. Файлы: `vpnKeysStore.ts`, `wgEasyClient.ts`, rule `vpn-key-limits.mdc`.
+
+## 2026-08-19
+
+### База знаний: Yandex GPT в чате по статьям
+
+- Подключен Yandex GPT в режиме чата «Спросить ИИ» по базе знаний (серверный вызов Yandex Cloud Foundation Models).
+- Добавлен endpoint: `POST /api/knowledge/yandex-ask` (текст вопроса + контекст статей → ответ нейронки с цитированием).
+- Требуемые env (в `.env`): `YANDEX_GPT_FOLDER_ID` и `YANDEX_GPT_IAM_TOKEN` или `YANDEX_GPT_API_KEY`. `YANDEX_GPT_MODEL_URI` опционален (по умолчанию `gpt://<folderId>/yandexgpt-lite`).
+- Пока без тяжёлых файлов (этап 3 запускается с “лёгкого текста” и подготовкой пайплайна).
+
 ## 2026-08-18
+
+### Редактор статей: на проверку, без черновика и тегов
+
+- `/admin/knowledge`: нет выбора «Черновик» и поля тегов. **Сохранить** → статус «На проверке»; админ публикует кнопкой «Опубликовать».
+- Пустая цитата или пустой блок кода удаляются вместе с рамкой.
+- Каркас как карточка ITMO: зерно `#e4e4de`, крупные скругления, чипы инструментов (лайм только на акцентах: «Опубликовано», спойлер, hover копирования).
+- Панель: пилюля «Заголовок» (H2–H4), «Список» (• / 1.), курсив «к», подчёркивание U. Спойлер мерцает спокойнее; у кода иконка копирования. После цитаты/заголовка/кода есть абзац, чтобы писать дальше. «Сохранить» в одном ряду с инструментами, панель закреплена при скролле.
+- Ссылка: ПКМ / ⌘K → «Добавить ссылку» → окно Текст/URL. URL читается из буфера в тот же жест клика; поле сразу выделено.
+- Sticky-панель инструментов: `top` = высота фиолетовой шапки (69px), до кнопок 14px, как на эталоне.
+- Файлы: `pages/admin/knowledge.vue`, `KnowledgeWysiwygEditor.vue`, `useAdminKnowledge.ts`, `knowledgeArticlesStore.ts`, API `admin/knowledge`.
+- Проверка: localhost `/admin/knowledge` → скопировать https-ссылку → выделить слово → ПКМ «Добавить ссылку» или ⌘K.
 
 ### Админ может поставить отпуск групхеду при пересечении с другим ГХ
 
 - Правило «не два групхеда в одни даты» остаётся для сотрудников. Админ системы сохраняет заявку в обход.
 - Проверка: `/admin/vacations` → Добавить отпуск (например Носков 20–21 авг, если другой ГХ уже в отпуске).
 
+### Админка базы знаний: ширина и правки редактора
+
+- Каркас редактора на всю ширину контента, колонка текста по центру.
+- После сохранения статья остаётся открытой, статус «сохранено» больше не сбрасывается.
+- Можно печатать пробел в заголовке и лиде (убран `v-model.trim`). Есть предупреждение про несохранённое, ошибка загрузки списка, копирование кода и спойлер.
+- Проверка: `http://45.12.74.25:8080/admin/knowledge`
+
+### Админка: WYSIWYG базы знаний как на Хабре
+
+- Убран верхний блок-дубль «База знаний». Статья пишется как на Хабре: крупный заголовок, вводный абзац, визуальный редактор.
+- Спойлер скрывает текст до клика (как в Telegram). Блок кода — тёмный, с кнопкой «Копировать» (как в Cursor).
+- Тело статьи хранится HTML. Компонент: `KnowledgeWysiwygEditor.vue`.
+- Проверка: `http://45.12.74.25:8080/admin/knowledge` (под админом).
+
+## 2026-08-17
+
+### Админка: редактор базы знаний (`/admin/knowledge`)
+
+- Для админа добавлен CRUD-экран статей базы знаний: создать, редактировать, удалить, статусы draft/published.
+- Экран заточен под тест шаблонов и инструментов текстового редактора (markdown-snippets: H2, список, ссылка, заметка), без пользовательского поиска.
+- Серверное хранилище: `frontend/server/data/knowledge-articles.json`; API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id`.
+- Проверка: `http://45.12.74.25:8080/admin/knowledge` (под админом).
+
+### Памятка: дракон с чемоданом, не спящий из уведов
+
+- «С возвращением» и вводная: тот же карандашный дракон, но бодрствует и сидит на чемодане. Спящую позу из empty-state уведомлений больше не копируем.
+- Проверка: `?pvm=1`.
+
+### Памятка: дракончик с уведомлений
+
+- «С возвращением» и вводная: тот же карандашный дракон, что empty-state уведомлений (`notifications-empty-dragon.png`).
+- Проверка: `?pvm=1`.
+
+### Памятка: кот как дракончик в уведомлениях
+
+- Вводная и «С возвращением»: полосатый кот на фиолетовом чемодане, карандаш, широкий кадр чтобы чемодан не обрезался.
+- Проверка: `?pvm=1`.
+
+### Памятка: вводная карточка в карусели
+
+- Из чипа и «Прочитать» карусель начинается с «Вот четыре совета» (кот на чемодане), не сразу с первого совета.
+- Проверка: `?pvm=1` → Позже → чип → открыть.
+
+### Памятка: слайд про выходные
+
+- Текст «маленький отпуск»: кино, боулинг или прогулка. Без тире.
+- Проверка: `?pvm=1` → Прочитать, 3-я карточка.
+
+### Памятка: тексты советов заказчика, цветок и «Спасибо»
+
+- Четыре слайда карусели по формулировкам заказчика (опечатки поправлены: отпуск, режима, моменты, составь).
+- На слайде про стол: маленький суккулент как у кота, лайм и фиолетовый горшок.
+- На последнем слайде вместо стрелки кнопка «Спасибо».
+- Проверка: `?pvm=1` → Прочитать.
+
+### Памятка: стикеры карусели без серого холста
+
+- У советов был запечённый серый фон (как шахматка Photoshop) поверх фиолетовой шапки. Вырезал, PNG с настоящей прозрачностью.
+- Проверка: `?pvm=1` → Прочитать, слайд «Войди в ритм плавно»: вокруг кота видна геометрия, не прямоугольник.
+
+### Памятка: «С возвращением!», Позже / Прочитать
+
+- Заголовок с «!». Текст обложки обновлён; вместо эмодзи — лаймовое сердце ITMO (обводка, сдвиг).
+- Слева внизу: **Позже** (чип в угол) и **Прочитать** (сразу карусель).
+- Проверка: `?pvm=1`.
+
+### Памятка: кот не перекрывает текст, полёт по дуге без рывка
+
+- Обложка больше не выезжает на абзацы: картинка в верхней зоне, текст читается целиком.
+- Дуга в угол: плавная кривая без overshoot и без рывка в конце (`transition` на transform во время полёта выключен).
+- Проверка: `?pvm=1` → «Спасибо» → чип в углу.
+
+### Кот оценки не появляется, если угол занят
+
+- Правый нижний угол — один оверлей: `useBottomRightSlot`. Памятка после отпуска занимает слот, пока не `hidden`.
+- `PageRateCatHost` не монтирует кота, если слот занят. После исчезновения чипа кот может выехать по обычным правилам.
+- Правило: `.cursor/rules/bottom-right-slot.mdc`.
+
+### Памятка после отпуска: карточка и карусель, спокойный текст
+
+- Карточка выше, текст больше не обрезается. Сверху фиолетовая геометрия ITMO, снизу кремовое поле, лаймовая полоса между ними.
+- Тексты в тоне спокойной памятки: цельные абзацы, без обрубленных фраз. Welcome по-прежнему без акцента на хандру.
+- Превью: `?pvm=1` на localhost или стейдже. На бое не выкатываем без «ок на прод».
+- Файлы: `postVacationMemoSlides.ts`, `PostVacationMemo.vue`, `main.css`.
+
+### Памятка после отпуска: сначала «С возвращением», советы в уголке
+
+- Первый вход: одна карточка «С возвращением» + «Спасибо». Карусель советов не сразу.
+- «Спасибо»: карточка схлопывается и по дуге улетает в правый нижний угол (чип на 10 рабочих дней).
+- Клик по чипу открывает карусель. Пролистал до конца — чип пропадает. В уведомлениях запись остаётся (`post_vacation_memo`, `/vacations?pvm=tips`).
+- localStorage `vbi-post-vacation-memo-v2`. Превью: `?pvm=1` (welcome). На бое превью выкл.
+- Файлы: `PostVacationMemo.vue`, `usePostVacationMemo.ts`, `postVacationMemo.ts`, `postVacationMemoSlides.ts`.
+
+### Отпуска: еженедельный снапшот `vacations.json`
+
+- Раз в неделю (вс 03:00 МСК) копия рабочего файла на диск: заявки, брони, лимиты, статусы согласования.
+- Каталог: `/var/www/vbi-hr/server/data/backups/vacations/vacations-YYYY-MM-DD.json`, хранятся 12 недель.
+- Не зависит от Nitro (прямой `cp` + проверка JSON). Timer: `vbi-hr-vacations-backup.timer`.
+- Проверка: `sudo systemctl start vbi-hr-vacations-backup.service` → файл за дату в `backups/vacations/`.
+
+## 2026-08-15
+
+### Демо: Алина — тест большой «Твоя команда» без Ревзиной
+
+- `alina@vbi.local` / `employee123` — директор QA-отдела «Тестировщики» (~29 чел.) в профиле, фиксированная карточка + скролл.
+- Зона: `departmentTeamScope` («Алина Тестова» / «Мария Тестова» → Тестировщики).
+- Проверка: localhost (QA вкл.) → вход Алина → `/profile` → «Твоя команда Тестировщиков».
+
+### Профиль: второй экран — ачивки + команда + активность в одном fold
+
+- Свой `/profile` (desktop): сетка высотой `100dvh − 64px` — всё видно без листания «туда-сюда».
+- Ачивки не меняем. Команда и активность заполняют оставшуюся высоту; лишнее — скролл внутри поля (видимая полоса).
+- Файлы: `profile/index.vue`, `main.css`.
+- Проверка: `alina@vbi.local` → проскроллить к блокам под героем → ачивки, команда и активность в одном экране; в команде доскролл до последнего.
+
+### Профиль: большая команда — фиксированная карточка + скролл внутри
+
+- Список в `.profile-team__scroll`: жёсткие `height`/`min`/`max` = `22rem` + `overflow-y: scroll` и видимый scrollbar (как у активности).
+- Раньше `.card`/`profile-hub-card` с `overflow:hidden` обрезали аватары пополам, а без фиксированной высоты скроллпорт не работал.
+- Файлы: `profile/index.vue`, `main.css`.
+- Проверка: `alina@vbi.local` → `/profile` → в «Твоя команда» полоса прокрутки справа, доскролл до последнего сотрудника.
+
+### Профиль: у директора отдела — вся команда, не только прямые
+
+- Баг: у Ревзиной (и других директоров отдела) в «Твоя команда» были только прямые `manager`.
+- Fix: зона как у месячных напоминаний — весь Digital / DEV / SEO / … (`departmentTeamScope.ts` + `profileTeamForUser`).
+- Проверка: войти как Ревзина → `/profile` → «Твоя команда Digital» — все из отдела Digital, не только групхеды.
+
+### Сотрудник: скролл «Общего» календаря доезжает до конца
+
+- Баг: на больших командах низ таблицы обрезался (`max-height` от `100dvh` больше реальной зоны), scrollbar «заканчивался» раньше последних строк.
+- Fix: для `employee-team` высота считается от верха таблицы до низа рабочей зоны (как у руководителя), без переопределения CSS-переменной на frame.
+- Проверка: `/vacations` → «Общий» → прокрутить вниз — последняя строка команды видна целиком.
+
+### Отпуска: даты в «Общем» на больших экранах не обрезаются
+
+- На ≥1500×850 шрифт плашек снижен с `0.78rem` до `0.6rem`, чтобы диапазоны вроде `31.08–13.09` влезали в ячейку месяца.
+- Проверка: `/vacations` → «Общий», широкий монитор — цифры внутри зелёных плашек целиком.
+
+### Справочник: удалённый сотрудник больше не возвращается
+
+- Причина: merge при деплое и синк Bitrix могли вернуть запись из репо / «kept roster».
+- Fix: denylist учитывается при merge деплоя, чтении справочника и синке; удаление ждёт ответ сервера.
+- Проверка: удалить в `/admin/employees` → обновить страницу → человека нет; после деплоя стейджа — тоже нет.
+
+### Кот оценки: пузырь «Спасибо» больше не подрезается
+
+- У хоста кота добавлен `padding-top`: `overflow: hidden` для выезда не срезает панель комментария сверху.
+- На стейдже и на бою одинаково.
+
+### Кот оценки: на стейдже без таймеров 1 ч / 2 мес
+
+- На `:8080` и localhost кот приходит сразу на открытом разделе (удобно тестировать).
+- На бою гейты без изменений: ≥1 ч в разделе + раз в 60 дней.
+
+### Кот оценки на открытых разделах (раз в 2 месяца)
+
+- Кот может прийти на: база знаний, отпуска, идеи, VPN, профиль (если раздел открыт по launch scope).
+- Не чаще **1 раза в 2 месяца** на пользователя; день прихода свой (стабильный hash), чтобы не всем разом.
+- Показ только если в **этом** разделе суммарно ≥ **1 час** активного времени (вкладка видима).
+- В отзыве и админ-уведомлении — название раздела (`page`).
+- Хост: `PageRateCatHost.vue`, правила: `usePageRatingGate.ts`, `pageRatingSections.ts`.
+
+### База знаний: пузырь ниже + resize внутри поля
+
+- Пузырь «Спасибо!» / комментарий опущен ближе к морде; хвостик на одной высоте в обоих шагах.
+- Растягивание — верхний правый угол внутреннего поля текста (не внешняя рамка).
+
+### База знаний: пузырь комментария над котом + resize вверх
+
+- Панель «Спасибо!» / комментарий вынесена над сценой: кот и бумажка свободны, хвостик к морде.
+- Тянуть за верхний правый угол — высота растёт вверх.
+- Ролик и бумажка не менялись.
+
+### База знаний: пузырь комментария выше и растёт вверх
+
+- При ≤4★ панель закреплена снизу у морды (`bottom`), не заезжает на лапы; растягивание поля уходит вверх.
+
+### База знаний: ответ кота тоже пузырь
+
+- «Спасибо!» и форма комментария — тот же речевой пузырь над мордой, что и «Оцените удобство».
+- Ролик и бумажка не менялись.
+
+### База знаний: «Оцените удобство» — пузырь у кота
+
+- Плашка перенесена в сцену над мордой, стиль речевого пузыря (хвостик вниз), лаймовая тень.
+- Ролик и бумажка не менялись (locked).
+- Проверка: `/knowledge`, сброс `vbi-kb-page-rating-v1` — после ролика пузырь сидит у кота.
+
+### База знаний: подсказки классического поиска
+
+- В строке поиска фиксировано «Например:», печатается только запрос.
+- Набор: кейс Грузовичкоф, корпоративный GPT, шаблоны договоров, регламент отпуска, AFINA CRM, телефон, юрлицо, цены, задачи, фрод, NiceTalk.
+- Файлы: `data/knowledgeSearchPhrases.ts`, `components/KnowledgeSearchGhost.vue`.
+
+### Банк идей: категория «Корпоративы и развлечения»
+
+- В списке категорий вместо «Благополучие» — «Корпоративы и развлечения» (`IDEA_CATEGORIES`).
+- Уже сохранённые идеи со старым именем подхватывают новое при чтении очереди.
+- Проверка: `/ideas` → фильтр и форма «Предложить идею».
+
+### База знаний: кот не откатывается, шов бежевый
+
+- Кот вынесен в `KnowledgeRateCat.vue`, плейсхолдер поиска — в `KnowledgeSearchGhost.vue`: печать текста больше не патчит DOM кота.
+- После 2.8 с класс `is-parked` держит `translateX(0)`; время выезда только вперёд.
+- Хвост без `mix-blend-mode: screen` (белый шов), цвет `#f3eee5`, нахлёст 16px.
+- Проверка: `/knowledge`, `localStorage.removeItem('vbi-kb-page-rating-v1')`, жёсткое обновление.
+
+### База знаний: кот не откатывается, хвост не двоится
+
+- Выезд больше не CSS-animation (её срывал ререндер страницы) — `translateX` из `currentTime` ролика, после 2.8 с заморозка в `0`.
+- Хвост бумажки синхронится по кадрам (`requestVideoFrameCallback`), нахлёст 12px с мягким стыком.
+- Пути: `pages/knowledge/index.vue`, `assets/main.css`, `public/knowledge/rating-paper-tail.png`.
+- Проверка: `/knowledge`, `localStorage.removeItem('vbi-kb-page-rating-v1')`, жёсткое обновление — кот только слева, после 2.8 с стоит, хвост не отстаёт.
+
+### База знаний: не трогать style анимированного кота
+
+- CSS-переменные хвоста пишутся в `.kb-rate-cat__stage` через `setProperty`, не через `:style` на aside — иначе выезд срывается и кот едет назад.
+
+### База знаний: кот по ТЗ — хвост сразу, звёзды на бумажке, комментарий сверху
+
+- Хвост бумажки (`rating-paper-tail.png`) с первого кадра, стык с обрезом ролика, без чёрной обводки-наложения.
+- Сдвиг 2.8 с из-за края, ролик доигрывает; хвост едет вместе с бумажкой по таймкодам.
+- Звёзды внутри поля бумажки (не на коте); ≤4 — комментарий над котом; 5★ и после отправки — уходит весь блок со звёздами.
+
+### База знаний: кот только из-за правого края
+
+- Первый кадр: `translateX(100%)` на самом виджете + `forwards`. Без fade и без появления на месте.
+- Анимацию выезда не снимать.
+
+### База знаний: без отката кота после выезда
+
+- Класс выезда больше не снимается на 2.8 с (`animation-fill-mode: both` держит `translateX(0)`).
+- Ролик по-прежнему доигрывает до конца.
+
+### База знаний: ролик доигрывает, сдвиг не откатывается
+
+- Ролик идёт до конца. На 2.8 с снимается только CSS-выезд (`is-entering` → покой `translateX(0)`), без паузы видео.
+- Базовый transform — `0`, не `100%`: после стопа нет отката назад.
+
+### База знаний: кот не откатывается после стопа
+
+- На 2.8 с ролик паузится на этом кадре (не доигрывает и не прыгает на последний).
+- После выезда класс `is-parked`: `animation: none; transform: translateX(0)` — без отката к `translateX(100%)`.
+- Плашка «Оцените…» абсолютная, не двигает сцену.
+
+### База знаний: стоп кота на 2.8 с
+
+- Выезд **2.8 с**: как только кот в ролике останавливается, виджет больше не едет. К этому моменту кот и вся бумажка уже на экране.
+
+### База знаний: вся бумажка выезжает до посадки кота
+
+- Выезд 3.2 с (устарело — см. 2.8 с выше).
+- Виджет `right: 10px`, ширина считает ролик + дорисованный swallowtail.
+
+## 2026-08-13
+
+### База знаний: стоп выезда кота = посадка в ролике (3.5 с)
+
+- Замер QA: walk_stop ~3400 ms, sit_end ~3500 ms @ 30fps. `RATE_WALK_END_SEC` / CSS = **3.5s** (было 3.9 → slip).
+
+### База знаний: выезд кота снова с края (без JS-сдвига)
+
+- Вернул CSS `translateX(100%→0)` на 3.9 с (стоп лап); убрал JS-sync, из‑за которого кот «всплывал» на месте.
+
+### База знаний: выезд кота синхронно с лапами
+
+- Сдвиг виджета идёт от `video.currentTime` и останавливается ~на 3.9 с (лапы в ролике уже стоят); дальше без «проскальзывания».
+
+### База знаний: кот выходит справа, бумажка целиком, звёзды на ней
+
+- Вход: выезд из-за правого края (~5 с, linear), без fade — в ритме перебора лап.
+- В конце ролика полная бумажка поверх кадра (`rating-paper-full.png`, swallowtail); звёзды внутри бумажки.
+- Кот ≈ в 1,5 раза меньше прежнего виджета.
+
+### База знаний: кот меньше, бумажка целиком со swallowtail
+
+- Виджет оценки ≈ в 1,5 раза меньше.
+- В конце ролика — полная бумажка (`/knowledge/rating-paper-full.png`) с раздвоенным правым краем; звёзды сидят на ней.
+- Ролик: `/knowledge/rating-cat.webm`.
+
+### База знаний: кот со звёздами вместо плашки оценки
+
+- Оценка: PixVerse-ролик кота (`/knowledge/rating-cat.webm`) справа снизу; поверх бумажки — кликабельные жёлтые звёзды.
+- Логика та же: 5 ★ — спасибо и уезжает; ≤4 — комментарий → админ + Bitrix Драго.
+
+### База знаний: без фильтров, оценка страницы, живой placeholder
+
+- Фильтры спрятаны (`KB_FILTERS_ENABLED = false`), код на месте.
+- Плашка «Оцените удобство этой страницы»: 5 ★ — спасибо и уезжает; ≤4 — комментарий. Комментарий → админ-уведомления и чат-бот Bitrix Драго Станиславе (`POST /api/knowledge/feedback`).
+- В строке поиска фразы печатаются с мигающим курсором; если не печатать 5 сек — следующая. Пока одна: «Например: кейс Грузовичков».
+- localStorage: `vbi-kb-page-rating-v1`.
+
+### База знаний: фильтры слева, окно по центру
+
+- Иконка фильтра — первая в ряду чипов.
+- Детальные фильтры открываются модалкой по центру экрана, не внутри нижней карточки.
+
+### База знаний: строка снова снизу
+
+- Карточка поиска и чата снова внизу: один паттерн для «Поиск» и «Спросить ИИ». Выдача и диалог — сверху слева.
+- Заголовок «Найти в базе» не меняется. Фон сдвинут к карточке.
+
+### База знаний: карточка сверху, фон, без дубля заголовка
+
+### База знаний: быстрые чипы и окно фильтров
+
+- В ряд — только базовые тематики; тип, период, автор и остальные темы — под иконкой фильтра, окно поверх карточки поиска.
+- Выдача выровнена по левому краю, не по центру.
+
+### База знаний: карточка поиска как «Найти программу мечты»
+
+- Серая скруглённая панель, крупный заголовок, табы (активный — чёрный pill), поле + «Искать», чипы тематик.
+- Под нас: «По базе / Спросить ИИ», чипы из сида + регламент/FAQ/дата/автор.
+
+### База знаний: поиск как у ITMO
+
+- Убрал наслоенные плашки и квадратики на строке — это был плохой паттерн для поиска.
+- Как на abit.itmo.ru: toggle-pill «По базе / Спросить ИИ», поле + чёрная «Искать», чипы фильтров (лайм = активно).
+
+### База знаний: короче консоль, ITMO-квадратики
+
+- Строка поиска и фильтры — на 1/3 короче (консоль 66%), по центру.
+- Плашки не «колбаса»: скругление 10px, 8 квадратиков на активной рамке, Unbounded на вкладке ИИ.
+
+### База знаний: компактные фильтры и видимая плашка ИИ
+
+- Дата — одна пилюля «Дата · все», период в выпадашке, не два календаря в ряд.
+- Задняя плашка лаймовая, выше, текст «Спросить ИИ» чёрный и читаемый.
+
+### База знаний: классический поиск и чат с ИИ (фронт)
+
+- `/knowledge` — пустой холст, строка снизу, переключатель плашек «Найти по базе…» / «Спросить ИИ» (задняя выходит сверху вперёд).
+- Классика: Enter, выдача как у Google (название + подсветка), операторы `"фраза"`, `!` (строгое слово), `OR`. Фильтры: дата, автор, тематика, тип (регламент / FAQ). Пустой запрос + фильтры — можно; порции по 5, подгрузка у низа списка.
+- ИИ: чат, фильтров нет. Ответ только через `useKnowledgeAiAnswer` — без ссылок на статьи не проходит. История диалога `vbi-kb-ai-chat-v1`, TTL 1 день; переключение режима чат не сбрасывает.
+- Сид тот же (`knowledgeBaseCatalog.ts`): у статей появились `type`, `publishedAt`, `visibility: all`. Редактура и доступ по отделам — позже.
+- Файлы: `pages/knowledge/index.vue`, `utils/knowledgeSearch.ts`, `composables/useKnowledgeSearch.ts`, `useKnowledgeAiAnswer.ts`, `useKnowledgeAiChat.ts`, `main.css`.
+- Проверка: localhost `/knowledge` → Enter «отпуск» → клик по названию; `!аванс`; фильтр тип FAQ без текста; плашка «Спросить ИИ» → вопрос → в ответе ссылки на статьи.
+
+## 2026-08-10
+
+### Админка сотрудников: поле Bitrix ID
+
+- В `/admin/employees` после аватарки — колонка **Bitrix ID** (ручной ввод; синк новых из Bitrix не импортирует).
+- Проверка: целое положительное число; пустое поле очищает ID.
+
+### Ачивка «Лучший специалист продаж» (ОП, 1×–5×)
+
+- Каталог: `sales-best-1`…`sales-best-5`, иконка `/achievements/sales-best.png`, секция «Лидерство и инициатива».
+- Админ 29-го получает уведомление (`sales_best_pick_due`); выбор/перевыбор на `/admin/sales-best`.
+- Ачивка видна сотруднику только с `reveal_on` = первый рабочий день следующего месяца (`firstWorkingDayOfMonth` + производственный календарь).
+- В день reveal — запись в **Недавнюю активность** и **Новости коллег**: «Имя стал(а) Лучшим специалистом отдела продаж за март 2026».
+- Store: `server/data/sales-best-awards.json`; cron `POST /api/cron/sales-best-pick-due`; тест: `POST /api/admin/sales-best/notify-test`.
+- Правило проекта: `.cursor/rules/automate-not-handfix.mdc`.
+
+### Стейдж `:8080` снова отдельный контур + Bitrix (staging)
+
+- Nginx `:8080` → `vbi-hr-staging` (3301), не редирект на бой.
+- Третье OAuth-приложение **VBI HR Platform (staging)**; ключи в `/etc/vbi-hr/bitrix.env` (локальная копия `deploy/env/bitrix.env`, в gitignore).
+- Бой — своё приложение и `bitrix-production.env`; `(dev)` — только localhost.
+- Документация: `docs/BITRIX.md` (три приложения).
+
+### Hotfix: OAuth handoff + CSP + гидрация auth
+
+- Handoff v9: callback 200 HTML → form POST `/api/auth/bitrix-ticket` → cookie → `/?auth=bitrix`.
+- Ticket/form: относительные URL (CSP `form-action 'self'`).
+- `authReady` всегда в `finally`; plugin на `app:mounted`; Bitrix return не блокирует экран на bootstrap.
+- `deploy-remote.sh`: `chown` `server/data` перед restart (EACCES у `deploy`).
+- Файлы: `callback.get.ts`, `bitrix-ticket.*.ts`, `oauthLoginTicket.ts`, `useAuth.ts`, `auth.client.ts`, `app.vue`.
+
 ## 2026-08-07
+
+### Hotfix: вход через Bitrix — handoff v9 (form POST)
+
+- После security-коммита (HMAC-сессии) cookie с 302 после Bitrix HTTPS→HTTP не садилась; meta-refresh тоже в cross-site chain.
+- Callback: **200 HTML** → `form POST /api/auth/bitrix-ticket` (first-party) → Set-Cookie → `/?auth=bitrix`.
+- `callback.get.ts`, `bitrix-ticket.post.ts` / `.get.ts`, `oauthLoginTicket.ts`.
+
+### Hotfix: CSP не форсит HTTPS на HTTP-бою
+
+- Убран `upgrade-insecure-requests` из CSP: бой на `http://45.12.74.25` без TLS, директива ломала загрузку JS/CSS.
+- `frontend/nuxt.config.ts` — `upgradeInsecure: false` до появления HTTPS.
+
+### Мелочи аудита: доки, мёртвый код, oauth-debug
+
+- Удалены неиспользуемые `platform-base.css` и `digitalVacationGroups.ts`.
+- `oauth-debug`: без захардкоженного prod `client_id` — только маска + эвристика redirect.
+- Доки: нет `CHAT_FALLBACK`; BITRIX env для боя; TTL сессии 8ч; CLI rollover из корня; README без `.bat`/`backend/`.
+- Гендиректор: пустой `manager` — норма; согласует admin/HR (`PRODUCT.md`).
+
+### Аудит: производительность, atomic JSON, debounce Bitrix, откат деплоя
+
+- Детальный календарь: убраны ~25k DOM `.vac-detailed-day-bg` — фон дней одним CSS-градиентом (`--vac-day-paint`) + `content-visibility` на строках.
+- Иконки ленты: PNG 1024→80px, ~6.4 МБ → ~56 КБ (`public/activity/icons/`, cache `?v=4`).
+- Синк Bitrix на логин: debounce 5 мин + coalesce in-flight; админский POST с `force: true`.
+- Все JSON-сторы сервера пишут через `writeJsonAtomic` (temp+rename).
+- Деплой: перед rsync копия `.output` → `.output.prev`; откат `deploy/scripts/rollback-remote.sh staging|production`.
+- Сводка: `docs/AUDIT-2026-08-07.md`.
+
+### Ремонт по аудиту системы (P0 / часть P1)
+
+Сводка аудита: `docs/AUDIT-2026-08-07.md` (четыре агента, затем закрыты).
+
+- **Права на заявки отпуска:** `POST/PATCH/DELETE /api/vacations/requests` передают `session`; согласование считает сервер (`canApproverReviewRequest` / `nextStateAfterApproval`); чужие заявки и self-approve закрыты; свою согласованную можно править/удалять, пока отпуск не полностью прошёл (`isPastApprovedVacationRequest`, как в UI).
+- **Bitrix:** при отклонении ранее `approved` — `removeVacationAbsenceFromBitrix` (как при удалении).
+- **Календарь:** праздники **2027**; баланс режет дни по учётном году (`clipIsoRangeToYear`) + заявки соседних папок (хвост через НГ).
+- **Надёжность:** `atomicJson.ts` (rename) для `employees.json` / `vacations.json`; очередь записи сотрудников; таймаут 20с на Bitrix fetch.
+- **UI/замки:** scroll у `.sidebar`; контраст выходных в emp-календаре; `guardRoute` ждёт `authReady`; балансы детального календаря — один `computed`.
+- Проверка: сотрудник не может `PATCH {"status":"approved"}` чужую/свою заявку (403); отпуск 28.12–10.01 списывает дни из обоих годов; reject approved снимает пальму.
+
+### Скиллы vbi-copy и vbi-image
+
+- Проектные Agent Skills: `.cursor/skills/vbi-copy/` (тексты), `.cursor/skills/vbi-image/` (арт/GenerateImage).
+- References: голос, шаблоны копирайта; палитра, anti-slop, рецепты промптов.
+- Роли copywriter / ui-ux / product-design ссылаются на эти скиллы.
+- Без сторонних сервисов (не CellCog). Вызов: по контексту или `@vbi-copy` / `@vbi-image`.
+
+### Безопасность: сессия, CSP, секреты, API
+
+- Cookie: TTL 8ч + sliding, HMAC-подпись (`VBI_SESSION_SECRET`); `Secure` только при https URL / `VBI_COOKIE_SECURE`.
+- CSP полный + `nosniff` / Referrer-Policy; убран `v-html` у проекции отпуска; HTML в идеях стрипается.
+- Секреты: redact webhook/token в ошибках; oauth-debug без длины secret; `VBI_SESSION_SECRET` в env.example.
+- API: `ideas/notify`, `ideas/status-notify`, `tenure/gift-orders` → `requireVbiSession` + привязка к текущему пользователю.
+- Проверка: после выкладки — перелогин (старые cookie без подписи не работают); экстранет по-прежнему 403.
+
+### Вход только из справочника (анти-экстранет)
+
+- Bitrix OAuth без записи в «Сотрудники» → 403; сессия на каждом API перепроверяет членство в справочнике.
+- Синк Bitrix больше не импортирует новых ACTIVE (ни при входе, ни по кнопке admin) — только обновление уже заведённых.
+- Демо-логин API на production отключён.
+- Файлы: `bitrixAuth.ts`, `bitrixSync.ts`, `session.ts`, `session.post.ts`, `sync-employees.post.ts`, AuthLogin; PRODUCT §9.1.
+- Проверка: пользователь экстранета Bitrix → «Войти через Битрикс» → отказ; сотрудник из справочника → вход ок.
+
+### Офбординг: каскад данных при удалении из справочника
+
+- VPN: удаление пиров в wg-easy; при ошибке — админ-уведомление `vpn_peer_delete_failed`.
+- Сразу: уведомления, адаптация, лента профиля, оргсхема/manager overlay.
+- Аватар — 14 дней; отпуска — 1 год; идеи и авторские обучалки — бессрочно; кошелёк/покупки — 1 год (срок в denylist).
+- Файлы: `employeeAccessDenylist.ts`, `wgEasyClient.ts` (`deleteWgClient`), сторы уведомлений/адаптации/профиля/аватаров/отпусков; PRODUCT §9.
+- Проверка: удалить сотрудника → VPN учёта нет; колокольчик/адаптация/лента пусты; админ видит алерт только если панель не удалила пир.
+
+### Удаление из справочника → доступ закрыт сразу
+
+- При удалении сотрудника из «Сотрудники» — denylist + сброс сессии; вход Bitrix/демо запрещён; синк Bitrix не возвращает запись.
+- Отпуска: хранение 1 год, из общего календаря/оргпанели исчезают; идеи — бессрочно.
+- Каскад видимости: очистка ФИО на оргсхеме, overlay руководителя, учёт VPN-ключей платформы.
+- Файлы: `employeeAccessDenylist.ts`, `employeesStore.ts`, `session.ts`, `bitrixAuth.ts`, `bitrixSync.ts`; PRODUCT §9.
+- Проверка: удалить тестового из `/admin/employees` → следующий запрос API → 401; повторный Bitrix-логин → 403.
 
 ### Оргсхема: документация и финальные UX-правила
 

@@ -8,7 +8,7 @@ export type AuthSessionUser = {
   role: 'employee' | 'manager' | 'hr' | 'admin';
   department: string;
   bitrix_user_id?: number | null;
-  auth_source?: 'demo' | 'bitrix';
+  auth_source?: 'demo' | 'bitrix' | 'vibe';
 };
 
 type Credential = AuthSessionUser & {
@@ -59,9 +59,10 @@ const credentials: Credential[] = [
     name: 'Алина',
     email: 'alina@vbi.local',
     password: 'employee123',
-    role: 'employee',
+    role: 'manager',
     department: 'Команда',
-    description: 'Сотрудник: Алина Тестова — заявка на согласовании'
+    description:
+      'Директор (тест): Алина Тестова — весь отдел Тестировщики в «Твоя команда» (как Ревзина / Digital)'
   },
   {
     id: 5,
@@ -107,9 +108,12 @@ export function useAuth() {
         const server = await $fetch<{ ok: boolean; user: AuthSessionUser | null }>('/api/auth/session');
         if (server.ok && server.user) {
           user.value = server.user;
-          localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
-          syncOnboardingState(server.user.id);
-          authReady.value = true;
+          try {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(server.user));
+            syncOnboardingState(server.user.id);
+          } catch {
+            /* quota / private mode — сессия cookie всё равно валидна */
+          }
           return;
         }
       } catch {
@@ -118,17 +122,15 @@ export function useAuth() {
 
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) {
-        authReady.value = true;
         return;
       }
 
       try {
         const parsed = JSON.parse(raw) as AuthSessionUser;
 
-        if (parsed.auth_source === 'bitrix') {
+        if (parsed.auth_source === 'bitrix' || parsed.auth_source === 'vibe') {
           user.value = null;
           localStorage.removeItem(SESSION_KEY);
-          authReady.value = true;
           return;
         }
 
@@ -147,7 +149,11 @@ export function useAuth() {
             method: 'POST',
             body: { email: match.email, password: match.password }
           }).catch(() => {});
-          syncOnboardingState(match.id);
+          try {
+            syncOnboardingState(match.id);
+          } catch {
+            /* ignore */
+          }
         } else {
           user.value = null;
           localStorage.removeItem(SESSION_KEY);
@@ -155,14 +161,15 @@ export function useAuth() {
       } catch {
         localStorage.removeItem(SESSION_KEY);
       }
-
-      authReady.value = true;
     })();
 
     try {
       await restoreSessionPromise;
     } finally {
       restoreSessionPromise = null;
+      // Всегда после гидрации/fetch — иначе SSR payload ($sauth-ready:false)
+      // может перетереть true от раннего plugin и оставить «Загрузка…» навсегда.
+      authReady.value = true;
     }
   };
 
@@ -215,6 +222,78 @@ export function useAuth() {
   const loginWithBitrix = () => {
     if (!import.meta.client) return;
     window.location.href = '/api/auth/bitrix';
+  };
+
+  /** Логин/пароль портала → сессия Vibe (без редиректа в UI Bitrix). */
+  const loginWithBitrixPassword = async (loginValue: string, password: string) => {
+    try {
+      const res = await $fetch<{ ok: boolean; user: AuthSessionUser }>('/api/auth/bitrix-password', {
+        method: 'POST',
+        body: { login: loginValue.trim(), password }
+      });
+      user.value = res.user;
+    } catch (err: unknown) {
+      const fetchErr = err as {
+        data?: { statusMessage?: string; message?: string };
+        statusMessage?: string;
+        message?: string;
+      };
+      const msg =
+        fetchErr.data?.statusMessage ||
+        fetchErr.data?.message ||
+        fetchErr.statusMessage ||
+        fetchErr.message ||
+        'Неверный логин или пароль Bitrix';
+      return { ok: false as const, error: String(msg) };
+    }
+
+    const sessionUser = user.value!;
+    if (import.meta.client) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      syncOnboardingState(sessionUser.id);
+    }
+
+    return {
+      ok: true as const,
+      user: sessionUser,
+      isFirstLogin: showOnboarding.value
+    };
+  };
+
+  /** Локальный пароль Vibe (хеш на нашем сервере, без Bitrix). */
+  const loginWithVibePassword = async (loginValue: string, password: string) => {
+    try {
+      const res = await $fetch<{ ok: boolean; user: AuthSessionUser }>('/api/auth/vibe-login', {
+        method: 'POST',
+        body: { login: loginValue.trim(), password }
+      });
+      user.value = res.user;
+    } catch (err: unknown) {
+      const fetchErr = err as {
+        data?: { statusMessage?: string; message?: string };
+        statusMessage?: string;
+        message?: string;
+      };
+      const msg =
+        fetchErr.data?.statusMessage ||
+        fetchErr.data?.message ||
+        fetchErr.statusMessage ||
+        fetchErr.message ||
+        'Неверный логин или пароль';
+      return { ok: false as const, error: String(msg) };
+    }
+
+    const sessionUser = user.value!;
+    if (import.meta.client) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+      syncOnboardingState(sessionUser.id);
+    }
+
+    return {
+      ok: true as const,
+      user: sessionUser,
+      isFirstLogin: showOnboarding.value
+    };
   };
 
   const login = async (email: string, password: string) => {
@@ -306,6 +385,8 @@ export function useAuth() {
     restoreSession,
     login,
     loginWithBitrix,
+    loginWithBitrixPassword,
+    loginWithVibePassword,
     logout,
     finishOnboarding,
     demoAccounts

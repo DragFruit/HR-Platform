@@ -12,11 +12,14 @@
   },
   "dependencies": {
     "@hiseb/confetti": "^2.1.0",
+    "imapflow": "^1.7.6",
+    "mailparser": "^3.9.16",
     "nuxt": "^4.4.2",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.4.6",
     "playwright": "^1.49.1"
   }
 }

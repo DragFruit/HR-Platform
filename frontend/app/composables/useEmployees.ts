@@ -1,4 +1,5 @@
 import { canApproverReviewRequest } from '~/utils/vacationApproval';
+import { departmentScopeForManager } from '~/utils/departmentTeamScope';
 import { listDepartmentsForUi } from '~/data/departments';
 import { dedupeEmployeeList } from '~/utils/employeeDedupe';
 import { normalizeEmployeeNameKey, resolveManagerFromList } from '~/utils/employeeName';
@@ -31,7 +32,7 @@ export const PLATFORM_ACCOUNTS: Record<
   3: { email: 'katya@vbi.local', account_role: 'employee', name: 'Катя' },
   4: { email: 'vasya@vbi.local', account_role: 'employee', name: 'Вася' },
   5: { email: 'masha@vbi.local', account_role: 'employee', name: 'Маша' },
-  6: { email: 'alina@vbi.local', account_role: 'employee', name: 'Алина' },
+  6: { email: 'alina@vbi.local', account_role: 'manager', name: 'Алина' },
   9100: { email: 'jubilee@vbi.local', account_role: 'employee', name: 'Юбилеев Тест' }
 };
 
@@ -100,9 +101,10 @@ export function useEmployees() {
     hired_at: emp.hired_at,
     birthday: emp.birthday || undefined,
     platform_user_id: emp.platform_user_id,
+    // Явно шлём null, чтобы админ мог очистить ID в UI.
     bitrix_user_id:
       emp.bitrix_user_id ??
-      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : undefined),
+      (emp.platform_user_id && emp.id === emp.platform_user_id ? emp.id : null),
     email: emp.email || undefined,
     account_role: emp.account_role || undefined,
     vacation_opening_balance: emp.vacation_opening_balance ?? undefined
@@ -326,11 +328,18 @@ export function useEmployees() {
     persist();
   };
 
-  const removeEmployee = (id: number) => {
+  const removeEmployee = async (id: number) => {
     const target = employeesRaw.value.find((emp) => emp.id === id);
-    if (target?.account_role === 'admin') return;
+    if (target?.account_role === 'admin') return { ok: false as const, error: 'Админа удалить нельзя' };
+    const prev = employeesRaw.value.slice();
     employeesRaw.value = employeesRaw.value.filter((emp) => emp.id !== id);
-    persist();
+    applyEmployeeList(employeesRaw.value);
+    const result = await syncToServer();
+    if (!result.ok) {
+      applyEmployeeList(prev);
+      return result;
+    }
+    return { ok: true as const };
   };
 
   const findByUserId = (userId: number | undefined) => {
@@ -436,6 +445,18 @@ export function useEmployees() {
     };
 
     if (isManager && myName) {
+      const deptScope = departmentScopeForManager(myName);
+      if (deptScope) {
+        const members = employeesInDepartment(deptScope)
+          .filter((emp) => !isSelf(emp))
+          .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        return {
+          mode: 'department',
+          department: deptScope,
+          members
+        };
+      }
+
       const members = directReports(myName)
         .filter((emp) => emp.name.trim() && !isSelf(emp))
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'));

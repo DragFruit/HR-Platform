@@ -8,25 +8,30 @@ OAuth-вход и синхронизация сотрудников из **Ст�
 
 ## 0. Запутались в приложениях? (шпаргалка)
 
-Нужно **ровно 2** локальных приложения — не больше. Остальные можно удалить.
+Нужно **3** локальных приложения (по одному на контур). Лишние можно удалить.
 
 | Что видите в списке | Оставить? | Для чего |
 |---------------------|-----------|----------|
-| **VBI HR Platform** | ✅ **Да — бой** | Сервер `http://45.12.74.25`, ключи в `/etc/vbi-hr/bitrix.env` |
-| **VBI HR Platform (dev)** или новое с именем «dev» | ✅ **Да — Mac** | `npm run dev`, ключи только в `frontend/.env` |
+| **VBI HR Platform** | ✅ **Да — бой** | Сервер `:80`, ключи в `/etc/vbi-hr/bitrix-production.env` |
+| **VBI HR Platform (staging)** | ✅ **Да — стейдж** | Сервер `:8080`, ключи в `/etc/vbi-hr/bitrix.env` |
+| **VBI HR Platform (dev)** | ✅ **Да — Mac** | `npm run dev`, ключи только в `frontend/.env` |
 | **hrVibeVbi** | ❌ Удалить | Старое/тестовое, если не пользуетесь |
 | **Локальное приложение** с правами только **CRM** | ❌ Удалить | Не подходит для входа HR (нужны **Пользователи** + **Структура компании**) |
+
+Локальная копия стейдж-ключей (не в git): `deploy/env/bitrix.env` (в `.gitignore`). Шаблон без секретов — `deploy/env/bitrix.env.example`.
 
 ### Как понять, какое приложение где
 
 1. Откройте приложение в Битриксе → скопируйте **Код приложения (Client ID)**.
 2. Сравните:
-   - совпадает с `BITRIX_CLIENT_ID` на сервере → это **бой**;
+   - совпадает с `BITRIX_CLIENT_ID` в `bitrix-production.env` → это **бой**;
+   - совпадает с `/etc/vbi-hr/bitrix.env` / `deploy/env/bitrix.env` → это **стейдж**;
    - совпадает с `frontend/.env` на Mac → это **локальная разработка**;
    - ни с чем не совпадает → **удалить**.
 
-3. Поле **«Путь вашего обработчика»**:
+3. Поле **«Путь вашего обработчика»** (не путать с «путём первоначальной установки» — тот можно оставить пустым):
    - бой: `http://45.12.74.25/api/auth/bitrix/callback`
+   - стейдж: `http://45.12.74.25:8080/api/auth/bitrix/callback`
    - Mac: `http://localhost:3000/api/auth/bitrix/callback`
 
 **Сейчас на сервере** используется Client ID `local.6a3d853b126b27.83139285` — это почти наверняка **VBI HR Platform (113)**.  
@@ -45,12 +50,13 @@ OAuth-вход и синхронизация сотрудников из **Ст�
 
 Нужно создать приложение в Битриксе **для каждого стенда** — отдельно локальная разработка и отдельно бой на сервере.
 
-### Два приложения (рекомендуется)
+### Три приложения (рекомендуется)
 
 | Стенд | Где крутится HR | Название в Битриксе | **Путь вашего обработчика** |
 |-------|-----------------|---------------------|-------------------------------|
-| **Тест (локально)** | Mac, `npm run dev` | `VBI HR Platform (dev)` | `http://localhost:3000/api/auth/bitrix/callback` |
-| **Бой (сервер)** | VPS, порт 80 | `VBI HR Platform` | `http://45.12.74.25/api/auth/bitrix/callback` |
+| **Локально** | Mac, `npm run dev` | `VBI HR Platform (dev)` | `http://localhost:3000/api/auth/bitrix/callback` |
+| **Стейдж** | VPS, порт 8080 | `VBI HR Platform (staging)` | `http://45.12.74.25:8080/api/auth/bitrix/callback` |
+| **Бой** | VPS, порт 80 | `VBI HR Platform` | `http://45.12.74.25/api/auth/bitrix/callback` |
 
 Поле **«Путь вашего обработчика»** — это **Redirect URI** для OAuth. Вписывайте URL **точно**, без слэша в конце.
 
@@ -198,14 +204,26 @@ https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 
 Прогон по всем с `bitrix_user_id` (2026-07-14): **59 OK / 11 FAIL**. У FAIL — HTTP 200, но `result` ≈ unix-timestamp (уведомление не создано). У OK — ID ~10⁷.
 
-**FAIL user_id (на момент прогона):** `848, 2574, 2579, 2673, 2680, 2697, 2708, 2778, 2801, 2806, 2812`.
+**FAIL user_id (прогон 2026-07-14, 11 чел.):** `848, 2574, 2579, 2673, 2680, 2697, 2708, 2778, 2801, 2806, 2812`.
+
+Повтор 2026-07-15: **5 всё ещё FAIL** — Шашин Данила (`2680`), Нижегородцев Василий (`2697`), Мирончиков Антон (`2708`), Мороко Алексей (`2778`), Девочкина Валерия (`2806`).  
+Восстановились: Ревзина, Маленкова, Желялетдинова, Носков, Камнева, Перишкова.
 
 **Причина без bridge (подтверждено 2026-07-15):** REST `im.notify.system.add` идёт как **неопознанный** тип. В расширенных настройках без галки «Неопознанные» колокольчик молчит; с галкой часто включается лишний шум (чаты/задачи).
 
-**Правильное решение:** мост `vbihr|vacation` (см. выше). Временный обход: галка «Неопознанные» + точечно выключить SMS чатов/задач.
+**Правильное решение (если когда‑нибудь разрешат правки портала):** мост `vbihr|vacation`.  
+**Сейчас правки на crm.vbi.ru запрещены** — мост/PHP не ставим. Обход без портала: колокольчик **в Vibe** у согласующего + алерт админу при FAIL Bitrix. Галка «Неопознанные» на портале — тоже правка учётки, не делаем сами.
 
 Отчёт прогона: `/var/www/vbi-hr/server/data/bitrix-notify-probe.json`.  
-CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/`.
+CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/мост: `scripts/bitrix/vbi-hr/` (архив на случай разрешения).
+
+### Вход логин/пароль (локально на Vibe)
+
+**Паролей Bitrix в репозитории/на сервере Vibe нет.** Сравнение идёт с локальными хешами `server/data/vibe-passwords.json` (задаёт HR в Админ → Сотрудники). Bitrix не вызывается — правок портала не нужно.
+
+`POST /api/auth/vibe-login` → cookie-сессия Vibe (`auth_source: vibe`).
+
+Запасной путь: OAuth «Войти через Битрикс24». Старый эксперимент `grant_type=password` к порталу — только при `BITRIX_PASSWORD_LOGIN=1` (нужна сеть Vibe→crm).
 
 ### Отпуска → график отсутствий (пальма) + календарь
 
@@ -335,6 +353,8 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 
 ## 3. Переменные окружения на VPS
 
+### Staging (`:8080`)
+
 Файл `/etc/vbi-hr/bitrix.env` (systemd уже подключает его):
 
 ```bash
@@ -342,9 +362,11 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 BITRIX_PORTAL_URL=https://crm.vbi.ru
 BITRIX_CLIENT_ID=local.XXXXXXXX
 BITRIX_CLIENT_SECRET=XXXXXXXX
+# HMAC cookie-сессий Vibe (свой длинный секрет на сервере)
+VBI_SESSION_SECRET=XXXXXXXX
 BITRIX_REDIRECT_URI=http://45.12.74.25:8080/api/auth/bitrix/callback
 
-# Вебхук — синк (база без profile.json / user.get)
+# Вебхук — синк (база без profile.json / user.get). URL = секрет, не светить в логах.
 BITRIX_WEBHOOK_URL=https://crm.vbi.ru/rest/ID/СЕКРЕТ/
 # График отсутствий (пальма после согласования отпуска в VBI HR)
 # BITRIX_ABSENCE_IBLOCK_ID=12
@@ -357,12 +379,35 @@ BITRIX_HR_GROUP_IDS=
 BITRIX_MANAGER_GROUP_IDS=
 ```
 
-Локально на Mac: `frontend/.env` (в gitignore), шаблон — `frontend/.env.example`.
+Сервис: `systemctl restart vbi-hr-staging`.
 
-После изменений:
+### Production (бой, порт 80)
+
+Файл `/etc/vbi-hr/bitrix-production.env` → копируется в `/var/www/vbi-hr/.env` при деплое.
 
 ```bash
-sudo systemctl restart vbi-hr-staging
+BITRIX_PORTAL_URL=https://crm.vbi.ru
+BITRIX_CLIENT_ID=local.XXXXXXXX
+BITRIX_CLIENT_SECRET=XXXXXXXX
+VBI_SESSION_SECRET=XXXXXXXX
+BITRIX_REDIRECT_URI=http://45.12.74.25/api/auth/bitrix/callback
+APP_PUBLIC_URL=http://45.12.74.25
+BITRIX_WEBHOOK_URL=https://crm.vbi.ru/rest/ID/СЕКРЕТ/
+BITRIX_ADMIN_GROUP_IDS=1
+```
+
+Образец: `deploy/env/bitrix-production.env.example`. Сервис: `systemctl restart vbi-hr`.
+
+Согласование отпусков — только **`im.notify.system.add`** (колокольчик). Fallback в личный чат не используем.
+
+Локально на Mac: `frontend/.env` (в gitignore), шаблон — `frontend/.env.example`.
+
+После изменений env:
+
+```bash
+sudo systemctl restart vbi-hr-staging   # staging
+# или
+sudo systemctl restart vbi-hr           # production
 ```
 
 ---
@@ -379,7 +424,7 @@ sudo systemctl restart vbi-hr-staging
 4. Клиент дожидается cookie (`restoreSession`), загружает данные (`bootstrapAppData`) и убирает query из URL.
 5. Редирект на домашнюю страницу: `/` или `/admin` (режим `full`), `/vacations` или `/admin/vacations` (режим `vacations`).
 
-Сессия в cookie — **14 дней**, без разлогина при неактивности.
+Сессия в cookie — **8 часов** TTL со sliding-обновлением; cookie подписана HMAC (`VBI_SESSION_SECRET`).
 
 **Nginx:** в `proxy_set_header` используйте `Host $http_host` и `X-Forwarded-Port`, чтобы callback возвращал на тот же стенд (тест `:8080`, бой `:80`), без перекрёстных редиректов.
 

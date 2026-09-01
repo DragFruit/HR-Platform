@@ -29,9 +29,16 @@ cache:
     - npm ci
   script:
     - npm run build
+    # Не грузим ~100MB картинок БЗ в GitLab artifacts (иначе 413 Request Entity Too Large).
+    - rm -rf .output/public/knowledge
+    - find .output -name '*.map' -delete || true
   artifacts:
+    # knowledge уже вырезан в script; exclude — страховка. Деплой подмешивает из checkout.
     paths:
       - frontend/.output/
+    exclude:
+      - frontend/.output/public/knowledge/**/*
+      - frontend/.output/**/*.map
     expire_in: 14 days
 
 build:staging:

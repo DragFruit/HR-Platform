@@ -13,6 +13,8 @@ export type Idea = {
   votesUp: number;
   votesDown: number;
   attachmentName?: string;
+  /** Файл лежит на сервере и его можно открыть */
+  attachmentStored?: boolean;
   /** Комментарий админа при последней смене этапа */
   statusComment?: string;
   statusChangedAt?: string;
@@ -31,9 +33,18 @@ export const IDEA_CATEGORIES = [
   'Процессы',
   'Культура',
   'IT и инструменты',
-  'Благополучие',
+  'Корпоративы и развлечения',
   'Другое'
 ] as const;
+
+const IDEA_CATEGORY_RENAMES: Record<string, string> = {
+  Благополучие: 'Корпоративы и развлечения'
+};
+
+export function normalizeIdeaCategory(raw: string): string {
+  const trimmed = raw.trim() || 'Другое';
+  return IDEA_CATEGORY_RENAMES[trimmed] ?? trimmed;
+}
 
 export const IDEA_CITIES = ['Москва', 'Санкт-Петербург', 'Казань', 'Удалённо'] as const;
 
@@ -127,17 +138,34 @@ export function useIdeasBank() {
 
   const statusLabel = (status: IdeaStatus) => STATUS_LABELS[status];
 
-  const createIdea = async (input: CreateIdeaInput): Promise<Idea | null> => {
+  const createIdea = async (
+    input: CreateIdeaInput,
+    file?: File | null
+  ): Promise<Idea | null> => {
     if (!user.value) return null;
     const title = input.title.trim();
     const description = input.description.trim();
     if (title.length < 3 || description.length < 10) return null;
 
     try {
-      const payload = await $fetch<IdeasApiPayload>('/api/ideas', {
-        method: 'POST',
-        body: input
-      });
+      let payload: IdeasApiPayload;
+      if (file) {
+        const form = new FormData();
+        form.append('title', input.title);
+        form.append('description', input.description);
+        form.append('category', input.category);
+        form.append('city', input.city);
+        form.append('file', file);
+        payload = await $fetch<IdeasApiPayload>('/api/ideas', {
+          method: 'POST',
+          body: form
+        });
+      } else {
+        payload = await $fetch<IdeasApiPayload>('/api/ideas', {
+          method: 'POST',
+          body: input
+        });
+      }
       applyPayload(payload);
       if (payload.createdId) {
         return ideas.value.find((idea) => idea.id === payload.createdId) ?? null;
@@ -163,11 +191,21 @@ export function useIdeasBank() {
 
   const userVoteFor = (ideaId: string) => userVotes.value[ideaId];
 
-  const canDeleteIdea = (idea: Idea) => {
+  const isIdeaAuthor = (idea: Idea) => {
     const currentUser = user.value;
     if (!currentUser) return false;
-    if (currentUser.role === 'admin' || currentUser.role === 'hr') return true;
-    return idea.authorUserId === currentUser.id;
+    if (idea.authorUserId === currentUser.id) return true;
+    const bitrixId = currentUser.bitrix_user_id;
+    return Boolean(bitrixId && idea.authorUserId === bitrixId);
+  };
+
+  /** В банке сотрудника — только автор. Админ удаляет чужие из /admin/ideas. */
+  const canDeleteIdea = (idea: Idea) => isIdeaAuthor(idea);
+
+  /** Свою идею можно докинуть файлом, если он ещё не лежит на сервере. */
+  const canAttachIdeaFile = (idea: Idea) => {
+    if (idea.attachmentStored) return false;
+    return isIdeaAuthor(idea);
   };
 
   const canManageIdeaStatus = () => {
@@ -214,12 +252,41 @@ export function useIdeasBank() {
 
   const deleteIdea = async (ideaId: string): Promise<boolean> => {
     const idea = ideas.value.find((item) => item.id === ideaId);
-    if (!idea || !canDeleteIdea(idea)) return false;
+    if (!idea) return false;
+    const currentUser = user.value;
+    const asAdmin = currentUser?.role === 'admin' || currentUser?.role === 'hr';
+    if (!asAdmin && !isIdeaAuthor(idea)) return false;
 
     try {
       const payload = await $fetch<IdeasApiPayload>(`/api/ideas/${encodeURIComponent(ideaId)}`, {
         method: 'DELETE'
       });
+      applyPayload(payload);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const openIdeaAttachment = (idea: Idea) => {
+    if (!idea.attachmentName || !import.meta.client) return;
+    if (!idea.attachmentStored) {
+      window.alert(
+        'Файл не сохранился на сервере (раньше сохранялось только имя). Попросите автора прикрепить снова или загрузите в админке.'
+      );
+      return;
+    }
+    window.open(`/api/ideas/${encodeURIComponent(idea.id)}/file`, '_blank', 'noopener,noreferrer');
+  };
+
+  const uploadIdeaAttachment = async (ideaId: string, file: File): Promise<boolean> => {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const payload = await $fetch<IdeasApiPayload>(
+        `/api/ideas/${encodeURIComponent(ideaId)}/file`,
+        { method: 'POST', body: form }
+      );
       applyPayload(payload);
       return true;
     } catch {
@@ -243,9 +310,12 @@ export function useIdeasBank() {
     voteIdea,
     userVoteFor,
     canDeleteIdea,
+    canAttachIdeaFile,
     canManageIdeaStatus,
     setIdeaStatus,
     deleteIdea,
+    openIdeaAttachment,
+    uploadIdeaAttachment,
     IDEA_CATEGORIES,
     IDEA_CITIES
   };

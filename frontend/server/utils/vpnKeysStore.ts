@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { VpnKeyKind } from './wgEasyClient';
 import { vpnLimitForKind } from './wgEasyClient';
@@ -23,7 +24,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify({ keys: [] } satisfies VpnKeysFile, null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, { keys: [] } satisfies VpnKeysFile);
   }
 }
 
@@ -48,7 +49,7 @@ export async function readVpnKeys(): Promise<StoredVpnKey[]> {
 
 async function writeVpnKeys(keys: StoredVpnKey[]) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify({ keys } satisfies VpnKeysFile, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, { keys } satisfies VpnKeysFile);
 }
 
 export async function listUserVpnKeys(userId: number, kind?: VpnKeyKind): Promise<StoredVpnKey[]> {
@@ -91,8 +92,9 @@ export async function removeVpnKeysByIds(ids: string[]): Promise<number> {
 
 /**
  * Имя пира в wg-easy:
- * - WireGuard: LastName_Amst_Wire
- * - AmneziaWG: LastName_Amst_Aeza, второй — LastName2_Amst_Aeza
+ * Сервер: Бельгия 188.190.10.62, хостинг Ahost.
+ * - WireGuard: LastName_Belg_Ahost
+ * - AmneziaWG: LastName_Belg_Ahost, второй — LastName_Belg_Ahost_2
  *
  * LastName — фамилия в латинице (ASCII), чтобы имя peer'а/конфига не ломалось на русских символах.
  */
@@ -105,10 +107,11 @@ export function buildVpnClientName(
 ): string {
   const surname = extractSurname(displayName, authSource) || 'User';
   if (kind === 'wireguard') {
-    return `${surname}_Amst_Wire`.slice(0, 64);
+    return `${surname}_Belg_Ahost`.slice(0, 64);
   }
-  const numbered = slot > 1 ? `${surname}${slot}` : surname;
-  return `${numbered}_Amst_Aeza`.slice(0, 64);
+  const base = `${surname}_Belg_Ahost`;
+  const withSlot = slot > 1 ? `${base}_2` : base;
+  return withSlot.slice(0, 64);
 }
 
 function transliterateRuToLat(value: string): string {

@@ -1,4 +1,5 @@
 import { requireVbiSession } from '../../../utils/session';
+import { sessionNotificationRecipientIds } from '../../../utils/notificationRecipients';
 import { hideUserNotificationFromBell } from '../../../utils/userNotificationsStore';
 
 export default defineEventHandler(async (event) => {
@@ -8,7 +9,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Не указан id уведомления' });
   }
 
-  const item = await hideUserNotificationFromBell(session.id, id);
+  const recipients = await sessionNotificationRecipientIds(session);
+  const item = await hideUserNotificationFromBell(recipients, id);
   if (!item) {
     throw createError({ statusCode: 404, statusMessage: 'Уведомление не найдено' });
   }

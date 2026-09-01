@@ -1,6 +1,7 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
-import type { Idea } from '../../app/composables/useIdeasBank';
+import { normalizeIdeaCategory, type Idea } from '../../app/composables/useIdeasBank';
 
 export type IdeaVoteDirection = 'up' | 'down';
 export type IdeaVotesByUser = Record<string, IdeaVoteDirection>;
@@ -39,13 +40,14 @@ const normalizeIdea = (raw: Partial<Idea>): Idea | null => {
     authorName: String(raw.authorName || '').trim() || 'Сотрудник',
     title: String(raw.title || '').trim(),
     description: String(raw.description || '').trim(),
-    category: String(raw.category || '').trim() || 'Другое',
+    category: normalizeIdeaCategory(String(raw.category || '')),
     city: String(raw.city || '').trim() || 'Москва',
     status,
     createdAt: String(raw.createdAt || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
     votesUp: typeof raw.votesUp === 'number' && raw.votesUp >= 0 ? raw.votesUp : 0,
     votesDown: typeof raw.votesDown === 'number' && raw.votesDown >= 0 ? raw.votesDown : 0,
     ...(raw.attachmentName ? { attachmentName: String(raw.attachmentName) } : {}),
+    attachmentStored: Boolean(raw.attachmentStored),
     ...(raw.statusComment ? { statusComment: String(raw.statusComment) } : {}),
     ...(raw.statusChangedAt ? { statusChangedAt: String(raw.statusChangedAt) } : {})
   };
@@ -80,20 +82,27 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(defaultIdeasState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, defaultIdeasState());
   }
 }
 
 export async function readIdeas(): Promise<IdeasStoreState> {
   await ensureFile();
   const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeIdeasStoreState(JSON.parse(raw) as Partial<IdeasStoreState>);
+  const state = normalizeIdeasStoreState(JSON.parse(raw) as Partial<IdeasStoreState>);
+  const { ideaAttachmentExists } = await import('./ideaAttachments');
+  for (const idea of state.ideas) {
+    if (idea.attachmentName && !idea.attachmentStored) {
+      idea.attachmentStored = await ideaAttachmentExists(idea.id);
+    }
+  }
+  return state;
 }
 
 export async function writeIdeas(state: IdeasStoreState): Promise<IdeasStoreState> {
   await ensureFile();
   const normalized = normalizeIdeasStoreState(state);
-  await writeFile(DATA_FILE, JSON.stringify(normalized, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, normalized);
   return normalized;
 }
 

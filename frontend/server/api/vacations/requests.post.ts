@@ -21,5 +21,5 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Дата окончания раньше начала' });
   }
 
-  return createVacationRequest(body, session);
+  return createVacationRequest(session, body);
 });

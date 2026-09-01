@@ -20,12 +20,12 @@ type PanelConfig = {
 function panelConfig(panel: WgEasyPanel): PanelConfig {
   if (panel === 'wireguard') {
     return {
-      baseUrl: String(process.env.WG_EASY_URL || 'http://77.221.148.17:51831').replace(/\/$/, ''),
+      baseUrl: String(process.env.WG_EASY_URL || 'http://188.190.10.62:51831').replace(/\/$/, ''),
       password: String(process.env.WG_EASY_PASSWORD || '').trim()
     };
   }
   return {
-    baseUrl: String(process.env.AWG_EASY_URL || 'http://77.221.148.17:51821').replace(/\/$/, ''),
+    baseUrl: String(process.env.AWG_EASY_URL || 'http://188.190.10.62:51821').replace(/\/$/, ''),
     password: String(process.env.AWG_EASY_PASSWORD || '').trim()
   };
 }
@@ -109,7 +109,7 @@ export async function listWgClients(panel: WgEasyPanel): Promise<WgEasyClient[]>
   });
 }
 
-/** Только создание. Удаление пиров запрещено правилом vpn-key-limits. */
+/** Только создание. Удаление пиров — только при офбординге (удаление сотрудника из Vibe). */
 export async function createWgClient(panel: WgEasyPanel, name: string): Promise<WgEasyClient> {
   const trimmed = name.trim();
   if (!trimmed) {
@@ -148,6 +148,32 @@ export async function createWgClient(panel: WgEasyPanel, name: string): Promise<
     const byName = (Array.isArray(after) ? after : []).find((c) => c.name === trimmed);
     if (byName) return byName;
     throw createError({ statusCode: 502, statusMessage: 'Клиент создан, но не найден в панели' });
+  });
+}
+
+/**
+ * Удаление пира в wg-easy.
+ * Разрешено только при офбординге (сотрудник удалён из справочника Vibe) —
+ * не использовать для «почистить старые ключи» без явной просьбы.
+ */
+export async function deleteWgClient(panel: WgEasyPanel, clientId: string): Promise<void> {
+  const id = String(clientId || '').trim();
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: 'Пустой id клиента VPN' });
+  }
+
+  return withSession(panel, async (cookie, baseUrl) => {
+    const res = await panelFetch(baseUrl, cookie, `/api/wireguard/client/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok && res.status !== 404) {
+      const text = await res.text().catch(() => '');
+      throw createError({
+        statusCode: 502,
+        statusMessage: `Не удалось удалить клиента VPN (${res.status})`,
+        data: text.slice(0, 200)
+      });
+    }
   });
 }
 

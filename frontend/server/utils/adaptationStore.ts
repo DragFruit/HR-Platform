@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
+import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { AdaptationAttempt, AdaptationStoreState, StepCompletion } from './adaptationTypes';
 
@@ -14,7 +15,7 @@ async function ensureFile() {
   try {
     await readFile(DATA_FILE, 'utf8');
   } catch {
-    await writeFile(DATA_FILE, JSON.stringify(emptyState(), null, 2), 'utf8');
+    await writeJsonAtomic(DATA_FILE, emptyState());
   }
 }
 
@@ -26,7 +27,7 @@ export async function readAdaptationState(): Promise<AdaptationStoreState> {
 
 async function writeAdaptationState(state: AdaptationStoreState) {
   await ensureFile();
-  await writeFile(DATA_FILE, JSON.stringify(state, null, 2), 'utf8');
+  await writeJsonAtomic(DATA_FILE, state);
 }
 
 export async function addAttempt(attempt: AdaptationAttempt): Promise<AdaptationAttempt> {
@@ -90,4 +91,37 @@ export async function listStepCompletions(employeeId: number): Promise<StepCompl
 export async function countUnseenAttempts(): Promise<number> {
   const state = await readAdaptationState();
   return state.attempts.filter((a) => !a.admin_seen).length;
+}
+
+/** Удалить прогресс адаптации сотрудника (назначение снимается отдельно). */
+export async function purgeAdaptationProgressForEmployee(ids: {
+  employee_id?: number;
+  platform_user_ids?: number[];
+}): Promise<number> {
+  const employeeId = ids.employee_id;
+  const platformIds = new Set(
+    (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
+  );
+  if (employeeId && employeeId > 0) platformIds.add(employeeId);
+
+  const state = await readAdaptationState();
+  const beforeAttempts = state.attempts.length;
+  const beforeSteps = state.step_completions.length;
+
+  state.attempts = state.attempts.filter((a) => {
+    if (employeeId && a.employee_id === employeeId) return false;
+    if (a.platform_user_id && platformIds.has(a.platform_user_id)) return false;
+    if (platformIds.has(a.employee_id)) return false;
+    return true;
+  });
+  state.step_completions = state.step_completions.filter((c) => {
+    if (employeeId && c.employee_id === employeeId) return false;
+    if (platformIds.has(c.employee_id)) return false;
+    return true;
+  });
+
+  const removed =
+    beforeAttempts - state.attempts.length + (beforeSteps - state.step_completions.length);
+  if (removed) await writeAdaptationState(state);
+  return removed;
 }

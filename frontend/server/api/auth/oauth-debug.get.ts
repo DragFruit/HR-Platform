@@ -6,7 +6,18 @@ import {
   isLocalDevelopment
 } from '../../utils/bitrixConfig';
 
-const PROD_CLIENT_ID = 'local.6a3d853b126b27.83139285';
+const maskClientId = (id: string): string => {
+  const value = String(id || '').trim();
+  if (!value) return '';
+  if (value.length <= 12) return '***';
+  return `${value.slice(0, 8)}…${value.slice(-4)}`;
+};
+
+/** Похоже на ключи/redirect боя — без захардкоженного client_id в репозитории. */
+const looksLikeProductionRedirect = (redirectUri: string, requestOrigin: string): boolean => {
+  const haystack = `${redirectUri} ${requestOrigin}`;
+  return /45\.12\.74\.25(?!:8080)/.test(haystack) || /vibe\.vbi\.ru/.test(haystack);
+};
 
 export default defineEventHandler((event) => {
   if (!isLocalDevelopment()) {
@@ -15,21 +26,21 @@ export default defineEventHandler((event) => {
 
   const { bitrixClientId, bitrixClientSecret, bitrixRedirectUri } = getBitrixConfig();
   const redirectUri = getBitrixRedirectUri(event);
+  const requestOrigin = getRequestPublicOrigin(event);
+  const prodRedirect = looksLikeProductionRedirect(redirectUri, requestOrigin);
 
   return {
-    requestOrigin: getRequestPublicOrigin(event),
+    requestOrigin,
     redirectUri,
     bitrixRedirectUriFromEnv: bitrixRedirectUri || null,
-    clientId: bitrixClientId,
+    clientIdMasked: maskClientId(bitrixClientId),
     secretConfigured: Boolean(bitrixClientSecret),
-    secretLength: bitrixClientSecret.length,
-    usesProdClientId: bitrixClientId === PROD_CLIENT_ID,
+    redirectLooksLikeProduction: prodRedirect,
     bitrixAuthEnabled: isBitrixAuthConfigured(),
-    hint:
-      bitrixClientId === PROD_CLIENT_ID
-        ? 'В .env всё ещё ключи боя. Сохраните frontend/.env с dev CLIENT_ID и перезапустите npm run dev.'
-        : !bitrixClientSecret
-          ? 'BITRIX_CLIENT_SECRET пустой в frontend/.env'
-          : `В Битриксе у приложения ${bitrixClientId} обработчик: ${redirectUri}. При invalid_client — перекопируйте Client Secret из этого же приложения.`
+    hint: prodRedirect
+      ? 'Redirect похож на бой — в frontend/.env нужны ключи и redirect локального/dev-приложения, не production.'
+      : !bitrixClientSecret
+        ? 'BITRIX_CLIENT_SECRET пустой в frontend/.env'
+        : `В Битриксе у приложения ${maskClientId(bitrixClientId)} обработчик: ${redirectUri}. При invalid_client — перекопируйте Client Secret из этого же приложения.`
   };
 });

@@ -34,8 +34,11 @@ done
 echo "→ systemd"
 install -m 644 deploy/systemd/vbi-hr.service /etc/systemd/system/vbi-hr.service
 install -m 644 deploy/systemd/vbi-hr-staging.service /etc/systemd/system/vbi-hr-staging.service
+install -m 644 deploy/systemd/vbi-hr-vacations-backup.service /etc/systemd/system/vbi-hr-vacations-backup.service
+install -m 644 deploy/systemd/vbi-hr-vacations-backup.timer /etc/systemd/system/vbi-hr-vacations-backup.timer
 systemctl daemon-reload
 systemctl enable vbi-hr vbi-hr-staging
+systemctl enable --now vbi-hr-vacations-backup.timer
 
 echo "→ nginx (примеры в sites-available)"
 install -m 644 deploy/nginx/vbi-hr.conf.example /etc/nginx/sites-available/vbi-hr.conf.example
