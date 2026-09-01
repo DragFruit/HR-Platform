@@ -10575,18 +10575,33 @@ button.emp-name--card:hover {
   border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.personnel-table .col-avatar {
-  width: 2rem;
+/* Узкие колонки: width:1px + nowrap — не раздуваются при table-layout:fixed + width:100% */
+.personnel-table .col-avatar,
+.personnel-table .col-bitrix,
+.personnel-table .col-date,
+.personnel-table .col-role,
+.personnel-table .col-actions {
+  width: 1px;
+  white-space: nowrap;
+  padding-left: 4px;
   padding-right: 4px;
 }
 
-.personnel-table .col-bitrix {
-  width: 2.85rem;
+.personnel-table .col-avatar .user-avatar {
+  width: 28px;
+  max-width: 28px;
+}
+
+.personnel-table .col-avatar .user-avatar--character .user-avatar__img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .personnel-table .table-input--bitrix {
-  width: 100%;
-  max-width: 2.65rem;
+  width: 4.75ch;
+  min-width: 0;
+  max-width: none;
   padding: 3px 4px;
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
@@ -10617,17 +10632,12 @@ button.emp-name--card:hover {
   width: 10%;
 }
 
-.personnel-table .col-date {
-  width: 5.35rem;
-}
-
-.personnel-table .col-role {
-  width: 6.25rem;
+.personnel-table .col-role .table-input--select {
+  width: auto;
+  min-width: 5.5rem;
 }
 
 .personnel-table .col-actions {
-  width: 3.75rem;
-  padding-left: 4px;
   text-align: center;
 }
 
@@ -10668,8 +10678,9 @@ button.emp-name--card:hover {
 }
 
 .personnel-table .table-input--date {
-  width: 100%;
-  max-width: 5.2rem;
+  width: auto;
+  min-width: 0;
+  max-width: none;
   padding: 3px 4px;
   letter-spacing: -0.03em;
   appearance: none;
