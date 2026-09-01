@@ -4,6 +4,12 @@
 
 ## 2026-09-01
 
+### Админ: справочник сотрудников — отступы между колонками 8px
+
+- `/admin/employees`: горизонтальный зазор между столбцами таблицы — **8px** (`padding: 3px 4px` на ячейках); исправлено перекрытие общим `.table { padding: 12px 10px }`.
+- Файл: `frontend/app/assets/main.css` (`.table.personnel-table`).
+- Проверка: `/admin/employees` → таблица без лишних промежутков, без горизонтального скролла.
+
 ### Админ: справочник сотрудников — юр. лицо и форма договора
 
 - `/admin/employees`: колонки **«Юр. лицо»** и **«Форма договора»** (редактируемые, как остальные поля таблицы).
@@ -17,16 +23,6 @@
 - `deploy/scripts/verify-production-build.sh`: `grep --include` заменён на `find` + построчный `grep` — BusyBox grep в job `deploy:production` (Alpine) не понимает `--include`, из‑за этого падала проверка `appEnv`/`launchScope`.
 - Проверка: `NUXT_PUBLIC_APP_ENV=production NUXT_PUBLIC_LAUNCH_SCOPE=vacations npm run build` в `frontend/` → `bash deploy/scripts/verify-production-build.sh`.
 
-<<<<<<< Updated upstream
-=======
-### Release: merge staging → main (GitLab CI)
-
-- Слили `staging` в `main` для production pipeline; конфликты решены в пользу `staging`.
-- Деплой на бой: только GitLab CI — после зелёного `build:production` вручную **Play** у `deploy:production`.
-- Стейдж по-прежнему: push `staging` → CI `deploy:staging` на `:8080`.
-- Rule: `.cursor/rules/git-only-deploy.mdc`.
-
->>>>>>> Stashed changes
 ## 2026-08-28
 
 ### UI: контраст ошибки отпусков + ссылка на профиль в шапке

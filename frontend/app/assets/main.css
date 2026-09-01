@@ -10550,23 +10550,24 @@ button.emp-name--card:hover {
   border-spacing: 0;
 }
 
-.personnel-table th,
-.personnel-table td {
+.table.personnel-table th,
+.table.personnel-table td {
   vertical-align: top;
   padding: 3px 4px;
   font-size: 0.75rem;
   line-height: 1.3;
   white-space: normal;
   word-break: break-word;
+  border-bottom: none;
 }
 
-.personnel-table thead th {
+.table.personnel-table thead th {
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-muted, #666);
-  padding-bottom: 6px;
+  padding: 3px 4px 6px;
   border-bottom: 1px solid var(--border-brutal);
 }
 
@@ -10576,7 +10577,7 @@ button.emp-name--card:hover {
 
 .personnel-table .col-avatar {
   width: 2rem;
-  padding-right: 2px;
+  padding-right: 4px;
 }
 
 .personnel-table .col-bitrix {
@@ -10626,7 +10627,7 @@ button.emp-name--card:hover {
 
 .personnel-table .col-actions {
   width: 3.75rem;
-  padding-left: 2px;
+  padding-left: 4px;
   text-align: center;
 }
 
