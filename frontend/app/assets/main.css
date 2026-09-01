@@ -10591,7 +10591,7 @@ button.emp-name--card:hover {
 }
 
 .personnel-table col.col-date {
-  width: 6.35rem;
+  width: 5.2rem;
 }
 
 .personnel-table col.col-role {
@@ -10710,10 +10710,11 @@ button.emp-name--card:hover {
   appearance: none;
 }
 
-.personnel-table .table-input--date {
-  width: auto;
+.personnel-table .col-date .table-input--date {
+  width: 100%;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 3px 4px;
   letter-spacing: -0.03em;
   appearance: none;
