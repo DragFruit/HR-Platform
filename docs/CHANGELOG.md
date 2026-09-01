@@ -4,6 +4,12 @@
 
 ## 2026-09-01
 
+### БЗ: neurobot «шрифты компании» → kb-corp-fonts-vbi (не отпуск)
+
+- **Причина:** RAG якорил запрос по слову «компании» (8 букв), а не «шрифты»; статья шрифтов не содержала «компании» → в контекст попадали чужие материалы, GPT отвечал про отпуск.
+- **Исправление:** intent `hasCorpFontsIntent` + hard-prefer `kb-corp-fonts-vbi` в `knowledgeRag.ts`; буст score в `knowledgeRagSense.ts`; подсказка модели в `yandexGpt.ts` / `buildKbAiFontModelHint`; «компании» в generic-токенах; синоним «шрифты компании»; eval-кейс `corp-fonts`.
+- Проверка: `node scripts/test-font-rag.mjs` в `frontend/` — top-1 `kb-corp-fonts-vbi` для «шрифты компании»; нейробот `/knowledge` → TT Hoves Pro Trial.
+
 ### БЗ: корпоративные шрифты TT Hoves Pro Trial
 
 - Статья `kb-corp-fonts-vbi` «Корпоративные шрифты VBI»: Regular + Bold, установка, ссылки на скачивание.

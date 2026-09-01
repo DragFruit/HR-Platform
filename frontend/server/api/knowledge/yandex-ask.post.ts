@@ -5,6 +5,7 @@ import {
   emptyKbReplyMode,
   expandQuestionFromHistory,
   buildKbAiCaseModelHint,
+  buildKbAiFontModelHint,
   KB_AI_CHITCHAT_REPLY,
   KB_AI_GREETING_REPLY,
   KB_AI_NOT_FOUND_REPLY,
@@ -231,6 +232,10 @@ export default defineEventHandler(async (event) => {
     if (caseHint) {
       modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
     }
+    const fontHint = buildKbAiFontModelHint(normalizedQuestion);
+    if (fontHint) {
+      modelQuestion = `${modelQuestion}\n\n(${fontHint})`;
+    }
     const answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
     // Модель сказала «нет в базе», а цитаты — чужие по слову «клиент» — не отдаём «Ещё по теме».
     // Не путать с «нет прямого ответа… Однако: 1. UIS…» — там факты из контекста есть.
@@ -276,6 +281,10 @@ export default defineEventHandler(async (event) => {
         const caseHint = buildKbAiCaseModelHint(normalizedQuestion, history);
         if (caseHint) {
           modelQuestion = `${modelQuestion}\n\n(${caseHint})`;
+        }
+        const fontHint = buildKbAiFontModelHint(normalizedQuestion);
+        if (fontHint) {
+          modelQuestion = `${modelQuestion}\n\n(${fontHint})`;
         }
         answer = await answerWithOfftopicGuard(question, modelQuestion, context, history);
       } catch {

@@ -8,11 +8,13 @@ import {
   expandQueryWithSynonyms,
   hasActsRegulationIntent,
   hasContactDirectoryIntent,
+  hasCorpFontsIntent,
   hasUtmTaggingIntent,
   hasWriteoffAfinaIntent,
   hitCoversDistinctiveTokens,
   isActsSectionToken,
   isContactSectionToken,
+  isFontSectionToken,
   isUtmSectionToken,
   isWriteoffSectionToken,
   lexicalScore,
@@ -29,6 +31,7 @@ import {
   applyAvitoAutoScoreAdjust,
   applyCaseEcomScoreAdjust,
   applyCaseChannelScoreAdjust,
+  applyCorpFontsScoreAdjust,
   applySenseScoreAdjust,
   clearSenseForQuestion,
   isAvitoFocusedArticle,
@@ -51,6 +54,8 @@ const UTM_ARTICLE_ID = 'kb-23420';
 const ACTS_ARTICLE_ID = 'kb-31980';
 /** Списания в AFINA (комиссии, прочее, доп.расходы). */
 const WRITEOFF_ARTICLE_ID = 'kb-28468';
+/** Корпоративные шрифты VBI (TT Hoves Pro Trial). */
+const CORP_FONTS_ARTICLE_ID = 'kb-corp-fonts-vbi';
 
 /** Макс. длина фрагмента (символы). */
 const CHUNK_SIZE = 1200;
@@ -200,6 +205,31 @@ function preferWriteoffAfina(question: string, anchor: string | null): boolean {
   }
   if (hasUtmTaggingIntent(question) || hasContactDirectoryIntent(question)) return false;
   return Boolean(anchor && isWriteoffSectionToken(anchor)) || hasWriteoffAfinaIntent(question);
+}
+
+/** Корпоративные шрифты / TT Hoves → kb-corp-fonts-vbi. */
+function preferCorpFonts(question: string, anchor: string | null): boolean {
+  if (!hasCorpFontsIntent(question)) return false;
+  return Boolean(anchor && isFontSectionToken(anchor)) || hasCorpFontsIntent(question);
+}
+
+function buildCorpFontsHit(
+  article: KnowledgeArticle,
+  visibleChunks: KnowledgeRagChunk[],
+  distinctive: string[],
+  lexTokens: string[],
+  question: string,
+  score = 0.85
+): KnowledgeRagHit {
+  const articleChunks = visibleChunks
+    .filter((c) => c.articleId === CORP_FONTS_ARTICLE_ID)
+    .map((c) => c.text);
+  return {
+    articleId: CORP_FONTS_ARTICLE_ID,
+    title: article.title,
+    score,
+    snippets: pickArticleSnippets(article.title, articleChunks, distinctive, lexTokens, 3, question)
+  };
 }
 
 export function chunkArticleText(title: string, bodyHtml: string): string[] {
@@ -591,6 +621,17 @@ export async function retrieveKnowledgeDetailed(
       };
     }
   }
+  if (preferCorpFonts(q, null) && visibleIds.has(CORP_FONTS_ARTICLE_ID)) {
+    const article = publishedById.get(CORP_FONTS_ARTICLE_ID);
+    if (article) {
+      return {
+        hits: [buildCorpFontsHit(article, visibleChunks, distinctive, lexTokensFast, q)],
+        usedSourceIds: [CORP_FONTS_ARTICLE_ID],
+        ambiguous: false,
+        branches: []
+      };
+    }
+  }
 
   // Жёсткий якорь секций — ДО rewrite/эмбеддингов (иначе Yandex rewrite
   // без таймаута даёт 504, а mid-body в DayOfff/КЛАДОВКЕ уводит от справочника).
@@ -678,6 +719,28 @@ export async function retrieveKnowledgeDetailed(
             });
           if (woRows.length) preferred = woRows;
         }
+      } else if (preferCorpFonts(q, anchor)) {
+        const fontOnly = ranked.filter(
+          (row) =>
+            row.strength > 0 &&
+            (row.chunk.articleId === CORP_FONTS_ARTICLE_ID || /шрифт|hoves/i.test(row.chunk.title))
+        );
+        if (fontOnly.length) {
+          preferred = fontOnly;
+        } else {
+          const fontRows = visibleChunks
+            .filter((c) => c.articleId === CORP_FONTS_ARTICLE_ID)
+            .map((chunk) => {
+              const blob = `${chunk.title}\n${chunk.text}`;
+              return {
+                chunk,
+                strength: Math.max(1, rareTokenStrength(blob, anchor)),
+                headings: rareTokenHeadingHits(blob, anchor),
+                lex: lexicalScore(chunk.title, chunk.text, lexTokensFast)
+              };
+            });
+          if (fontRows.length) preferred = fontRows;
+        }
       } else if (preferContactsDirectory(q, anchor)) {
         const contactsOnly = ranked.filter(
           (row) =>
@@ -741,6 +804,11 @@ export async function retrieveKnowledgeDetailed(
           (h) => h.articleId === WRITEOFF_ARTICLE_ID || /списан/i.test(h.title)
         );
         if (only.length) hits = only;
+      } else if (preferCorpFonts(q, anchor)) {
+        const only = hits.filter(
+          (h) => h.articleId === CORP_FONTS_ARTICLE_ID || /шрифт|hoves/i.test(h.title)
+        );
+        if (only.length) hits = only;
       } else if (preferContactsDirectory(q, anchor)) {
         const only = hits.filter(
           (h) => h.articleId === CONTACTS_ARTICLE_ID || /^контакты$/i.test(h.title.trim())
@@ -777,6 +845,7 @@ export async function retrieveKnowledgeDetailed(
       combined = applySenseScoreAdjust(chunk.articleId, combined, q, senseOpts);
       combined = applyAvitoAutoScoreAdjust(chunk.articleId, chunk.title, combined, q);
       combined = applyCaseEcomScoreAdjust(chunk.articleId, combined, q);
+      combined = applyCorpFontsScoreAdjust(chunk.articleId, combined, q);
       combined = applyCaseChannelScoreAdjust(chunk.articleId, combined, q, chunk.text);
       // Значимые слова (напр. «рождения») — поднимаем в top-K, иначе семантика «клиент» их вытесняет
       if (
@@ -1005,6 +1074,18 @@ export async function retrieveKnowledgeDetailed(
         usedSourceIds = [WRITEOFF_ARTICLE_ID];
       }
     }
+  } else if (!clearSense && preferCorpFonts(q, longestRareToken(distinctive, q))) {
+    const fontHit = hits.find((h) => h.articleId === CORP_FONTS_ARTICLE_ID);
+    if (fontHit) {
+      hits = [fontHit];
+      usedSourceIds = [CORP_FONTS_ARTICLE_ID];
+    } else {
+      const article = publishedById.get(CORP_FONTS_ARTICLE_ID);
+      if (article && visibleIds.has(CORP_FONTS_ARTICLE_ID)) {
+        hits = [buildCorpFontsHit(article, visibleChunks, distinctive, lexTokens, q, 0.7)];
+        usedSourceIds = [CORP_FONTS_ARTICLE_ID];
+      }
+    }
   }
 
   let ambiguous = ambiguousBranches.length >= 2;
@@ -1143,6 +1224,7 @@ export async function retrieveKnowledgeLexicalFallback(
       let lex = lexicalScore(article.title, plain, tokens);
       lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
       lex = applyCaseEcomScoreAdjust(article.id, lex, q);
+      lex = applyCorpFontsScoreAdjust(article.id, lex, q);
       const plainSnippet = chunkTexts.join('\n');
       lex = applyCaseChannelScoreAdjust(article.id, lex, q, plainSnippet);
       return {

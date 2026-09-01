@@ -52,6 +52,14 @@ export function detectKbAiEcomTopic(raw: string): boolean {
   return ECOM_TOPIC_RE.test(String(raw || '').trim());
 }
 
+/** Корпоративные шрифты VBI / TT Hoves. */
+const CORP_FONTS_TOPIC_RE =
+  /шрифт[а-яё]*\s+компан|компан[а-яё]*\s+шрифт|(?<![а-яёa-z0-9])(?:шрифт[а-яё]*|типограф[а-яё]*|hoves|tt\s*hoves|брендбук|фирменн[а-яё]*\s+шрифт|корпоративн[а-яё]*\s+шрифт)(?![а-яёa-z0-9])/iu;
+
+export function detectKbAiCorpFontsQuestion(raw: string): boolean {
+  return CORP_FONTS_TOPIC_RE.test(String(raw || '').trim());
+}
+
 /** Канал / формат в вопросе про кейсы (SMM, таргет, посевы…). */
 const CASE_CHANNEL_TOPIC_RE =
   /(?<![а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет|медиа)(?![а-яёa-z0-9])/iu;
@@ -306,6 +314,18 @@ export function buildKbAiCaseModelHint(
   if (!parts.length) return null;
   parts.push('Не пиши URL и markdown-ссылки — ссылки добавит блок «Ещё по теме».');
   return parts.join(' ');
+}
+
+/** Подсказка модели: ответ только по статье корпоративных шрифтов. */
+export function buildKbAiFontModelHint(question: string): string | null {
+  const q = String(question || '').trim();
+  if (!q || !detectKbAiCorpFontsQuestion(q)) return null;
+  return [
+    'Вопрос про корпоративные шрифты VBI (TT Hoves Pro Trial Regular и Bold).',
+    'Ответь только по контексту статьи «Корпоративные шрифты VBI»: начертания, где использовать, как установить.',
+    'Не путай с отпуском, регламентами HR и другими темами — это не про отпуск.',
+    'Не пиши URL и markdown-ссылки — ссылки добавит блок «Ещё по теме».'
+  ].join(' ');
 }
 
 /**

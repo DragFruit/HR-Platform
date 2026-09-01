@@ -280,6 +280,7 @@ const SYNONYM_GROUPS: string[][] = [
     'наши шрифты',
     'какие у нас шрифты',
     'шрифт компании',
+    'шрифты компании',
     'шрифты vbi',
     'фирменный шрифт',
     'ховес про триал',
@@ -290,6 +291,26 @@ const SYNONYM_GROUPS: string[][] = [
     'hoves'
   ]
 ];
+
+/** Корпоративные шрифты VBI (TT Hoves) — kb-corp-fonts-vbi. */
+export function hasCorpFontsIntent(question: string): boolean {
+  const q = String(question || '').toLowerCase().replace(/ё/g, 'е');
+  if (!q) return false;
+  if (/шрифт[а-яё]*\s+компан|компан[а-яё]*\s+шрифт/i.test(q)) return true;
+  return (
+    /(?<![а-яёa-z0-9])(?:шрифт[а-яё]*|типограф[а-яё]*|hoves|tt\s*hoves|брендбук|фирменн[а-яё]*\s+шрифт|корпоративн[а-яё]*\s+шрифт)(?![а-яёa-z0-9])/iu.test(
+      q
+    ) || /\btt\s*hoves\b/i.test(q)
+  );
+}
+
+/** Якорь запроса про шрифты / TT Hoves. */
+export function isFontSectionToken(token: string): boolean {
+  const t = token.toLowerCase().replace(/ё/g, 'е');
+  if (!t) return false;
+  if (/^шрифт|^hoves|^типограф|^tt$/.test(t)) return true;
+  return /hoves|типограф|шрифт/.test(t);
+}
 
 /**
  * Расширение под двусмысленный «дейоф»:
@@ -626,7 +647,11 @@ const GENERIC_QUERY_TOKENS = new Set([
   'какой',
   'какая',
   'какие',
-  'есть'
+  'есть',
+  'компании',
+  'компания',
+  'компанию',
+  'компанией'
 ]);
 
 /**
@@ -648,7 +673,8 @@ export function rareDistinctiveTokens(distinctive: string[]): string[] {
       isContactSectionToken(t) ||
       isUtmSectionToken(t) ||
       isActsSectionToken(t) ||
-      isWriteoffSectionToken(t)
+      isWriteoffSectionToken(t) ||
+      isFontSectionToken(t)
     ) {
       return true;
     }
@@ -668,6 +694,13 @@ export function longestRareToken(distinctive: string[], question = ''): string |
   const utmIntent = hasUtmTaggingIntent(question);
   const actsIntent = hasActsRegulationIntent(question);
   const writeoffIntent = hasWriteoffAfinaIntent(question);
+  const fontsIntent = hasCorpFontsIntent(question);
+  if (fontsIntent) {
+    const font = pool.filter((t) => isFontSectionToken(t));
+    if (font.length) {
+      return [...font].sort((a, b) => b.length - a.length || a.localeCompare(b))[0]!;
+    }
+  }
   const contact = pool.filter((t) => {
     if (!isContactSectionToken(t)) return false;
     if (isProductLikeContactAnchor(t)) return true;
