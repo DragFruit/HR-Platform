@@ -2,6 +2,8 @@
 
 Файл **`vacation-application.docx`** — утверждённый бланк HR. Платформа подставляет данные при скачивании после согласования заявки (только **ТД**).
 
+Копия для сборки Nitro: `server/assets/templates/vacation-application.docx` (синхронизируется скриптом `prepare-vacation-application-template.mjs`).
+
 Пересобрать из исходника Word (жёлтые поля → теги): `node scripts/prepare-vacation-application-template.mjs [путь/к/исходнику.docx]`.
 
 ## Плейсхолдеры docxtemplater

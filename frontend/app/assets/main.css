@@ -11789,6 +11789,12 @@ button.emp-name--card:hover {
   color: #b91c1c;
 }
 
+.emp-request-download-error {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #b91c1c;
+}
+
 .emp-request-meta {
   display: flex;
   flex-wrap: wrap;

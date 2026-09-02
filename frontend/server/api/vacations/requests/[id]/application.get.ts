@@ -1,3 +1,4 @@
+import { send } from 'h3';
 import { employeeNamesMatch } from '../../../../../app/utils/employeeName';
 import type { SessionUser } from '../../../../utils/credentials';
 import { requireVbiSession } from '../../../../utils/session';
@@ -55,13 +56,19 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const bytes = await buildVacationApplicationDocx({
-    employeeName: employee.name,
-    position: employee.title,
-    legalEntity: employee.legal_entity ?? '',
-    startDate: request.start,
-    endDate: request.end
-  });
+  let bytes: Buffer;
+  try {
+    bytes = await buildVacationApplicationDocx({
+      employeeName: employee.name,
+      position: employee.title,
+      legalEntity: employee.legal_entity ?? '',
+      startDate: request.start,
+      endDate: request.end
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Не удалось сформировать заявление';
+    throw createError({ statusCode: 500, message });
+  }
 
   const encoded = encodeURIComponent(vacationApplicationFilename(employee.name, request.start));
   setHeader(
@@ -72,5 +79,5 @@ export default defineEventHandler(async (event) => {
   setHeader(event, 'Content-Disposition', `attachment; filename*=UTF-8''${encoded}`);
   setHeader(event, 'Cache-Control', 'private, no-store');
 
-  return bytes;
+  return send(event, bytes);
 });

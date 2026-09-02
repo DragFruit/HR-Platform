@@ -1,6 +1,7 @@
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import Docxtemplater from 'docxtemplater';
+import { useStorage } from '#imports';
 import PizZip from 'pizzip';
 import {
   isLaborContractEmployee,
@@ -62,8 +63,25 @@ const buildTemplatePayload = (data: VacationApplicationData) => {
   };
 };
 
+const BUNDLED_TEMPLATE_KEY = 'server:templates:vacation-application.docx';
+
+const toBuffer = (raw: unknown): Buffer => {
+  if (Buffer.isBuffer(raw)) return raw;
+  if (raw instanceof Uint8Array) return Buffer.from(raw);
+  if (typeof raw === 'string') return Buffer.from(raw, 'binary');
+  throw new Error('Не удалось прочитать шаблон заявления');
+};
+
+const readTemplateBytes = async (): Promise<Buffer> => {
+  const bundled = await useStorage('assets').getItem(BUNDLED_TEMPLATE_KEY);
+  if (bundled) return toBuffer(bundled);
+
+  await access(VACATION_APPLICATION_TEMPLATE_PATH);
+  return readFile(VACATION_APPLICATION_TEMPLATE_PATH);
+};
+
 const buildFromTemplateFile = async (data: VacationApplicationData): Promise<Buffer> => {
-  const templateBytes = await readFile(VACATION_APPLICATION_TEMPLATE_PATH);
+  const templateBytes = await readTemplateBytes();
   const zip = new PizZip(templateBytes);
   const doc = new Docxtemplater(zip, {
     paragraphLoop: true,
@@ -78,15 +96,23 @@ const buildFromTemplateFile = async (data: VacationApplicationData): Promise<Buf
 
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
   try {
-    await access(VACATION_APPLICATION_TEMPLATE_PATH);
-  } catch {
-    throw new Error(
-      'Шаблон заявления не найден: server/templates/vacation-application.docx. ' +
-        'Запустите node scripts/prepare-vacation-application-template.mjs'
-    );
+    return await buildFromTemplateFile(data);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Не удалось прочитать шаблон')) {
+      throw err;
+    }
+    const missing =
+      err instanceof Error &&
+      'code' in err &&
+      (err as NodeJS.ErrnoException).code === 'ENOENT';
+    if (missing) {
+      throw new Error(
+        'Шаблон заявления не найден: server/templates/vacation-application.docx. ' +
+          'Запустите node scripts/prepare-vacation-application-template.mjs'
+      );
+    }
+    throw err;
   }
-
-  return buildFromTemplateFile(data);
 }
 
 export { isLaborContractEmployee };

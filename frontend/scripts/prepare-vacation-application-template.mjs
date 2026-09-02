@@ -17,6 +17,7 @@ const defaultSource = join(
 );
 const sourcePath = process.argv[2] ?? defaultSource;
 const outPath = join(__dirname, '../server/templates/vacation-application.docx');
+const assetsOutPath = join(__dirname, '../server/assets/templates/vacation-application.docx');
 
 /** Yellow gaps in document order (see server/templates/README.md). */
 const TAGS = [
@@ -49,6 +50,9 @@ if (tagIdx !== TAGS.length) {
 }
 
 zip.file(docPath, xml);
+const bytes = zip.generate({ type: 'nodebuffer' });
 mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, zip.generate({ type: 'nodebuffer' }));
-console.log(`Wrote ${outPath} (${tagIdx} placeholders)`);
+writeFileSync(outPath, bytes);
+mkdirSync(dirname(assetsOutPath), { recursive: true });
+writeFileSync(assetsOutPath, bytes);
+console.log(`Wrote ${outPath} and ${assetsOutPath} (${tagIdx} placeholders)`);

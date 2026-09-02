@@ -145,14 +145,18 @@
                 </span>
               </div>
             </div>
-            <a
+            <button
               v-if="canDownloadVacationApplication(req)"
+              type="button"
               class="vac-emp-btn vac-emp-btn--ghost vac-emp-btn--sm emp-request-download"
-              :href="vacationApplicationHref(req.id)"
-              download
+              :disabled="downloadingApplicationId === req.id"
+              @click="downloadVacationApplication(req)"
             >
-              Скачать заявление
-            </a>
+              {{ downloadingApplicationId === req.id ? 'Скачивание…' : 'Скачать заявление' }}
+            </button>
+            <p v-if="applicationDownloadErrorFor === req.id" class="emp-request-download-error">
+              {{ applicationDownloadError }}
+            </p>
             <div v-if="canManageRequest(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
@@ -388,8 +392,61 @@ const canDownloadVacationApplication = (req: VacationRequest) =>
   req.status === 'approved' &&
   isLaborContractEmployee(currentEmployee.value?.contract_form);
 
-const vacationApplicationHref = (requestId: number) =>
-  `/api/vacations/requests/${requestId}/application`;
+const downloadingApplicationId = ref<number | null>(null);
+const applicationDownloadError = ref('');
+const applicationDownloadErrorFor = ref<number | null>(null);
+
+const parseDownloadFilename = (contentDisposition: string | null, fallback: string): string => {
+  if (!contentDisposition) return fallback;
+  const encoded = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded?.[1]) return decodeURIComponent(encoded[1]);
+  const plain = contentDisposition.match(/filename="([^"]+)"/i);
+  return plain?.[1] || fallback;
+};
+
+const downloadVacationApplication = async (req: VacationRequest) => {
+  if (downloadingApplicationId.value === req.id) return;
+  downloadingApplicationId.value = req.id;
+  applicationDownloadError.value = '';
+  applicationDownloadErrorFor.value = null;
+
+  const fallbackName = `Заявление_на_отпуск_${req.start}.docx`;
+  try {
+    const response = await fetch(`/api/vacations/requests/${req.id}/application`, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        statusMessage?: string;
+        message?: string;
+      } | null;
+      applicationDownloadError.value =
+        payload?.statusMessage || payload?.message || 'Не удалось скачать заявление';
+      applicationDownloadErrorFor.value = req.id;
+      return;
+    }
+
+    const blob = await response.blob();
+    const filename = parseDownloadFilename(
+      response.headers.get('Content-Disposition'),
+      fallbackName
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    applicationDownloadError.value = 'Не удалось скачать заявление';
+    applicationDownloadErrorFor.value = req.id;
+  } finally {
+    downloadingApplicationId.value = null;
+  }
+};
 
 const formatRequestPeriod = (req: VacationRequest) => {
   const fmt = (iso: string) => {
