@@ -1,0 +1,31 @@
+# Деплой только через Git → GitLab CI
+
+## Принцип
+
+- **Единственный основной путь выкладки:** push в GitLab → pipeline (сборка → деплой).
+- **Не предлагать** `deploy-remote.sh`, `rsync`, `scp` на сервер как **основной** способ доставки кода. Исключение: явная отдельная просьба заказчика на hotfix данных или аварийный сценарий, о котором он сам написал.
+
+## Ветки и CI
+
+| Намерение пользователя | Действие | Деплой в CI |
+|------------------------|----------|-------------|
+| **прод** / **бой** / «на прод» / «выкатить на бой» | merge `staging` → `main`, push `main` | `build:production` автоматически; **`deploy:production` — manual (Play)** |
+| **стейдж** / `:8080` | commit + push ветки **`staging`** | **`deploy:staging`** (обычно после зелёной сборки; см. `.gitlab-ci.yml`) |
+| **тест** | локально `npm run dev` в `frontend/` (`localhost:3000`) | **без** деплоя |
+
+Если пользователь говорит просто **«выкатить»** / **«деплой»** — **уточнить:** прод (`main` + manual prod deploy) или стейдж (`staging` push).
+
+## Коммиты
+
+- Фичи и фиксы по умолчанию — в **`staging`**, затем на прод через merge в **`main`**.
+- Push: `bash scripts/push-to-gitlab.sh [staging|main]` (SSH-ключ `~/.ssh/vbi_hr_deploy`).
+
+## Pipeline
+
+- Список: https://ilnizumak.beget.app/vbi/hrplatform/-/pipelines
+- На **main** после push: дождаться зелёного `build:production`, затем нажать **Play** у **`deploy:production`**.
+
+## Согласованность с другими rules
+
+- `deploy-production.mdc`: на прод без явного «ок на прод» в чате — не инициировать выкладку; доставка кода на prod — через CI после согласия.
+- `commit-staging.mdc`: push staging после готовой обновы; prod — только release merge в `main` + CI.
