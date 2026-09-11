@@ -50,9 +50,20 @@ replaceExactT(
   '                       {employee_name}'
 );
 
+const rPrBody =
+  '<w:rPr>' +
+  '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
+  '</w:rPr>';
+/** Подпись «Вид отпуска (…)» в бланке — 7pt (sz=14), не основной кегль. */
+const rPrCaption =
+  '<w:rPr>' +
+  '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
+  '<w:sz w:val="14"/><w:szCs w:val="14"/>' +
+  '</w:rPr>';
+
 /**
- * Вид отпуска: «Прошу предоставить ___…» → {vacation_type} (= ежегодный).
- * Три run’а с подчёркиваниями схлопываем в один.
+ * «Прошу предоставить ___…» → {vacation_type} (= ежегодный).
+ * Кегль как в бланке (без принудительного 12pt).
  */
 {
   const askIdx = xml.indexOf('>Прошу предоставить <');
@@ -63,50 +74,39 @@ replaceExactT(
   const para = xml.slice(pStart, pEnd + '</w:p>'.length);
   const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
   const pPr = pPrMatch ? pPrMatch[0] : '';
-  const rPr =
-    '<w:rPr>' +
-    '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
-    '<w:sz w:val="24"/><w:szCs w:val="24"/>' +
-    '</w:rPr>';
   const rebuilt =
     `<w:p>` +
     pPr +
-    `<w:r>${rPr}<w:t xml:space="preserve">Прошу предоставить </w:t></w:r>` +
-    `<w:r>${rPr}<w:t>{vacation_type}</w:t></w:r>` +
+    `<w:r>${rPrBody}<w:t xml:space="preserve">Прошу предоставить </w:t></w:r>` +
+    `<w:r>${rPrBody}<w:t>{vacation_type}</w:t></w:r>` +
     `</w:p>`;
   xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
 }
 
 /**
- * Даты отпуска: в бланке подчёркивания разбиты на куски.
- * Собираем один run «с {start_date}   по {end_date} на {days_count}».
+ * Даты: подпись «Вид отпуска (…)» мелким шрифтом + «с {start} по {end} на {days}».
  */
 const datesMarker = 'Вид отпуска (ежегодный, без сохранения заработной платы)';
 const datesIdx = xml.indexOf(datesMarker);
 if (datesIdx < 0) throw new Error('Не найден блок «Вид отпуска»');
 
-const pStart = xml.lastIndexOf('<w:p ', datesIdx);
-const pEnd = xml.indexOf('</w:p>', datesIdx);
-if (pStart < 0 || pEnd < 0) throw new Error('Не найдены границы абзаца дат');
-const para = xml.slice(pStart, pEnd + '</w:p>'.length);
-
-// Сохраняем pPr если есть
-const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
-const pPr = pPrMatch ? pPrMatch[0] : '';
-const rPr =
-  '<w:rPr>' +
-  '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
-  '<w:sz w:val="24"/><w:szCs w:val="24"/>' +
-  '</w:rPr>';
-
-const rebuilt =
-  `<w:p>` +
-  pPr +
-  `<w:r>${rPr}<w:t xml:space="preserve">${datesMarker}</w:t></w:r>` +
-  `<w:r>${rPr}<w:t xml:space="preserve">с {start_date}   по {end_date} на {days_count}</w:t></w:r>` +
-  `</w:p>`;
-
-xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
+{
+  const pStart = xml.lastIndexOf('<w:p ', datesIdx);
+  const pEnd = xml.indexOf('</w:p>', datesIdx);
+  if (pStart < 0 || pEnd < 0) throw new Error('Не найдены границы абзаца дат');
+  const para = xml.slice(pStart, pEnd + '</w:p>'.length);
+  const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+  const pPr = pPrMatch ? pPrMatch[0] : '';
+  // В бланке перед подписью пробелы + sz=14 — сохраняем.
+  const captionLead = '                                                                                                 ';
+  const rebuilt =
+    `<w:p>` +
+    pPr +
+    `<w:r>${rPrCaption}<w:t xml:space="preserve">${captionLead}${datesMarker}</w:t></w:r>` +
+    `<w:r>${rPrBody}<w:t xml:space="preserve">с {start_date}   по {end_date} на {days_count}</w:t></w:r>` +
+    `</w:p>`;
+  xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
+}
 
 // Выход на работу
 replaceExactT(
