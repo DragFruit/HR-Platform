@@ -17,6 +17,7 @@ node scripts/prepare-vacation-application-template.mjs "/path/to/Заявлен�
 | `{legal_entity}` | `employees.json` → `legal_entity` | `Высокие Бизнес Идеи`, `ВиБиАй` |
 | `{position}` | `title` | `HR-специалист` |
 | `{employee_name}` | `name` | `Драго Станислава` |
+| `{vacation_type}` | фиксировано | `ежегодный` |
 | `{start_date}` | заявка → `start` | `1 июня 2026 г.` |
 | `{end_date}` | заявка → `end` | `14 июня 2026 г.` |
 | `{days_count}` | календарные дни `start`…`end` | `14` |
@@ -27,7 +28,6 @@ node scripts/prepare-vacation-application-template.mjs "/path/to/Заявлен�
 ## Не заполняются автоматически
 
 - Приказ № / дата приказа  
-- Вид отпуска (ежегодный / без сохранения…)  
 - Дата написания, подпись сотрудника  
 - Дата согласования, подпись руководителя  
 

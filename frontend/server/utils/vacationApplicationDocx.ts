@@ -56,6 +56,7 @@ const buildTemplatePayload = (data: VacationApplicationData) => {
     from_line: buildFromLine(data.position, data.employeeName),
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
+    vacation_type: 'ежегодный',
     start_date: formatRuDate(data.startDate),
     end_date: formatRuDate(data.endDate),
     days_count: String(days),

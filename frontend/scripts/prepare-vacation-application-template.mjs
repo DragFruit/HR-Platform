@@ -51,6 +51,33 @@ replaceExactT(
 );
 
 /**
+ * Вид отпуска: «Прошу предоставить ___…» → {vacation_type} (= ежегодный).
+ * Три run’а с подчёркиваниями схлопываем в один.
+ */
+{
+  const askIdx = xml.indexOf('>Прошу предоставить <');
+  if (askIdx < 0) throw new Error('Не найден «Прошу предоставить»');
+  const pStart = xml.lastIndexOf('<w:p ', askIdx);
+  const pEnd = xml.indexOf('</w:p>', askIdx);
+  if (pStart < 0 || pEnd < 0) throw new Error('Не найден абзац вида отпуска');
+  const para = xml.slice(pStart, pEnd + '</w:p>'.length);
+  const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+  const pPr = pPrMatch ? pPrMatch[0] : '';
+  const rPr =
+    '<w:rPr>' +
+    '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
+    '<w:sz w:val="24"/><w:szCs w:val="24"/>' +
+    '</w:rPr>';
+  const rebuilt =
+    `<w:p>` +
+    pPr +
+    `<w:r>${rPr}<w:t xml:space="preserve">Прошу предоставить </w:t></w:r>` +
+    `<w:r>${rPr}<w:t>{vacation_type}</w:t></w:r>` +
+    `</w:p>`;
+  xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
+}
+
+/**
  * Даты отпуска: в бланке подчёркивания разбиты на куски.
  * Собираем один run «с {start_date}   по {end_date} на {days_count}».
  */
@@ -91,6 +118,7 @@ const required = [
   '{legal_entity}',
   '{position}',
   '{employee_name}',
+  '{vacation_type}',
   '{start_date}',
   '{end_date}',
   '{days_count}',
