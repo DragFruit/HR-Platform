@@ -130,7 +130,7 @@
                 ><span
                   class="emp-request-period__days"
                   :class="{ 'emp-request-period__days--newline': periodDaysOnNewLine(req) }"
-                  > ({{ requestPeriodDays(req) }} дн.)</span
+                  >{{ periodDaysOnNewLine(req) ? '' : ' ' }}({{ requestPeriodDays(req) }} дн.)</span
                 >
               </span>
               <div class="emp-request-meta">
