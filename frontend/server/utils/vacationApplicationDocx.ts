@@ -91,7 +91,7 @@ const buildFromTemplateFile = async (data: VacationApplicationData): Promise<Buf
 
   doc.render(buildTemplatePayload(data));
 
-  return doc.getZip().generate({ type: 'nodebuffer' });
+  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 };
 
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {

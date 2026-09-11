@@ -7,6 +7,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import PizZip from 'pizzip';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,13 +35,21 @@ const docPath = 'word/document.xml';
 let xml = zip.file(docPath).asText();
 let tagIdx = 0;
 
+/**
+ * Жёлтая подсветка сидит внутри <w:rPr>…</w:rPr> перед <w:t>___</w:t>.
+ * Старый regex вырезал и </w:rPr> → Word не открывал файл.
+ * Возвращаем закрытие rPr (+ кегль 11pt) и тег.
+ */
 xml = xml.replace(
   /<w:highlight w:val="yellow"\/>[\s\S]*?<w:t([^>]*)>(_+)<\/w:t>/g,
-  (match, tAttrs, underscores) => {
+  (match, tAttrs) => {
     if (tagIdx >= TAGS.length) return match;
     const tag = TAGS[tagIdx];
     tagIdx += 1;
-    return `<w:t${tAttrs}>${tag}</w:t>`;
+    return (
+      `<w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>` +
+      `<w:t${tAttrs}>${tag}</w:t>`
+    );
   }
 );
 
@@ -50,9 +59,21 @@ if (tagIdx !== TAGS.length) {
 }
 
 zip.file(docPath, xml);
-const bytes = zip.generate({ type: 'nodebuffer' });
+const bytes = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, bytes);
 mkdirSync(dirname(assetsOutPath), { recursive: true });
 writeFileSync(assetsOutPath, bytes);
-console.log(`Wrote ${outPath} and ${assetsOutPath} (${tagIdx} placeholders)`);
+
+// Fail loudly if XML is broken (Word won't open the file).
+const tmpXml = join(__dirname, '../.tmp-vacation-doc.xml');
+writeFileSync(tmpXml, xml);
+try {
+  execSync(`xmllint --noout ${JSON.stringify(tmpXml)}`, { stdio: 'pipe' });
+} catch (err) {
+  console.error('document.xml invalid after conversion — aborting');
+  console.error(String(err?.stderr || err));
+  process.exit(1);
+}
+
+console.log(`Wrote ${outPath} and ${assetsOutPath} (${tagIdx} placeholders, xmllint OK)`);
