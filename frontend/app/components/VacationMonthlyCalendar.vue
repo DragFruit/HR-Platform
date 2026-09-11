@@ -11,7 +11,7 @@
           v-for="emp in flatEmployees"
           :key="`measure-${emp.id}`"
           class="vac-team-name-measure__name"
-        >{{ emp.name }}</span>
+        >{{ formatEmployeeShortName(emp.name) }}</span>
         <span class="vac-team-name-measure__title-ref">{{ TITLE_COL_WRAP_REF }}</span>
       </div>
     </Teleport>
@@ -70,7 +70,7 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+              <span class="emp-name emp-name--inline">{{ formatEmployeeShortName(emp.name) }}</span>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -111,6 +111,7 @@
 
 <script setup lang="ts">
 import type { EmployeeDepartment } from '~/composables/useEmployees';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 import type { VacationMonthEntry } from '~/utils/vacationReservations';
 
 const NAME_COL_PAD_X = 16;
@@ -220,7 +221,7 @@ const remeasureNameCol = () => {
     const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
     max = measureCssText('СОТРУДНИК', headFont, headSpacing);
     for (const emp of flatEmployees.value) {
-      max = Math.max(max, measureCssText(emp.name, nameFont, 0));
+      max = Math.max(max, measureCssText(formatEmployeeShortName(emp.name), nameFont, 0));
     }
   }
 

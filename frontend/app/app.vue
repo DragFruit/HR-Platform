@@ -85,10 +85,10 @@
             v-if="user"
             to="/profile"
             class="topbar-profile-link"
-            :aria-label="`Профиль: ${user.name}`"
+            :aria-label="`Профиль: ${topbarDisplayName}`"
           >
-            <UserAvatar :user-id="user.id" :name="user.name" :size="36" />
-            <span class="soft">{{ user.name }}</span>
+            <UserAvatar :user-id="user.id" :name="topbarDisplayName" :size="36" />
+            <span class="soft">{{ topbarDisplayName }}</span>
           </NuxtLink>
           <span v-if="roleLabel" class="pill role-pill">{{ roleLabel }}</span>
           <div v-if="!isAdmin && !isVacationsOnly" class="pill">Баланс: {{ balance }}</div>
@@ -131,6 +131,7 @@
 <script setup lang="ts">
 import { PLATFORM_NAME } from '~/data/platformBrand';
 import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
@@ -140,9 +141,16 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath } = useLaunchScope();
+const { findByUserForAuth } = useEmployees();
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';
+
+const topbarDisplayName = computed(() => {
+  const linked = findByUserForAuth(user.value);
+  const raw = linked?.name?.trim() || user.value?.name?.trim() || '';
+  return formatEmployeeShortName(raw) || 'Сотрудник';
+});
 
 const showAdminNotificationsBell = computed(
   () => isAdmin.value || user.value?.role === 'hr'

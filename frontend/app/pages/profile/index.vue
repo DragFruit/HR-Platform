@@ -382,10 +382,14 @@
               @click="openEmployeeVisitingCard(member, $event)"
             >
               <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
-                <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
+                <UserAvatar
+                  :user-id="member.platform_user_id"
+                  :name="formatEmployeeShortName(member.name)"
+                  :size="48"
+                />
                 <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
               </div>
-              <span class="profile-team__name">{{ member.name }}</span>
+              <span class="profile-team__name">{{ formatEmployeeShortName(member.name) }}</span>
             </button>
           </li>
         </ul>
@@ -538,6 +542,7 @@ import {
   formatVacationStartShort
 } from '~/utils/profileSpotlight';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 import type { Employee } from '~/composables/useEmployees';
 
 const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
@@ -682,9 +687,11 @@ watch(
   { flush: 'post' }
 );
 
-const profileDisplayName = computed(
-  () => profileEmployee.value?.name?.trim() || (isOwnProfile.value ? user.value?.name : null) || 'Сотрудник'
-);
+const profileDisplayName = computed(() => {
+  const raw =
+    profileEmployee.value?.name?.trim() || (isOwnProfile.value ? user.value?.name : null) || '';
+  return formatEmployeeShortName(raw) || 'Сотрудник';
+});
 
 const profileAvatarUserId = computed(() => {
   if (isOwnProfile.value) return user.value?.id ?? null;

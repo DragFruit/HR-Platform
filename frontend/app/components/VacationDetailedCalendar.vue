@@ -11,7 +11,7 @@
           v-for="emp in visibleEmployees"
           :key="`measure-${emp.id}`"
           class="vac-team-name-measure__name"
-        >{{ emp.name }}</span>
+        >{{ formatEmployeeShortName(emp.name) }}</span>
         <!-- Эталон ширины колонки «Должность»: всё длиннее → 2-я строка -->
         <span class="vac-team-name-measure__title-ref">{{ TITLE_COL_WRAP_REF }}</span>
       </div>
@@ -125,7 +125,7 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline">{{ emp.name }}</span>
+              <span class="emp-name emp-name--inline">{{ formatEmployeeShortName(emp.name) }}</span>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
               <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
@@ -162,6 +162,7 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 import { MONTHS_RU, WEEKDAYS_SHORT, isRuHoliday, isWeekendDay } from '~/utils/vacationCalendar';
 import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
@@ -293,7 +294,7 @@ const remeasureNameCol = () => {
     const headSpacing = headStyle ? Number.parseFloat(headStyle.letterSpacing) || 0 : 0;
     max = measureCssText('СОТРУДНИК', headFont, headSpacing);
     for (const emp of visibleEmployees.value) {
-      max = Math.max(max, measureCssText(emp.name, nameFont, 0));
+      max = Math.max(max, measureCssText(formatEmployeeShortName(emp.name), nameFont, 0));
     }
   }
 

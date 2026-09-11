@@ -162,9 +162,13 @@
               class="ideas-bank-authors__open"
               @click="openAuthorCard(author.name, author.userId, $event)"
             >
-              <UserAvatar :user-id="author.userId" :name="author.name" :size="32" />
+              <UserAvatar
+                :user-id="author.userId"
+                :name="formatEmployeeShortName(author.name)"
+                :size="32"
+              />
               <div class="ideas-bank-authors__meta">
-                <span class="ideas-bank-authors__name">{{ author.name }}</span>
+                <span class="ideas-bank-authors__name">{{ formatEmployeeShortName(author.name) }}</span>
                 <span class="soft">{{ author.count }} {{ authorDoneLabel(author.count) }}</span>
               </div>
             </button>
@@ -211,8 +215,12 @@
                 class="ideas-bank-card__author"
                 @click="openAuthorCard(idea.authorName, idea.authorUserId, $event)"
               >
-                <UserAvatar :user-id="idea.authorUserId" :name="idea.authorName" :size="28" />
-                <span>{{ idea.authorName }}</span>
+                <UserAvatar
+                  :user-id="idea.authorUserId"
+                  :name="formatEmployeeShortName(idea.authorName)"
+                  :size="28"
+                />
+                <span>{{ formatEmployeeShortName(idea.authorName) }}</span>
               </button>
               <span class="ideas-bank-card__status" :data-status="idea.status">
                 {{ statusLabel(idea.status) }}
@@ -426,6 +434,7 @@
 <script setup lang="ts">
 import type { IdeaStatus } from '~/composables/useIdeasBank';
 import { IDEA_CATEGORIES } from '~/composables/useIdeasBank';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const {
   ideas,

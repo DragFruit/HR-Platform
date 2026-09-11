@@ -54,7 +54,9 @@
               <div class="vac-approval-item__lead">
                 <span class="vac-approval-item__avatar">{{ employeeInitials(entry.request.employee) }}</span>
                 <div class="vac-approval-item__info">
-                  <strong class="vac-approval-item__name">{{ entry.request.employee }}</strong>
+                  <strong class="vac-approval-item__name">{{
+                    formatEmployeeShortName(entry.request.employee)
+                  }}</strong>
                   <span class="vac-approval-item__dates">{{ formatRange(entry.request.start, entry.request.end) }}</span>
                   <span
                     v-if="entry.request.status === 'pending' && !entry.handedOff"
@@ -117,6 +119,7 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import { vacationPendingStatusLabel } from '~/utils/vacationApproval';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 import {
   isGroupedVacationDepartment,
   isVacationDepartmentDirector,
