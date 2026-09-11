@@ -32,12 +32,29 @@ export const VACATION_APPLICATION_TEMPLATE_PATH = join(
 const formatRuDate = (iso: string): string => {
   const date = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(date.getTime())) return iso;
-  const label = date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-  return `${label} г.`;
+  // ru-RU уже даёт «… 2026 г.» — второй «г.» не добавляем.
+  return date
+    .toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+    .replace(/\s*г\.?\s*$/u, '')
+    .trim()
+    .concat(' г.');
+};
+
+/** Ширины полей как прочерки в бланке — чтобы подписи снизу совпадали с датами. */
+const BLANK_START_WIDTH = 21;
+const BLANK_END_WIDTH = 23;
+const BLANK_DAYS_WIDTH = 10;
+/** Figure space ≈ ширина цифры/прочерка в Times New Roman (обычный пробел уже). */
+const FIELD_PAD = '\u2007';
+
+const padBlankField = (value: string, width: number): string => {
+  const text = value.trim();
+  if (text.length >= width) return `${text} `;
+  return text + FIELD_PAD.repeat(width - text.length);
 };
 
 const buildFromLine = (position: string, employeeName: string): string => {
@@ -57,9 +74,9 @@ const buildTemplatePayload = (data: VacationApplicationData) => {
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
     vacation_type: 'ежегодный',
-    start_date: formatRuDate(data.startDate),
-    end_date: formatRuDate(data.endDate),
-    days_count: String(days),
+    start_date: padBlankField(formatRuDate(data.startDate), BLANK_START_WIDTH),
+    end_date: padBlankField(formatRuDate(data.endDate), BLANK_END_WIDTH),
+    days_count: padBlankField(String(days), BLANK_DAYS_WIDTH),
     return_date: formatRuDate(returnIso)
   };
 };
