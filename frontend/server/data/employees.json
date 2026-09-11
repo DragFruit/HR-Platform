@@ -425,6 +425,8 @@
     "bitrix_user_id": 2684,
     "email": "drago-hr@vbi.ru",
     "account_role": "admin",
+    "legal_entity": "Высокие Бизнес Идеи",
+    "contract_form": "ТД",
     "vacation_opening_balance": 19.62
   },
   {
