@@ -1,49 +1,37 @@
 import { requireVbiSession } from '../../utils/session';
-import { pickOpenaiChatgptCode } from '../../utils/openaiChatgptMailCode';
-
-type Body = {
-  /** Коды, которые уже отдали этому пользователю (стек: следующий = более старый). */
-  excludeCodes?: string[];
-};
+import {
+  CHATGPT_CODE_VPN_MAX_AGE_MS,
+  formatChatgptCodeListMessage,
+  listRecentOpenaiChatgptCodes
+} from '../../utils/openaiChatgptMailCode';
 
 /**
- * Свежий код ChatGPT с корпоративной почты (за последний час).
- * Повтор с excludeCodes → другой код; иначе «больше не приходило».
+ * Коды ChatGPT с корпоративной почты за последние 15 минут.
+ * Ответ — список с временем прихода по МСК.
  */
 export default defineEventHandler(async (event) => {
   await requireVbiSession(event);
-  const body = ((await readBody(event)) || {}) as Body;
-  const excludeCodes = Array.isArray(body.excludeCodes)
-    ? body.excludeCodes.map((c) => String(c || '').trim()).filter(Boolean).slice(0, 20)
-    : [];
 
   try {
-    const result = await pickOpenaiChatgptCode(excludeCodes);
+    const codes = await listRecentOpenaiChatgptCodes(CHATGPT_CODE_VPN_MAX_AGE_MS);
 
-    if (result.status === 'found') {
+    if (!codes.length) {
       return {
         ok: true,
-        status: 'found' as const,
-        code: result.code,
-        receivedAt: result.receivedAt,
-        message: `Вот твой код для chatGPT:\n${result.code}`
-      };
-    }
-
-    if (result.status === 'exhausted') {
-      return {
-        ok: true,
-        status: 'exhausted' as const,
-        code: null,
-        message: 'Больше кодов не приходило'
+        status: 'none' as const,
+        codes: [],
+        message: 'Код не пришёл'
       };
     }
 
     return {
       ok: true,
-      status: 'none' as const,
-      code: null,
-      message: 'Код не пришёл'
+      status: 'found' as const,
+      codes: codes.map((row) => ({
+        code: row.code,
+        receivedAt: row.receivedAt
+      })),
+      message: formatChatgptCodeListMessage(codes)
     };
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'statusCode' in err) throw err;

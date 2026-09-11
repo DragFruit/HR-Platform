@@ -60,21 +60,12 @@
 
         <div v-else-if="step === 'chatgpt'" class="vpn-actions vpn-actions--stack">
           <button
-            v-if="offeredCodes.length"
             type="button"
             class="button primary vpn-cta"
             :disabled="chatgptLoading"
-            @click="fetchChatgptCode(true)"
+            @click="fetchChatgptCode({ announceRetry: true })"
           >
-            {{ chatgptLoading ? 'Ищем код…' : 'Это не мой код' }}
-          </button>
-          <button
-            type="button"
-            class="button vpn-cta vpn-cta--ghost"
-            :disabled="chatgptLoading"
-            @click="fetchChatgptCode(false)"
-          >
-            {{ chatgptLoading && !offeredCodes.length ? 'Ищем код…' : 'Проверить почту ещё раз' }}
+            {{ chatgptLoading ? 'Ищем код…' : 'Проверить почту ещё раз' }}
           </button>
           <button type="button" class="vpn-link" @click="reset">← Начать сначала</button>
         </div>
@@ -156,9 +147,8 @@ type VpnKind = 'wireguard' | 'amnezia';
 
 type ChatgptCodeResponse = {
   ok: boolean;
-  status: 'found' | 'none' | 'exhausted';
-  code: string | null;
-  receivedAt?: string;
+  status: 'found' | 'none';
+  codes?: Array<{ code: string; receivedAt: string }>;
   message: string;
 };
 
@@ -204,10 +194,8 @@ const copy = {
   proxyHint:
     'Идеально подходит для Тегерамма, позволяет одновременно использовать Тегерамм и Битрикс',
   chatgptHint: 'Код из письма OpenAI на корпоративную почту',
-  chatgptIntro: 'Сейчас проверю корпоративную почту на свежий код от OpenAI (за последний час).',
+  chatgptIntro: 'Сейчас проверю корпоративную почту на коды от OpenAI за последние 15 минут.',
   chatgptNoCode: 'Код не пришёл',
-  chatgptExhausted: 'Больше кодов не приходило',
-  chatgptWrongAsk: 'Это не мой код',
   chatgptRetryAsk: 'Проверить почту ещё раз',
   welcome: 'Привет! Чем я могу помочь?',
   askDevice:
@@ -301,8 +289,6 @@ const keyRequestLoading = ref(false);
 const keyRequestError = ref('');
 const issuedCount = ref(0);
 const chatgptLoading = ref(false);
-/** Коды, уже показанные в этом заходе (стек: «не мой» → другой). */
-const offeredCodes = ref<string[]>([]);
 
 const clientDownloadUrl = computed(() => {
   if (device.value === 'mac') return wireguardMacUrl;
@@ -439,49 +425,33 @@ const pickNeed = (value: Need) => {
   }
   if (value === 'chatgpt') {
     step.value = 'chatgpt';
-    offeredCodes.value = [];
     push({ id: `chatgpt-intro-${Date.now()}`, from: 'bot', text: copy.chatgptIntro });
-    void fetchChatgptCode(false);
+    void fetchChatgptCode({ announceRetry: false });
     return;
   }
   step.value = 'vpn-device';
   push({ id: 'device-bot', from: 'bot', text: copy.askDevice });
 };
 
-const fetchChatgptCode = async (didNotFit: boolean) => {
+const fetchChatgptCode = async (opts: { announceRetry?: boolean } = {}) => {
   if (chatgptLoading.value) return;
   chatgptLoading.value = true;
-  if (didNotFit) {
-    push({
-      id: `chatgpt-wrong-${Date.now()}`,
-      from: 'user',
-      text: copy.chatgptWrongAsk
-    });
-  } else if (offeredCodes.value.length) {
+  if (opts.announceRetry) {
     push({
       id: `chatgpt-retry-${Date.now()}`,
       from: 'user',
       text: copy.chatgptRetryAsk
     });
-    offeredCodes.value = [];
   }
   try {
     const res = await $fetch<ChatgptCodeResponse>('/api/vpn/chatgpt-code', {
-      method: 'POST',
-      body: { excludeCodes: offeredCodes.value }
+      method: 'POST'
     });
-    if (res.status === 'found' && res.code) {
-      offeredCodes.value = [...offeredCodes.value, res.code];
+    if (res.status === 'found' && res.codes?.length) {
       push({
         id: `chatgpt-code-${Date.now()}`,
         from: 'bot',
-        text: res.message || `Вот твой код для chatGPT:\n${res.code}`
-      });
-    } else if (res.status === 'exhausted') {
-      push({
-        id: `chatgpt-ex-${Date.now()}`,
-        from: 'bot',
-        text: res.message || copy.chatgptExhausted
+        text: res.message
       });
     } else {
       push({
@@ -588,7 +558,6 @@ const backToNeed = () => {
   device.value = null;
   issuedCount.value = 0;
   keyRequestError.value = '';
-  offeredCodes.value = [];
   chatgptLoading.value = false;
   messages.value = [{ id: 'welcome', from: 'bot', text: copy.welcome }];
   void scrollThreadToBottom();
@@ -612,7 +581,6 @@ const reset = () => {
   device.value = null;
   issuedCount.value = 0;
   keyRequestError.value = '';
-  offeredCodes.value = [];
   chatgptLoading.value = false;
   messages.value = [{ id: 'welcome', from: 'bot', text: copy.welcome }];
   void scrollThreadToBottom();

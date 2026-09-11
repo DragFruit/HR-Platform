@@ -303,7 +303,7 @@ IMAP → корпоративный Telegram и/или кнопка в помо�
 
 | API | Назначение |
 |-----|------------|
-| `POST /api/vpn/chatgpt-code` | Выдача кода в UI (`excludeCodes` для «Это не мой код») |
+| `POST /api/vpn/chatgpt-code` | Список кодов за 15 мин + время МСК |
 | `POST /api/cron/chatgpt-code-telegram` | Новые коды из почты → Telegram (`dry_run=1`) |
 
 | Файл | Роль |
