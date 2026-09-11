@@ -11789,6 +11789,31 @@ button.emp-name--card:hover {
   color: #b91c1c;
 }
 
+.emp-request-download {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.emp-request-download:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.emp-request-download:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
 .emp-request-download-error {
   margin: 4px 0 0;
   font-size: 11px;

@@ -133,26 +133,27 @@
                 >
                   Не хватает {{ requestAdvance(req).deficit }} дн.
                 </span>
-                <span v-if="req.status === 'approved' && req.bitrix_sync_status === 'synced'" class="vac-bitrix-tag">
-                  Битрикс ✓
-                </span>
-                <span
-                  v-else-if="req.status === 'approved' && req.bitrix_sync_status === 'failed'"
-                  class="vac-bitrix-tag vac-bitrix-tag--error"
-                  :title="req.bitrix_sync_error || 'Не удалось отправить в Битрикс'"
-                >
-                  Битрикс ✗
-                </span>
               </div>
             </div>
             <button
               v-if="canDownloadVacationApplication(req)"
               type="button"
-              class="vac-emp-btn vac-emp-btn--ghost vac-emp-btn--sm emp-request-download"
+              class="emp-request-download"
               :disabled="downloadingApplicationId === req.id"
+              :aria-busy="downloadingApplicationId === req.id"
+              aria-label="Скачать заявление"
+              title="Скачать заявление"
               @click="downloadVacationApplication(req)"
             >
-              {{ downloadingApplicationId === req.id ? 'Скачивание…' : 'Скачать заявление' }}
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
             </button>
             <p v-if="applicationDownloadErrorFor === req.id" class="emp-request-download-error">
               {{ applicationDownloadError }}
