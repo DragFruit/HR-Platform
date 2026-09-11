@@ -123,7 +123,16 @@
         <div v-for="req in myRequests" :key="req.id" class="emp-request-row" :class="{ 'emp-request-row--training': isTrainingRequest(req) }">
           <div class="emp-request-row__top">
             <div class="emp-request-main">
-              <span class="emp-request-period">{{ formatRequestPeriod(req) }}</span>
+              <span class="emp-request-period">
+                <span
+                  class="emp-request-period__dates"
+                  >{{ formatRequestDates(req) }}</span
+                ><span
+                  class="emp-request-period__days"
+                  :class="{ 'emp-request-period__days--newline': periodDaysOnNewLine(req) }"
+                  > ({{ requestPeriodDays(req) }} дн.)</span
+                >
+              </span>
               <div class="emp-request-meta">
                 <span class="pill" :class="req.status">{{ statusLabel(req) }}</span>
                 <span v-if="isTrainingRequest(req)" class="vac-training-tag">Учебная</span>
@@ -449,14 +458,20 @@ const downloadVacationApplication = async (req: VacationRequest) => {
   }
 };
 
-const formatRequestPeriod = (req: VacationRequest) => {
+const formatRequestDates = (req: VacationRequest) => {
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
   };
-  const days = countVacationBillableDays(req.start, req.end);
-  return `${fmt(req.start)} — ${fmt(req.end)} (${days} дн.)`;
+  return `${fmt(req.start)} — ${fmt(req.end)}`;
 };
+
+const requestPeriodDays = (req: VacationRequest) => countVacationBillableDays(req.start, req.end);
+
+/** Согласован + ещё не начался (есть ⋯) — «(X дн.)» с новой строки, иначе ломается на «(7» / «дн.)». */
+const periodDaysOnNewLine = (req: VacationRequest) =>
+  req.status === 'approved' && canManageRequest(req);
+
 
 const requestAdvance = (req: VacationRequest) =>
   assessVacationBalance(

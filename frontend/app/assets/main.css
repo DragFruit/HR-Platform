@@ -11681,6 +11681,10 @@ button.emp-name--card:hover {
   color: var(--text);
 }
 
+.emp-request-period__days--newline {
+  display: block;
+}
+
 .emp-request-menu-wrap {
   position: relative;
   flex-shrink: 0;
