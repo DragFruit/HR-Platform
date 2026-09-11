@@ -297,16 +297,18 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Защита: заголовок `X-Cron-Token` = `VACATION_PRE_REMINDER_CRON_SECRET` / `CRON_SECRET`.
 
-### Коды ChatGPT → Telegram (cron)
+### Коды ChatGPT → Telegram (cron) и `/vpn`
 
-IMAP → корпоративный Telegram. Общий util: `openaiChatgptMailCode.ts` (окно ~1 ч). Кнопки в `/vpn` больше нет. Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
+IMAP → корпоративный Telegram и/или кнопка в помощнике `/vpn`. Общий util: `openaiChatgptMailCode.ts` (окно ~1 ч). Документация: **[CHATGPT-TELEGRAM.md](./CHATGPT-TELEGRAM.md)**.
 
 | API | Назначение |
 |-----|------------|
+| `POST /api/vpn/chatgpt-code` | Выдача кода в UI (`excludeCodes` для «Это не мой код») |
 | `POST /api/cron/chatgpt-code-telegram` | Новые коды из почты → Telegram (`dry_run=1`) |
 
 | Файл | Роль |
 |------|------|
+| `openaiChatgptMailCode.ts` | IMAP + парсинг |
 | `chatgptCodeTelegram.ts` / `…State.ts` | Пайплайн + дедуп `chatgpt-code-telegram-state.json` |
 | `telegramBot.ts` | Bot API `sendMessage` |
 | `deploy/systemd/vbi-hr-chatgpt-code-telegram.timer` | каждые 2 мин |
