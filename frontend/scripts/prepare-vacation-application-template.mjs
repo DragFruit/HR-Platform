@@ -84,7 +84,8 @@ const rPrCaption =
 }
 
 /**
- * Даты: подпись «Вид отпуска (…)» мелким шрифтом + «с {start} по {end} на {days}».
+ * Даты: подпись «Вид отпуска (…)» кегль 7, с новой строки «с {start} по {end} на {days}»
+ * (в бланке — два soft-break между подписью и датами).
  */
 const datesMarker = 'Вид отпуска (ежегодный, без сохранения заработной платы)';
 const datesIdx = xml.indexOf(datesMarker);
@@ -97,12 +98,14 @@ if (datesIdx < 0) throw new Error('Не найден блок «Вид отпу�
   const para = xml.slice(pStart, pEnd + '</w:p>'.length);
   const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
   const pPr = pPrMatch ? pPrMatch[0] : '';
-  // В бланке перед подписью пробелы + sz=14 — сохраняем.
+  // В бланке: подпись кегль 7, затем два soft-break, затем «с …» с новой строки.
   const captionLead = '                                                                                                 ';
   const rebuilt =
     `<w:p>` +
     pPr +
     `<w:r>${rPrCaption}<w:t xml:space="preserve">${captionLead}${datesMarker}</w:t></w:r>` +
+    `<w:r>${rPrCaption}<w:br/></w:r>` +
+    `<w:r>${rPrBody}<w:br/></w:r>` +
     `<w:r>${rPrBody}<w:t xml:space="preserve">с {start_date}   по {end_date} на {days_count}</w:t></w:r>` +
     `</w:p>`;
   xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
