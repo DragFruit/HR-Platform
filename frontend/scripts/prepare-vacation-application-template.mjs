@@ -1,10 +1,11 @@
 /**
- * One-shot: copy HR Word template and replace yellow-highlighted gaps with docxtemplater tags.
- * Source: user's Downloads; output: server/templates/vacation-application.docx
+ * Конвертация бланка «Заявление на отпуск (3).docx» (таблица в шапке, без жёлтых полей)
+ * → vacation-application.docx с плейсхолдерами docxtemplater.
  *
- * Usage (from frontend/): node scripts/prepare-vacation-application-template.mjs [source.docx]
+ * Usage (from frontend/):
+ *   node scripts/prepare-vacation-application-template.mjs [path/to/source.docx]
  */
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -14,48 +15,89 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const defaultSource = join(
   process.env.HOME ?? '',
   'Downloads',
-  'Заявление на отпуск-3 (2).docx'
+  'Telegram Desktop',
+  'Заявление на отпуск (3).docx'
 );
 const sourcePath = process.argv[2] ?? defaultSource;
 const outPath = join(__dirname, '../server/templates/vacation-application.docx');
 const assetsOutPath = join(__dirname, '../server/assets/templates/vacation-application.docx');
 
-/** Yellow gaps in document order (see server/templates/README.md). */
-const TAGS = [
+const zip = new PizZip(readFileSync(sourcePath));
+const docPath = 'word/document.xml';
+let xml = zip.file(docPath).asText();
+
+const replaceExactT = (from, to) => {
+  const needle = `>${from}<`;
+  const next = `>${to}<`;
+  if (!xml.includes(needle)) {
+    throw new Error(`Не найден фрагмент w:t: ${JSON.stringify(from)}`);
+  }
+  xml = xml.replace(needle, next);
+};
+
+// Юрлицо в шапке: ООО «ВиБиАй» → ООО «{legal_entity}»
+replaceExactT('ВиБиАй', '{legal_entity}');
+
+// Должность (строка «от …»)
+replaceExactT(
+  '                                                                                                              от __________________________',
+  '                                                                                                              от {position}'
+);
+
+// ФИО на следующей строке
+replaceExactT(
+  '                       __________________________',
+  '                       {employee_name}'
+);
+
+/**
+ * Даты отпуска: в бланке подчёркивания разбиты на куски.
+ * Собираем один run «с {start_date}   по {end_date} на {days_count}».
+ */
+const datesMarker = 'Вид отпуска (ежегодный, без сохранения заработной платы)';
+const datesIdx = xml.indexOf(datesMarker);
+if (datesIdx < 0) throw new Error('Не найден блок «Вид отпуска»');
+
+const pStart = xml.lastIndexOf('<w:p ', datesIdx);
+const pEnd = xml.indexOf('</w:p>', datesIdx);
+if (pStart < 0 || pEnd < 0) throw new Error('Не найдены границы абзаца дат');
+const para = xml.slice(pStart, pEnd + '</w:p>'.length);
+
+// Сохраняем pPr если есть
+const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+const pPr = pPrMatch ? pPrMatch[0] : '';
+const rPr =
+  '<w:rPr>' +
+  '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>' +
+  '<w:sz w:val="24"/><w:szCs w:val="24"/>' +
+  '</w:rPr>';
+
+const rebuilt =
+  `<w:p>` +
+  pPr +
+  `<w:r>${rPr}<w:t xml:space="preserve">${datesMarker}</w:t></w:r>` +
+  `<w:r>${rPr}<w:t xml:space="preserve">с {start_date}   по {end_date} на {days_count}</w:t></w:r>` +
+  `</w:p>`;
+
+xml = xml.slice(0, pStart) + rebuilt + xml.slice(pEnd + '</w:p>'.length);
+
+// Выход на работу
+replaceExactT(
+  ' на работу _____________________',
+  ' на работу {return_date}'
+);
+
+const required = [
   '{legal_entity}',
-  '{from_line}',
+  '{position}',
+  '{employee_name}',
   '{start_date}',
   '{end_date}',
   '{days_count}',
   '{return_date}'
 ];
-
-const zip = new PizZip(readFileSync(sourcePath));
-const docPath = 'word/document.xml';
-let xml = zip.file(docPath).asText();
-let tagIdx = 0;
-
-/**
- * Жёлтая подсветка сидит внутри <w:rPr>…</w:rPr> перед <w:t>___</w:t>.
- * Старый regex вырезал и </w:rPr> → Word не открывал файл.
- * Возвращаем закрытие rPr (+ кегль 11pt) и тег.
- */
-xml = xml.replace(
-  /<w:highlight w:val="yellow"\/>[\s\S]*?<w:t([^>]*)>(_+)<\/w:t>/g,
-  (match, tAttrs) => {
-    if (tagIdx >= TAGS.length) return match;
-    const tag = TAGS[tagIdx];
-    tagIdx += 1;
-    return (
-      `<w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>` +
-      `<w:t${tAttrs}>${tag}</w:t>`
-    );
-  }
-);
-
-if (tagIdx !== TAGS.length) {
-  console.error(`Expected ${TAGS.length} yellow gaps, converted ${tagIdx}`);
-  process.exit(1);
+for (const tag of required) {
+  if (!xml.includes(tag)) throw new Error(`После конвертации нет ${tag}`);
 }
 
 zip.file(docPath, xml);
@@ -65,7 +107,6 @@ writeFileSync(outPath, bytes);
 mkdirSync(dirname(assetsOutPath), { recursive: true });
 writeFileSync(assetsOutPath, bytes);
 
-// Fail loudly if XML is broken (Word won't open the file).
 const tmpXml = join(__dirname, '../.tmp-vacation-doc.xml');
 writeFileSync(tmpXml, xml);
 try {
@@ -74,6 +115,13 @@ try {
   console.error('document.xml invalid after conversion — aborting');
   console.error(String(err?.stderr || err));
   process.exit(1);
+} finally {
+  try {
+    unlinkSync(tmpXml);
+  } catch {
+    /* ignore */
+  }
 }
 
-console.log(`Wrote ${outPath} and ${assetsOutPath} (${tagIdx} placeholders, xmllint OK)`);
+console.log(`Wrote ${outPath} and ${assetsOutPath}`);
+console.log(`Placeholders: ${required.join(', ')}`);
