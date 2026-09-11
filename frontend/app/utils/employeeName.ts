@@ -6,7 +6,8 @@ export const normalizeEmployeeNameKey = (name: string) =>
     .replace(/\s+/g, ' ');
 
 /**
- * Фамилия + имя без отчества для UI профиля.
+ * Фамилия + имя без отчества для UI (карточка, профиль, календари, идеи…).
+ * Полное ФИО — только в админке и в заявлении на отпуск.
  * Три и более слов → первые два; иначе как есть.
  */
 export const formatEmployeeShortName = (name: string): string => {
@@ -42,7 +43,7 @@ export const resolveManagerFromList = (
 };
 
 export const splitEmployeeNameLines = (name: string) => {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const parts = formatEmployeeShortName(name).split(/\s+/).filter(Boolean);
   if (parts.length <= 1) {
     return { line1: parts[0] ?? name, line2: null as string | null };
   }

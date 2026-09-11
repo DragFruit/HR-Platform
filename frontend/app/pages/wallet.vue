@@ -22,7 +22,7 @@
         <select v-model="recipientId" class="org-select" required>
           <option disabled value="">Выберите получателя</option>
           <option v-for="user in giftRecipients" :key="user.id" :value="user.id">
-            {{ user.name }} · {{ user.department }}
+            {{ formatEmployeeShortName(user.name) }} · {{ user.department }}
           </option>
         </select>
       </label>
@@ -89,6 +89,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatEmployeeShortName } from '~/utils/employeeName';
+
 const { balance, walletTransactions, giftRecipients, monthTurnover, giftToColleague, hydrateWallets } =
   useWallet();
 
@@ -122,7 +124,7 @@ const submitGift = () => {
   }
 
   const recipient = giftRecipients.value.find((u) => u.id === Number(recipientId.value));
-  giftSuccess.value = `Успешно отправлено ${amount.value} монет сотруднику ${recipient?.name ?? ''}`;
+  giftSuccess.value = `Успешно отправлено ${amount.value} монет сотруднику ${formatEmployeeShortName(recipient?.name ?? '')}`;
   recipientId.value = '';
   amount.value = null;
   comment.value = '';

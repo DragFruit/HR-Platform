@@ -35,7 +35,7 @@
 
         <h2 class="kb-review__title">{{ reviewFields.title }}</h2>
         <p v-if="reviewFields.summary" class="kb-review__lead muted">{{ reviewFields.summary }}</p>
-        <p class="soft">Автор: {{ active.authorName }}</p>
+        <p class="soft">Автор: {{ formatEmployeeShortName(active.authorName) }}</p>
 
         <KnowledgeWysiwygEditor
           :key="`review-${active.id}`"
@@ -55,7 +55,9 @@
           <li v-for="c in active.comments" :key="c.id" class="kb-comments__item">
             <p v-if="c.quote" class="kb-comments__quote">«{{ c.quote }}»</p>
             <p class="kb-comments__body">{{ c.body }}</p>
-            <p class="kb-comments__meta soft">{{ c.authorName }} · {{ formatDateTime(c.createdAt) }}</p>
+            <p class="kb-comments__meta soft">
+              {{ formatEmployeeShortName(c.authorName) }} · {{ formatDateTime(c.createdAt) }}
+            </p>
           </li>
         </ul>
 
@@ -239,7 +241,7 @@
                   <span class="kb-editor__pill" :data-status="article.status">
                     {{ displayStatusLabel(article) }}
                   </span>
-                  <span class="soft">{{ article.authorName }}</span>
+                  <span class="soft">{{ formatEmployeeShortName(article.authorName) }}</span>
                 </div>
                 <h3 class="kb-queue__title">{{ article.title }}</h3>
               </div>
@@ -294,6 +296,7 @@
 <script setup lang="ts">
 import type { KnowledgeAuthorArticle } from '~/composables/useKnowledgeAuthor';
 import { articleEditorFields as fieldsOf } from '~/composables/useKnowledgeAuthor';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const {
   own,

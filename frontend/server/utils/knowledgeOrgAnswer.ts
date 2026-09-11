@@ -1,4 +1,5 @@
 import { bitrixEmployeeProfileUrl } from '../../app/utils/bitrixProfileUrl';
+import { formatEmployeeShortName } from '../../app/utils/employeeName';
 import { getBitrixConfig } from './bitrixConfig';
 import type { ServerEmployee } from './employeesStore';
 import { readEmployees } from './employeesStore';
@@ -143,7 +144,7 @@ function personLink(emp: ServerEmployee | null | undefined, displayName: string)
   if (!emp) return null;
   const href = bitrixEmployeeProfileUrl(portalUrl(), emp.bitrix_user_id ?? emp.platform_user_id);
   if (!href) return null;
-  return { name: displayName || emp.name, href };
+  return { name: formatEmployeeShortName(displayName || emp.name), href };
 }
 
 function findEmployeeByName(name: string, employees: ServerEmployee[]): ServerEmployee | null {
@@ -219,12 +220,12 @@ function matchExecutiveTitle(q: string): RegExp | null {
 function enrichPersonName(shortName: string, employees: ServerEmployee[]): string {
   const n = shortName.trim();
   if (!n) return n;
-  if (n.split(/\s+/).length >= 2) return n;
+  if (n.split(/\s+/).length >= 2) return formatEmployeeShortName(n);
   const hits = employees.filter((e) => {
     const name = String(e.name || '');
     return name === n || name.startsWith(`${n} `) || name.includes(` ${n}`);
   });
-  if (hits.length === 1) return String(hits[0].name);
+  if (hits.length === 1) return formatEmployeeShortName(String(hits[0].name));
   return n;
 }
 
@@ -266,13 +267,15 @@ export async function tryAnswerFromOrgStructure(
     // Если одновременно «кто руководит отделом X» — отдел важнее, ниже обработаем
     const aliasPeek = matchDeptAlias(q);
     if (!(aliasPeek && LEADER_ASK_RE.test(q))) {
+      const short = formatEmployeeShortName(mentioned.name);
       const parts = [
-        `${mentioned.name}`,
+        short,
         mentioned.title ? `— ${mentioned.title}` : null,
         mentioned.department ? `(${mentioned.department})` : null
       ].filter(Boolean);
       const manager = mentioned.manager?.trim();
-      const tail = manager ? ` Руководитель: ${manager}.` : '';
+      const managerShort = manager ? formatEmployeeShortName(manager) : '';
+      const tail = managerShort ? ` Руководитель: ${managerShort}.` : '';
       const answer = `${parts.join(' ')}.${tail}`.replace(/\s+\./g, '.');
       const people: OrgPersonLink[] = [];
       const self = personLink(mentioned, mentioned.name);
@@ -298,7 +301,7 @@ export async function tryAnswerFromOrgStructure(
         person === exe.person.trim()
           ? employees.find((e) => execTitleRe.test(String(e.title || '')))
           : undefined;
-      const full = byTitle?.name?.trim() || person;
+      const full = formatEmployeeShortName(byTitle?.name?.trim() || person);
       const title = String(exe.title || 'Руководитель').trim();
       return withPerson(`${title} — ${full}.`, full, employees, cite);
     }
@@ -337,7 +340,7 @@ export async function tryAnswerFromOrgStructure(
       .filter((e) => deps.has(normalize(String(e.department || ''))))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
     if (members.length) {
-      const names = members.map((e) => e.name);
+      const names = members.map((e) => formatEmployeeShortName(e.name));
       const people = members
         .map((e) => personLink(e, e.name))
         .filter((p): p is OrgPersonLink => Boolean(p));
@@ -374,7 +377,8 @@ export async function tryAnswerFromOrgStructure(
       return /руководител|director|директор/i.test(String(e.title || ''));
     });
     if (lead?.name) {
-      return withPerson(`Руководитель «${unitLabel}» — ${lead.name}.`, lead.name, employees, cite);
+      const leadShort = formatEmployeeShortName(lead.name);
+      return withPerson(`Руководитель «${unitLabel}» — ${leadShort}.`, leadShort, employees, cite);
     }
     return {
       answer: `В структуре для «${unitLabel}» руководитель пока не указан. Откройте раздел Структура.`,

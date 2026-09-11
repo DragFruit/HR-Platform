@@ -63,7 +63,9 @@
     <h4>{{ result.passed ? 'Тест пройден' : 'Тест не пройден' }}</h4>
     <p class="stat-value">{{ result.score_percent }}%</p>
     <p class="muted">
-      Результат сохранён и отправлен администратору HR ({{ result.attempt.employee_name }}).
+      Результат сохранён и отправлен администратору HR ({{
+        formatEmployeeShortName(result.attempt.employee_name)
+      }}).
     </p>
     <button class="button primary" type="button" @click="emit('done')">Закрыть</button>
   </article>
@@ -71,6 +73,7 @@
 
 <script setup lang="ts">
 import type { AdaptationAnswer, AdaptationAttemptRecord, AdaptationQuizClient } from '~/composables/useAdaptation';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const props = defineProps<{
   quiz: AdaptationQuizClient;
