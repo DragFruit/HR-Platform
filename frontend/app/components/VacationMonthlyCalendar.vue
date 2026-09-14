@@ -83,7 +83,7 @@
             >
               <div v-if="compactCells" class="vac-cell-blocks">
                 <span
-                  v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                  v-for="(block, idx) in cellBlocks(emp, monthIndex - 1)"
                   :key="idx"
                   class="vac-block"
                   :class="blockClass(block)"
@@ -93,7 +93,7 @@
               </div>
               <template v-else>
                 <span
-                  v-for="(block, idx) in cellBlocks(emp.name, monthIndex - 1)"
+                  v-for="(block, idx) in cellBlocks(emp, monthIndex - 1)"
                   :key="idx"
                   class="vac-block"
                   :class="blockClass(block)"
@@ -145,7 +145,12 @@ const props = withDefaults(
   defineProps<{
     departments: EmployeeDepartment[];
     year: number;
-    getMonthEntries: (employeeName: string, month: number, year: number) => VacationMonthEntry[];
+    getMonthEntries: (
+      employeeName: string,
+      month: number,
+      year: number,
+      employeeId?: number | null
+    ) => VacationMonthEntry[];
     /** Узкие ячейки сотрудника: плашки в flex-обёртке, без съезда текста */
     compactCells?: boolean;
     /** Отдельный столбец «Должность» (можно скрыть). */
@@ -270,8 +275,8 @@ const employeeHighlightClass = (name: string) => {
   return set.has(name) ? 'is-vacation-focus' : 'is-vacation-dim';
 };
 
-const cellBlocks = (employeeName: string, month: number) =>
-  props.getMonthEntries(employeeName, month, props.year);
+const cellBlocks = (emp: { id: number; name: string }, month: number) =>
+  props.getMonthEntries(emp.name, month, props.year, emp.id);
 
 const blockClass = (block: VacationMonthEntry) => ({
   [block.status]: true,

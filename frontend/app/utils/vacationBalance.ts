@@ -1,5 +1,5 @@
 import type { VacationRequest } from '~/composables/useVacations';
-import { employeeNamesMatch } from '~/utils/employeeName';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import {
   clipIsoRangeToYear,
   countVacationBillableDays,
@@ -117,7 +117,7 @@ const countBookedDays = (
   const want = new Set(statuses);
   let n = 0;
   requests.forEach((r) => {
-    if (!employeeNamesMatch(r.employee, empName) || !want.has(r.status)) return;
+    if (!vacationBelongsToEmployee(r, empName) || !want.has(r.status)) return;
     const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
     if (!clipped) return;
     const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
@@ -146,7 +146,7 @@ const countBookedDaysUpTo = (
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   let n = 0;
   requests.forEach((r) => {
-    if (r.employee !== empName || r.status !== status) return;
+    if (!vacationBelongsToEmployee(r, empName) || r.status !== status) return;
     const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
     if (!clipped) return;
     const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
@@ -261,11 +261,14 @@ export const calcEmployeeBalance = (
   requests: VacationRequest[],
   asOf = new Date(),
   primaryYear = 2026,
-  openingBalance?: number | null
+  openingBalance?: number | null,
+  employeeId?: number | null
 ) => {
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
-  const yearRequests = requests.filter((r) => employeeNamesMatch(r.employee, employeeName));
+  const yearRequests = requests.filter((r) =>
+    vacationBelongsToEmployee(r, { id: employeeId, name: employeeName })
+  );
   const today = normalizeCalendarDate(asOf);
   const todayIso = toIso(today);
   const yearStartIso = `${primaryYear}-01-01`;

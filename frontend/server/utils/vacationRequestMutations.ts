@@ -125,14 +125,16 @@ export async function createVacationRequest(
 
   const employee = await findEmployeeByName(employeeName);
   const yearKey = String(body.year);
+  const canonicalName = employee?.name?.trim() || employeeName;
 
   const request: VacationRequest = {
     id: 0,
-    employee: employeeName,
+    employee: canonicalName,
+    employee_id: employee?.id ?? null,
     start: body.start,
     end: body.end,
     status: 'pending',
-    approval_step: employee ? initialApprovalStep(employee, employeeName) : 'manager',
+    approval_step: employee ? initialApprovalStep(employee, canonicalName) : 'manager',
     comment: body.comment?.trim() || 'Заявка из платформы',
     createdAt: new Date().toLocaleDateString('ru-RU')
   };
@@ -152,7 +154,7 @@ export async function createVacationRequest(
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
     if (employee && session.role !== 'admin') {
-      await assertVacationRequestGroupCap(state, employeeName, body.start, body.end);
+      await assertVacationRequestGroupCap(state, canonicalName, body.start, body.end);
     }
     request.id = state.nextRequestId++;
     const list = state.requestsByYear[yearKey] ?? [];

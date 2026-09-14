@@ -1,6 +1,8 @@
 export type VacationReservation = {
   id: number;
   employee: string;
+  /** id из справочника employees — стабильная привязка. */
+  employee_id?: number | null;
   year: number;
   /** 1–12 */
   month: number;

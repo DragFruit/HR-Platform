@@ -250,7 +250,7 @@ import {
   type VacationReservation
 } from '~/utils/vacationReservations';
 import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
-import { employeeNamesMatch } from '~/utils/employeeName';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 
 const props = defineProps<{
   viewYear: number;
@@ -323,6 +323,7 @@ const editError = ref('');
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
+const employeeId = computed(() => currentEmployee.value?.id ?? null);
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
 
@@ -347,10 +348,10 @@ const yearRequests = computed(() =>
 
 const myReservations = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeReservations(employeeName.value, balanceYear.value);
+  const real = employeeReservations(employeeName.value, balanceYear.value, employeeId.value);
   const merged = mergeReservationsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => employeeNamesMatch(r.employee, employeeName.value))
+    .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
     .sort((a, b) => a.month - b.month);
 });
 
@@ -372,10 +373,10 @@ const removeReservation = async (id: number) => {
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeRequests(employeeName.value, balanceYear.value);
+  const real = employeeRequests(employeeName.value, balanceYear.value, employeeId.value);
   const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => employeeNamesMatch(r.employee, employeeName.value))
+    .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
     .sort((a, b) => {
       const aTraining = isTrainingRequest(a);
       const bTraining = isTrainingRequest(b);
@@ -490,7 +491,7 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(
     (r) =>
       r.id !== excludeId &&
-      employeeNamesMatch(r.employee, employeeName.value) &&
+      vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }) &&
       (r.status === 'approved' || r.status === 'pending') &&
       !(end < r.start || start > r.end)
   );
