@@ -24,12 +24,13 @@ import {
 import { assertVacationRequestGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
 import { isPastApprovedVacationRequest } from '../../app/utils/vacationCalendar';
+import { employeeNamesMatch } from '../../app/utils/employeeName';
 
 const cloneState = (state: VacationStoreState): VacationStoreState =>
   JSON.parse(JSON.stringify(state)) as VacationStoreState;
 
 const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
-  Boolean(a && b) && a!.trim().toLowerCase() === b!.trim().toLowerCase();
+  Boolean(a && b) && employeeNamesMatch(a!, b!);
 
 /** HR и админ ведут график за всех: подают, правят и согласовывают заявки любого сотрудника. */
 const hasRosterWideRights = (session: SessionUser): boolean =>
