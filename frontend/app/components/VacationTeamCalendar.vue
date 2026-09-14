@@ -108,7 +108,12 @@ const props = withDefaults(
     departments: EmployeeDepartment[];
     requests: VacationRequest[];
     reservations?: VacationReservation[];
-    getMonthEntries: (employeeName: string, month: number, year: number) => {
+    getMonthEntries: (
+      employeeName: string,
+      month: number,
+      year: number,
+      employeeId?: number | null
+    ) => {
       status: string;
       label: string;
       kind?: string;

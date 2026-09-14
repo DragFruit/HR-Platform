@@ -8,6 +8,7 @@ import {
   type VacationApprovalStep
 } from '~/utils/vacationApproval';
 import { isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import {
   canManageReservationMonth,
   formatReservationLabel,
@@ -24,6 +25,8 @@ export type BitrixVacationSyncStatus = 'synced' | 'failed' | 'skipped';
 export type VacationRequest = {
   id: number;
   employee: string;
+  /** id из справочника employees — стабильная привязка (ФИО может меняться). */
+  employee_id?: number | null;
   start: string;
   end: string;
   status: VacationStatus;
@@ -506,10 +509,16 @@ export function useVacations() {
   const getMonthEntries = (
     employeeName: string,
     month: number,
-    year = viewYear.value
+    year = viewYear.value,
+    employeeId?: number | null
   ): VacationMonthEntry[] => {
+    const empRef = { id: employeeId, name: employeeName };
     const dated = requestsForYear(year)
-      .filter((r) => r.employee === employeeName && (r.status === 'approved' || r.status === 'pending'))
+      .filter(
+        (r) =>
+          vacationBelongsToEmployee(r, empRef) &&
+          (r.status === 'approved' || r.status === 'pending')
+      )
       .map((r) => ({
         kind: 'dated' as const,
         status: r.status,
@@ -518,7 +527,7 @@ export function useVacations() {
       .filter((x) => x.label !== '');
 
     const reserved = reservationsForYear(year)
-      .filter((r) => r.employee === employeeName && r.month === month + 1)
+      .filter((r) => vacationBelongsToEmployee(r, empRef) && r.month === month + 1)
       .map((r) => ({
         kind: 'reservation' as const,
         status: 'reservation' as const,
@@ -528,11 +537,23 @@ export function useVacations() {
     return [...dated, ...reserved];
   };
 
-  const employeeRequests = (employeeName: string, year = viewYear.value) =>
-    requestsForYear(year).filter((r) => r.employee === employeeName);
+  const employeeRequests = (
+    employeeName: string,
+    year = viewYear.value,
+    employeeId?: number | null
+  ) =>
+    requestsForYear(year).filter((r) =>
+      vacationBelongsToEmployee(r, { id: employeeId, name: employeeName })
+    );
 
-  const employeeReservations = (employeeName: string, year = viewYear.value) =>
-    reservationsForYear(year).filter((r) => r.employee === employeeName);
+  const employeeReservations = (
+    employeeName: string,
+    year = viewYear.value,
+    employeeId?: number | null
+  ) =>
+    reservationsForYear(year).filter((r) =>
+      vacationBelongsToEmployee(r, { id: employeeId, name: employeeName })
+    );
 
   const allReservations = computed(() =>
     Object.values(state.value.reservationsByYear).flat()

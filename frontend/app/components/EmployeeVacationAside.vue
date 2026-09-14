@@ -123,7 +123,16 @@
         <div v-for="req in myRequests" :key="req.id" class="emp-request-row" :class="{ 'emp-request-row--training': isTrainingRequest(req) }">
           <div class="emp-request-row__top">
             <div class="emp-request-main">
-              <span class="emp-request-period">{{ formatRequestPeriod(req) }}</span>
+              <span class="emp-request-period">
+                <span
+                  class="emp-request-period__dates"
+                  >{{ formatRequestDates(req) }}</span
+                ><span
+                  class="emp-request-period__days"
+                  :class="{ 'emp-request-period__days--newline': periodDaysOnNewLine(req) }"
+                  >{{ periodDaysOnNewLine(req) ? '' : ' ' }}({{ requestPeriodDays(req) }} дн.)</span
+                >
+              </span>
               <div class="emp-request-meta">
                 <span class="pill" :class="req.status">{{ statusLabel(req) }}</span>
                 <span v-if="isTrainingRequest(req)" class="vac-training-tag">Учебная</span>
@@ -133,18 +142,31 @@
                 >
                   Не хватает {{ requestAdvance(req).deficit }} дн.
                 </span>
-                <span v-if="req.status === 'approved' && req.bitrix_sync_status === 'synced'" class="vac-bitrix-tag">
-                  Битрикс ✓
-                </span>
-                <span
-                  v-else-if="req.status === 'approved' && req.bitrix_sync_status === 'failed'"
-                  class="vac-bitrix-tag vac-bitrix-tag--error"
-                  :title="req.bitrix_sync_error || 'Не удалось отправить в Битрикс'"
-                >
-                  Битрикс ✗
-                </span>
               </div>
             </div>
+            <button
+              v-if="canDownloadVacationApplication(req)"
+              type="button"
+              class="emp-request-download"
+              :disabled="downloadingApplicationId === req.id"
+              :aria-busy="downloadingApplicationId === req.id"
+              aria-label="Скачать заявление"
+              title="Скачать заявление"
+              @click="downloadVacationApplication(req)"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <p v-if="applicationDownloadErrorFor === req.id" class="emp-request-download-error">
+              {{ applicationDownloadError }}
+            </p>
             <div v-if="canManageRequest(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
@@ -227,6 +249,8 @@ import {
   formatReservationPeriod,
   type VacationReservation
 } from '~/utils/vacationReservations';
+import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 
 const props = defineProps<{
   viewYear: number;
@@ -299,6 +323,7 @@ const editError = ref('');
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));
 const employeeName = computed(() => currentEmployee.value?.name ?? '');
+const employeeId = computed(() => currentEmployee.value?.id ?? null);
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 const openingBalance = computed(() => currentEmployee.value?.vacation_opening_balance ?? null);
 
@@ -323,10 +348,10 @@ const yearRequests = computed(() =>
 
 const myReservations = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeReservations(employeeName.value, balanceYear.value);
+  const real = employeeReservations(employeeName.value, balanceYear.value, employeeId.value);
   const merged = mergeReservationsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => r.employee === employeeName.value)
+    .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
     .sort((a, b) => a.month - b.month);
 });
 
@@ -348,10 +373,10 @@ const removeReservation = async (id: number) => {
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeRequests(employeeName.value, balanceYear.value);
+  const real = employeeRequests(employeeName.value, balanceYear.value, employeeId.value);
   const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => r.employee === employeeName.value)
+    .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
     .sort((a, b) => {
       const aTraining = isTrainingRequest(a);
       const bTraining = isTrainingRequest(b);
@@ -374,14 +399,81 @@ const balance = computed(() =>
 const statusLabel = (req: VacationRequest) =>
   requestStatusLabel(req, currentEmployee.value ?? undefined);
 
-const formatRequestPeriod = (req: VacationRequest) => {
+const canDownloadVacationApplication = (req: VacationRequest) =>
+  !isTrainingRequest(req) &&
+  req.status === 'approved' &&
+  isLaborContractEmployee(currentEmployee.value?.contract_form);
+
+const downloadingApplicationId = ref<number | null>(null);
+const applicationDownloadError = ref('');
+const applicationDownloadErrorFor = ref<number | null>(null);
+
+const parseDownloadFilename = (contentDisposition: string | null, fallback: string): string => {
+  if (!contentDisposition) return fallback;
+  const encoded = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded?.[1]) return decodeURIComponent(encoded[1]);
+  const plain = contentDisposition.match(/filename="([^"]+)"/i);
+  return plain?.[1] || fallback;
+};
+
+const downloadVacationApplication = async (req: VacationRequest) => {
+  if (downloadingApplicationId.value === req.id) return;
+  downloadingApplicationId.value = req.id;
+  applicationDownloadError.value = '';
+  applicationDownloadErrorFor.value = null;
+
+  const fallbackName = `Заявление_на_отпуск_${req.start}.docx`;
+  try {
+    const response = await fetch(`/api/vacations/requests/${req.id}/application`, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        statusMessage?: string;
+        message?: string;
+      } | null;
+      applicationDownloadError.value =
+        payload?.statusMessage || payload?.message || 'Не удалось скачать заявление';
+      applicationDownloadErrorFor.value = req.id;
+      return;
+    }
+
+    const blob = await response.blob();
+    const filename = parseDownloadFilename(
+      response.headers.get('Content-Disposition'),
+      fallbackName
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    applicationDownloadError.value = 'Не удалось скачать заявление';
+    applicationDownloadErrorFor.value = req.id;
+  } finally {
+    downloadingApplicationId.value = null;
+  }
+};
+
+const formatRequestDates = (req: VacationRequest) => {
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split('-');
     return `${d}.${m}.${y}`;
   };
-  const days = countVacationBillableDays(req.start, req.end);
-  return `${fmt(req.start)} — ${fmt(req.end)} (${days} дн.)`;
+  return `${fmt(req.start)} — ${fmt(req.end)}`;
 };
+
+const requestPeriodDays = (req: VacationRequest) => countVacationBillableDays(req.start, req.end);
+
+/** Согласован + ещё не начался (есть ⋯) — «(X дн.)» с новой строки, иначе ломается на «(7» / «дн.)». */
+const periodDaysOnNewLine = (req: VacationRequest) =>
+  req.status === 'approved' && canManageRequest(req);
+
 
 const requestAdvance = (req: VacationRequest) =>
   assessVacationBalance(
@@ -399,7 +491,7 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(
     (r) =>
       r.id !== excludeId &&
-      r.employee === employeeName.value &&
+      vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }) &&
       (r.status === 'approved' || r.status === 'pending') &&
       !(end < r.start || start > r.end)
   );

@@ -1,3 +1,6 @@
+import { employeeNamesMatch } from '~/utils/employeeName';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
+
 export const MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -153,13 +156,15 @@ export type CalendarDayCell = {
 export const buildDaySetsForEmployee = (
   employeeName: string,
   year: number,
-  requests: { employee: string; start: string; end: string; status: string }[]
+  requests: { employee: string; employee_id?: number | null; start: string; end: string; status: string }[],
+  employeeId?: number | null
 ) => {
   const approved = new Set<string>();
   const pending = new Set<string>();
+  const empRef = { id: employeeId, name: employeeName };
 
   requests
-    .filter((r) => r.employee === employeeName)
+    .filter((r) => vacationBelongsToEmployee(r, empRef))
     .forEach((r) => {
       const start = new Date(`${r.start}T00:00:00`);
       const end = new Date(`${r.end}T00:00:00`);
@@ -340,17 +345,29 @@ export const vacationOverlapPeriod = (
 };
 
 export const findVacationOverlapDetails = (
-  request: { id: number; employee: string; start: string; end: string },
-  allRequests: { id: number; employee: string; start: string; end: string; status: string }[],
+  request: { id: number; employee: string; employee_id?: number | null; start: string; end: string },
+  allRequests: {
+    id: number;
+    employee: string;
+    employee_id?: number | null;
+    start: string;
+    end: string;
+    status: string;
+  }[],
   scopeEmployeeNames?: string[]
 ): VacationOverlapDetail[] => {
   const scope = scopeEmployeeNames ? new Set(scopeEmployeeNames) : null;
   const details: VacationOverlapDetail[] = [];
 
   allRequests.forEach((other) => {
-    if (other.id === request.id || other.employee === request.employee) return;
+    if (other.id === request.id || vacationBelongsToEmployee(other, request)) return;
     if (other.status !== 'approved' && other.status !== 'pending') return;
-    if (scope && !scope.has(other.employee)) return;
+    if (
+      scope &&
+      ![...scope].some((name) => employeeNamesMatch(name, other.employee))
+    ) {
+      return;
+    }
     const overlap = vacationOverlapPeriod(request.start, request.end, other.start, other.end);
     if (!overlap) return;
     details.push({

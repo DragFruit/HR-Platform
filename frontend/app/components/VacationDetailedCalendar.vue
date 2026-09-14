@@ -134,7 +134,7 @@
             <td :colspan="totalDays" class="vac-detailed-track">
               <div class="vac-detailed-track-inner" :style="{ '--days': totalDays }">
                 <span
-                  v-for="(bar, idx) in barsFor(emp.name)"
+                  v-for="(bar, idx) in barsFor(emp)"
                   :key="`${emp.id}-bar-${idx}`"
                   class="vac-detailed-bar"
                   :class="bar.status"
@@ -142,7 +142,7 @@
                   :title="bar.title"
                 />
                 <span
-                  v-for="(band, idx) in reservationBandsFor(emp.name)"
+                  v-for="(band, idx) in reservationBandsFor(emp)"
                   :key="`${emp.id}-res-${idx}`"
                   class="vac-detailed-reservation"
                   :style="barStyle(band)"
@@ -163,6 +163,7 @@
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { MONTHS_RU, WEEKDAYS_SHORT, isRuHoliday, isWeekendDay } from '~/utils/vacationCalendar';
 import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
@@ -521,7 +522,8 @@ const balanceByEmployee = computed(() => {
       requests,
       asOf,
       y,
-      emp.vacation_opening_balance
+      emp.vacation_opening_balance,
+      emp.id
     );
     map.set(emp.name, b.remain);
   }
@@ -530,14 +532,15 @@ const balanceByEmployee = computed(() => {
 
 const balanceFor = (emp: Employee) => balanceByEmployee.value.get(emp.name) ?? '—';
 
-const barsFor = (employeeName: string): GanttBar[] => {
+const barsFor = (emp: Employee): GanttBar[] => {
   const fmt = (iso: string) =>
     parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
   return props.requests
     .filter(
       (r) =>
-        r.employee === employeeName && (r.status === 'approved' || r.status === 'pending')
+        vacationBelongsToEmployee(r, emp) &&
+        (r.status === 'approved' || r.status === 'pending')
     )
     .map((r) => {
       const clip = clipToYear(r.start, r.end);
@@ -552,9 +555,9 @@ const barsFor = (employeeName: string): GanttBar[] => {
     .filter((x): x is GanttBar => x !== null);
 };
 
-const reservationBandsFor = (employeeName: string): ReservationBand[] => {
+const reservationBandsFor = (emp: Employee): ReservationBand[] => {
   return (props.reservations ?? [])
-    .filter((r) => r.employee === employeeName && r.year === props.year)
+    .filter((r) => vacationBelongsToEmployee(r, emp) && r.year === props.year)
     .map((r) => {
       const startIdx = dayIndex(new Date(props.year, r.month - 1, 1));
       const daysInMonth = new Date(props.year, r.month, 0).getDate();

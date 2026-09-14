@@ -6,10 +6,11 @@ import {
   isValidReservationDuration
 } from '../../app/utils/vacationReservations';
 import type { SessionUser } from './credentials';
-import { findEmployeeForSession } from './employeesStore';
+import { findEmployeeByName, findEmployeeForSession } from './employeesStore';
 import { notifyVacationReservationUpdated } from './vacationReservationNotifications';
 import { assertReservationGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
+import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
 
 const findReservation = (state: VacationStoreState, id: number) => {
   for (const [yearKey, list] of Object.entries(state.reservationsByYear)) {
@@ -22,7 +23,7 @@ const findReservation = (state: VacationStoreState, id: number) => {
 const hasReservationConflict = (
   state: VacationStoreState,
   yearKey: string,
-  employee: string,
+  employee: { id?: number | null; name: string },
   month: number,
   excludeId?: number
 ) => {
@@ -30,7 +31,7 @@ const hasReservationConflict = (
   return list.some(
     (item) =>
       item.id !== excludeId &&
-      item.employee.trim().toLowerCase() === employee.trim().toLowerCase() &&
+      vacationBelongsToEmployee(item, employee) &&
       item.month === month
   );
 };
@@ -81,12 +82,15 @@ export async function createVacationReservation(
     });
   }
 
+  const directoryEmployee = await findEmployeeByName(employeeName);
+  const canonicalName = directoryEmployee?.name?.trim() || employeeName;
+  const employeeRef = { id: directoryEmployee?.id ?? null, name: canonicalName };
   const yearKey = String(body.year);
 
   return mutateVacations(async (state) => {
-    await assertReservationGroupCap(state, employeeName, body.year, body.month);
+    await assertReservationGroupCap(state, canonicalName, body.year, body.month);
 
-    if (hasReservationConflict(state, yearKey, employeeName, body.month)) {
+    if (hasReservationConflict(state, yearKey, employeeRef, body.month)) {
       throw createError({
         statusCode: 409,
         statusMessage: 'В этом месяце уже есть предварительная бронь'
@@ -95,7 +99,8 @@ export async function createVacationReservation(
 
     const reservation: VacationReservation = {
       id: state.nextReservationId++,
-      employee: employeeName,
+      employee: canonicalName,
+      employee_id: directoryEmployee?.id ?? null,
       year: body.year,
       month: body.month,
       durationDays: body.durationDays,
