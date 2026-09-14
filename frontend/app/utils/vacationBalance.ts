@@ -1,4 +1,5 @@
 import type { VacationRequest } from '~/composables/useVacations';
+import { employeeNamesMatch } from '~/utils/employeeName';
 import {
   clipIsoRangeToYear,
   countVacationBillableDays,
@@ -116,7 +117,7 @@ const countBookedDays = (
   const want = new Set(statuses);
   let n = 0;
   requests.forEach((r) => {
-    if (r.employee !== empName || !want.has(r.status)) return;
+    if (!employeeNamesMatch(r.employee, empName) || !want.has(r.status)) return;
     const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
     if (!clipped) return;
     const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
@@ -264,7 +265,7 @@ export const calcEmployeeBalance = (
 ) => {
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
-  const yearRequests = requests.filter((r) => r.employee === employeeName);
+  const yearRequests = requests.filter((r) => employeeNamesMatch(r.employee, employeeName));
   const today = normalizeCalendarDate(asOf);
   const todayIso = toIso(today);
   const yearStartIso = `${primaryYear}-01-01`;
