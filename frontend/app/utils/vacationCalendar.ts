@@ -1,3 +1,5 @@
+import { employeeNamesMatch } from '~/utils/employeeName';
+
 export const MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -159,7 +161,7 @@ export const buildDaySetsForEmployee = (
   const pending = new Set<string>();
 
   requests
-    .filter((r) => r.employee === employeeName)
+    .filter((r) => employeeNamesMatch(r.employee, employeeName))
     .forEach((r) => {
       const start = new Date(`${r.start}T00:00:00`);
       const end = new Date(`${r.end}T00:00:00`);
@@ -348,9 +350,14 @@ export const findVacationOverlapDetails = (
   const details: VacationOverlapDetail[] = [];
 
   allRequests.forEach((other) => {
-    if (other.id === request.id || other.employee === request.employee) return;
+    if (other.id === request.id || employeeNamesMatch(other.employee, request.employee)) return;
     if (other.status !== 'approved' && other.status !== 'pending') return;
-    if (scope && !scope.has(other.employee)) return;
+    if (
+      scope &&
+      ![...scope].some((name) => employeeNamesMatch(name, other.employee))
+    ) {
+      return;
+    }
     const overlap = vacationOverlapPeriod(request.start, request.end, other.start, other.end);
     if (!overlap) return;
     details.push({

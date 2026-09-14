@@ -8,6 +8,7 @@ import {
   type VacationApprovalStep
 } from '~/utils/vacationApproval';
 import { isPastApprovedVacationRequest } from '~/utils/vacationCalendar';
+import { employeeNamesMatch } from '~/utils/employeeName';
 import {
   canManageReservationMonth,
   formatReservationLabel,
@@ -509,7 +510,11 @@ export function useVacations() {
     year = viewYear.value
   ): VacationMonthEntry[] => {
     const dated = requestsForYear(year)
-      .filter((r) => r.employee === employeeName && (r.status === 'approved' || r.status === 'pending'))
+      .filter(
+        (r) =>
+          employeeNamesMatch(r.employee, employeeName) &&
+          (r.status === 'approved' || r.status === 'pending')
+      )
       .map((r) => ({
         kind: 'dated' as const,
         status: r.status,
@@ -518,7 +523,7 @@ export function useVacations() {
       .filter((x) => x.label !== '');
 
     const reserved = reservationsForYear(year)
-      .filter((r) => r.employee === employeeName && r.month === month + 1)
+      .filter((r) => employeeNamesMatch(r.employee, employeeName) && r.month === month + 1)
       .map((r) => ({
         kind: 'reservation' as const,
         status: 'reservation' as const,
@@ -529,10 +534,10 @@ export function useVacations() {
   };
 
   const employeeRequests = (employeeName: string, year = viewYear.value) =>
-    requestsForYear(year).filter((r) => r.employee === employeeName);
+    requestsForYear(year).filter((r) => employeeNamesMatch(r.employee, employeeName));
 
   const employeeReservations = (employeeName: string, year = viewYear.value) =>
-    reservationsForYear(year).filter((r) => r.employee === employeeName);
+    reservationsForYear(year).filter((r) => employeeNamesMatch(r.employee, employeeName));
 
   const allReservations = computed(() =>
     Object.values(state.value.reservationsByYear).flat()

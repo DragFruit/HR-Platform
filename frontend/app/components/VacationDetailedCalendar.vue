@@ -162,7 +162,7 @@
 <script setup lang="ts">
 import type { VacationRequest } from '~/composables/useVacations';
 import type { Employee, EmployeeDepartment } from '~/composables/useEmployees';
-import { formatEmployeeShortName } from '~/utils/employeeName';
+import { formatEmployeeShortName, employeeNamesMatch } from '~/utils/employeeName';
 import { MONTHS_RU, WEEKDAYS_SHORT, isRuHoliday, isWeekendDay } from '~/utils/vacationCalendar';
 import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
@@ -537,7 +537,8 @@ const barsFor = (employeeName: string): GanttBar[] => {
   return props.requests
     .filter(
       (r) =>
-        r.employee === employeeName && (r.status === 'approved' || r.status === 'pending')
+        employeeNamesMatch(r.employee, employeeName) &&
+        (r.status === 'approved' || r.status === 'pending')
     )
     .map((r) => {
       const clip = clipToYear(r.start, r.end);
@@ -554,7 +555,7 @@ const barsFor = (employeeName: string): GanttBar[] => {
 
 const reservationBandsFor = (employeeName: string): ReservationBand[] => {
   return (props.reservations ?? [])
-    .filter((r) => r.employee === employeeName && r.year === props.year)
+    .filter((r) => employeeNamesMatch(r.employee, employeeName) && r.year === props.year)
     .map((r) => {
       const startIdx = dayIndex(new Date(props.year, r.month - 1, 1));
       const daysInMonth = new Date(props.year, r.month, 0).getDate();

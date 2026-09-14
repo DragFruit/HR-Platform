@@ -188,6 +188,7 @@
 
 <script setup lang="ts">
 import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
+import { employeeNamesMatch } from '~/utils/employeeName';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
@@ -616,7 +617,7 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
   displayRequests.value.some(
     (r) =>
       r.id !== excludeId &&
-      r.employee === employeeName.value &&
+      employeeNamesMatch(r.employee, employeeName.value) &&
       (r.status === 'approved' || r.status === 'pending') &&
       !(end < r.start || start > r.end)
   );

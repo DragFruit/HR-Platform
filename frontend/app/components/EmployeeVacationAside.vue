@@ -250,6 +250,7 @@ import {
   type VacationReservation
 } from '~/utils/vacationReservations';
 import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
+import { employeeNamesMatch } from '~/utils/employeeName';
 
 const props = defineProps<{
   viewYear: number;
@@ -349,7 +350,7 @@ const myReservations = computed(() => {
   const real = employeeReservations(employeeName.value, balanceYear.value);
   const merged = mergeReservationsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => r.employee === employeeName.value)
+    .filter((r) => employeeNamesMatch(r.employee, employeeName.value))
     .sort((a, b) => a.month - b.month);
 });
 
@@ -374,7 +375,7 @@ const myRequests = computed(() => {
   const real = employeeRequests(employeeName.value, balanceYear.value);
   const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
-    .filter((r) => r.employee === employeeName.value)
+    .filter((r) => employeeNamesMatch(r.employee, employeeName.value))
     .sort((a, b) => {
       const aTraining = isTrainingRequest(a);
       const bTraining = isTrainingRequest(b);
@@ -489,7 +490,7 @@ const hasConflict = (start: string, end: string, excludeId?: number) =>
   yearRequests.value.some(
     (r) =>
       r.id !== excludeId &&
-      r.employee === employeeName.value &&
+      employeeNamesMatch(r.employee, employeeName.value) &&
       (r.status === 'approved' || r.status === 'pending') &&
       !(end < r.start || start > r.end)
   );
