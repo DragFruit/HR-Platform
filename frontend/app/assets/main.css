@@ -9017,6 +9017,23 @@ button.org-unit-head--link:hover {
   overflow: visible;
 }
 
+/*
+ * Админка: календарь + очередь согласования на одной странице.
+ * Глобальный sticky у .vac-team-calendar__frame (z-index: 4) иначе
+ * накрывает панель «Согласовать» при скролле — кнопки видны, но клик
+ * уходит в календарь.
+ */
+.vac-admin-vacations .vac-team-calendar__frame {
+  position: relative;
+  top: auto;
+  z-index: 1;
+}
+
+.vac-admin-vacations .vac-approval-panel {
+  position: relative;
+  z-index: 2;
+}
+
 .vac-team-calendar__frame {
   position: sticky;
   top: 0;
