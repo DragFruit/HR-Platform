@@ -126,7 +126,20 @@ export function requestStatusLabel(
 }
 
 export function useVacations() {
-  const { findByName } = useEmployees();
+  const { findByName, findById } = useEmployees();
+
+  /** Справочник: сначала employee_id заявки, иначе ФИО (legacy). */
+  const resolveRequestEmployee = (request: {
+    employee: string;
+    employee_id?: number | null;
+  }) => {
+    const id = Number(request.employee_id);
+    if (Number.isFinite(id) && id > 0) {
+      const byId = findById(id);
+      if (byId) return byId;
+    }
+    return findByName(request.employee);
+  };
   const state = useState<VacationState>('vbi-vacations', defaultState);
   const viewYear = useState<number>('vbi-vacations-year', () => new Date().getFullYear());
   const hydrated = useState<boolean>('vbi-vacations-hydrated', () => false);
@@ -316,7 +329,7 @@ export function useVacations() {
     for (const list of Object.values(state.value.requestsByYear)) {
       for (const req of list) {
         if (req.status !== 'pending' || req.approval_step !== undefined) continue;
-        const employee = findByName(req.employee);
+        const employee = resolveRequestEmployee(req);
         if (!employee) continue;
         patches.push({ id: req.id, approval_step: initialApprovalStep(employee, req.employee) });
       }
@@ -337,7 +350,7 @@ export function useVacations() {
     const pending = pendingRequests.value;
     if (seeAll || !approverEmployeeName) return pending;
     return pending.filter((request) => {
-      const employee = findByName(request.employee);
+      const employee = resolveRequestEmployee(request);
       return canApproverReviewRequest(approverEmployeeName, request, employee);
     });
   };
@@ -348,7 +361,7 @@ export function useVacations() {
   ) => {
     if (seeAll || !approverEmployeeName) return [];
     return pendingRequests.value.filter((request) => {
-      const employee = findByName(request.employee);
+      const employee = resolveRequestEmployee(request);
       return isHandedOffToDirectorForGroupLead(approverEmployeeName, request, employee);
     });
   };
@@ -391,8 +404,19 @@ export function useVacations() {
     const found = findRequestById(id);
     if (!found || found.item.status !== 'pending') return false;
 
-    const employee = findByName(found.item.employee);
-    if (!employee) return false;
+    const employee = resolveRequestEmployee(found.item);
+    if (!employee) {
+      // Админ/HR: согласовать даже если карточки нет в справочнике (сироты ФИО).
+      if (options?.force || options?.elevated) {
+        try {
+          await syncPatchRequest(id, { status: 'approved', approval_step: null });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    }
 
     if (
       !options?.force &&
@@ -409,6 +433,7 @@ export function useVacations() {
     if (options?.force) {
       status = 'approved';
     } else {
+      // elevated (админ/HR) тоже идёт по этапам (Digital: manager → director).
       const step = resolveRequestApprovalStep(found.item, employee);
       if (!step) return false;
       const next = nextStateAfterApproval(employee, step);
