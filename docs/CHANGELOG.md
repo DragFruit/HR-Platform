@@ -4,10 +4,11 @@
 
 ## 2026-09-18
 
-### CI: анти-OOM на build:production (Nitro «Killed»)
+### Отпуска: заявление компактнее + на прод
 
-- `NODE_OPTIONS=--max-old-space-size=2048` в `.gitlab-ci.yml` — иначе Node раздувает heap по RAM хоста и cgroup убивает процесс.
-- В CI: без sourcemap server, без minify Nitro, меньше параллелизма Vite — снижаем пик памяти на `main` после добавления docxtemplater.
+- Убран неиспользуемый пакет `docx`; один шаблон в `server/assets/templates/`.
+- API/утил/скачивание сжаты; без раздувания `NODE_OPTIONS` в CI.
+- Правила кнопки без изменений: `approved` + ТД + до старта отпуска.
 
 ### Отпуска: правила кнопки «Скачать заявление» (locked)
 
