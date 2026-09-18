@@ -11,6 +11,7 @@
           type="date"
           class="vac-emp-input"
           aria-label="Дата начала"
+          :min="allowPastDates ? undefined : minIso"
           :disabled="isHistoricalYear || submitting"
         />
         <span class="vac-emp-toolbar__word">по</span>
@@ -19,6 +20,7 @@
           type="date"
           class="vac-emp-input"
           aria-label="Дата окончания"
+          :min="allowPastDates ? undefined : minIso"
           :disabled="isHistoricalYear || submitting"
         />
         <span
@@ -187,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { buildDaySetsForEmployee } from '~/utils/vacationCalendar';
+import { buildDaySetsForEmployee, isVacationStartInPast, todayIso } from '~/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
@@ -232,6 +234,8 @@ const { user } = useAuth();
 const runtimeConfig = useRuntimeConfig();
 const vacationTrainingEnabled = computed(() => runtimeConfig.public.vacationTrainingEnabled === true);
 const { isAdmin } = usePermissions();
+/** Задним числом — только admin (не HR, не сотрудник). */
+const allowPastDates = computed(() => isAdmin.value);
 const {
   findByUserForAuth,
   directReports,
@@ -637,6 +641,13 @@ const submitRequest = async () => {
   }
   if (form.end < form.start) {
     formError.value = { title: 'Некорректный период', text: 'Дата окончания не может быть раньше даты начала.' };
+    return;
+  }
+  if (!allowPastDates.value && isVacationStartInPast(form.start, todayIso())) {
+    formError.value = {
+      title: 'Дата в прошлом',
+      text: 'Нельзя оформить отпуск задним числом. Обратитесь к администратору.'
+    };
     return;
   }
   if (hasConflict(form.start, form.end)) {

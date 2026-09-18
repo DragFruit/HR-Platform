@@ -23,7 +23,7 @@ import {
 } from './vacationNotifications';
 import { assertVacationRequestGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
-import { isPastApprovedVacationRequest } from '../../app/utils/vacationCalendar';
+import { isPastApprovedVacationRequest, isVacationStartInPast, todayIso } from '../../app/utils/vacationCalendar';
 import { employeeNamesMatch } from '../../app/utils/employeeName';
 
 const cloneState = (state: VacationStoreState): VacationStoreState =>
@@ -35,6 +35,19 @@ const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
 /** HR и админ ведут график за всех: подают, правят и согласовывают заявки любого сотрудника. */
 const hasRosterWideRights = (session: SessionUser): boolean =>
   session.role === 'admin' || session.role === 'hr';
+
+/** Задним числом — только роль admin (не HR и не сотрудник). */
+const canCreatePastVacation = (session: SessionUser): boolean => session.role === 'admin';
+
+const assertStartNotInPastUnlessAdmin = (session: SessionUser, start: string) => {
+  if (canCreatePastVacation(session)) return;
+  if (isVacationStartInPast(start, todayIso())) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Нельзя оформить отпуск задним числом — доступно только администратору'
+    });
+  }
+};
 
 const findRequest = (state: VacationStoreState, id: number) => {
   for (const [yearKey, list] of Object.entries(state.requestsByYear)) {
@@ -150,6 +163,7 @@ export async function createVacationRequest(
     }
     assertYearMatchesStart(body.year, body.start);
     yearFromIsoDate(body.end);
+    assertStartNotInPastUnlessAdmin(session, body.start);
     if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
@@ -269,6 +283,11 @@ export async function patchVacationRequest(
     }
 
     previousRequest = { ...found.item };
+
+    if (changesDates) {
+      const nextStart = patch.start ?? found.item.start;
+      assertStartNotInPastUnlessAdmin(session, nextStart);
+    }
 
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
