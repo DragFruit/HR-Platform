@@ -12,8 +12,29 @@ const csp = buildAppContentSecurityPolicy({
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
+  // Devtools/sourcemap на CI раздувают SSR; minify Nitro — отдельный пик RAM.
+  devtools: { enabled: process.env.CI !== 'true' && process.env.GITLAB_CI !== 'true' },
+  sourcemap: false,
   css: ['~/assets/main.css'],
+  vite: {
+    build: {
+      sourcemap: false,
+      reportCompressedSize: false,
+      rollupOptions: {
+        maxParallelFileOps: 2
+      }
+    }
+  },
+  nitro: {
+    minify: false,
+    // pizzip подключаем динамически; не инлайнить в SSR-чанк.
+    externals: {
+      traceInclude: ['pizzip']
+    },
+    rollupConfig: {
+      external: ['pizzip']
+    }
+  },
   routeRules: {
     '/**': {
       headers: {

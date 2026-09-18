@@ -4,6 +4,11 @@
 
 ## 2026-09-18
 
+### CI: заявление без server/assets + потолок heap
+
+- Шаблон только в `server/templates/`, в CI копируется в `.output/server/templates/` (не через Nitro assets).
+- `pizzip` — dynamic import + external; `NODE_OPTIONS=--max-old-space-size=1536` как потолок от cgroup Killed.
+
 ### Отпуска: шаблон заявления по правкам бланка
 
 - Текст: «ежегодный оплачиваемый отпуск»; строка `с … по … на … дней` без подписей под датами.
