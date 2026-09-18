@@ -1,3 +1,4 @@
+import { employeeNamesMatch } from '../../app/utils/employeeName';
 import {
   resolveEmployeeReservationCapContext,
   resolveReservationCapGroupIdForManager
@@ -17,9 +18,16 @@ const buildGroupHelpers = async () => {
   const allEmployees = await readEmployees();
   return {
     allEmployees,
-    directReports: (managerName: string) =>
-      allEmployees.filter((emp) => emp.manager.trim() === managerName.trim()),
-    findByName: (name: string) => allEmployees.find((emp) => emp.name.trim() === name.trim()),
+    directReports: (managerRef: string | number) => {
+      const managerId =
+        typeof managerRef === 'number'
+          ? managerRef
+          : allEmployees.find((emp) => employeeNamesMatch(emp.name, managerRef))?.id;
+      if (!managerId) return [];
+      return allEmployees.filter((emp) => emp.manager_id === managerId && emp.id !== managerId);
+    },
+    findByName: (name: string) =>
+      allEmployees.find((emp) => employeeNamesMatch(emp.name, name)),
     employeesInDepartment: (department: string) =>
       allEmployees.filter((emp) => emp.department.trim() === department.trim())
   };

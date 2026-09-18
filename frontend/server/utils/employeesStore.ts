@@ -7,6 +7,7 @@ import {
   stripQaTestEmployees
 } from '../../app/data/qaTestDepartment';
 import { employeeNamesMatch } from '../../app/utils/employeeName';
+import { ensureEmployeeManagerIds } from '../../app/utils/employeeManagerRef';
 import type { SessionUser } from './credentials';
 import {
   applyManagerAssignments,
@@ -29,6 +30,8 @@ export type ServerEmployee = {
   title: string;
   department: string;
   manager: string;
+  /** id руководителя из справочника. */
+  manager_id?: number | null;
   hired_at: string;
   /** День рождения: `YYYY-MM-DD` или `MM-DD`. */
   birthday?: string | null;
@@ -93,7 +96,7 @@ export async function readEmployees(): Promise<ServerEmployee[]> {
       }
     });
   }
-  return mergeQaTestEmployees(withoutDenied);
+  return ensureEmployeeManagerIds(mergeQaTestEmployees(withoutDenied));
 }
 
 export type WriteEmployeesOptions = {

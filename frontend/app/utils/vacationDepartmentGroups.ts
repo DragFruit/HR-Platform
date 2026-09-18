@@ -4,6 +4,7 @@ import {
   QA_TEAM_LEAD_NAME,
   QA_TEST_DEPARTMENT_NAME
 } from '~/data/qaTestDepartment';
+import { employeeNamesMatch } from '~/utils/employeeName';
 import {
   DIGITAL_DIRECTOR_NAME,
   isDigitalDepartment,
@@ -87,7 +88,7 @@ const DEPARTMENT_VACATION_LAYOUTS: readonly DepartmentVacationLayout[] = [
 ];
 
 export type VacationGroupHelpers = {
-  directReports: (managerName: string) => Employee[];
+  directReports: (managerRef: string | number) => Employee[];
   findByName: (name: string) => Employee | undefined;
   /** Все сотрудники отдела — для общего пула лимита броней. */
   employeesInDepartment?: (department: string) => Employee[];
@@ -123,7 +124,7 @@ const resolveGroupMembers = (def: VacationGroupDef, helpers: VacationGroupHelper
 
   const lead = helpers.findByName(def.leadName);
   if (!lead) return [];
-  const reports = helpers.directReports(def.leadName);
+  const reports = helpers.directReports(lead.id);
   const seen = new Set<number>();
   const combined: Employee[] = [];
   for (const emp of [lead, ...reports]) {
@@ -245,7 +246,7 @@ export function resolveReservationCapGroupIdForManager(
   if (dept) {
     const layout = getVacationDepartmentLayout(dept);
     if (layout?.reservationCapPoolId) {
-      if (trimmed === layout.directorName || layout.isGroupLead(trimmed)) {
+      if (employeeNamesMatch(trimmed, layout.directorName) || layout.isGroupLead(trimmed)) {
         return layout.reservationCapPoolId;
       }
       return null;
@@ -278,7 +279,7 @@ export function resolveVacationGroupForEmployee(
   const name = employee.name.trim();
   for (const def of layout.groups) {
     const members = resolveGroupMembers(def, helpers);
-    if (members.some((emp) => emp.name.trim() === name)) {
+    if (members.some((emp) => employeeNamesMatch(emp.name, name))) {
       return { id: def.id, label: def.label, members };
     }
   }
@@ -298,10 +299,10 @@ export function resolveVacationGroupIdForManager(
     : DEPARTMENT_VACATION_LAYOUTS;
 
   for (const layout of layouts) {
-    if (trimmed === layout.directorName) return layout.directorGroupId;
+    if (employeeNamesMatch(trimmed, layout.directorName)) return layout.directorGroupId;
 
     const leadDef = layout.groups.find(
-      (def) => def.type === 'lead' && def.leadName === trimmed
+      (def) => def.type === 'lead' && employeeNamesMatch(def.leadName, trimmed)
     );
     if (leadDef) return leadDef.id;
 
@@ -317,9 +318,21 @@ export function resolveVacationGroupIdForManager(
   return null;
 }
 
-export function isVacationDepartmentDirector(managerName: string, department: string): boolean {
+export function isVacationDepartmentDirector(
+  manager: Pick<Employee, 'id' | 'name'> | string,
+  department: string,
+  findByName?: (name: string) => Employee | undefined
+): boolean {
   const layout = getVacationDepartmentLayout(department);
-  return Boolean(layout && managerName.trim() === layout.directorName);
+  if (!layout) return false;
+
+  const director = findByName?.(layout.directorName);
+  if (typeof manager === 'string') {
+    if (director) return employeeNamesMatch(manager, director.name);
+    return employeeNamesMatch(manager, layout.directorName);
+  }
+  if (director) return director.id === manager.id;
+  return employeeNamesMatch(manager.name, layout.directorName);
 }
 
 export function isVacationGroupLead(managerName: string, department: string): boolean {
@@ -329,25 +342,28 @@ export function isVacationGroupLead(managerName: string, department: string): bo
 
 /** Календарь руководителя: директор — все группы; тимлид — одна группа. */
 export function resolveManagerCalendarDepartments(
-  managerName: string,
+  manager: Pick<Employee, 'id' | 'name'> | string,
   allEmployees: Employee[],
   helpers: VacationGroupHelpers
 ): EmployeeDepartment[] {
-  const trimmed = managerName.trim();
-  if (!trimmed) return [];
+  const managerEmp =
+    typeof manager === 'string'
+      ? helpers.findByName(manager.trim())
+      : helpers.findByName(manager.name) || allEmployees.find((emp) => emp.id === manager.id);
+  if (!managerEmp) return [];
 
-  const manager = helpers.findByName(trimmed);
-  const department = manager?.department?.trim();
+  const department = managerEmp.department?.trim();
   if (!department) return [];
 
   const layout = getVacationDepartmentLayout(department);
   if (!layout) return [];
 
-  if (trimmed === layout.directorName) {
+  const director = helpers.findByName(layout.directorName);
+  if (director && director.id === managerEmp.id) {
     return resolveVacationDepartmentsForDepartment(department, allEmployees, helpers);
   }
 
-  const groupId = resolveVacationGroupIdForManager(trimmed, helpers, department);
+  const groupId = resolveVacationGroupIdForManager(managerEmp.name, helpers, department);
   if (!groupId) return [];
 
   const def = layout.groups.find((row) => row.id === groupId);

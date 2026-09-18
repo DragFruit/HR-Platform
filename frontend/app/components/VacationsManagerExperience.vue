@@ -215,17 +215,17 @@ const scopedTeamMembers = computed(() => {
 
 const calendarDepartments = computed(() => {
   if (usesScopedTeamView.value) {
-    const managerName = managerProfileName(user.value) || '';
     const managerEmployee = findByUserForAuth(user.value);
     const department = managerEmployee?.department?.trim() ?? '';
 
     if (
+      managerEmployee &&
       department &&
       isGroupedVacationDepartment(department) &&
-      (isVacationDepartmentDirector(managerName, department) ||
-        isVacationGroupLead(managerName, department))
+      (isVacationDepartmentDirector(managerEmployee, department, findByName) ||
+        isVacationGroupLead(managerEmployee.name, department))
     ) {
-      const groupedDeps = resolveManagerCalendarDepartments(managerName, employees.value, {
+      const groupedDeps = resolveManagerCalendarDepartments(managerEmployee, employees.value, {
         directReports,
         findByName
       });
@@ -238,9 +238,13 @@ const calendarDepartments = computed(() => {
 
 const showDepartmentDailyCounts = computed(() => {
   if (!usesScopedTeamView.value) return false;
-  const managerName = managerProfileName(user.value)?.trim() ?? '';
-  const department = findByUserForAuth(user.value)?.department?.trim() ?? '';
-  return Boolean(department && isVacationDepartmentDirector(managerName, department));
+  const managerEmployee = findByUserForAuth(user.value);
+  const department = managerEmployee?.department?.trim() ?? '';
+  return Boolean(
+    managerEmployee &&
+      department &&
+      isVacationDepartmentDirector(managerEmployee, department, findByName)
+  );
 });
 
 const approvalQueue = computed(() =>

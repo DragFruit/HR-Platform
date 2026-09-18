@@ -3,6 +3,7 @@ import {
   QA_TEAM_LEAD_NAME,
   QA_TEST_DEPARTMENT_NAME
 } from '~/data/qaTestDepartment';
+import { employeeNamesMatch } from '~/utils/employeeName';
 
 export type VacationApprovalStep = 'manager' | 'director';
 
@@ -11,8 +12,15 @@ export const DIGITAL_DIRECTOR_NAME = 'Ревзина Ксения';
 const DIGITAL_GROUP_LEAD_SURNAMES = new Set(['Попов', 'Лунин', 'Цхай', 'Носков']);
 
 export type VacationEmployeeRef = {
+  id?: number;
   department: string;
   manager: string;
+  manager_id?: number | null;
+};
+
+export type VacationApproverRef = {
+  id?: number | null;
+  name: string;
 };
 
 type TwoStepDepartmentConfig = {
@@ -36,13 +44,31 @@ const TWO_STEP_DEPARTMENTS: TwoStepDepartmentConfig[] = [
     department: QA_TEST_DEPARTMENT_NAME,
     directorName: QA_DIRECTOR_NAME,
     directorStepLabel: 'На согласовании у директора отдела',
-    isGroupLeadManager: (managerName) => managerName.trim() === QA_TEAM_LEAD_NAME
+    isGroupLeadManager: (managerName) =>
+      employeeNamesMatch(managerName, QA_TEAM_LEAD_NAME)
   }
 ];
 
 function getTwoStepConfig(department: string): TwoStepDepartmentConfig | undefined {
   return TWO_STEP_DEPARTMENTS.find((cfg) => cfg.department === department.trim());
 }
+
+const asApprover = (approver: string | VacationApproverRef): VacationApproverRef =>
+  typeof approver === 'string' ? { name: approver } : approver;
+
+const samePerson = (
+  left: { id?: number | null; name?: string | null },
+  rightName: string,
+  rightId?: number | null
+): boolean => {
+  const leftId = Number(left.id);
+  const right = Number(rightId);
+  if (Number.isFinite(leftId) && leftId > 0 && Number.isFinite(right) && right > 0) {
+    return leftId === right;
+  }
+  const leftName = String(left.name || '').trim();
+  return Boolean(leftName && rightName && employeeNamesMatch(leftName, rightName));
+};
 
 /** Директор отдела при двухэтапном согласовании (Digital, QA-тест и т.д.). */
 export function resolveDepartmentDirectorName(employee: VacationEmployeeRef): string | null {
@@ -77,7 +103,7 @@ const isDirectorSelfRequest = (
   if (!requestEmployeeName) return false;
   const cfg = getTwoStepConfig(employee.department);
   if (!cfg) return false;
-  return requestEmployeeName.trim() === cfg.directorName.trim();
+  return employeeNamesMatch(requestEmployeeName, cfg.directorName);
 };
 
 export function initialApprovalStep(
@@ -92,15 +118,18 @@ export function initialApprovalStep(
 }
 
 export function resolveRequestApprovalStep(
-  request: { status: string; approval_step?: VacationApprovalStep },
+  request: { status: string; approval_step?: VacationApprovalStep; employee?: string },
   employee: VacationEmployeeRef | undefined
 ): VacationApprovalStep | null {
   if (request.status !== 'pending') return null;
   const requestEmployeeName =
-    'employee' in request && typeof request.employee === 'string' ? request.employee : undefined;
+    typeof request.employee === 'string' ? request.employee : undefined;
   if (request.approval_step) {
-    // Нормализуем старые заявки директора, чтобы они не «застревали» на self-approval.
-    if (request.approval_step === 'director' && employee && isDirectorSelfRequest(requestEmployeeName, employee)) {
+    if (
+      request.approval_step === 'director' &&
+      employee &&
+      isDirectorSelfRequest(requestEmployeeName, employee)
+    ) {
       return 'manager';
     }
     return request.approval_step;
@@ -110,32 +139,50 @@ export function resolveRequestApprovalStep(
 }
 
 export function canApproverReviewRequest(
-  approverName: string,
-  request: { status: string; approval_step?: VacationApprovalStep; employee: string },
-  employee: VacationEmployeeRef | undefined
+  approver: string | VacationApproverRef,
+  request: {
+    status: string;
+    approval_step?: VacationApprovalStep;
+    employee: string;
+    employee_id?: number | null;
+  },
+  employee: VacationEmployeeRef | undefined,
+  /** Резолв директора отдела в id справочника (для сравнения без ФИО). */
+  resolvePersonId?: (name: string) => number | null | undefined
 ): boolean {
   if (request.status !== 'pending' || !employee) return false;
 
-  const approver = approverName.trim();
-  if (approver === request.employee.trim()) return false;
+  const who = asApprover(approver);
+  const requestEmployeeId = Number(request.employee_id ?? employee.id);
+  if (
+    samePerson(
+      who,
+      request.employee,
+      Number.isFinite(requestEmployeeId) && requestEmployeeId > 0 ? requestEmployeeId : null
+    )
+  ) {
+    return false;
+  }
+
   const step = resolveRequestApprovalStep(request, employee);
   if (!step) return false;
 
   if (step === 'manager') {
-    return approver === employee.manager.trim();
+    return samePerson(who, employee.manager, employee.manager_id ?? null);
   }
 
   const cfg = getTwoStepConfig(employee.department);
   if (cfg) {
-    return approver === cfg.directorName;
+    const directorId = resolvePersonId?.(cfg.directorName) ?? null;
+    return samePerson(who, cfg.directorName, directorId);
   }
 
-  return approver === employee.manager.trim();
+  return samePerson(who, employee.manager, employee.manager_id ?? null);
 }
 
 /** Имя сотрудника в справочнике, который сейчас должен согласовать заявку. */
 export function resolveApproverEmployeeName(
-  request: { status: string; approval_step?: VacationApprovalStep },
+  request: { status: string; approval_step?: VacationApprovalStep; employee?: string },
   employee: VacationEmployeeRef
 ): string | null {
   const step = resolveRequestApprovalStep(request, employee);
@@ -148,8 +195,8 @@ export function resolveApproverEmployeeName(
   if (cfg) {
     const director = cfg.directorName.trim();
     const requestEmployeeName =
-      'employee' in request && typeof request.employee === 'string' ? request.employee.trim() : '';
-    if (director && director !== requestEmployeeName) return director;
+      typeof request.employee === 'string' ? request.employee.trim() : '';
+    if (director && !employeeNamesMatch(director, requestEmployeeName)) return director;
   }
   const fallback = employee.manager.trim();
   return fallback || null;
@@ -157,7 +204,7 @@ export function resolveApproverEmployeeName(
 
 /** Заявка ушла на директора после согласования тимлидом — только для отображения. */
 export function isHandedOffToDirectorForGroupLead(
-  groupLeadName: string,
+  groupLead: string | VacationApproverRef,
   request: { status: string; approval_step?: VacationApprovalStep },
   employee: VacationEmployeeRef | undefined
 ): boolean {
@@ -165,7 +212,8 @@ export function isHandedOffToDirectorForGroupLead(
   if (!needsTwoStepApproval(employee)) return false;
   const step = resolveRequestApprovalStep(request, employee);
   if (step !== 'director') return false;
-  return groupLeadName.trim() === employee.manager.trim();
+  const who = asApprover(groupLead);
+  return samePerson(who, employee.manager, employee.manager_id ?? null);
 }
 
 export function nextStateAfterApproval(

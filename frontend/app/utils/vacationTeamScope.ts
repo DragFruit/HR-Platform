@@ -1,4 +1,5 @@
 import type { Employee } from '~/composables/useEmployees';
+import { employeeNamesMatch } from '~/utils/employeeName';
 import {
   isGroupedVacationDepartment,
   resolveVacationDepartmentsForDepartment
@@ -50,13 +51,13 @@ export function enrichTeamMembers(
     if (!mgr) continue;
     if (members.some((emp) => emp.id === mgr.id)) continue;
 
-    const leadsSubsetInTeam = members.some((emp) => emp.manager.trim() === name);
+    const leadsSubsetInTeam = members.some((emp) => employeeNamesMatch(emp.manager, name));
     if (!leadsSubsetInTeam) continue;
 
     const skipUpperManager = members.some(
       (emp) =>
-        emp.manager.trim() === name &&
-        members.some((peer) => peer.manager.trim() === emp.name.trim())
+        employeeNamesMatch(emp.manager, name) &&
+        members.some((peer) => employeeNamesMatch(peer.manager, emp.name))
     );
     if (skipUpperManager) continue;
 

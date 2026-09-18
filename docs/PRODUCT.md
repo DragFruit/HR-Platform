@@ -423,7 +423,7 @@ Legacy Амsterdam (`77.221.148.17`, `_Amst_*`) — снят с выдачи ч�
 | Поле | Ключ JSON | Источник |
 |------|-----------|----------|
 | ФИО, должность, отдел | `name`, `title`, `department` | Bitrix синк (имя/должность — уведомление при расхождении) + ручная правка |
-| Руководитель | `manager` | Только ручной выбор из списка (overlay `employee-managers.json`) |
+| Руководитель | `manager` + `manager_id` | ФИО для UI; иерархия/календарь/согласование — по `manager_id`. Overlay `employee-managers.json` хранит ФИО; id проставляется при чтении |
 | Дата приёма | `hired_at` | Ручная / при импорте из Bitrix (`DATE_REGISTER`) |
 | Bitrix ID | `bitrix_user_id` | Ручная / синк |
 | Роль доступа | `account_role` | Ручная |

@@ -15,7 +15,7 @@ import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed'
 import { syncApprovedVacationsToBitrix, removeVacationAbsenceFromBitrix } from './bitrixVacationAbsence';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
 import type { SessionUser } from './credentials';
-import { findEmployeeByName, findEmployeeForSession } from './employeesStore';
+import { findEmployeeByName, findEmployeeForSession, readEmployees } from './employeesStore';
 import {
   notifyVacationRequestCreated,
   notifyVacationRequestDeleted,
@@ -190,7 +190,10 @@ export async function patchVacationRequest(
       throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
     }
 
-    const owner = await findEmployeeByName(found.item.employee);
+    const owner =
+      (found.item.employee_id
+        ? (await readEmployees()).find((row) => row.id === found.item.employee_id)
+        : null) ?? (await findEmployeeByName(found.item.employee));
     const isOwnRequest = sameEmployeeName(sessionEmployee?.name, found.item.employee);
 
     if (changesDates && !elevated && !isOwnRequest) {
@@ -222,9 +225,17 @@ export async function patchVacationRequest(
         });
       }
 
-      const approverName = sessionEmployee?.name?.trim() || '';
+      const roster = await readEmployees();
+      const resolvePersonId = (name: string) =>
+        roster.find((row) => employeeNamesMatch(row.name, name))?.id ?? null;
       const canReview =
-        Boolean(owner) && canApproverReviewRequest(approverName, found.item, owner as VacationEmployeeRef);
+        Boolean(owner) &&
+        canApproverReviewRequest(
+          { id: sessionEmployee?.id ?? null, name: sessionEmployee?.name?.trim() || '' },
+          found.item,
+          owner as VacationEmployeeRef,
+          resolvePersonId
+        );
       if (!canReview) {
         throw createError({
           statusCode: 403,
