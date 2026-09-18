@@ -1,8 +1,13 @@
 import { send } from 'h3';
 import { employeeNamesMatch } from '../../../../../app/utils/employeeName';
+import { todayIso } from '../../../../../app/utils/vacationCalendar';
 import type { SessionUser } from '../../../../utils/credentials';
 import { requireVbiSession } from '../../../../utils/session';
-import { findEmployeeByName, findEmployeeForSession } from '../../../../utils/employeesStore';
+import {
+  findEmployeeById,
+  findEmployeeByName,
+  findEmployeeForSession
+} from '../../../../utils/employeesStore';
 import { readVacations } from '../../../../utils/vacationsStore';
 import {
   buildVacationApplicationDocx,
@@ -34,10 +39,13 @@ export default defineEventHandler(async (event) => {
 
   const sessionEmployee = await findEmployeeForSession(session);
   const elevated = hasRosterWideRights(session);
-  if (
-    !elevated &&
-    (!sessionEmployee || !sameEmployeeName(sessionEmployee.name, request.employee))
-  ) {
+  const ownsById =
+    Boolean(sessionEmployee?.id) &&
+    Boolean(request.employee_id) &&
+    sessionEmployee!.id === request.employee_id;
+  const ownsByName =
+    Boolean(sessionEmployee) && sameEmployeeName(sessionEmployee!.name, request.employee);
+  if (!elevated && !ownsById && !ownsByName) {
     throw createError({ statusCode: 403, statusMessage: 'Нет доступа к этой заявке' });
   }
 
@@ -48,8 +56,25 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const employee = await findEmployeeByName(request.employee);
-  if (!employee || !isLaborContractEmployee(employee.contract_form)) {
+  if (request.start <= todayIso()) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Заявление доступно до начала отпуска'
+    });
+  }
+
+  const employee =
+    (request.employee_id ? await findEmployeeById(request.employee_id) : null) ??
+    (await findEmployeeByName(request.employee));
+
+  if (!employee) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Сотрудник заявки не найден в справочнике'
+    });
+  }
+
+  if (!isLaborContractEmployee(employee.contract_form)) {
     throw createError({
       statusCode: 403,
       statusMessage: 'Заявление доступно только сотрудникам с трудовым договором (ТД)'
@@ -66,8 +91,11 @@ export default defineEventHandler(async (event) => {
       endDate: request.end
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Не удалось сформировать заявление';
-    throw createError({ statusCode: 500, message });
+    console.error('[vacation-application]', err);
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Не удалось сформировать заявление. Попробуйте позже или напишите в HR.'
+    });
   }
 
   const encoded = encodeURIComponent(vacationApplicationFilename(employee.name, request.start));

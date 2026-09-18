@@ -415,7 +415,9 @@ const statusLabel = (req: VacationRequest) =>
 const canDownloadVacationApplication = (req: VacationRequest) =>
   !isTrainingRequest(req) &&
   req.status === 'approved' &&
-  isLaborContractEmployee(currentEmployee.value?.contract_form);
+  isLaborContractEmployee(currentEmployee.value?.contract_form) &&
+  // После старта отпуска заявление не нужно — кнопку скрываем.
+  req.start > todayIso();
 
 const downloadingApplicationId = ref<number | null>(null);
 const applicationDownloadError = ref('');
@@ -427,6 +429,23 @@ const parseDownloadFilename = (contentDisposition: string | null, fallback: stri
   if (encoded?.[1]) return decodeURIComponent(encoded[1]);
   const plain = contentDisposition.match(/filename="([^"]+)"/i);
   return plain?.[1] || fallback;
+};
+
+const friendlyDownloadError = (payload: {
+  statusMessage?: string;
+  message?: string;
+  statusCode?: number;
+} | null): string => {
+  const text = (payload?.statusMessage || payload?.message || '').trim();
+  // Не показываем сырой JSON/стек/английский MultiError от docxtemplater.
+  if (
+    !text ||
+    text.length > 180 ||
+    /Multi error|Docxtemplater|at Object\.|statusCode|stack/i.test(text)
+  ) {
+    return 'Не удалось скачать заявление';
+  }
+  return text;
 };
 
 const downloadVacationApplication = async (req: VacationRequest) => {
@@ -444,9 +463,16 @@ const downloadVacationApplication = async (req: VacationRequest) => {
       const payload = (await response.json().catch(() => null)) as {
         statusMessage?: string;
         message?: string;
+        statusCode?: number;
       } | null;
-      applicationDownloadError.value =
-        payload?.statusMessage || payload?.message || 'Не удалось скачать заявление';
+      applicationDownloadError.value = friendlyDownloadError(payload);
+      applicationDownloadErrorFor.value = req.id;
+      return;
+    }
+
+    const contentType = response.headers.get('Content-Type') || '';
+    if (!contentType.includes('officedocument') && !contentType.includes('octet-stream')) {
+      applicationDownloadError.value = 'Не удалось скачать заявление';
       applicationDownloadErrorFor.value = req.id;
       return;
     }

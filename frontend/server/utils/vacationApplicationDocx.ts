@@ -57,20 +57,13 @@ const padBlankField = (value: string, width: number): string => {
   return text + FIELD_PAD.repeat(width - text.length);
 };
 
-const buildFromLine = (position: string, employeeName: string): string => {
-  const pos = position.trim();
-  const name = employeeName.trim();
-  if (pos && name) return `${pos} ${name}`;
-  return name || pos || '—';
-};
-
 const buildTemplatePayload = (data: VacationApplicationData) => {
   const days = countInclusiveCalendarDays(data.startDate, data.endDate);
   const returnIso = addWorkingDaysIso(data.endDate, 1);
 
+  // Только плейсхолдеры из бланка (без from_line — иначе лишний/устаревший текст).
   return {
     legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
-    from_line: buildFromLine(data.position, data.employeeName),
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
     vacation_type: 'ежегодный',
