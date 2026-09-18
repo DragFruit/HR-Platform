@@ -351,7 +351,12 @@ export function useVacations() {
     if (seeAll || !approverEmployeeName) return pending;
     return pending.filter((request) => {
       const employee = resolveRequestEmployee(request);
-      return canApproverReviewRequest(approverEmployeeName, request, employee);
+      return canApproverReviewRequest(
+        { id: findByName(approverEmployeeName)?.id ?? null, name: approverEmployeeName },
+        request,
+        employee,
+        (name) => findByName(name)?.id ?? null
+      );
     });
   };
 
@@ -362,7 +367,11 @@ export function useVacations() {
     if (seeAll || !approverEmployeeName) return [];
     return pendingRequests.value.filter((request) => {
       const employee = resolveRequestEmployee(request);
-      return isHandedOffToDirectorForGroupLead(approverEmployeeName, request, employee);
+      return isHandedOffToDirectorForGroupLead(
+        { id: findByName(approverEmployeeName)?.id ?? null, name: approverEmployeeName },
+        request,
+        employee
+      );
     });
   };
 
@@ -422,7 +431,12 @@ export function useVacations() {
       !options?.force &&
       !options?.elevated &&
       (!approverEmployeeName ||
-        !canApproverReviewRequest(approverEmployeeName, found.item, employee))
+        !canApproverReviewRequest(
+          { id: findByName(approverEmployeeName)?.id ?? null, name: approverEmployeeName },
+          found.item,
+          employee,
+          (name) => findByName(name)?.id ?? null
+        ))
     ) {
       return false;
     }

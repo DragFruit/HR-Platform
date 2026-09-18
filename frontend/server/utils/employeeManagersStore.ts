@@ -2,6 +2,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { writeJsonAtomic } from './atomicJson';
 import { dirname, join } from 'node:path';
 import type { ServerEmployee } from './employeesStore';
+import { ensureEmployeeManagerIds } from '../../app/utils/employeeManagerRef';
 
 export type ManagerAssignments = {
   byId: Record<string, string>;
@@ -90,14 +91,16 @@ export function applyManagerAssignments(
   assignments: ManagerAssignments,
   fallbackById?: Map<number, string>
 ): ServerEmployee[] {
-  return list.map((emp) => ({
-    ...emp,
-    manager: resolveEmployeeManager(
-      emp,
-      assignments,
-      fallbackById?.get(emp.id) ?? emp.manager
-    )
-  }));
+  return ensureEmployeeManagerIds(
+    list.map((emp) => ({
+      ...emp,
+      manager: resolveEmployeeManager(
+        emp,
+        assignments,
+        fallbackById?.get(emp.id) ?? emp.manager
+      )
+    }))
+  );
 }
 
 export async function mergeManagerAssignments(

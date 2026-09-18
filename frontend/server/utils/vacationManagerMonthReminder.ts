@@ -1,5 +1,8 @@
 import type { VacationRequest } from '../../app/composables/useVacations';
-import { DEPARTMENT_SCOPE_BY_MANAGER } from '../../app/utils/departmentTeamScope';
+import {
+  DEPARTMENT_SCOPE_BY_MANAGER,
+  departmentScopeForManager
+} from '../../app/utils/departmentTeamScope';
 import { isDigitalDepartment } from '../../app/utils/vacationApproval';
 import { sendBitrixImbotMessage, isBitrixImbotConfigured } from './bitrixImbot';
 import { readEmployees, type ServerEmployee } from './employeesStore';
@@ -73,14 +76,14 @@ export const teamScopeForManager = (
   const name = manager.name.trim();
   if (MANAGER_MONTH_REMINDER_NEVER.has(name)) return [];
 
-  const dept = DEPARTMENT_SCOPE_BY_MANAGER[name];
+  const dept = departmentScopeForManager(manager, all);
   if (dept) {
     return all.filter(
-      (e) => e.name.trim() !== name && employeeInDepartmentScope(e, dept)
+      (e) => e.id !== manager.id && employeeInDepartmentScope(e, dept)
     );
   }
 
-  return all.filter((e) => (e.manager || '').trim() === name);
+  return all.filter((e) => e.manager_id === manager.id);
 };
 
 export type ManagerMonthVacationLine = {
@@ -210,7 +213,10 @@ export async function runVacationManagerMonthReminders(options?: {
     const name = e.name.trim();
     if (!name || MANAGER_MONTH_REMINDER_NEVER.has(name)) return false;
     if (!e.bitrix_user_id) return false;
-    return teamScopeForManager(e, employees).length > 0 || Boolean(DEPARTMENT_SCOPE_BY_MANAGER[name]);
+    return (
+      teamScopeForManager(e, employees).length > 0 ||
+      Boolean(departmentScopeForManager(e, employees))
+    );
   });
 
   for (const manager of managers) {

@@ -2,7 +2,8 @@ import { canApproverReviewRequest } from '~/utils/vacationApproval';
 import { departmentScopeForManager } from '~/utils/departmentTeamScope';
 import { listDepartmentsForUi } from '~/data/departments';
 import { dedupeEmployeeList } from '~/utils/employeeDedupe';
-import { normalizeEmployeeNameKey, resolveManagerFromList } from '~/utils/employeeName';
+import { normalizeEmployeeNameKey, resolveManagerFromList, employeeNamesMatch } from '~/utils/employeeName';
+import { ensureEmployeeManagerIds } from '~/utils/employeeManagerRef';
 
 export type AccountRole = 'employee' | 'manager' | 'hr' | 'admin';
 
@@ -11,7 +12,10 @@ export type Employee = {
   name: string;
   title: string;
   department: string;
+  /** ФИО руководителя — для отображения/админки. */
   manager: string;
+  /** id руководителя из справочника — для иерархии и календаря. */
+  manager_id?: number | null;
   hired_at: string;
   /** День рождения: `YYYY-MM-DD` или `MM-DD` (год опционален). */
   birthday?: string | null;
@@ -100,6 +104,7 @@ export function useEmployees() {
     title: emp.title,
     department: emp.department,
     manager: emp.manager,
+    manager_id: emp.manager_id ?? null,
     hired_at: emp.hired_at,
     birthday: emp.birthday || undefined,
     platform_user_id: emp.platform_user_id,
@@ -120,6 +125,7 @@ export function useEmployees() {
     title: string;
     department: string;
     manager: string;
+    manager_id?: number | null;
     hired_at: string;
     birthday?: string | null;
     platform_user_id: number | null;
@@ -136,6 +142,7 @@ export function useEmployees() {
       title: row.title,
       department: row.department,
       manager: row.manager,
+      manager_id: row.manager_id ?? null,
       hired_at: row.hired_at,
       birthday: row.birthday ?? null,
       platform_user_id: row.platform_user_id,
@@ -150,7 +157,7 @@ export function useEmployees() {
     });
 
   const applyEmployeeList = (list: Employee[]) => {
-    employeesRaw.value = dedupeEmployeeList(list);
+    employeesRaw.value = ensureEmployeeManagerIds(dedupeEmployeeList(list));
     if (!import.meta.client) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(employeesRaw.value));
   };
@@ -287,12 +294,20 @@ export function useEmployees() {
         saveError.value = `«${patch.manager}» нет в списке руководителей`;
         return;
       }
-      patch = { ...patch, manager: resolved };
+      const managerEmp = resolved
+        ? employeesRaw.value.find((row) => employeeNamesMatch(row.name, resolved))
+        : null;
+      patch = {
+        ...patch,
+        manager: resolved,
+        manager_id: managerEmp?.id ?? null
+      };
     }
 
     Object.assign(emp, patch);
     const enriched = enrichEmployeeRecord(emp);
     Object.assign(emp, enriched);
+    employeesRaw.value = ensureEmployeeManagerIds(employeesRaw.value);
     persist();
   };
 
@@ -328,6 +343,7 @@ export function useEmployees() {
       title: '',
       department: '',
       manager: '',
+      manager_id: null,
       hired_at: new Date().toISOString().slice(0, 10),
       platform_user_id: null,
       email: '',
@@ -357,15 +373,23 @@ export function useEmployees() {
     return employees.value.find((emp) => emp.platform_user_id === userId) ?? null;
   };
 
-  const findByName = (name: string) => employees.value.find((emp) => emp.name === name) ?? null;
+  const findByName = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    return employees.value.find((emp) => employeeNamesMatch(emp.name, trimmed)) ?? null;
+  };
   const findById = (id: number) => employees.value.find((emp) => emp.id === id) ?? null;
 
-  /** Руководитель сотрудника — из поля manager справочника (актуальная версия на платформе). */
+  /** Руководитель сотрудника — из manager_id (fallback: поле manager). */
   const managerForEmployee = (emp: Employee | null | undefined): Employee | null => {
-    const mgrName = emp?.manager?.trim();
+    if (!emp) return null;
+    if (emp.manager_id) {
+      const byId = findById(emp.manager_id);
+      if (byId) return byId;
+    }
+    const mgrName = emp.manager?.trim();
     if (!mgrName) return null;
-    const key = normalizeEmployeeNameKey(mgrName);
-    return employees.value.find((e) => normalizeEmployeeNameKey(e.name) === key) ?? null;
+    return findByName(mgrName);
   };
 
   const findByUserForAuth = (user: { id: number; email: string; name?: string } | null | undefined) => {
@@ -378,32 +402,47 @@ export function useEmployees() {
     return null;
   };
 
-  const directReports = (managerName: string) => {
-    const normalized = managerName.trim();
-    if (!normalized) return [];
+  const directReports = (managerRef: string | number | null | undefined) => {
+    if (managerRef == null || managerRef === '') return [];
+
+    let managerId: number | null = null;
+    if (typeof managerRef === 'number') {
+      managerId = Number.isFinite(managerRef) && managerRef > 0 ? managerRef : null;
+    } else {
+      const trimmed = managerRef.trim();
+      if (!trimmed) return [];
+      managerId = findByName(trimmed)?.id ?? null;
+    }
+    if (!managerId) return [];
+
     return employees.value.filter(
-      (emp) => emp.manager.trim() === normalized && emp.name.trim() !== normalized
+      (emp) => emp.manager_id === managerId && emp.id !== managerId
     );
   };
 
-  /** Прямые и косвенные подчинённые (вся цепочка manager → …). */
-  const allReports = (managerName: string) => {
-    const normalized = managerName.trim();
-    if (!normalized) return [];
+  /** Прямые и косвенные подчинённые (вся цепочка manager_id → …). */
+  const allReports = (managerRef: string | number | null | undefined) => {
+    const roots = directReports(managerRef);
+    if (!roots.length) return [];
 
     const result: Employee[] = [];
     const seen = new Set<number>();
 
-    const walk = (leadName: string) => {
-      for (const emp of directReports(leadName)) {
+    const walk = (managerId: number) => {
+      for (const emp of directReports(managerId)) {
         if (seen.has(emp.id)) continue;
         seen.add(emp.id);
         result.push(emp);
-        walk(emp.name.trim());
+        walk(emp.id);
       }
     };
 
-    walk(normalized);
+    for (const root of roots) {
+      if (seen.has(root.id)) continue;
+      seen.add(root.id);
+      result.push(root);
+      walk(root.id);
+    }
     return result;
   };
 
@@ -415,13 +454,23 @@ export function useEmployees() {
     return (linked?.name.trim() || user.name.trim());
   };
 
+  const managerProfileEmployee = (
+    user: { id: number; email: string; name: string } | null | undefined
+  ) => findByUserForAuth(user);
+
   const directReportsForAuthUser = (
     user: { id: number; email: string; name: string } | null | undefined
-  ) => directReports(managerProfileName(user));
+  ) => {
+    const me = findByUserForAuth(user);
+    return me ? directReports(me.id) : [];
+  };
 
   const allReportsForAuthUser = (
     user: { id: number; email: string; name: string } | null | undefined
-  ) => allReports(managerProfileName(user));
+  ) => {
+    const me = findByUserForAuth(user);
+    return me ? allReports(me.id) : [];
+  };
 
   const employeesInDepartment = (department: string) => {
     const normalized = department.trim();
@@ -451,11 +500,11 @@ export function useEmployees() {
     const isSelf = (emp: Employee) => {
       if (emp.platform_user_id === user.id) return true;
       if (me && emp.id === me.id) return true;
-      return Boolean(myName && emp.name.trim() === myName);
+      return Boolean(myName && employeeNamesMatch(emp.name, myName));
     };
 
-    if (isManager && myName) {
-      const deptScope = departmentScopeForManager(myName);
+    if (isManager && me) {
+      const deptScope = departmentScopeForManager(me, employees.value);
       if (deptScope) {
         const members = employeesInDepartment(deptScope)
           .filter((emp) => !isSelf(emp))
@@ -467,12 +516,12 @@ export function useEmployees() {
         };
       }
 
-      const members = directReports(myName)
+      const members = directReports(me.id)
         .filter((emp) => emp.name.trim() && !isSelf(emp))
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
       return {
         mode: 'reports',
-        department: me?.department.trim() || user.department.trim(),
+        department: me.department.trim() || user.department.trim(),
         members
       };
     }
@@ -496,9 +545,10 @@ export function useEmployees() {
     const employee = findByName(employeeName);
     if (!employee) return false;
     return canApproverReviewRequest(
-      managerProfileName,
-      { status: 'pending', employee: employeeName },
-      employee
+      { id: findByName(managerProfileName)?.id ?? null, name: managerProfileName },
+      { status: 'pending', employee: employeeName, employee_id: employee.id },
+      employee,
+      (name) => findByName(name)?.id ?? null
     );
   };
 
@@ -555,6 +605,7 @@ export function useEmployees() {
     allReportsForAuthUser,
     employeesInDepartment,
     managerProfileName,
+    managerProfileEmployee,
     profileTeamForUser,
     canManagerApproveRequest,
     managerOptions,
