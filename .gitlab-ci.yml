@@ -13,8 +13,6 @@ variables:
   NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
   DEPLOY_HOST: "45.12.74.25"
   DEPLOY_USER: "deploy"
-  # Потолок heap (не «больше RAM»): без него Node на большом хосте раздувается и cgroup делает Killed.
-  NODE_OPTIONS: "--max-old-space-size=1536"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}

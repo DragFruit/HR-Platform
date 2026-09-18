@@ -1,5 +1,8 @@
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import {
   isLaborContractEmployee,
   resolveLegalEntityFullName
@@ -8,6 +11,8 @@ import {
   addWorkingDaysIso,
   countInclusiveCalendarDays
 } from '../../app/utils/vacationCalendar';
+
+const execFileAsync = promisify(execFile);
 
 export type VacationApplicationData = {
   employeeName: string;
@@ -34,29 +39,24 @@ const escapeXml = (value: string): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-/** Шаблон лежит рядом с сервером (не в server/assets — иначе Nitro жрёт RAM на CI). */
-async function readTemplate(): Promise<Buffer> {
+async function templatePath(): Promise<string> {
   const candidates = [
     join(process.cwd(), 'templates/vacation-application.docx'),
     join(process.cwd(), 'server/templates/vacation-application.docx')
   ];
   for (const path of candidates) {
     try {
-      return await readFile(path);
+      await readFile(path);
+      return path;
     } catch {
-      /* try next */
+      /* next */
     }
   }
   throw new Error('Шаблон заявления не найден (templates/vacation-application.docx)');
 }
 
+/** Без npm-zip: системные unzip/zip (на VPS есть). Не тянем pizzip в Nitro CI. */
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
-  // Динамический import — pizzip не в графе Vite SSR на этапе transform.
-  const { default: PizZip } = await import('pizzip');
-  const zip = new PizZip(await readTemplate());
-  const file = zip.file('word/document.xml');
-  if (!file) throw new Error('В шаблоне нет word/document.xml');
-
   const values: Record<string, string> = {
     legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
     employee_name: data.employeeName.trim() || '—',
@@ -67,12 +67,23 @@ export async function buildVacationApplicationDocx(data: VacationApplicationData
     return_date: ruDate(addWorkingDaysIso(data.endDate, 1))
   };
 
-  let xml = file.asText();
-  for (const [key, value] of Object.entries(values)) {
-    xml = xml.replaceAll(`{${key}}`, escapeXml(value));
+  const root = await mkdtemp(join(tmpdir(), 'vbi-vac-app-'));
+  const extract = join(root, 'extract');
+  const outDocx = join(root, 'out.docx');
+  try {
+    await mkdir(extract);
+    await execFileAsync('unzip', ['-q', await templatePath(), '-d', extract]);
+    const xmlPath = join(extract, 'word/document.xml');
+    let xml = await readFile(xmlPath, 'utf8');
+    for (const [key, value] of Object.entries(values)) {
+      xml = xml.replaceAll(`{${key}}`, escapeXml(value));
+    }
+    await writeFile(xmlPath, xml, 'utf8');
+    await execFileAsync('zip', ['-qr', outDocx, '.'], { cwd: extract });
+    return await readFile(outDocx);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
-  zip.file('word/document.xml', xml);
-  return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
 }
 
 export { isLaborContractEmployee };

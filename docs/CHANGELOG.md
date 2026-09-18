@@ -4,6 +4,11 @@
 
 ## 2026-09-18
 
+### CI: убрать pizzip и потолок NODE_OPTIONS
+
+- Генерация заявления — системные `unzip`/`zip` (на VPS есть), без npm-зависимости.
+- Снят `NODE_OPTIONS=1536` — низкий потолок сам валил сборку (Killed).
+
 ### CI: заявление без server/assets + потолок heap
 
 - Шаблон только в `server/templates/`, в CI копируется в `.output/server/templates/` (не через Nitro assets).
