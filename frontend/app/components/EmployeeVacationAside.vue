@@ -184,11 +184,21 @@
           <div v-if="editingId === req.id" class="emp-request-edit">
             <label class="emp-request-edit__field">
               <span>с</span>
-              <input v-model="editForm.start" type="date" class="vac-emp-input" />
+              <input
+                v-model="editForm.start"
+                type="date"
+                class="vac-emp-input"
+                :min="allowPastDates ? undefined : todayMinIso"
+              />
             </label>
             <label class="emp-request-edit__field">
               <span>по</span>
-              <input v-model="editForm.end" type="date" class="vac-emp-input" />
+              <input
+                v-model="editForm.end"
+                type="date"
+                class="vac-emp-input"
+                :min="allowPastDates ? undefined : todayMinIso"
+              />
             </label>
             <div class="emp-request-edit__actions">
               <button type="button" class="vac-emp-btn vac-emp-btn--ghost" @click="cancelEditRequest">
@@ -241,7 +251,7 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
-import { countVacationBillableDays, isPastApprovedVacationRequest, toIso } from '~/utils/vacationCalendar';
+import { countVacationBillableDays, isPastApprovedVacationRequest, isVacationStartInPast, todayIso, toIso } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
 import {
@@ -265,6 +275,9 @@ const emit = defineEmits<{
 }>();
 
 const { user } = useAuth();
+const { isAdmin } = usePermissions();
+const allowPastDates = computed(() => isAdmin.value);
+const todayMinIso = todayIso();
 const { findByUserForAuth } = useEmployees();
 const {
   requestsForYear,
@@ -538,6 +551,10 @@ const saveEditRequest = async (id: number) => {
   }
   if (editForm.end < editForm.start) {
     editError.value = 'Дата окончания не может быть раньше начала.';
+    return;
+  }
+  if (!allowPastDates.value && isVacationStartInPast(editForm.start, todayIso())) {
+    editError.value = 'Нельзя оформить отпуск задним числом.';
     return;
   }
   if (hasConflict(editForm.start, editForm.end, id)) {

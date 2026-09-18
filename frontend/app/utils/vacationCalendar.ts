@@ -40,6 +40,10 @@ export const toIso = (date: Date) => {
 
 export const todayIso = () => toIso(new Date());
 
+/** Начало отпуска строго раньше «сегодня» (календарный день). */
+export const isVacationStartInPast = (startIso: string, asOf = todayIso()) =>
+  Boolean(startIso) && startIso < asOf;
+
 export const normalizeRange = (start: string, end: string): [string, string] =>
   start <= end ? [start, end] : [end, start];
 
