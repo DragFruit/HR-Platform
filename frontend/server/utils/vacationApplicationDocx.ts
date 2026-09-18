@@ -19,12 +19,6 @@ export type VacationApplicationData = {
   endDate: string;
 };
 
-const FIELD_PAD = '\u2007';
-const pad = (value: string, width: number) => {
-  const t = value.trim();
-  return t.length >= width ? `${t} ` : t + FIELD_PAD.repeat(width - t.length);
-};
-
 const ruDate = (iso: string): string => {
   const d = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
@@ -55,7 +49,7 @@ async function readTemplate(): Promise<Buffer> {
   return readFile(join(process.cwd(), 'server/assets/templates/vacation-application.docx'));
 }
 
-/** Подстановка плейсхолдеров через PizZip (без docxtemplater — легче для Nitro CI). */
+/** Подстановка плейсхолдеров через PizZip (бланк с цельными `{…}` в XML). */
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
   const zip = new PizZip(await readTemplate());
   const file = zip.file('word/document.xml');
@@ -65,10 +59,9 @@ export async function buildVacationApplicationDocx(data: VacationApplicationData
     legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
-    vacation_type: 'ежегодный',
-    start_date: pad(ruDate(data.startDate), 21),
-    end_date: pad(ruDate(data.endDate), 23),
-    days_count: pad(String(countInclusiveCalendarDays(data.startDate, data.endDate)), 10),
+    start_date: ruDate(data.startDate),
+    end_date: ruDate(data.endDate),
+    days_count: String(countInclusiveCalendarDays(data.startDate, data.endDate)),
     return_date: ruDate(addWorkingDaysIso(data.endDate, 1))
   };
 
