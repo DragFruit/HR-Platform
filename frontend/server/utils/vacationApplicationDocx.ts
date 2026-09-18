@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import Docxtemplater from 'docxtemplater';
 import { useStorage } from '#imports';
 import PizZip from 'pizzip';
 import {
@@ -36,6 +35,13 @@ const ruDate = (iso: string): string => {
     .concat(' г.');
 };
 
+const escapeXml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 const toBuffer = (raw: unknown): Buffer => {
   if (Buffer.isBuffer(raw)) return raw;
   if (raw instanceof Uint8Array) return Buffer.from(raw);
@@ -49,13 +55,13 @@ async function readTemplate(): Promise<Buffer> {
   return readFile(join(process.cwd(), 'server/assets/templates/vacation-application.docx'));
 }
 
+/** Подстановка плейсхолдеров через PizZip (без docxtemplater — легче для Nitro CI). */
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
-  const doc = new Docxtemplater(new PizZip(await readTemplate()), {
-    paragraphLoop: true,
-    linebreaks: true,
-    delimiters: { start: '{', end: '}' }
-  });
-  doc.render({
+  const zip = new PizZip(await readTemplate());
+  const file = zip.file('word/document.xml');
+  if (!file) throw new Error('В шаблоне нет word/document.xml');
+
+  const values: Record<string, string> = {
     legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
@@ -64,8 +70,14 @@ export async function buildVacationApplicationDocx(data: VacationApplicationData
     end_date: pad(ruDate(data.endDate), 23),
     days_count: pad(String(countInclusiveCalendarDays(data.startDate, data.endDate)), 10),
     return_date: ruDate(addWorkingDaysIso(data.endDate, 1))
-  });
-  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+  };
+
+  let xml = file.asText();
+  for (const [key, value] of Object.entries(values)) {
+    xml = xml.replaceAll(`{${key}}`, escapeXml(value));
+  }
+  zip.file('word/document.xml', xml);
+  return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
 }
 
 export { isLaborContractEmployee };
