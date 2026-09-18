@@ -416,36 +416,15 @@ const canDownloadVacationApplication = (req: VacationRequest) =>
   !isTrainingRequest(req) &&
   req.status === 'approved' &&
   isLaborContractEmployee(currentEmployee.value?.contract_form) &&
-  // После старта отпуска заявление не нужно — кнопку скрываем.
   req.start > todayIso();
 
 const downloadingApplicationId = ref<number | null>(null);
 const applicationDownloadError = ref('');
 const applicationDownloadErrorFor = ref<number | null>(null);
 
-const parseDownloadFilename = (contentDisposition: string | null, fallback: string): string => {
-  if (!contentDisposition) return fallback;
-  const encoded = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (encoded?.[1]) return decodeURIComponent(encoded[1]);
-  const plain = contentDisposition.match(/filename="([^"]+)"/i);
-  return plain?.[1] || fallback;
-};
-
-const friendlyDownloadError = (payload: {
-  statusMessage?: string;
-  message?: string;
-  statusCode?: number;
-} | null): string => {
-  const text = (payload?.statusMessage || payload?.message || '').trim();
-  // Не показываем сырой JSON/стек/английский MultiError от docxtemplater.
-  if (
-    !text ||
-    text.length > 180 ||
-    /Multi error|Docxtemplater|at Object\.|statusCode|stack/i.test(text)
-  ) {
-    return 'Не удалось скачать заявление';
-  }
-  return text;
+const setDownloadError = (reqId: number, text: string) => {
+  applicationDownloadError.value = text;
+  applicationDownloadErrorFor.value = reqId;
 };
 
 const downloadVacationApplication = async (req: VacationRequest) => {
@@ -453,8 +432,8 @@ const downloadVacationApplication = async (req: VacationRequest) => {
   downloadingApplicationId.value = req.id;
   applicationDownloadError.value = '';
   applicationDownloadErrorFor.value = null;
+  const fail = (text = 'Не удалось скачать заявление') => setDownloadError(req.id, text);
 
-  const fallbackName = `Заявление_на_отпуск_${req.start}.docx`;
   try {
     const response = await fetch(`/api/vacations/requests/${req.id}/application`, {
       credentials: 'include'
@@ -463,37 +442,37 @@ const downloadVacationApplication = async (req: VacationRequest) => {
       const payload = (await response.json().catch(() => null)) as {
         statusMessage?: string;
         message?: string;
-        statusCode?: number;
       } | null;
-      applicationDownloadError.value = friendlyDownloadError(payload);
-      applicationDownloadErrorFor.value = req.id;
+      const text = (payload?.statusMessage || payload?.message || '').trim();
+      fail(
+        text && text.length <= 180 && !/Multi error|Docxtemplater|at Object\.|statusCode|stack/i.test(text)
+          ? text
+          : 'Не удалось скачать заявление'
+      );
       return;
     }
-
-    const contentType = response.headers.get('Content-Type') || '';
-    if (!contentType.includes('officedocument') && !contentType.includes('octet-stream')) {
-      applicationDownloadError.value = 'Не удалось скачать заявление';
-      applicationDownloadErrorFor.value = req.id;
+    const type = response.headers.get('Content-Type') || '';
+    if (!type.includes('officedocument') && !type.includes('octet-stream')) {
+      fail();
       return;
     }
-
-    const blob = await response.blob();
-    const filename = parseDownloadFilename(
-      response.headers.get('Content-Disposition'),
-      fallbackName
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.rel = 'noopener';
+    const cd = response.headers.get('Content-Disposition') || '';
+    const encoded = cd.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const plain = cd.match(/filename="([^"]+)"/i)?.[1];
+    const filename =
+      (encoded ? decodeURIComponent(encoded) : plain) || `Заявление_на_отпуск_${req.start}.docx`;
+    const url = URL.createObjectURL(await response.blob());
+    const link = Object.assign(document.createElement('a'), {
+      href: url,
+      download: filename,
+      rel: 'noopener'
+    });
     document.body.append(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
   } catch {
-    applicationDownloadError.value = 'Не удалось скачать заявление';
-    applicationDownloadErrorFor.value = req.id;
+    fail();
   } finally {
     downloadingApplicationId.value = null;
   }

@@ -1,7 +1,6 @@
 import { send } from 'h3';
 import { employeeNamesMatch } from '../../../../../app/utils/employeeName';
 import { todayIso } from '../../../../../app/utils/vacationCalendar';
-import type { SessionUser } from '../../../../utils/credentials';
 import { requireVbiSession } from '../../../../utils/session';
 import {
   findEmployeeById,
@@ -15,12 +14,6 @@ import {
   vacationApplicationFilename
 } from '../../../../utils/vacationApplicationDocx';
 
-const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
-  Boolean(a && b) && employeeNamesMatch(a!, b!);
-
-const hasRosterWideRights = (session: SessionUser): boolean =>
-  session.role === 'admin' || session.role === 'hr';
-
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
   const id = Number(getRouterParam(event, 'id'));
@@ -28,52 +21,35 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Некорректный id заявки' });
   }
 
-  const vacations = await readVacations();
-  const request = Object.values(vacations.requestsByYear)
+  const request = Object.values((await readVacations()).requestsByYear)
     .flat()
     .find((item) => item.id === id);
+  if (!request) throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
 
-  if (!request) {
-    throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
-  }
-
-  const sessionEmployee = await findEmployeeForSession(session);
-  const elevated = hasRosterWideRights(session);
-  const ownsById =
-    Boolean(sessionEmployee?.id) &&
-    Boolean(request.employee_id) &&
-    sessionEmployee!.id === request.employee_id;
-  const ownsByName =
-    Boolean(sessionEmployee) && sameEmployeeName(sessionEmployee!.name, request.employee);
-  if (!elevated && !ownsById && !ownsByName) {
+  const me = await findEmployeeForSession(session);
+  const elevated = session.role === 'admin' || session.role === 'hr';
+  const owns =
+    (me?.id && request.employee_id && me.id === request.employee_id) ||
+    (me && employeeNamesMatch(me.name, request.employee));
+  if (!elevated && !owns) {
     throw createError({ statusCode: 403, statusMessage: 'Нет доступа к этой заявке' });
   }
-
   if (request.status !== 'approved') {
     throw createError({
       statusCode: 403,
       statusMessage: 'Заявление доступно только после согласования заявки'
     });
   }
-
   if (request.start <= todayIso()) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Заявление доступно до начала отпуска'
-    });
+    throw createError({ statusCode: 403, statusMessage: 'Заявление доступно до начала отпуска' });
   }
 
   const employee =
     (request.employee_id ? await findEmployeeById(request.employee_id) : null) ??
     (await findEmployeeByName(request.employee));
-
   if (!employee) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Сотрудник заявки не найден в справочнике'
-    });
+    throw createError({ statusCode: 404, statusMessage: 'Сотрудник заявки не найден в справочнике' });
   }
-
   if (!isLaborContractEmployee(employee.contract_form)) {
     throw createError({
       statusCode: 403,
@@ -106,6 +82,5 @@ export default defineEventHandler(async (event) => {
   );
   setHeader(event, 'Content-Disposition', `attachment; filename*=UTF-8''${encoded}`);
   setHeader(event, 'Cache-Control', 'private, no-store');
-
   return send(event, bytes);
 });
