@@ -10,10 +10,27 @@ const csp = buildAppContentSecurityPolicy({
   upgradeInsecure: false
 });
 
+const isCi = process.env.CI === 'true' || process.env.GITLAB_CI === 'true';
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
+  devtools: { enabled: !isCi },
+  // Sourcemap + minify Nitro на слабом GitLab runner'е раздувают RAM до OOM («Killed»).
+  sourcemap: { client: !isCi, server: false },
   css: ['~/assets/main.css'],
+  vite: {
+    build: {
+      sourcemap: !isCi,
+      reportCompressedSize: false,
+      rollupOptions: {
+        maxParallelFileOps: isCi ? 2 : undefined
+      }
+    }
+  },
+  nitro: {
+    // Minify на слабом runner'е даёт пик RAM → OOM «Killed» на этапе Nitro.
+    minify: !isCi
+  },
   routeRules: {
     '/**': {
       headers: {

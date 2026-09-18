@@ -4,6 +4,11 @@
 
 ## 2026-09-18
 
+### CI: анти-OOM на build:production (Nitro «Killed»)
+
+- `NODE_OPTIONS=--max-old-space-size=2048` в `.gitlab-ci.yml` — иначе Node раздувает heap по RAM хоста и cgroup убивает процесс.
+- В CI: без sourcemap server, без minify Nitro, меньше параллелизма Vite — снижаем пик памяти на `main` после добавления docxtemplater.
+
 ### Отпуска: правила кнопки «Скачать заявление» (locked)
 
 Три условия одновременно: **`approved`** + **`contract_form === 'ТД'`** + **`start > сегодня`**.
