@@ -1,7 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { useStorage } from '#imports';
-import PizZip from 'pizzip';
 import {
   isLaborContractEmployee,
   resolveLegalEntityFullName
@@ -36,21 +34,25 @@ const escapeXml = (value: string): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-const toBuffer = (raw: unknown): Buffer => {
-  if (Buffer.isBuffer(raw)) return raw;
-  if (raw instanceof Uint8Array) return Buffer.from(raw);
-  if (typeof raw === 'string') return Buffer.from(raw, 'binary');
-  throw new Error('Не удалось прочитать шаблон заявления');
-};
-
+/** Шаблон лежит рядом с сервером (не в server/assets — иначе Nitro жрёт RAM на CI). */
 async function readTemplate(): Promise<Buffer> {
-  const bundled = await useStorage('assets').getItem('server:templates:vacation-application.docx');
-  if (bundled) return toBuffer(bundled);
-  return readFile(join(process.cwd(), 'server/assets/templates/vacation-application.docx'));
+  const candidates = [
+    join(process.cwd(), 'templates/vacation-application.docx'),
+    join(process.cwd(), 'server/templates/vacation-application.docx')
+  ];
+  for (const path of candidates) {
+    try {
+      return await readFile(path);
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error('Шаблон заявления не найден (templates/vacation-application.docx)');
 }
 
-/** Подстановка плейсхолдеров через PizZip (бланк с цельными `{…}` в XML). */
 export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
+  // Динамический import — pizzip не в графе Vite SSR на этапе transform.
+  const { default: PizZip } = await import('pizzip');
   const zip = new PizZip(await readTemplate());
   const file = zip.file('word/document.xml');
   if (!file) throw new Error('В шаблоне нет word/document.xml');

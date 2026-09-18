@@ -13,6 +13,8 @@ variables:
   NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
   DEPLOY_HOST: "45.12.74.25"
   DEPLOY_USER: "deploy"
+  # Потолок heap (не «больше RAM»): без него Node на большом хосте раздувается и cgroup делает Killed.
+  NODE_OPTIONS: "--max-old-space-size=1536"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -29,6 +31,9 @@ cache:
     - npm ci
   script:
     - npm run build
+    # Шаблон заявления не в server/assets (Nitro OOM) — кладём рядом с сервером вручную.
+    - mkdir -p .output/server/templates
+    - cp -f server/templates/vacation-application.docx .output/server/templates/
     # Не грузим ~100MB картинок БЗ в GitLab artifacts (иначе 413 Request Entity Too Large).
     - rm -rf .output/public/knowledge
     - find .output -name '*.map' -delete || true
