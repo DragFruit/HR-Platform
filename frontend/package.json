@@ -15,7 +15,6 @@
     "imapflow": "^1.7.6",
     "mailparser": "^3.9.16",
     "nuxt": "^4.4.2",
-    "pizzip": "^3.2.0",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
   },
