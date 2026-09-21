@@ -3679,35 +3679,43 @@ button.org-unit-head--link:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 2px solid #111;
-  border-radius: 8px;
-  background: var(--accent-lime);
-  color: #111;
-  box-shadow: 2px 2px 0 #111;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.profile-identity__settings-gear {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 .profile-identity__settings-btn:hover {
-  background: #fff;
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 #111;
+  transform: scale(1.08);
+  opacity: 0.92;
 }
 
 .profile-identity__settings-btn:focus-visible {
-  outline: 3px solid #fff;
-  outline-offset: 2px;
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .profile-screen-hero .profile-identity__settings-btn {
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  box-shadow: none;
 }
 
 .profile-screen-hero .profile-identity__settings-btn:hover {
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
+  box-shadow: none;
 }
 
 .profile-identity__bitrix-link:hover {
