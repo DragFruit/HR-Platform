@@ -24,29 +24,98 @@
             class="table-input"
             autocomplete="username"
             placeholder="name@company.ru"
+            :readonly="!editing"
             required
           />
         </label>
 
-        <label class="vibe-creds-field">
-          <span class="vibe-creds-label">
-            {{ hasPassword ? 'Новый пароль' : 'Пароль (не короче 8 символов)' }}
-          </span>
-          <input
-            v-model="password"
-            type="password"
-            class="table-input"
-            autocomplete="new-password"
-            :placeholder="hasPassword ? '' : 'Минимум 8 символов'"
-            :required="!hasPassword"
-          />
-        </label>
+        <div class="vibe-creds-field">
+          <span class="vibe-creds-label">Пароль</span>
+          <div class="vibe-creds-password-row">
+            <input
+              ref="passwordInput"
+              v-model="password"
+              class="table-input vibe-creds-password-input"
+              :type="passwordVisible ? 'text' : 'password'"
+              autocomplete="new-password"
+              :readonly="!editing"
+              :placeholder="editing && !hasPassword ? 'Минимум 8 символов' : ''"
+              :required="editing && !hasPassword"
+              @keydown.enter.prevent="editing && submit()"
+            />
+            <button
+              type="button"
+              class="vibe-creds-icon-btn"
+              :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              :title="passwordVisible ? 'Скрыть' : 'Показать'"
+              @click="passwordVisible = !passwordVisible"
+            >
+              <!-- глаз открыт -->
+              <svg
+                v-if="passwordVisible"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+                <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+              </svg>
+              <!-- глаз зачёркнутый -->
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+                <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+                <path
+                  d="M4 20 20 4"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="vibe-creds-icon-btn"
+              aria-label="Изменить пароль"
+              title="Изменить"
+              :disabled="editing"
+              @click="startEdit"
+            >
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+                <path
+                  d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
 
         <p v-if="formError" class="vibe-creds-error" role="alert">{{ formError }}</p>
         <p v-if="formOk" class="vibe-creds-ok" role="status">{{ formOk }}</p>
 
-        <div class="vibe-creds-actions row">
-          <button type="button" class="button ghost" :disabled="submitting" @click="close">
+        <div v-if="editing" class="vibe-creds-actions row">
+          <button type="button" class="button ghost" :disabled="submitting" @click="cancelEdit">
             Отмена
           </button>
           <button type="submit" class="button primary" :disabled="submitting">
@@ -61,6 +130,9 @@
 <script setup lang="ts">
 import type { AuthSessionUser } from '~/composables/useAuth';
 
+/** Маска: сам пароль на сервере только хеш, plaintext не храним. */
+const PASSWORD_MASK = '••••••••';
+
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
@@ -71,26 +143,38 @@ const { user } = useAuth();
 const { reloadFromServer } = useEmployees();
 
 const login = ref('');
+const initialLogin = ref('');
 const password = ref('');
 const hasPassword = ref(false);
+const editing = ref(false);
+const passwordVisible = ref(false);
 const formError = ref('');
 const formOk = ref('');
 const submitting = ref(false);
+const passwordInput = ref<HTMLInputElement | null>(null);
+
+const applyViewPassword = () => {
+  password.value = hasPassword.value ? PASSWORD_MASK : '';
+  passwordVisible.value = false;
+};
 
 const load = async () => {
   formError.value = '';
   formOk.value = '';
-  password.value = '';
+  editing.value = false;
   try {
     const data = await $fetch<{ login: string; has_password: boolean }>(
       '/api/profile/vibe-credentials'
     );
     login.value = data.login || user.value?.email || '';
+    initialLogin.value = login.value;
     hasPassword.value = data.has_password;
   } catch {
     login.value = user.value?.email || '';
+    initialLogin.value = login.value;
     hasPassword.value = false;
   }
+  applyViewPassword();
 };
 
 watch(
@@ -105,18 +189,56 @@ const close = () => {
   emit('update:open', false);
 };
 
+const startEdit = () => {
+  if (editing.value) return;
+  formError.value = '';
+  formOk.value = '';
+  editing.value = true;
+  password.value = '';
+  passwordVisible.value = false;
+  nextTick(() => {
+    const el = passwordInput.value;
+    if (!el) return;
+    el.focus();
+    el.select?.();
+  });
+};
+
+const cancelEdit = () => {
+  if (submitting.value) return;
+  formError.value = '';
+  formOk.value = '';
+  editing.value = false;
+  login.value = initialLogin.value;
+  applyViewPassword();
+};
+
 const submit = async () => {
+  if (!editing.value) return;
+
   const nextLogin = login.value.trim().toLowerCase();
   if (!nextLogin || !nextLogin.includes('@')) {
     formError.value = 'Укажите корректный email — он будет логином для входа';
     return;
   }
-  if (!hasPassword.value && password.value.trim().length < 8) {
+
+  const nextPassword = password.value.trim();
+  const loginChanged = nextLogin !== initialLogin.value.trim().toLowerCase();
+
+  if (!hasPassword.value && nextPassword.length < 8) {
     formError.value = 'Задайте пароль не короче 8 символов';
     return;
   }
-  if (password.value.trim() && password.value.trim().length < 8) {
+  if (hasPassword.value && !nextPassword && !loginChanged) {
+    formError.value = 'Введите новый пароль или измените логин';
+    return;
+  }
+  if (nextPassword && nextPassword.length < 8) {
     formError.value = 'Пароль не короче 8 символов';
+    return;
+  }
+  if (nextPassword === PASSWORD_MASK) {
+    formError.value = 'Введите новый пароль';
     return;
   }
 
@@ -125,7 +247,7 @@ const submit = async () => {
   submitting.value = true;
   try {
     const body: { login: string; password?: string } = { login: nextLogin };
-    if (password.value.trim()) body.password = password.value.trim();
+    if (nextPassword) body.password = nextPassword;
 
     const res = await $fetch<{
       ok: boolean;
@@ -144,8 +266,11 @@ const submit = async () => {
       }
     }
     hasPassword.value = res.has_password;
-    password.value = '';
-    formOk.value = 'Сохранено. Можно входить по логину и паролю без Битрикса.';
+    initialLogin.value = res.login;
+    login.value = res.login;
+    editing.value = false;
+    applyViewPassword();
+    formOk.value = 'Сохранено';
     await reloadFromServer().catch(() => {});
     emit('saved', { login: res.login, user: res.user });
     window.setTimeout(() => emit('update:open', false), 700);
@@ -187,6 +312,56 @@ const submit = async () => {
 .vibe-creds-label {
   font-size: 0.8125rem;
   font-weight: 600;
+}
+
+.vibe-creds-password-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.vibe-creds-password-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vibe-creds-password-input[readonly] {
+  cursor: default;
+  background: #f7f7f4;
+}
+
+.vibe-creds-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid #111;
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  box-shadow: 2px 2px 0 #111;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.vibe-creds-icon-btn:hover:not(:disabled) {
+  background: var(--accent-lime, #ddf365);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #111;
+}
+
+.vibe-creds-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+.vibe-creds-icon-btn:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 2px;
 }
 
 .vibe-creds-error {
