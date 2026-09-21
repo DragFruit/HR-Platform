@@ -113,6 +113,13 @@
 
 <script setup lang="ts">
 const { user } = useAuth();
+const { isVacationsOnly, homePath } = useLaunchScope();
+
+// Пилот отпусков: «Главная» закрыта — сразу в рабочий раздел
+if (isVacationsOnly.value) {
+  await navigateTo(homePath(user.value?.role === 'admin'), { replace: true });
+}
+
 const { isAdmin } = usePermissions();
 const { findByUserForAuth, employeeCount } = useEmployees();
 const { myActiveTasks, completedCount, taskStatusLabels } = useTasks();

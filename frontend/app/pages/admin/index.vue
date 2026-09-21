@@ -74,6 +74,14 @@
 </template>
 
 <script setup lang="ts">
+const { user } = useAuth();
+const { isVacationsOnly, homePath } = useLaunchScope();
+
+// Пилот: админ-панель «Главная» закрыта — в отпуска / сотрудников
+if (isVacationsOnly.value) {
+  await navigateTo(homePath(user.value?.role === 'admin'), { replace: true });
+}
+
 const { orgUnits } = useOrgStructure();
 const { employees, employeeCount, hydrate: hydrateEmployees } = useEmployees();
 const { tasks, poolTasks, hydrate: hydrateTasks } = useTasks();

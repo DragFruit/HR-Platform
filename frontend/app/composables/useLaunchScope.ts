@@ -92,12 +92,7 @@ export function useLaunchScope() {
     ) {
       return true;
     }
-    if (
-      path === LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH ||
-      path.startsWith(`${LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH}/`)
-    ) {
-      return true;
-    }
+    // /organization (сотрудник) — с замком на бое; открыта только админская /admin/organization
     return false;
   };
 
