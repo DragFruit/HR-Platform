@@ -33,13 +33,14 @@
           <span class="vibe-creds-label">Пароль</span>
           <div class="vibe-creds-password-row">
             <input
+              :key="passwordVisible ? 'pw-visible' : 'pw-hidden'"
               ref="passwordInput"
               v-model="password"
               class="table-input vibe-creds-password-input"
               :type="passwordVisible ? 'text' : 'password'"
               autocomplete="new-password"
               :readonly="!editing"
-              :placeholder="editing && !hasPassword ? 'Минимум 8 символов' : ''"
+              :placeholder="passwordPlaceholder"
               :required="editing && !hasPassword"
               @keydown.enter.prevent="editing && submit()"
             />
@@ -48,9 +49,8 @@
               class="vibe-creds-icon-btn"
               :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
               :title="passwordVisible ? 'Скрыть' : 'Показать'"
-              @click="passwordVisible = !passwordVisible"
+              @click="togglePasswordVisible"
             >
-              <!-- глаз открыт -->
               <svg
                 v-if="passwordVisible"
                 viewBox="0 0 24 24"
@@ -67,7 +67,6 @@
                 />
                 <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
               </svg>
-              <!-- глаз зачёркнутый -->
               <svg
                 v-else
                 viewBox="0 0 24 24"
@@ -130,9 +129,6 @@
 <script setup lang="ts">
 import type { AuthSessionUser } from '~/composables/useAuth';
 
-/** Маска: сам пароль на сервере только хеш, plaintext не храним. */
-const PASSWORD_MASK = '••••••••';
-
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
@@ -145,6 +141,7 @@ const { reloadFromServer } = useEmployees();
 const login = ref('');
 const initialLogin = ref('');
 const password = ref('');
+const storedPassword = ref('');
 const hasPassword = ref(false);
 const editing = ref(false);
 const passwordVisible = ref(false);
@@ -153,8 +150,14 @@ const formOk = ref('');
 const submitting = ref(false);
 const passwordInput = ref<HTMLInputElement | null>(null);
 
+const passwordPlaceholder = computed(() => {
+  if (editing.value) return hasPassword.value ? '' : 'Минимум 8 символов';
+  if (hasPassword.value && !storedPassword.value) return '••••••••';
+  return '';
+});
+
 const applyViewPassword = () => {
-  password.value = hasPassword.value ? PASSWORD_MASK : '';
+  password.value = storedPassword.value;
   passwordVisible.value = false;
 };
 
@@ -162,17 +165,22 @@ const load = async () => {
   formError.value = '';
   formOk.value = '';
   editing.value = false;
+  passwordVisible.value = false;
   try {
-    const data = await $fetch<{ login: string; has_password: boolean }>(
-      '/api/profile/vibe-credentials'
-    );
+    const data = await $fetch<{
+      login: string;
+      has_password: boolean;
+      password: string | null;
+    }>('/api/profile/vibe-credentials');
     login.value = data.login || user.value?.email || '';
     initialLogin.value = login.value;
     hasPassword.value = data.has_password;
+    storedPassword.value = data.password || '';
   } catch {
     login.value = user.value?.email || '';
     initialLogin.value = login.value;
     hasPassword.value = false;
+    storedPassword.value = '';
   }
   applyViewPassword();
 };
@@ -189,12 +197,16 @@ const close = () => {
   emit('update:open', false);
 };
 
+const togglePasswordVisible = () => {
+  passwordVisible.value = !passwordVisible.value;
+};
+
 const startEdit = () => {
   if (editing.value) return;
   formError.value = '';
   formOk.value = '';
   editing.value = true;
-  password.value = '';
+  password.value = storedPassword.value;
   passwordVisible.value = false;
   nextTick(() => {
     const el = passwordInput.value;
@@ -224,21 +236,18 @@ const submit = async () => {
 
   const nextPassword = password.value.trim();
   const loginChanged = nextLogin !== initialLogin.value.trim().toLowerCase();
+  const passwordChanged = nextPassword !== storedPassword.value;
 
   if (!hasPassword.value && nextPassword.length < 8) {
     formError.value = 'Задайте пароль не короче 8 символов';
     return;
   }
-  if (hasPassword.value && !nextPassword && !loginChanged) {
-    formError.value = 'Введите новый пароль или измените логин';
+  if (hasPassword.value && !passwordChanged && !loginChanged) {
+    formError.value = 'Измените пароль или логин';
     return;
   }
-  if (nextPassword && nextPassword.length < 8) {
+  if (passwordChanged && nextPassword.length < 8) {
     formError.value = 'Пароль не короче 8 символов';
-    return;
-  }
-  if (nextPassword === PASSWORD_MASK) {
-    formError.value = 'Введите новый пароль';
     return;
   }
 
@@ -247,7 +256,7 @@ const submit = async () => {
   submitting.value = true;
   try {
     const body: { login: string; password?: string } = { login: nextLogin };
-    if (nextPassword) body.password = nextPassword;
+    if (passwordChanged) body.password = nextPassword;
 
     const res = await $fetch<{
       ok: boolean;
@@ -268,6 +277,7 @@ const submit = async () => {
     hasPassword.value = res.has_password;
     initialLogin.value = res.login;
     login.value = res.login;
+    if (passwordChanged) storedPassword.value = nextPassword;
     editing.value = false;
     applyViewPassword();
     formOk.value = 'Сохранено';

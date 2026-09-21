@@ -1,18 +1,75 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual
+} from 'node:crypto';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { createMutationQueue, writeJsonAtomic } from './atomicJson';
+import { getDeployAppEnv } from './appEnv';
 
 /**
  * Локальные пароли Vibe (не пароли Bitrix).
- * Хеш scrypt; файл на сервере, без синка с порталом.
+ * Хеш scrypt для входа + sealed plaintext, чтобы владелец мог увидеть пароль в профиле.
  */
 type VibePasswordEntry = {
   employee_id: number;
   /** scrypt$N$r$p$saltB64$hashB64 */
   password_hash: string;
+  /** aes-256-gcm: v1$iv$tag$cipher — только для показа себе в профиле */
+  password_seal?: string;
   updated_at: string;
 };
+
+function sealSecret(): string {
+  const dedicated = String(process.env.VBI_SESSION_SECRET || '').trim();
+  if (dedicated) return dedicated;
+  const bitrix = String(process.env.BITRIX_CLIENT_SECRET || '').trim();
+  if (bitrix) return `vbi-session:${bitrix}`;
+  if (getDeployAppEnv() === 'production') {
+    throw createError({
+      statusCode: 503,
+      statusMessage: 'VBI_SESSION_SECRET или BITRIX_CLIENT_SECRET не задан'
+    });
+  }
+  return 'vbi-dev-session-secret-not-for-production';
+}
+
+function sealKey(): Buffer {
+  return createHash('sha256').update(`vibe-pw-reveal-v1:${sealSecret()}`).digest();
+}
+
+function sealPassword(plain: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', sealKey(), iv);
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [
+    'v1',
+    iv.toString('base64url'),
+    tag.toString('base64url'),
+    enc.toString('base64url')
+  ].join('$');
+}
+
+function openPassword(sealed: string | undefined): string | null {
+  if (!sealed) return null;
+  const parts = String(sealed).split('$');
+  if (parts.length !== 4 || parts[0] !== 'v1') return null;
+  try {
+    const iv = Buffer.from(parts[1], 'base64url');
+    const tag = Buffer.from(parts[2], 'base64url');
+    const data = Buffer.from(parts[3], 'base64url');
+    const decipher = createDecipheriv('aes-256-gcm', sealKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
+}
 
 type VibePasswordsState = {
   entries: VibePasswordEntry[];
@@ -98,6 +155,7 @@ export async function setVibePassword(employeeId: number, password: string): Pro
     const next: VibePasswordEntry = {
       employee_id: employeeId,
       password_hash: hashPassword(trimmed),
+      password_seal: sealPassword(trimmed),
       updated_at: new Date().toISOString()
     };
     const idx = state.entries.findIndex((e) => e.employee_id === employeeId);
@@ -105,6 +163,14 @@ export async function setVibePassword(employeeId: number, password: string): Pro
     else state.entries.push(next);
     await writeState(state);
   });
+}
+
+/** Plaintext для показа владельцу в профиле; null если пароля нет или старая запись без seal. */
+export async function getVibePasswordPlain(employeeId: number): Promise<string | null> {
+  const state = await readState();
+  const entry = state.entries.find((e) => e.employee_id === employeeId);
+  if (!entry?.password_hash) return null;
+  return openPassword(entry.password_seal);
 }
 
 export async function clearVibePassword(employeeId: number): Promise<void> {
