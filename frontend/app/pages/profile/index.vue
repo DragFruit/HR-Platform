@@ -44,7 +44,7 @@
               >
                 <img
                   class="profile-identity__settings-gear"
-                  src="/images/profile-vibe-gear.png"
+                  src="/images/profile-vibe-gear.png?v=2"
                   alt=""
                   width="22"
                   height="22"
