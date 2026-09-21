@@ -14,10 +14,7 @@
         @submit.prevent="submit"
       >
         <h3 id="profile-vibe-creds-title" class="vibe-creds-title">Вход в Vibe</h3>
-        <p class="vibe-creds-hint muted">
-          Логин и пароль для входа без Битрикса. Сохраняются в справочнике — HR видит тот же логин в
-          админке.
-        </p>
+        <p class="vibe-creds-hint muted">Логин и пароль для входа без Битрикса.</p>
 
         <label class="vibe-creds-field">
           <span class="vibe-creds-label">Логин (email)</span>
@@ -33,18 +30,14 @@
 
         <label class="vibe-creds-field">
           <span class="vibe-creds-label">
-            {{
-              hasPassword
-                ? 'Новый пароль (пусто — не менять)'
-                : 'Пароль (не короче 8 символов)'
-            }}
+            {{ hasPassword ? 'Новый пароль' : 'Пароль (не короче 8 символов)' }}
           </span>
           <input
             v-model="password"
             type="password"
             class="table-input"
             autocomplete="new-password"
-            :placeholder="hasPassword ? 'Оставьте пустым, чтобы не менять' : 'Минимум 8 символов'"
+            :placeholder="hasPassword ? '' : 'Минимум 8 символов'"
             :required="!hasPassword"
           />
         </label>
