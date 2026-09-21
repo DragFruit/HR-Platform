@@ -3,7 +3,7 @@ import type { SessionUser } from '../../utils/credentials';
 import { isAccessRevokedForIdentity } from '../../utils/employeeAccessDenylist';
 import { readEmployees, type ServerEmployee } from '../../utils/employeesStore';
 import { setVbiSession } from '../../utils/session';
-import { checkVibePassword } from '../../utils/vibePasswordsStore';
+import { checkVibePassword, ensureVibePasswordSeal } from '../../utils/vibePasswordsStore';
 
 function sessionUserId(emp: ServerEmployee): number {
   const bitrix = Number(emp.bitrix_user_id || emp.platform_user_id || emp.id);
@@ -50,6 +50,9 @@ export default defineEventHandler(async (event) => {
         'Неверный логин или пароль. Если пароля ещё нет — HR задаёт его в Админ → Сотрудники.'
     });
   }
+
+  // Старые записи без seal — дописать при успешном входе, чтобы глаз в профиле открывал текст
+  await ensureVibePasswordSeal(emp.id, password).catch(() => {});
 
   const userId = sessionUserId(emp);
   const email = String(emp.email || '').trim().toLowerCase();

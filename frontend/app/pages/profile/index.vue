@@ -34,6 +34,23 @@
           <div class="profile-identity__body">
             <div class="profile-identity__name-row">
               <h2>{{ profileDisplayName }}</h2>
+              <button
+                v-if="isOwnProfile"
+                type="button"
+                class="profile-identity__settings-btn"
+                aria-label="Логин и пароль Vibe"
+                title="Логин и пароль Vibe"
+                @click="vibeCredsOpen = true"
+              >
+                <img
+                  class="profile-identity__settings-gear"
+                  src="/images/profile-vibe-gear.png?v=2"
+                  alt=""
+                  width="22"
+                  height="22"
+                  draggable="false"
+                />
+              </button>
               <a
                 v-if="bitrixProfileHref"
                 :href="bitrixProfileHref"
@@ -530,6 +547,8 @@
       </div>
     </div>
   </Teleport>
+
+  <ProfileVibeCredentialsDialog v-model:open="vibeCredsOpen" />
 </template>
 
 <script setup lang="ts">
@@ -544,6 +563,7 @@ import {
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
 import type { Employee } from '~/composables/useEmployees';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
 const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
@@ -573,6 +593,7 @@ const {
 const achievementsLocked = computed(() => isProduction.value);
 
 const showPicker = ref(false);
+const vibeCredsOpen = ref(false);
 const achievementsOpen = ref(false);
 const achievementsPreviewRef = ref<HTMLElement | null>(null);
 const achievementsVisibleCount = ref(8);

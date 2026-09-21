@@ -219,6 +219,41 @@ export async function findEmployeeByName(name: string): Promise<ServerEmployee |
   return list.find((e) => employeeNamesMatch(e.name, trimmed)) ?? null;
 }
 
+/** Точечное обновление email (вход Vibe) без полной перезаписи справочника. */
+export async function patchEmployeeEmail(
+  employeeId: number,
+  email: string
+): Promise<ServerEmployee> {
+  const nextEmail = email.trim().toLowerCase();
+  if (!nextEmail || !nextEmail.includes('@')) {
+    throw createError({ statusCode: 400, statusMessage: 'Укажите корректный email' });
+  }
+
+  return enqueueEmployeesMutation(async () => {
+    await ensureFile();
+    const list = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
+    const idx = list.findIndex((row) => row.id === employeeId);
+    if (idx < 0) {
+      throw createError({ statusCode: 404, statusMessage: 'Сотрудник не найден' });
+    }
+    const clash = list.find(
+      (row) =>
+        row.id !== employeeId && (row.email || '').trim().toLowerCase() === nextEmail
+    );
+    if (clash) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: 'Этот логин уже занят другим сотрудником'
+      });
+    }
+    list[idx] = { ...list[idx], email: nextEmail };
+    const currentAssignments = await readManagerAssignments();
+    const withManagers = applyManagerAssignments(list, currentAssignments);
+    await writeJsonAtomic(DATA_FILE, withManagers);
+    return withManagers[idx]!;
+  });
+}
+
 /** id для user-notifications: как session.id у Bitrix (bitrix_user_id), иначе platform/id. */
 export function employeeNotificationUserId(employee: ServerEmployee): number | null {
   const uid = employee.bitrix_user_id ?? employee.platform_user_id ?? employee.id;

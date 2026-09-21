@@ -112,7 +112,7 @@
 
     <FirstLoginOnboarding
       v-if="isAuthenticated && showOnboarding && user && !tenureCelebrationActive && !pvmPreview"
-      :user-name="user.name"
+      :user-name="topbarDisplayName"
       :user-id="user.id"
       :initial-step="onboardingStep"
       @complete="onOnboardingComplete"
@@ -136,6 +136,7 @@ import { formatEmployeeShortName } from '~/utils/employeeName';
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
   useAuth();
+const { findByUserForAuth } = useEmployees();
 const { isActive: tenureCelebrationActive } = useTenureCelebration();
 const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =

@@ -3674,6 +3674,50 @@ button.org-unit-head--link:hover {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
+.profile-identity__settings-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.profile-identity__settings-gear {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.profile-identity__settings-btn:hover {
+  transform: scale(1.08);
+  opacity: 0.92;
+}
+
+.profile-identity__settings-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.profile-screen-hero .profile-identity__settings-btn {
+  box-shadow: none;
+}
+
+.profile-screen-hero .profile-identity__settings-btn:hover {
+  box-shadow: none;
+}
+
 .profile-identity__bitrix-link:hover {
   background: var(--accent-lime);
   transform: translate(-1px, -1px);
@@ -10608,7 +10652,7 @@ button.emp-name--card:hover {
 }
 
 .personnel-table col.col-contract {
-  width: 4.5ch;
+  width: 6ch;
 }
 
 .personnel-table col.col-date {
@@ -10669,19 +10713,33 @@ button.emp-name--card:hover {
 
 .personnel-table .col-legal {
   width: 9%;
+  overflow: hidden;
+  max-width: 0;
+}
+
+.personnel-table .col-legal .table-input--select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 2.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .personnel-table .col-contract {
-  width: 4.5ch;
-  max-width: 4.5ch;
+  width: 6ch;
+  max-width: 6ch;
 }
 
 .personnel-table .col-contract .table-input {
-  width: 4.5ch;
+  width: 100%;
   min-width: 0;
-  max-width: 4.5ch;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 3px 4px;
   font-size: 0.6875rem;
+  white-space: nowrap;
 }
 
 .personnel-table .col-manager {
@@ -11684,6 +11742,10 @@ button.emp-name--card:hover {
   color: var(--text);
 }
 
+.emp-request-period__days--newline {
+  display: block;
+}
+
 .emp-request-menu-wrap {
   position: relative;
   flex-shrink: 0;
@@ -11788,6 +11850,37 @@ button.emp-name--card:hover {
 
 .emp-request-edit__error {
   margin: 0;
+  font-size: 11px;
+  color: #b91c1c;
+}
+
+.emp-request-download {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.emp-request-download:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.emp-request-download:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.emp-request-download-error {
+  margin: 4px 0 0;
   font-size: 11px;
   color: #b91c1c;
 }
@@ -12479,6 +12572,26 @@ button.emp-name--card:hover {
 
 .vac-emp-error strong {
   font-weight: 700;
+}
+
+.vac-emp-application-notice {
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text, #1a1a1a);
+  background: #f4f1ff;
+  border: 1px solid rgba(116, 81, 244, 0.35);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.vac-emp-application-notice__text {
+  font-weight: 600;
 }
 
 .vac-emp-body {

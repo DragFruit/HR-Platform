@@ -8,7 +8,7 @@
         — {{ me.scenario.description }}
       </p>
       <p v-if="me?.employee" class="muted">
-        {{ me.employee.name }} · {{ me.employee.title }} · старт {{ me.employee.hired_at }}
+        {{ formatEmployeeShortName(me.employee.name) }} · {{ me.employee.title }} · старт {{ me.employee.hired_at }}
       </p>
       <p v-else class="gift-error">
         Профиль не привязан к справочнику сотрудников. Войдите как
@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import type { AdaptationQuizClient } from '~/composables/useAdaptation';
+import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const { me, loading, error, loadMe, completeStep } = useAdaptation();
 const activeQuiz = ref<AdaptationQuizClient | null>(null);

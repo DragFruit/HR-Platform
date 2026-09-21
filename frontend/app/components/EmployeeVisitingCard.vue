@@ -7,7 +7,7 @@
         class="emp-card"
         role="dialog"
         aria-modal="true"
-        :aria-label="`Визитка: ${employee.name}`"
+        :aria-label="`Визитка: ${displayName}`"
         :style="cardStyle"
       >
         <!-- Декор рамки как в LOCKED-etalon (квадратики сидят в чёрной полосе) -->
@@ -32,7 +32,7 @@
         <div class="emp-card__face">
           <div class="emp-card__top">
             <div class="emp-card__photo">
-              <UserAvatar :user-id="avatarUserId" :name="employee.name" :size="128" />
+              <UserAvatar :user-id="avatarUserId" :name="displayName" :size="128" />
             </div>
 
             <div class="emp-card__info">

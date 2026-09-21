@@ -52,6 +52,22 @@
             <span class="vpn-chip__label">Прокси</span>
             <span class="vpn-chip__hint">{{ copy.proxyHint }}</span>
           </button>
+          <button type="button" class="vpn-chip vpn-chip--chatgpt" @click="pickNeed('chatgpt')">
+            <span class="vpn-chip__label">Код ChatGPT</span>
+            <span class="vpn-chip__hint">{{ copy.chatgptHint }}</span>
+          </button>
+        </div>
+
+        <div v-else-if="step === 'chatgpt'" class="vpn-actions vpn-actions--stack">
+          <button
+            type="button"
+            class="button primary vpn-cta"
+            :disabled="chatgptLoading"
+            @click="fetchChatgptCode({ announceRetry: true })"
+          >
+            {{ chatgptLoading ? 'Ищем код…' : 'Проверить почту ещё раз' }}
+          </button>
+          <button type="button" class="vpn-link" @click="reset">← Начать сначала</button>
         </div>
 
         <div v-else-if="step === 'vpn-device'" class="vpn-actions" role="group" aria-label="Устройство">
@@ -124,10 +140,17 @@
 <script setup lang="ts">
 import { VPN_LIMITS } from '~/data/vpnLimits';
 
-type Need = 'vpn' | 'proxy';
+type Need = 'vpn' | 'proxy' | 'chatgpt';
 type Device = 'mac' | 'iphone' | 'windows' | 'android';
-type Step = 'need' | 'proxy' | 'vpn-device' | 'vpn-client';
+type Step = 'need' | 'proxy' | 'vpn-device' | 'vpn-client' | 'chatgpt';
 type VpnKind = 'wireguard' | 'amnezia';
+
+type ChatgptCodeResponse = {
+  ok: boolean;
+  status: 'found' | 'none';
+  codes?: Array<{ code: string; receivedAt: string }>;
+  message: string;
+};
 
 type KeyCard = {
   clientName: string;
@@ -170,6 +193,10 @@ const copy = {
   vpnHint: 'Для входа в ChatGPT, Инстаграмм, Ютуб, PornHub и тд',
   proxyHint:
     'Идеально подходит для Тегерамма, позволяет одновременно использовать Тегерамм и Битрикс',
+  chatgptHint: 'Код из письма OpenAI на корпоративную почту',
+  chatgptIntro: 'Сейчас проверю корпоративную почту на коды от OpenAI за последние 15 минут.',
+  chatgptNoCode: 'Код не пришёл',
+  chatgptRetryAsk: 'Проверить почту ещё раз',
   welcome: 'Привет! Чем я могу помочь?',
   askDevice:
     'Отлично, VPN. Вам доступны 1 WireGuard и 2 AmneziaWG — одного ключа хватит на разные устройства. Какое именно устройство?',
@@ -261,6 +288,7 @@ const threadRef = ref<HTMLElement | null>(null);
 const keyRequestLoading = ref(false);
 const keyRequestError = ref('');
 const issuedCount = ref(0);
+const chatgptLoading = ref(false);
 
 const clientDownloadUrl = computed(() => {
   if (device.value === 'mac') return wireguardMacUrl;
@@ -383,7 +411,7 @@ const loadExistingKeys = async (kind: VpnKind) => {
 };
 
 const pickNeed = (value: Need) => {
-  const label = value === 'vpn' ? 'VPN' : 'Прокси';
+  const label = value === 'vpn' ? 'VPN' : value === 'proxy' ? 'Прокси' : 'Код ChatGPT';
   push({
     id: `need-${value}-${Date.now()}`,
     from: 'user',
@@ -395,8 +423,63 @@ const pickNeed = (value: Need) => {
     push({ id: 'proxy-autostart', from: 'bot', text: copy.proxyAutostart });
     return;
   }
+  if (value === 'chatgpt') {
+    step.value = 'chatgpt';
+    push({ id: `chatgpt-intro-${Date.now()}`, from: 'bot', text: copy.chatgptIntro });
+    void fetchChatgptCode({ announceRetry: false });
+    return;
+  }
   step.value = 'vpn-device';
   push({ id: 'device-bot', from: 'bot', text: copy.askDevice });
+};
+
+const fetchChatgptCode = async (opts: { announceRetry?: boolean } = {}) => {
+  if (chatgptLoading.value) return;
+  chatgptLoading.value = true;
+  if (opts.announceRetry) {
+    push({
+      id: `chatgpt-retry-${Date.now()}`,
+      from: 'user',
+      text: copy.chatgptRetryAsk
+    });
+  }
+  try {
+    const res = await $fetch<ChatgptCodeResponse>('/api/vpn/chatgpt-code', {
+      method: 'POST'
+    });
+    if (res.status === 'found' && res.codes?.length) {
+      push({
+        id: `chatgpt-code-${Date.now()}`,
+        from: 'bot',
+        text: res.message
+      });
+    } else {
+      push({
+        id: `chatgpt-none-${Date.now()}`,
+        from: 'bot',
+        text: res.message || copy.chatgptNoCode
+      });
+    }
+  } catch (err: unknown) {
+    const status =
+      typeof err === 'object' && err && 'statusCode' in err
+        ? Number((err as { statusCode?: number }).statusCode)
+        : 0;
+    const msg =
+      typeof err === 'object' &&
+      err &&
+      'data' in err &&
+      typeof (err as { data?: { statusMessage?: string } }).data?.statusMessage === 'string'
+        ? (err as { data: { statusMessage: string } }).data.statusMessage
+        : 'Не удалось проверить почту. Попробуйте ещё раз.';
+    push({
+      id: `chatgpt-err-${Date.now()}`,
+      from: 'bot',
+      text: status === 401 ? 'Чтобы получить код, войдите в платформу.' : msg
+    });
+  } finally {
+    chatgptLoading.value = false;
+  }
 };
 
 const pickDevice = async (value: Device) => {
@@ -475,6 +558,7 @@ const backToNeed = () => {
   device.value = null;
   issuedCount.value = 0;
   keyRequestError.value = '';
+  chatgptLoading.value = false;
   messages.value = [{ id: 'welcome', from: 'bot', text: copy.welcome }];
   void scrollThreadToBottom();
 };
@@ -497,6 +581,7 @@ const reset = () => {
   device.value = null;
   issuedCount.value = 0;
   keyRequestError.value = '';
+  chatgptLoading.value = false;
   messages.value = [{ id: 'welcome', from: 'bot', text: copy.welcome }];
   void scrollThreadToBottom();
 };
@@ -617,6 +702,7 @@ onMounted(() => {
 
 .vpn-bubble__text {
   margin: 0;
+  white-space: pre-line;
 }
 
 .vpn-bubble__bullets {
@@ -777,6 +863,10 @@ onMounted(() => {
 
 .vpn-chip--purple:hover {
   background: color-mix(in srgb, var(--vpn-purple) 16%, white);
+}
+
+.vpn-chip--chatgpt:hover {
+  background: color-mix(in srgb, #10a37f 14%, white);
 }
 
 .vpn-chip__label {
