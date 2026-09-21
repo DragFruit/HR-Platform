@@ -173,6 +173,29 @@ export async function getVibePasswordPlain(employeeId: number): Promise<string |
   return openPassword(entry.password_seal);
 }
 
+/**
+ * После успешной проверки пароля дописывает seal, если его ещё нет
+ * (старые записи были только с хешем — глаз в профиле не мог открыть текст).
+ */
+export async function ensureVibePasswordSeal(
+  employeeId: number,
+  password: string
+): Promise<void> {
+  const trimmed = String(password || '');
+  if (!trimmed || !Number.isFinite(employeeId) || employeeId <= 0) return;
+
+  await queue(async () => {
+    const state = await readState();
+    const entry = state.entries.find((e) => e.employee_id === employeeId);
+    if (!entry?.password_hash) return;
+    if (!verifyVibePassword(trimmed, entry.password_hash)) return;
+    if (openPassword(entry.password_seal) === trimmed) return;
+    entry.password_seal = sealPassword(trimmed);
+    entry.updated_at = new Date().toISOString();
+    await writeState(state);
+  });
+}
+
 export async function clearVibePassword(employeeId: number): Promise<void> {
   await queue(async () => {
     const state = await readState();

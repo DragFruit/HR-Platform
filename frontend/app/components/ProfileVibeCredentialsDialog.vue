@@ -154,7 +154,8 @@ const passwordInput = ref<HTMLInputElement | null>(null);
 
 const passwordPlaceholder = computed(() => {
   if (editing.value) return hasPassword.value ? '' : 'Минимум 8 символов';
-  if (hasPassword.value && !storedPassword.value) return '••••••••';
+  // Без seal плейсхолдер «••••» при открытом глазе выглядит как «пароль всё ещё скрыт»
+  if (hasPassword.value && !storedPassword.value && !passwordVisible.value) return 'Пароль задан';
   return '';
 });
 
@@ -201,6 +202,13 @@ const close = () => {
 
 const togglePasswordVisible = () => {
   passwordVisible.value = !passwordVisible.value;
+  // Нет plaintext — не оставляем ложные «точки» в поле
+  if (passwordVisible.value && !storedPassword.value && !editing.value) {
+    password.value = '';
+  }
+  if (!passwordVisible.value && !editing.value) {
+    password.value = storedPassword.value;
+  }
 };
 
 const startEdit = () => {
