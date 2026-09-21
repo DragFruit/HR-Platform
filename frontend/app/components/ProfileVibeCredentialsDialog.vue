@@ -32,73 +32,75 @@
         <div class="vibe-creds-field">
           <span class="vibe-creds-label">Пароль</span>
           <div class="vibe-creds-password-row">
-            <input
-              :key="passwordVisible ? 'pw-visible' : 'pw-hidden'"
-              ref="passwordInput"
-              v-model="password"
-              class="table-input vibe-creds-password-input"
-              :type="passwordVisible ? 'text' : 'password'"
-              autocomplete="new-password"
-              :readonly="!editing"
-              :placeholder="passwordPlaceholder"
-              :required="editing && !hasPassword"
-              @keydown.enter.prevent="editing && submit()"
-            />
+            <div class="vibe-creds-password-wrap">
+              <input
+                :key="passwordVisible ? 'pw-visible' : 'pw-hidden'"
+                ref="passwordInput"
+                v-model="password"
+                class="table-input vibe-creds-password-input"
+                :type="passwordVisible ? 'text' : 'password'"
+                autocomplete="new-password"
+                :readonly="!editing"
+                :placeholder="passwordPlaceholder"
+                :required="editing && !hasPassword"
+                @keydown.enter.prevent="editing && submit()"
+              />
+              <button
+                type="button"
+                class="vibe-creds-eye"
+                :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+                :title="passwordVisible ? 'Скрыть' : 'Показать'"
+                @click="togglePasswordVisible"
+              >
+                <svg
+                  v-if="passwordVisible"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+                <svg
+                  v-else
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                  <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+                  <path
+                    d="M4 20 20 4"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
             <button
               type="button"
-              class="vibe-creds-icon-btn"
-              :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-              :title="passwordVisible ? 'Скрыть' : 'Показать'"
-              @click="togglePasswordVisible"
-            >
-              <svg
-                v-if="passwordVisible"
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linejoin="round"
-                />
-                <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
-              </svg>
-              <svg
-                v-else
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linejoin="round"
-                />
-                <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
-                <path
-                  d="M4 20 20 4"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="vibe-creds-icon-btn"
+              class="vibe-creds-pencil"
               aria-label="Изменить пароль"
               title="Изменить"
               :disabled="editing"
               @click="startEdit"
             >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
                 <path
                   d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
                   stroke="currentColor"
@@ -327,12 +329,18 @@ const submit = async () => {
 .vibe-creds-password-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
+}
+
+.vibe-creds-password-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .vibe-creds-password-input {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
+  padding-right: 2.5rem;
 }
 
 .vibe-creds-password-input[readonly] {
@@ -340,38 +348,55 @@ const submit = async () => {
   background: #f7f7f4;
 }
 
-.vibe-creds-icon-btn {
-  flex: 0 0 auto;
+.vibe-creds-eye,
+.vibe-creds-pencil {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
   padding: 0;
-  border: 2px solid #111;
-  border-radius: 8px;
-  background: #fff;
-  color: #111;
-  box-shadow: 2px 2px 0 #111;
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
-}
-
-.vibe-creds-icon-btn:hover:not(:disabled) {
-  background: var(--accent-lime, #ddf365);
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 #111;
-}
-
-.vibe-creds-icon-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.12s ease, opacity 0.12s ease, transform 0.12s ease;
 }
 
-.vibe-creds-icon-btn:focus-visible {
+.vibe-creds-eye {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+}
+
+.vibe-creds-eye:hover {
+  color: #111;
+}
+
+.vibe-creds-pencil {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+}
+
+.vibe-creds-pencil:hover:not(:disabled) {
+  color: #111;
+  transform: scale(1.08);
+}
+
+.vibe-creds-pencil:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.vibe-creds-eye:focus-visible,
+.vibe-creds-pencil:focus-visible {
   outline: 2px solid #7451f4;
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .vibe-creds-error {
