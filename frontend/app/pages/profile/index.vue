@@ -563,7 +563,6 @@ import {
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
 import type { Employee } from '~/composables/useEmployees';
-import { formatEmployeeShortName } from '~/utils/employeeName';
 
 const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
 const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
