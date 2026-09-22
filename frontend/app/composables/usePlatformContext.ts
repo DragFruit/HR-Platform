@@ -52,10 +52,11 @@ export function usePlatformContext() {
     if (!isVacationsOnly.value) {
       return base.map((item) => ({ ...item, locked: false }));
     }
-    // Пилот: в меню только открытые разделы — без «Главная» и прочих под замком
-    return base
-      .filter((item) => isNavPathUnlocked(item.to))
-      .map((item) => ({ ...item, locked: false }));
+    // Пилот: все пункты видны; закрытые — с замком, не кликабельны
+    return base.map((item) => ({
+      ...item,
+      locked: !isNavPathUnlocked(item.to)
+    }));
   });
   const canSwitchRole = computed(() => user.value?.role === 'admin');
 
