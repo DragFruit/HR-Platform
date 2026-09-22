@@ -86,6 +86,13 @@ RSYNC_RSH="${RSYNC_SSH[*]}" rsync -az \
 "${SSH_CMD[@]}" "${REMOTE}" \
   "find '${DEPLOY_PATH}/.output/public/_nuxt' -type f -mtime +20 -delete 2>/dev/null || true"
 
+TEMPLATE_SRC="${ROOT}/frontend/server/templates/vacation-application.docx"
+if [[ -f "${TEMPLATE_SRC}" ]]; then
+  echo "→ vacation-application.docx → ${DEPLOY_PATH}/server/templates/"
+  "${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${DEPLOY_PATH}/server/templates'"
+  "${SCP_CMD[@]}" "${TEMPLATE_SRC}" "${REMOTE}:${DEPLOY_PATH}/server/templates/vacation-application.docx"
+fi
+
 SEED_DATA_DIR="${ROOT}/frontend/server/data"
 MERGE_SCRIPT="${ROOT}/deploy/scripts/merge-employees-seed.mjs"
 REMOTE_DATA="${DEPLOY_PATH}/server/data"
