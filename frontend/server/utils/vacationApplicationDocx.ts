@@ -42,7 +42,9 @@ const escapeXml = (value: string): string =>
 async function templatePath(): Promise<string> {
   const candidates = [
     join(process.cwd(), 'templates/vacation-application.docx'),
-    join(process.cwd(), 'server/templates/vacation-application.docx')
+    join(process.cwd(), 'server/templates/vacation-application.docx'),
+    // CI кладёт бланк в .output; cwd сервиса — корень стенда (/var/www/vbi-hr)
+    join(process.cwd(), '.output/server/templates/vacation-application.docx')
   ];
   for (const path of candidates) {
     try {
