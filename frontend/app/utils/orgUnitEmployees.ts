@@ -1,6 +1,6 @@
 import type { Employee } from '~/composables/useEmployees';
 import { normalizeDepartment } from '~/data/departments';
-import { normalizeEmployeeNameKey } from '~/utils/employeeName';
+import { employeeNamesMatch, normalizeEmployeeNameKey } from '~/utils/employeeName';
 import { DIGITAL_VACATION_GROUP_DEFS_EXPORT } from '~/utils/vacationDepartmentGroups';
 
 /** Нормализация названия ноды оргсхемы для матчинга правил. */
@@ -147,8 +147,9 @@ function nameKeySet(names: readonly string[]): Set<string> {
 }
 
 function findByName(employees: readonly Employee[], name: string): Employee | undefined {
-  const key = normalizeEmployeeNameKey(name);
-  return employees.find((e) => normalizeEmployeeNameKey(e.name) === key);
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return undefined;
+  return employees.find((e) => employeeNamesMatch(e.name, trimmed));
 }
 
 function sortByName(list: Employee[]): Employee[] {
@@ -379,10 +380,9 @@ export function rosterSectionsForOrgUnitName(
   }
 
   if (rule.kind === 'by-names') {
-    const keys = nameKeySet(rule.names);
     const list = rule.names
       .map((name) => findByName(employees, name))
-      .filter((row): row is Employee => Boolean(row) && keys.has(normalizeEmployeeNameKey(row.name)));
+      .filter((row): row is Employee => Boolean(row));
     return flatSection('named', unitName.trim() || 'Сотрудники', list.map(fromEmployee));
   }
 
