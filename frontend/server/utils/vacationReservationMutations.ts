@@ -142,8 +142,13 @@ export async function patchVacationReservation(
       throw createError({ statusCode: 404, statusMessage: 'Бронь не найдена' });
     }
 
-    const isOwner =
-      sessionEmployee?.name?.trim().toLowerCase() === found.item.employee.trim().toLowerCase();
+    const isOwner = Boolean(
+      sessionEmployee &&
+        vacationBelongsToEmployee(found.item, {
+          id: sessionEmployee.id,
+          name: sessionEmployee.name
+        })
+    );
     if (!isOwner && session.role !== 'admin') {
       throw createError({ statusCode: 403, statusMessage: 'Нет прав изменить эту бронь' });
     }
@@ -195,8 +200,13 @@ export async function deleteVacationReservation(
       throw createError({ statusCode: 404, statusMessage: 'Бронь не найдена' });
     }
 
-    const isOwner =
-      sessionEmployee?.name?.trim().toLowerCase() === found.item.employee.trim().toLowerCase();
+    const isOwner = Boolean(
+      sessionEmployee &&
+        vacationBelongsToEmployee(found.item, {
+          id: sessionEmployee.id,
+          name: sessionEmployee.name
+        })
+    );
     if (!isOwner && session.role !== 'admin') {
       throw createError({ statusCode: 403, statusMessage: 'Нет прав удалить эту бронь' });
     }

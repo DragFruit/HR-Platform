@@ -23,7 +23,13 @@ import {
 } from './vacationNotifications';
 import { assertVacationRequestGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
-import { isPastApprovedVacationRequest, isVacationStartInPast, todayIso } from '../../app/utils/vacationCalendar';
+import {
+  isPastApprovedVacationRequest,
+  isVacationStartInPast,
+  todayIso,
+  vacationRangesOverlap
+} from '../../app/utils/vacationCalendar';
+import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
 import { employeeNamesMatch } from '../../app/utils/employeeName';
 
 const cloneState = (state: VacationStoreState): VacationStoreState =>
@@ -31,6 +37,46 @@ const cloneState = (state: VacationStoreState): VacationStoreState =>
 
 const sameEmployeeName = (a?: string | null, b?: string | null): boolean =>
   Boolean(a && b) && employeeNamesMatch(a!, b!);
+
+const SELF_VACATION_OVERLAP_MESSAGE = 'На эти даты уже есть отпуск.';
+
+/** Своя заявка: сначала employee_id, иначе ФИО (legacy). */
+const isSessionOwnRequest = (
+  sessionEmployee: { id?: number | null; name?: string | null } | null | undefined,
+  request: { employee: string; employee_id?: number | null }
+): boolean => {
+  if (!sessionEmployee) return false;
+  const sid = Number(sessionEmployee.id);
+  const rid = Number(request.employee_id);
+  if (Number.isFinite(sid) && sid > 0 && Number.isFinite(rid) && rid > 0) {
+    return sid === rid;
+  }
+  return sameEmployeeName(sessionEmployee.name, request.employee);
+};
+
+/** Два отпуска одного сотрудника (pending/approved) не должны пересекаться по датам. */
+const assertSelfVacationOverlap = (
+  state: VacationStoreState,
+  employee: { id?: number | null; name: string },
+  start: string,
+  end: string,
+  excludeRequestId?: number
+) => {
+  const allRequests = Object.values(state.requestsByYear).flat();
+  const conflict = allRequests.some(
+    (other) =>
+      other.id !== excludeRequestId &&
+      (other.status === 'approved' || other.status === 'pending') &&
+      vacationBelongsToEmployee(other, employee) &&
+      vacationRangesOverlap(start, end, other.start, other.end)
+  );
+  if (conflict) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: SELF_VACATION_OVERLAP_MESSAGE
+    });
+  }
+};
 
 /** HR и админ ведут график за всех: подают, правят и согласовывают заявки любого сотрудника. */
 const hasRosterWideRights = (session: SessionUser): boolean =>
@@ -164,6 +210,12 @@ export async function createVacationRequest(
     assertYearMatchesStart(body.year, body.start);
     yearFromIsoDate(body.end);
     assertStartNotInPastUnlessAdmin(session, body.start);
+    assertSelfVacationOverlap(
+      state,
+      { id: employee?.id ?? null, name: canonicalName },
+      body.start,
+      body.end
+    );
     if (employee && session.role !== 'admin') {
       assertGroupLeadVacationOverlap(state, employee, body.start, body.end);
     }
@@ -208,7 +260,7 @@ export async function patchVacationRequest(
       (found.item.employee_id
         ? (await readEmployees()).find((row) => row.id === found.item.employee_id)
         : null) ?? (await findEmployeeByName(found.item.employee));
-    const isOwnRequest = sameEmployeeName(sessionEmployee?.name, found.item.employee);
+    const isOwnRequest = isSessionOwnRequest(sessionEmployee, found.item);
 
     if (changesDates && !elevated && !isOwnRequest) {
       throw createError({
@@ -304,6 +356,19 @@ export async function patchVacationRequest(
         const target = state.requestsByYear[targetKey] ?? [];
         state.requestsByYear[targetKey] = [...target, found.item];
       }
+    }
+
+    if (changesDates) {
+      assertSelfVacationOverlap(
+        state,
+        {
+          id: owner?.id ?? found.item.employee_id ?? null,
+          name: owner?.name?.trim() || found.item.employee
+        },
+        found.item.start,
+        found.item.end,
+        found.item.id
+      );
     }
 
     if (owner && changesDates && session.role !== 'admin') {
@@ -418,7 +483,7 @@ export async function deleteVacationRequest(
     if (!found) {
       throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
     }
-    if (!elevated && !sameEmployeeName(sessionEmployee?.name, found.item.employee)) {
+    if (!elevated && !isSessionOwnRequest(sessionEmployee, found.item)) {
       throw createError({ statusCode: 403, statusMessage: 'Нет прав удалить эту заявку' });
     }
     if (!elevated && isPastApprovedVacationRequest(found.item)) {

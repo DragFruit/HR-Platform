@@ -18,7 +18,7 @@
       </header>
 
       <div v-if="approvalQueue.length === 0" class="vac-approval-empty">
-        <p>Очередь пуста за {{ viewYear }} год</p>
+        <p>Очередь пуста</p>
       </div>
 
       <ul v-else class="list-reset vac-approval-list">

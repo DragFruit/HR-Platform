@@ -43,10 +43,8 @@ export function useLaunchScope() {
     ) {
       return true;
     }
-    if (
-      path === LAUNCH_VACATIONS_PROFILE_PATH ||
-      path.startsWith(`${LAUNCH_VACATIONS_PROFILE_PATH}/`)
-    ) {
+    // Только /profile — assessment/development на пилоте с замком
+    if (path === LAUNCH_VACATIONS_PROFILE_PATH) {
       return true;
     }
     if (path === LAUNCH_VACATIONS_IDEAS_PATH || path.startsWith(`${LAUNCH_VACATIONS_IDEAS_PATH}/`)) {
@@ -92,7 +90,12 @@ export function useLaunchScope() {
     ) {
       return true;
     }
-    // /organization (сотрудник) — с замком на бое; открыта только админская /admin/organization
+    if (
+      path === LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH ||
+      path.startsWith(`${LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH}/`)
+    ) {
+      return true;
+    }
     return false;
   };
 

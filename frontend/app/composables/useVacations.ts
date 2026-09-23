@@ -320,8 +320,16 @@ export function useVacations() {
 
   const yearReservations = computed(() => reservationsForYear(viewYear.value));
 
+  /** Pending только выбранного года — для календаря/метрик года. */
   const pendingRequests = computed(() =>
     yearRequests.value.filter((item) => item.status === 'pending')
+  );
+
+  /** Все pending по всем годам — очередь согласования руководителя/админа. */
+  const allPendingRequests = computed(() =>
+    Object.values(state.value.requestsByYear)
+      .flat()
+      .filter((item) => item.status === 'pending')
   );
 
   const migratePendingApprovalSteps = async () => {
@@ -347,7 +355,7 @@ export function useVacations() {
     approverEmployeeName: string | null,
     seeAll: boolean
   ) => {
-    const pending = pendingRequests.value;
+    const pending = allPendingRequests.value;
     if (seeAll || !approverEmployeeName) return pending;
     return pending.filter((request) => {
       const employee = resolveRequestEmployee(request);
@@ -365,7 +373,7 @@ export function useVacations() {
     seeAll: boolean
   ) => {
     if (seeAll || !approverEmployeeName) return [];
-    return pendingRequests.value.filter((request) => {
+    return allPendingRequests.value.filter((request) => {
       const employee = resolveRequestEmployee(request);
       return isHandedOffToDirectorForGroupLead(
         { id: findByName(approverEmployeeName)?.id ?? null, name: approverEmployeeName },

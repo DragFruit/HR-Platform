@@ -39,7 +39,7 @@
         </header>
 
         <div v-if="approvalPanelEntries.length === 0" class="vac-approval-empty">
-          <p>Нет заявок на согласование за {{ viewYear }} год</p>
+          <p>Нет заявок на согласование</p>
         </div>
 
         <ul v-else class="list-reset vac-approval-list">
