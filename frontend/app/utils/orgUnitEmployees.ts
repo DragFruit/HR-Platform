@@ -17,7 +17,8 @@ export function normalizeOrgUnitKey(name: string): string {
 
 const CONTEXT_MANAGERS = ['Лунин Дмитрий', 'Попов Виктор', 'Цхай Виталий'] as const;
 const SMM_MANAGERS = ['Носков Никита'] as const;
-const ANALYTICS_NAMES = ['Левина Анастасия', 'Мощев Максим'] as const;
+/** Левина, Мощев — стабильные id справочника (не ФИО). */
+const ANALYTICS_IDS = [2295, 2417] as const;
 
 /** Юристы-подрядчики: в списке есть, визитки нет. */
 const CONTRACTOR_LAWYERS = [
@@ -45,12 +46,13 @@ type RosterRule =
   | { kind: 'department'; department: string }
   | { kind: 'digital-all' }
   | { kind: 'by-managers'; managers: readonly string[]; department?: string }
-  | { kind: 'by-names'; names: readonly string[] }
+  | { kind: 'by-ids'; ids: readonly number[] }
   | { kind: 'seo-core' }
   | { kind: 'seo-serm-all' }
   | { kind: 'contractors'; people: readonly { name: string; title?: string }[] };
 
-const SEO_ACCOUNTING_NAMES = ['Пяткова Алёна', 'Гончаров Данила'] as const;
+/** Пяткова, Гончаров — id справочника. */
+const SEO_ACCOUNTING_IDS = [2795, 2663] as const;
 const ORM_MANAGER = 'Новоторцева Екатерина';
 const SEO_MANAGER = 'Трубицына Анна';
 
@@ -83,7 +85,7 @@ function matchRule(unitName: string): RosterRule | null {
   }
 
   if (key.includes('аналитик')) {
-    return { kind: 'by-names', names: ANALYTICS_NAMES };
+    return { kind: 'by-ids', ids: ANALYTICS_IDS };
   }
 
   if (key.includes('digital') || key.includes('диджитал')) {
@@ -101,7 +103,7 @@ function matchRule(unitName: string): RosterRule | null {
 
   // SEO / ORM / аккаунтинг — узкие ноды раньше общего SEO&SERM
   if (key.includes('аккаунт')) {
-    return { kind: 'by-names', names: SEO_ACCOUNTING_NAMES };
+    return { kind: 'by-ids', ids: SEO_ACCOUNTING_IDS };
   }
   if (key.includes('orm')) {
     return { kind: 'by-managers', managers: [ORM_MANAGER], department: 'SEO / ORM' };
@@ -142,8 +144,12 @@ function matchRule(unitName: string): RosterRule | null {
   return { kind: 'department', department: unitName.trim() };
 }
 
-function nameKeySet(names: readonly string[]): Set<string> {
-  return new Set(names.map((n) => normalizeEmployeeNameKey(n)));
+function idSet(ids: readonly number[]): Set<number> {
+  return new Set(ids);
+}
+
+function findById(employees: readonly Employee[], id: number): Employee | undefined {
+  return employees.find((e) => e.id === id);
 }
 
 function findByName(employees: readonly Employee[], name: string): Employee | undefined {
@@ -257,7 +263,7 @@ function flatSection(id: string, label: string, people: OrgRosterPerson[]): OrgR
 }
 
 function seoAccountingEmployees(employees: readonly Employee[]): Employee[] {
-  return SEO_ACCOUNTING_NAMES.map((name) => findByName(employees, name)).filter(
+  return SEO_ACCOUNTING_IDS.map((id) => findById(employees, id)).filter(
     (row): row is Employee => Boolean(row)
   );
 }
@@ -276,14 +282,14 @@ function seoOrmEmployees(employees: readonly Employee[]): Employee[] {
 }
 
 function seoCoreEmployees(employees: readonly Employee[]): Employee[] {
-  const accountingKeys = nameKeySet(SEO_ACCOUNTING_NAMES);
+  const accountingIds = idSet(SEO_ACCOUNTING_IDS);
   const ormLeadKey = normalizeEmployeeNameKey(ORM_MANAGER);
   const seoLeadKey = normalizeEmployeeNameKey(SEO_MANAGER);
   const lead = findByName(employees, SEO_MANAGER);
   const reports = employees.filter((e) => {
     if (e.department.trim() !== 'SEO / ORM' || !e.name.trim()) return false;
+    if (accountingIds.has(e.id)) return false;
     const selfKey = normalizeEmployeeNameKey(e.name);
-    if (accountingKeys.has(selfKey)) return false;
     if (selfKey === ormLeadKey) return false;
     if (selfKey === seoLeadKey) return false;
     return normalizeEmployeeNameKey(e.manager || '') === seoLeadKey;
@@ -379,11 +385,11 @@ export function rosterSectionsForOrgUnitName(
     return sections;
   }
 
-  if (rule.kind === 'by-names') {
-    const list = rule.names
-      .map((name) => findByName(employees, name))
+  if (rule.kind === 'by-ids') {
+    const list = rule.ids
+      .map((id) => findById(employees, id))
       .filter((row): row is Employee => Boolean(row));
-    return flatSection('named', unitName.trim() || 'Сотрудники', list.map(fromEmployee));
+    return flatSection('by-ids', unitName.trim() || 'Сотрудники', list.map(fromEmployee));
   }
 
   if (rule.kind === 'seo-core') {
