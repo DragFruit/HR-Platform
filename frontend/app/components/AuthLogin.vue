@@ -52,10 +52,6 @@
             </button>
           </form>
 
-          <p class="muted auth-password-hint">
-            Пароль задаёт HR в Админ → Сотрудники. Это пароль Vibe, не пароль Bitrix.
-          </p>
-
           <div v-if="showBitrixLogin" class="auth-divider" role="separator">
             <span>или</span>
           </div>
@@ -216,12 +212,6 @@ const submit = async () => {
 
 .auth-form--password {
   margin-bottom: 0;
-}
-
-.auth-password-hint {
-  margin: 0.75rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
 }
 
 .auth-divider {
