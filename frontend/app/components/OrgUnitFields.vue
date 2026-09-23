@@ -41,7 +41,7 @@
         @pointerdown.stop
         @click.stop="openHeadCard($event)"
       >
-        {{ unit.head }}
+        {{ displayHeadName }}
       </button>
       <span v-else class="org-unit-head is-empty">Руководитель</span>
     </div>
@@ -59,7 +59,7 @@
 
 <script setup lang="ts">
 import type { OrgUnit } from '~/composables/useOrgStructure';
-import { resolveManagerFromList } from '~/utils/employeeName';
+import { formatEmployeeShortName, resolveManagerFromList } from '~/utils/employeeName';
 
 const props = defineProps<{
   unit: OrgUnit;
@@ -72,6 +72,10 @@ const { openEmployeeVisitingCard } = useEmployeeVisitingCard();
 
 const hasHead = computed(() => Boolean(String(props.unit.head ?? '').trim()));
 const showHeadField = ref(hasHead.value);
+/** Сотруднику — без отчества; в админке select хранит полное ФИО из справочника. */
+const displayHeadName = computed(() =>
+  formatEmployeeShortName(String(props.unit.head ?? '').trim())
+);
 
 const headOptions = computed(() => {
   const names = new Set<string>();

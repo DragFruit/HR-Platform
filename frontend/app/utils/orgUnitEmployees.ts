@@ -1,6 +1,6 @@
 import type { Employee } from '~/composables/useEmployees';
 import { normalizeDepartment } from '~/data/departments';
-import { employeeNamesMatch, normalizeEmployeeNameKey } from '~/utils/employeeName';
+import { employeeNamesMatch, formatEmployeeShortName, normalizeEmployeeNameKey } from '~/utils/employeeName';
 import { DIGITAL_VACATION_GROUP_DEFS_EXPORT } from '~/utils/vacationDepartmentGroups';
 
 /** Нормализация названия ноды оргсхемы для матчинга правил. */
@@ -165,7 +165,7 @@ function sortByName(list: Employee[]): Employee[] {
 function fromEmployee(emp: Employee): OrgRosterPerson {
   return {
     key: `emp-${emp.id}`,
-    name: emp.name,
+    name: formatEmployeeShortName(emp.name),
     title: emp.title || undefined,
     openCard: true,
     employee: emp
