@@ -399,7 +399,11 @@
               @click="openEmployeeVisitingCard(member, $event)"
             >
               <div class="profile-team__avatar-wrap" :title="member.isManager ? 'Руководитель' : undefined">
-                <UserAvatar :user-id="member.platform_user_id" :name="member.name" :size="48" />
+                <UserAvatar
+                  :user-id="member.platform_user_id"
+                  :name="formatEmployeeShortName(member.name)"
+                  :size="48"
+                />
                 <span v-if="member.isManager" class="profile-team__manager-badge" aria-hidden="true">★</span>
               </div>
               <span class="profile-team__name">{{ formatEmployeeShortName(member.name) }}</span>
@@ -557,8 +561,8 @@ import {
   formatVacationStartShort
 } from '~/utils/profileSpotlight';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
-import type { Employee } from '~/composables/useEmployees';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import type { Employee } from '~/composables/useEmployees';
 
 const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
 const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
