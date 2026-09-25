@@ -95,17 +95,20 @@
           ×
         </button>
         <div class="vac-request-created-toast__art" aria-hidden="true">
-          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--lime vac-request-created-toast__sq--a" />
-          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--purple vac-request-created-toast__sq--b" />
-          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--lime vac-request-created-toast__sq--c" />
-          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--purple vac-request-created-toast__sq--d" />
-          <img
-            class="vac-request-created-toast__palm"
-            src="/images/vacations/request-created-palm.png?v=4"
-            alt=""
-            width="110"
-            height="110"
-          />
+          <div class="vac-request-created-toast__frame">
+            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tl" />
+            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tr1" />
+            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tr2" />
+            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--bl" />
+            <img
+              class="vac-request-created-toast__photo"
+              src="/images/vacations/request-created-rest.png?v=1"
+              alt=""
+              width="120"
+              height="160"
+            />
+            <span class="vac-request-created-toast__frame-foot" />
+          </div>
         </div>
         <div class="vac-request-created-toast__main">
           <div class="vac-request-created-toast__copy">
@@ -114,7 +117,6 @@
           </div>
           <div
             class="vac-request-created-toast__path"
-            :style="{ '--vac-toast-path-cols': String(requestCreatedToast.path.length) }"
             :aria-label="requestCreatedToast.path.map((s) => s.label).join(' → ')"
           >
             <span
