@@ -11911,10 +11911,10 @@ button.emp-name--card:hover {
   box-sizing: border-box;
 }
 
-/* «У руководителя» — отступ слева 6px, чтобы линия+текст не прилипали к «Создана» */
+/* Средний этап: по 6px слева и справа — равный зазор к соседям (только left ломал 2–3) */
 .emp-request-path__seg:nth-child(2) {
   padding-left: 6px;
-  padding-right: 0;
+  padding-right: 6px;
 }
 
 .emp-request-path__seg.is-done {
