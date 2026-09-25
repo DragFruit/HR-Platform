@@ -542,7 +542,7 @@ const showRequestCreatedToast = () => {
   requestCreatedToastTimer = setTimeout(() => {
     requestCreatedToast.value = null;
     requestCreatedToastTimer = null;
-  }, 10000);
+  }, 20000);
 };
 
 onUnmounted(() => {
