@@ -12670,7 +12670,7 @@ button.emp-name--card:hover {
   width: min(440px, calc(100vw - 32px));
   margin: 0;
   padding: 0;
-  overflow: visible;
+  overflow: hidden;
   background: #eeeee8;
   border: 2px solid #1a1a1a;
   border-radius: 18px;
