@@ -1,6 +1,7 @@
 import type { VacationReservation } from '~/utils/vacationReservations';
 import type { VacationRequest } from '~/composables/useVacations';
 import { DEFAULT_RESERVATION_MONTHLY_CAP } from '~/utils/vacationReservations';
+import { isReservationCapExemptSubgroupId } from '~/utils/vacationDepartmentGroups';
 
 export { DEFAULT_RESERVATION_MONTHLY_CAP };
 
@@ -224,7 +225,11 @@ export function getReservationMonthBlockReason(params: {
 }): ReservationCapBlockReason | null {
   const { context, year, month, reservations, requests, caps, excludeEmployee } = params;
 
+  // Группа Цхай и др.: без лимита «1 в подгруппе», но отдел «5» остаётся.
+  const skipSubgroup = isReservationCapExemptSubgroupId(context.subgroup.id);
+
   if (
+    !skipSubgroup &&
     isReservationMonthAtSubgroupCap({
       subgroupId: context.subgroup.id,
       memberNames: context.subgroup.memberNames,

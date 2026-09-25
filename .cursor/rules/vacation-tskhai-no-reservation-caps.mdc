@@ -4,20 +4,24 @@
 
 ## Правило
 
-Месячные лимиты брони и заявки на отпуск (**5** на отдел Digital / QA, **1** в подгруппе) **не действуют** только у:
+У группы **Цхай Виталий** (`digital-tskhai` — он и прямые подчинённые):
 
-- `digital-tskhai` — Цхай Виталий и его прямые подчинённые (группа в `vacationDepartmentGroups.ts`)
+| Лимит | Действует? |
+|-------|------------|
+| **1** человек в подгруппе | **нет** — несколько человек из группы Цхая могут занять один месяц |
+| **5** человек на весь отдел Digital | **да** — как у всех; их брони/заявки **входят** в общий пул отдела |
 
-У **всех остальных** групп Digital и у демо-QA лимиты остаются.
+У **всех остальных** групп Digital (и демо-QA) оба лимита без изменений.
 
 ## Как устроено в коде
 
-- Список исключений: `RESERVATION_CAP_EXEMPT_GROUP_IDS` / `isReservationCapExemptGroupId` в `vacationDepartmentGroups.ts`
-- `resolveEmployeeReservationCapContext` для исключённой группы возвращает `null` → UI и API (`assertReservationGroupCap` / `assertVacationRequestGroupCap`) не блокируют
-- Члены исключённых групп **не входят** в пул отдела при подсчёте «5 на отдел» для остальных (их брони/отпуска не съедают чужие слоты)
+- Список: `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` / `isReservationCapExemptSubgroupId` в `vacationDepartmentGroups.ts`
+- `getReservationMonthBlockReason` пропускает только проверку subgroup для этих id; department-cap всегда
+- `resolveEmployeeReservationCapContext` для Цхая возвращает обычный контекст (пул отдела полный)
 
 ## Запрещено без просьбы
 
-- Снимать лимиты у других групп (Попов, Лунин, Носков, дирекция, Analytics, QA и т.д.)
-- Расширять `RESERVATION_CAP_EXEMPT_GROUP_IDS` «заодно»
-- Включать группу Цхай обратно в пул отдела или в subgroup-cap
+- Снимать лимит «5 на отдел» у группы Цхая
+- Выводить их слоты из пула отдела
+- Расширять `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` на другие группы
+- Снимать subgroup-cap у Попова / Лунина / Носкова / дирекции / Analytics / QA

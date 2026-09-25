@@ -52,13 +52,22 @@ const DIGITAL_VACATION_GROUP_DEFS: readonly VacationGroupDef[] = [
 ];
 
 /**
- * Locked (сент 2026): месячные лимиты брони/отпуска **не действуют** только у этих групп.
+ * Locked (сент 2026): у этих групп **нет** лимита «1 в подгруппе».
+ * Лимит «5 на отдел» для них **действует**, слоты входят в общий пул.
  * Не расширять список без явной просьбы заказчика. См. `.cursor/rules/vacation-tskhai-no-reservation-caps.mdc`.
  */
-export const RESERVATION_CAP_EXEMPT_GROUP_IDS = ['digital-tskhai'] as const;
+export const RESERVATION_CAP_EXEMPT_SUBGROUP_IDS = ['digital-tskhai'] as const;
 
+/** @deprecated Используйте RESERVATION_CAP_EXEMPT_SUBGROUP_IDS */
+export const RESERVATION_CAP_EXEMPT_GROUP_IDS = RESERVATION_CAP_EXEMPT_SUBGROUP_IDS;
+
+export function isReservationCapExemptSubgroupId(groupId: string): boolean {
+  return (RESERVATION_CAP_EXEMPT_SUBGROUP_IDS as readonly string[]).includes(groupId.trim());
+}
+
+/** @deprecated Используйте isReservationCapExemptSubgroupId */
 export function isReservationCapExemptGroupId(groupId: string): boolean {
-  return (RESERVATION_CAP_EXEMPT_GROUP_IDS as readonly string[]).includes(groupId.trim());
+  return isReservationCapExemptSubgroupId(groupId);
 }
 
 const QA_VACATION_GROUP_DEFS: readonly VacationGroupDef[] = [
@@ -212,13 +221,8 @@ export function resolveEmployeeReservationCapContext(
 
   const subgroup = resolveVacationGroupForEmployee(employee, helpers);
   if (!subgroup) return null;
-  // Группа Цхай: без лимита подгруппы и без участия в пуле отдела.
-  if (isReservationCapExemptGroupId(subgroup.id)) return null;
 
-  const deptMembers = resolveDepartmentCapMembers(layout, helpers).filter((emp) => {
-    const group = resolveVacationGroupForEmployee(emp, helpers);
-    return !group || !isReservationCapExemptGroupId(group.id);
-  });
+  const deptMembers = resolveDepartmentCapMembers(layout, helpers);
   if (!deptMembers.length) return null;
 
   return {
