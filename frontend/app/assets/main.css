@@ -11905,6 +11905,10 @@ button.emp-name--card:hover {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.emp-request-path:has(.emp-request-path__seg:nth-child(4)) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .emp-request-path__seg {
   display: flex;
   flex-direction: column;
@@ -11914,6 +11918,7 @@ button.emp-name--card:hover {
   font-weight: 600;
   line-height: 1.2;
   color: #8a8a8a;
+  text-align: left;
 }
 
 .emp-request-path__seg::before {
@@ -11921,7 +11926,7 @@ button.emp-name--card:hover {
   display: block;
   height: 4px;
   border-radius: 999px;
-  background: #d8d8d2;
+  background: #f5d76e;
 }
 
 .emp-request-path__seg.is-done {
@@ -11933,10 +11938,34 @@ button.emp-name--card:hover {
 }
 
 .emp-request-path__seg.is-current {
+  position: relative;
   color: #7a5a00;
 }
 
 .emp-request-path__seg.is-current::before {
+  background: #f5d76e;
+}
+
+.emp-request-path__seg.is-current::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: #f5c842;
+  border: 1.5px solid #1a1a1a;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.emp-request-path__seg.is-todo {
+  color: #8a8a8a;
+}
+
+.emp-request-path__seg.is-todo::before {
   background: #f5d76e;
 }
 
@@ -12645,7 +12674,7 @@ button.emp-name--card:hover {
   right: 16px;
   z-index: 1200;
   box-sizing: border-box;
-  width: min(390px, calc(100vw - 32px));
+  width: min(420px, calc(100vw - 32px));
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -12765,6 +12794,68 @@ button.emp-name--card:hover {
   line-height: 1.4;
   font-weight: 500;
   color: #4a4a4a;
+}
+
+.vac-request-created-toast__path {
+  display: grid;
+  grid-template-columns: repeat(var(--vac-toast-path-cols, 3), minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-right: 4px;
+}
+
+.vac-request-created-toast__seg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  text-align: left;
+}
+
+.vac-request-created-toast__bar {
+  position: relative;
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: #f5d76e;
+}
+
+.vac-request-created-toast__seg.is-done .vac-request-created-toast__bar {
+  background: #ddf365;
+}
+
+.vac-request-created-toast__seg.is-current .vac-request-created-toast__bar,
+.vac-request-created-toast__seg.is-todo .vac-request-created-toast__bar {
+  background: #f5d76e;
+}
+
+.vac-request-created-toast__dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f5c842;
+  border: 2px solid #1a1a1a;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+}
+
+.vac-request-created-toast__seg-label {
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #5a5a5a;
+  text-align: left;
+}
+
+.vac-request-created-toast__seg.is-done .vac-request-created-toast__seg-label {
+  color: #3d5a00;
+}
+
+.vac-request-created-toast__seg.is-current .vac-request-created-toast__seg-label {
+  color: #7a5a00;
 }
 
 .vac-request-created-toast__warn {

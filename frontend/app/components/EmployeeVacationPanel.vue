@@ -112,6 +112,23 @@
             <p class="vac-request-created-toast__title">Заявка успешно создана</p>
             <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
           </div>
+          <div
+            class="vac-request-created-toast__path"
+            :style="{ '--vac-toast-path-cols': String(requestCreatedToast.path.length) }"
+            :aria-label="requestCreatedToast.path.map((s) => s.label).join(' → ')"
+          >
+            <span
+              v-for="seg in requestCreatedToast.path"
+              :key="seg.label"
+              class="vac-request-created-toast__seg"
+              :class="`is-${seg.state}`"
+            >
+              <span class="vac-request-created-toast__bar" aria-hidden="true">
+                <span v-if="seg.state === 'current'" class="vac-request-created-toast__dot" />
+              </span>
+              <span class="vac-request-created-toast__seg-label">{{ seg.label }}</span>
+            </span>
+          </div>
         </div>
         <div class="vac-request-created-toast__warn">
           <span class="vac-request-created-toast__warn-badge" aria-hidden="true">●</span>
@@ -248,7 +265,11 @@ import {
   GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE,
   GROUP_LEAD_OVERLAP_POPOVER_TITLE
 } from '~/utils/vacationGroupLeadOverlap';
-import { needsTwoStepApproval } from '~/utils/vacationApproval';
+import {
+  needsTwoStepApproval,
+  resolveVacationApprovalPath,
+  type VacationApprovalPathSeg
+} from '~/utils/vacationApproval';
 
 const props = defineProps<{
   viewYear: number;
@@ -537,6 +558,7 @@ const submitting = ref(false);
 type RequestCreatedToast = {
   route: string;
   note: string;
+  path: VacationApprovalPathSeg[];
 };
 const requestCreatedToast = ref<RequestCreatedToast | null>(null);
 let requestCreatedToastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -556,11 +578,16 @@ const showRequestCreatedToast = () => {
   dismissRequestCreatedToast();
   const emp = currentEmployee.value;
   const twoStep = emp ? needsTwoStepApproval(emp) : false;
+  const path = resolveVacationApprovalPath(
+    { status: 'pending', approval_step: twoStep ? 'manager' : 'director' },
+    emp ?? null
+  );
   requestCreatedToast.value = {
     route: twoStep
       ? 'Она ушла группхеду. После него — директор отдела.'
       : 'Она ушла руководителю на согласование.',
-    note: REQUEST_CREATED_NOTE
+    note: REQUEST_CREATED_NOTE,
+    path
   };
   requestCreatedToastTimer = setTimeout(() => {
     requestCreatedToast.value = null;

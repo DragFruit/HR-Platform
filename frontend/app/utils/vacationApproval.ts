@@ -245,7 +245,10 @@ export type VacationApprovalPathSeg = {
   state: VacationApprovalPathSegState;
 };
 
-/** Компактный путь согласования для карточки «Мои заявки». */
+/**
+ * Путь согласования (полоски):
+ * 1 Создана → 2 У руководителя / У группхеда → 3 У директора (Digital) → 4 Согласована
+ */
 export function resolveVacationApprovalPath(
   request: { status: string; approval_step?: VacationApprovalStep; employee?: string },
   employee?: VacationEmployeeRef | null
@@ -253,16 +256,17 @@ export function resolveVacationApprovalPath(
   const twoStep = employee ? needsTwoStepApproval(employee) : false;
   const inTwoStepDept = Boolean(employee && getTwoStepConfig(employee.department));
   const labels = twoStep
-    ? ['Создана', 'Группхед', 'Директор']
+    ? ['Создана', 'У группхеда', 'У директора', 'Согласована']
     : inTwoStepDept
-      ? ['Создана', 'Директор']
-      : ['Создана', 'Руководитель'];
+      ? ['Создана', 'У директора', 'Согласована']
+      : ['Создана', 'У руководителя', 'Согласована'];
 
   if (request.status === 'approved') {
     return labels.map((label) => ({ label, state: 'done' as const }));
   }
 
   const step = resolveRequestApprovalStep(request, employee ?? undefined);
+  /** Индекс этапа, на котором сейчас стоит заявка (не «Согласована»). */
   const currentIdx = (() => {
     if (twoStep) return step === 'director' ? 2 : 1;
     return 1;
