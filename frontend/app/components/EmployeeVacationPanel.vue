@@ -94,18 +94,24 @@
         >
           ×
         </button>
+        <div class="vac-request-created-toast__art" aria-hidden="true">
+          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--lime vac-request-created-toast__sq--a" />
+          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--purple vac-request-created-toast__sq--b" />
+          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--lime vac-request-created-toast__sq--c" />
+          <span class="vac-request-created-toast__sq vac-request-created-toast__sq--purple vac-request-created-toast__sq--d" />
+          <img
+            class="vac-request-created-toast__palm"
+            src="/images/vacations/request-created-palm.png?v=4"
+            alt=""
+            width="110"
+            height="110"
+          />
+        </div>
         <div class="vac-request-created-toast__main">
           <div class="vac-request-created-toast__copy">
             <p class="vac-request-created-toast__title">Заявка успешно создана</p>
             <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
           </div>
-          <img
-            class="vac-request-created-toast__palm"
-            src="/images/vacations/request-created-palm.png?v=3"
-            alt=""
-            width="72"
-            height="72"
-          />
         </div>
         <div class="vac-request-created-toast__warn">
           <span class="vac-request-created-toast__warn-badge" aria-hidden="true">●</span>
