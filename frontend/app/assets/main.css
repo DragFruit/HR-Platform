@@ -11740,10 +11740,7 @@ button.emp-name--card:hover {
   font-size: 11px;
   font-weight: 600;
   color: var(--text);
-}
-
-.emp-request-period__days--newline {
-  display: block;
+  white-space: nowrap;
 }
 
 .emp-request-menu-wrap {
@@ -11902,11 +11899,12 @@ button.emp-name--card:hover {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 600;
   line-height: 1.2;
   color: #8a8a8a;
   text-align: left;
+  white-space: nowrap;
 }
 
 .emp-request-path__seg::before {
@@ -12836,6 +12834,7 @@ button.emp-name--card:hover {
   line-height: 1.2;
   color: #5a5a5a;
   text-align: left;
+  white-space: nowrap;
 }
 
 .vac-request-created-toast__seg.is-done .vac-request-created-toast__seg-label {

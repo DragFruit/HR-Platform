@@ -124,14 +124,8 @@
           <div class="emp-request-row__top">
             <div class="emp-request-main">
               <span class="emp-request-period">
-                <span
-                  class="emp-request-period__dates"
-                  >{{ formatRequestDates(req) }}</span
-                ><span
-                  class="emp-request-period__days"
-                  :class="{ 'emp-request-period__days--newline': periodDaysOnNewLine(req) }"
-                  >{{ periodDaysOnNewLine(req) ? '' : ' ' }}({{ requestPeriodDays(req) }} дн.)</span
-                >
+                <span class="emp-request-period__dates">{{ formatRequestDates(req) }}</span
+                ><span class="emp-request-period__days"> ({{ requestPeriodDays(req) }} дн.)</span>
               </span>
               <div class="emp-request-meta">
                 <div
@@ -506,11 +500,6 @@ const formatRequestDates = (req: VacationRequest) => {
 };
 
 const requestPeriodDays = (req: VacationRequest) => countVacationBillableDays(req.start, req.end);
-
-/** Согласован + ещё не начался (есть ⋯) — «(X дн.)» с новой строки, иначе ломается на «(7» / «дн.)». */
-const periodDaysOnNewLine = (req: VacationRequest) =>
-  req.status === 'approved' && canManageRequest(req);
-
 
 const requestAdvance = (req: VacationRequest) =>
   assessVacationBalance(
