@@ -11813,6 +11813,19 @@ button.emp-name--card:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.emp-request-menu-item--download {
+  color: var(--vac-approved);
+}
+
+.emp-request-menu-item--download:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--vac-approved) 12%, transparent);
+}
+
+.emp-request-menu-item--download:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .emp-request-menu-item--danger {
   color: #fca5a5;
 }
@@ -11852,31 +11865,6 @@ button.emp-name--card:hover {
   margin: 0;
   font-size: 11px;
   color: #b91c1c;
-}
-
-.emp-request-download {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.emp-request-download:hover:not(:disabled) {
-  color: var(--text);
-  background: rgba(15, 23, 42, 0.06);
-}
-
-.emp-request-download:disabled {
-  opacity: 0.45;
-  cursor: wait;
 }
 
 .emp-request-download-error {
@@ -11926,24 +11914,24 @@ button.emp-name--card:hover {
   display: block;
   height: 4px;
   border-radius: 999px;
-  background: #f5d76e;
+  background: var(--vac-pending);
 }
 
 .emp-request-path__seg.is-done {
-  color: #3d5a00;
+  color: var(--vac-approved);
 }
 
 .emp-request-path__seg.is-done::before {
-  background: #b8d84a;
+  background: var(--vac-approved);
 }
 
 .emp-request-path__seg.is-current {
   position: relative;
-  color: #7a5a00;
+  color: var(--vac-pending);
 }
 
 .emp-request-path__seg.is-current::before {
-  background: #f5d76e;
+  background: var(--vac-pending);
 }
 
 .emp-request-path__seg.is-current::after {
@@ -11955,7 +11943,7 @@ button.emp-name--card:hover {
   height: 8px;
   margin-top: -2px;
   border-radius: 50%;
-  background: #f5c842;
+  background: var(--vac-pending);
   border: 1.5px solid #1a1a1a;
   transform: translateX(-50%);
   box-sizing: border-box;
@@ -11966,7 +11954,7 @@ button.emp-name--card:hover {
 }
 
 .emp-request-path__seg.is-todo::before {
-  background: #f5d76e;
+  background: var(--vac-pending);
 }
 
 .emp-request-path__seg.is-rejected {
@@ -11978,11 +11966,11 @@ button.emp-name--card:hover {
 }
 
 .emp-request-path--approved .emp-request-path__seg.is-done {
-  color: #2f5d2f;
+  color: var(--vac-approved);
 }
 
 .emp-request-path--approved .emp-request-path__seg.is-done::before {
-  background: var(--vac-approved, #6dbf6d);
+  background: var(--vac-approved);
 }
 
 /* legacy pills (другие экраны / обучалка) */
@@ -12817,16 +12805,16 @@ button.emp-name--card:hover {
   display: block;
   height: 7px;
   border-radius: 999px;
-  background: #f5d76e;
+  background: var(--vac-pending);
 }
 
 .vac-request-created-toast__seg.is-done .vac-request-created-toast__bar {
-  background: #ddf365;
+  background: var(--vac-approved);
 }
 
 .vac-request-created-toast__seg.is-current .vac-request-created-toast__bar,
 .vac-request-created-toast__seg.is-todo .vac-request-created-toast__bar {
-  background: #f5d76e;
+  background: var(--vac-pending);
 }
 
 .vac-request-created-toast__dot {
@@ -12836,7 +12824,7 @@ button.emp-name--card:hover {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #f5c842;
+  background: var(--vac-pending);
   border: 2px solid #1a1a1a;
   transform: translate(-50%, -50%);
   box-sizing: border-box;
@@ -12851,11 +12839,11 @@ button.emp-name--card:hover {
 }
 
 .vac-request-created-toast__seg.is-done .vac-request-created-toast__seg-label {
-  color: #3d5a00;
+  color: var(--vac-approved);
 }
 
 .vac-request-created-toast__seg.is-current .vac-request-created-toast__seg-label {
-  color: #7a5a00;
+  color: var(--vac-pending);
 }
 
 .vac-request-created-toast__warn {

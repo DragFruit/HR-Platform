@@ -157,30 +157,10 @@
                 </span>
               </div>
             </div>
-            <button
-              v-if="canDownloadVacationApplication(req)"
-              type="button"
-              class="emp-request-download"
-              :disabled="downloadingApplicationId === req.id"
-              :aria-busy="downloadingApplicationId === req.id"
-              aria-label="Скачать заявление"
-              title="Скачать заявление"
-              @click="downloadVacationApplication(req)"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-                <path
-                  d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
             <p v-if="applicationDownloadErrorFor === req.id" class="emp-request-download-error">
               {{ applicationDownloadError }}
             </p>
-            <div v-if="canManageRequest(req)" class="emp-request-menu-wrap">
+            <div v-if="canOpenRequestMenu(req)" class="emp-request-menu-wrap">
               <button
                 type="button"
                 class="emp-request-menu-btn"
@@ -234,10 +214,28 @@
         :style="{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }"
         @click.stop
       >
-        <button type="button" class="emp-request-menu-item" role="menuitem" @click="startEditRequest(openMenuRequest)">
+        <button
+          v-if="canDownloadVacationApplication(openMenuRequest)"
+          type="button"
+          class="emp-request-menu-item emp-request-menu-item--download"
+          role="menuitem"
+          :disabled="downloadingApplicationId === openMenuRequest.id"
+          :aria-busy="downloadingApplicationId === openMenuRequest.id"
+          @click="downloadVacationApplication(openMenuRequest)"
+        >
+          {{ downloadingApplicationId === openMenuRequest.id ? 'Скачиваем…' : 'Скачать заявление' }}
+        </button>
+        <button
+          v-if="canManageRequest(openMenuRequest)"
+          type="button"
+          class="emp-request-menu-item"
+          role="menuitem"
+          @click="startEditRequest(openMenuRequest)"
+        >
           Изменить даты
         </button>
         <button
+          v-if="canManageRequest(openMenuRequest)"
           type="button"
           class="emp-request-menu-item emp-request-menu-item--danger"
           role="menuitem"
@@ -321,6 +319,15 @@ const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest
 
 const canManageRequest = (req: VacationRequest) =>
   !isTrainingRequest(req) && !isPastApprovedVacationRequest(req);
+
+const canDownloadVacationApplication = (req: VacationRequest) =>
+  !isTrainingRequest(req) &&
+  req.status === 'approved' &&
+  isLaborContractEmployee(currentEmployee.value?.contract_form) &&
+  req.start > todayIso();
+
+const canOpenRequestMenu = (req: VacationRequest) =>
+  canManageRequest(req) || canDownloadVacationApplication(req);
 
 const projectionDate = ref('');
 const projectionText = ref('');
@@ -429,12 +436,6 @@ const statusLabel = (req: VacationRequest) =>
 const approvalPath = (req: VacationRequest) =>
   resolveVacationApprovalPath(req, currentEmployee.value ?? null);
 
-const canDownloadVacationApplication = (req: VacationRequest) =>
-  !isTrainingRequest(req) &&
-  req.status === 'approved' &&
-  isLaborContractEmployee(currentEmployee.value?.contract_form) &&
-  req.start > todayIso();
-
 const downloadingApplicationId = ref<number | null>(null);
 const applicationDownloadError = ref('');
 const applicationDownloadErrorFor = ref<number | null>(null);
@@ -446,6 +447,7 @@ const setDownloadError = (reqId: number, text: string) => {
 
 const downloadVacationApplication = async (req: VacationRequest) => {
   if (downloadingApplicationId.value === req.id) return;
+  closeRequestMenu();
   downloadingApplicationId.value = req.id;
   applicationDownloadError.value = '';
   applicationDownloadErrorFor.value = null;
@@ -537,7 +539,7 @@ const closeRequestMenu = () => {
 };
 
 const toggleRequestMenu = (req: VacationRequest, event: MouseEvent) => {
-  if (!canManageRequest(req)) return;
+  if (!canOpenRequestMenu(req)) return;
   if (openMenuRequest.value?.id === req.id) {
     closeRequestMenu();
     return;
