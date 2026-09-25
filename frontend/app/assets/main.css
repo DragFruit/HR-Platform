@@ -11911,9 +11911,10 @@ button.emp-name--card:hover {
   box-sizing: border-box;
 }
 
-/* «У руководителя» — полоска чуть длиннее слова, без наезда на соседний этап */
+/* «У руководителя» — отступ слева 6px, чтобы линия+текст не прилипали к «Создана» */
 .emp-request-path__seg:nth-child(2) {
-  padding-right: 6px;
+  padding-left: 6px;
+  padding-right: 0;
 }
 
 .emp-request-path__seg.is-done {
@@ -12821,7 +12822,8 @@ button.emp-name--card:hover {
 }
 
 .vac-request-created-toast__seg:nth-child(2) {
-  padding-right: 6px;
+  padding-left: 6px;
+  padding-right: 0;
 }
 
 .vac-request-created-toast__seg.is-done .vac-request-created-toast__bar {
