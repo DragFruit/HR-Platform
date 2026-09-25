@@ -246,8 +246,12 @@ export type VacationApprovalPathSeg = {
 };
 
 /**
- * Путь согласования (полоски):
- * 1 Создана → 2 У руководителя / У группхеда → 3 У директора (Digital) → 4 Согласована
+ * Путь согласования (полоски) — всегда 3 сегмента одного размера:
+ * 1 Создана → 2 текущий согласующий → 3 Согласована
+ *
+ * Digital (двухэтапный): средняя полоска одна —
+ * сначала «У группхеда», после его ок кружок остаётся, текст → «У директора»;
+ * после ок директора — все «done», как в обычном режиме.
  */
 export function resolveVacationApprovalPath(
   request: { status: string; approval_step?: VacationApprovalStep; employee?: string },
@@ -255,22 +259,28 @@ export function resolveVacationApprovalPath(
 ): VacationApprovalPathSeg[] {
   const twoStep = employee ? needsTwoStepApproval(employee) : false;
   const inTwoStepDept = Boolean(employee && getTwoStepConfig(employee.department));
-  const labels = twoStep
-    ? ['Создана', 'У группхеда', 'У директора', 'Согласована']
-    : inTwoStepDept
-      ? ['Создана', 'У директора', 'Согласована']
-      : ['Создана', 'У руководителя', 'Согласована'];
+  const step = resolveRequestApprovalStep(request, employee ?? undefined);
+
+  const middleLabel = (() => {
+    if (twoStep) {
+      // После группхеда (director / approved / reject на директоре) — «У директора»
+      if (request.status === 'approved') return 'У директора';
+      if (step === 'director') return 'У директора';
+      if (request.status === 'rejected' && request.approval_step === 'director') return 'У директора';
+      return 'У группхеда';
+    }
+    if (inTwoStepDept) return 'У директора';
+    return 'У руководителя';
+  })();
+
+  const labels = ['Создана', middleLabel, 'Согласована'];
 
   if (request.status === 'approved') {
     return labels.map((label) => ({ label, state: 'done' as const }));
   }
 
-  const step = resolveRequestApprovalStep(request, employee ?? undefined);
-  /** Индекс этапа, на котором сейчас стоит заявка (не «Согласована»). */
-  const currentIdx = (() => {
-    if (twoStep) return step === 'director' ? 2 : 1;
-    return 1;
-  })();
+  /** Средний сегмент (индекс 1) — пока заявка на любом согласующем. */
+  const currentIdx = 1;
 
   if (request.status === 'rejected') {
     return labels.map((label, index) => {
