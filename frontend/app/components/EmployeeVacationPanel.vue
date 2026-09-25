@@ -94,17 +94,22 @@
         >
           ×
         </button>
-        <img
-          class="vac-request-created-toast__palm"
-          src="/images/vacations/request-created-palm.png?v=2"
-          alt=""
-          width="120"
-          height="120"
-        />
-        <div class="vac-request-created-toast__body">
-          <p class="vac-request-created-toast__title">Заявка успешно создана</p>
-          <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
-          <p class="vac-request-created-toast__note">{{ requestCreatedToast.note }}</p>
+        <div class="vac-request-created-toast__main">
+          <div class="vac-request-created-toast__copy">
+            <p class="vac-request-created-toast__title">Заявка успешно создана</p>
+            <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
+          </div>
+          <img
+            class="vac-request-created-toast__palm"
+            src="/images/vacations/request-created-palm.png?v=3"
+            alt=""
+            width="72"
+            height="72"
+          />
+        </div>
+        <div class="vac-request-created-toast__warn">
+          <span class="vac-request-created-toast__warn-badge" aria-hidden="true">●</span>
+          <p class="vac-request-created-toast__warn-text">{{ requestCreatedToast.note }}</p>
         </div>
       </aside>
     </Teleport>
