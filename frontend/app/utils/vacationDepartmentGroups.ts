@@ -51,6 +51,16 @@ const DIGITAL_VACATION_GROUP_DEFS: readonly VacationGroupDef[] = [
   { id: 'digital-noskov', label: 'Digital / SMM · Носков', type: 'lead', leadName: 'Носков Никита' }
 ];
 
+/**
+ * Locked (сент 2026): месячные лимиты брони/отпуска **не действуют** только у этих групп.
+ * Не расширять список без явной просьбы заказчика. См. `.cursor/rules/vacation-tskhai-no-reservation-caps.mdc`.
+ */
+export const RESERVATION_CAP_EXEMPT_GROUP_IDS = ['digital-tskhai'] as const;
+
+export function isReservationCapExemptGroupId(groupId: string): boolean {
+  return (RESERVATION_CAP_EXEMPT_GROUP_IDS as readonly string[]).includes(groupId.trim());
+}
+
 const QA_VACATION_GROUP_DEFS: readonly VacationGroupDef[] = [
   {
     id: 'qa-directorate',
@@ -202,8 +212,13 @@ export function resolveEmployeeReservationCapContext(
 
   const subgroup = resolveVacationGroupForEmployee(employee, helpers);
   if (!subgroup) return null;
+  // Группа Цхай: без лимита подгруппы и без участия в пуле отдела.
+  if (isReservationCapExemptGroupId(subgroup.id)) return null;
 
-  const deptMembers = resolveDepartmentCapMembers(layout, helpers);
+  const deptMembers = resolveDepartmentCapMembers(layout, helpers).filter((emp) => {
+    const group = resolveVacationGroupForEmployee(emp, helpers);
+    return !group || !isReservationCapExemptGroupId(group.id);
+  });
   if (!deptMembers.length) return null;
 
   return {

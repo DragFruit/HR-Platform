@@ -1,0 +1,23 @@
+# Лимиты брони/отпуска — исключение группы Цхай
+
+**Locked (сент 2026).** Не менять без явной просьбы заказчика.
+
+## Правило
+
+Месячные лимиты брони и заявки на отпуск (**5** на отдел Digital / QA, **1** в подгруппе) **не действуют** только у:
+
+- `digital-tskhai` — Цхай Виталий и его прямые подчинённые (группа в `vacationDepartmentGroups.ts`)
+
+У **всех остальных** групп Digital и у демо-QA лимиты остаются.
+
+## Как устроено в коде
+
+- Список исключений: `RESERVATION_CAP_EXEMPT_GROUP_IDS` / `isReservationCapExemptGroupId` в `vacationDepartmentGroups.ts`
+- `resolveEmployeeReservationCapContext` для исключённой группы возвращает `null` → UI и API (`assertReservationGroupCap` / `assertVacationRequestGroupCap`) не блокируют
+- Члены исключённых групп **не входят** в пул отдела при подсчёте «5 на отдел» для остальных (их брони/отпуска не съедают чужие слоты)
+
+## Запрещено без просьбы
+
+- Снимать лимиты у других групп (Попов, Лунин, Носков, дирекция, Analytics, QA и т.д.)
+- Расширять `RESERVATION_CAP_EXEMPT_GROUP_IDS` «заодно»
+- Включать группу Цхай обратно в пул отдела или в subgroup-cap
