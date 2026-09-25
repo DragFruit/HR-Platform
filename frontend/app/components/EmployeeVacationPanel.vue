@@ -80,15 +80,12 @@
     </p>
 
     <Teleport to="body">
-      <div
+      <aside
         v-if="requestCreatedToast"
         class="vac-request-created-toast"
         role="status"
         aria-live="polite"
       >
-        <p class="vac-request-created-toast__title">Заявка создана</p>
-        <p class="vac-request-created-toast__text">{{ requestCreatedToast.route }}</p>
-        <p class="vac-request-created-toast__note">{{ requestCreatedToast.note }}</p>
         <button
           type="button"
           class="vac-request-created-toast__close"
@@ -97,7 +94,41 @@
         >
           ×
         </button>
-      </div>
+        <div class="vac-request-created-toast__main">
+          <div class="vac-request-created-toast__copy">
+            <p class="vac-request-created-toast__title">Заявка успешно создана</p>
+            <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
+            <div
+              class="vac-request-created-toast__path"
+              :class="requestCreatedToast.twoStep ? 'is-two-step' : 'is-one-step'"
+              aria-hidden="true"
+            >
+              <span
+                v-for="(step, index) in requestCreatedToast.path"
+                :key="step"
+                class="vac-request-created-toast__seg"
+                :class="{
+                  'is-done': index === 0,
+                  'is-current': index === 1
+                }"
+              >
+                {{ step }}
+              </span>
+            </div>
+          </div>
+          <img
+            class="vac-request-created-toast__palm"
+            src="/images/profile/vacation-soon-palm.png?v=4"
+            alt=""
+            width="56"
+            height="56"
+          />
+        </div>
+        <div class="vac-request-created-toast__warn">
+          <span class="vac-request-created-toast__warn-badge" aria-hidden="true">●</span>
+          <p class="vac-request-created-toast__warn-text">{{ requestCreatedToast.note }}</p>
+        </div>
+      </aside>
     </Teleport>
 
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
@@ -514,12 +545,17 @@ const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
 const submitting = ref(false);
 
-type RequestCreatedToast = { route: string; note: string };
+type RequestCreatedToast = {
+  route: string;
+  note: string;
+  twoStep: boolean;
+  path: string[];
+};
 const requestCreatedToast = ref<RequestCreatedToast | null>(null);
 let requestCreatedToastTimer: ReturnType<typeof setTimeout> | null = null;
 
 const REQUEST_CREATED_NOTE =
-  'Пока статус не зелёный — отпуск не одобрен. Билеты и планы лучше не покупать заранее.';
+  'Пока статус желтый — отпуск еще не одобрен. Билеты лучше не покупать заранее.';
 
 const dismissRequestCreatedToast = () => {
   requestCreatedToast.value = null;
@@ -534,10 +570,12 @@ const showRequestCreatedToast = () => {
   const emp = currentEmployee.value;
   const twoStep = emp ? needsTwoStepApproval(emp) : false;
   requestCreatedToast.value = {
+    twoStep,
     route: twoStep
-      ? 'Сначала группхед, потом директор отдела.'
-      : 'Ушла руководителю на согласование.',
-    note: REQUEST_CREATED_NOTE
+      ? 'Она ушла группхеду. После него — директор отдела.'
+      : 'Она ушла руководителю на согласование.',
+    note: REQUEST_CREATED_NOTE,
+    path: twoStep ? ['Создана', 'Группхед', 'Директор'] : ['Создана', 'Руководитель']
   };
   requestCreatedToastTimer = setTimeout(() => {
     requestCreatedToast.value = null;
