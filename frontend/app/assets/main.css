@@ -11883,7 +11883,7 @@ button.emp-name--card:hover {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 10px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -11893,7 +11893,6 @@ button.emp-name--card:hover {
   gap: 3px;
   flex: 0 0 auto;
   width: max-content;
-  max-width: 46%;
   font-size: 0.58rem;
   font-weight: 600;
   line-height: 1.2;
@@ -11909,16 +11908,12 @@ button.emp-name--card:hover {
   height: 4px;
   border-radius: 999px;
   background: var(--vac-pending);
-  box-sizing: content-box;
+  box-sizing: border-box;
 }
 
-/* «У руководителя» / длинные подписи — полоска чуть длиннее слова, чтобы не налезали */
-.emp-request-path__seg:nth-child(2)::before {
-  width: calc(100% + 14px);
-}
-
-.emp-request-path__seg:nth-child(n + 3)::before {
-  width: calc(100% + 8px);
+/* «У руководителя» — полоска чуть длиннее слова, без наезда на соседний этап */
+.emp-request-path__seg:nth-child(2) {
+  padding-right: 6px;
 }
 
 .emp-request-path__seg.is-done {
@@ -12801,7 +12796,7 @@ button.emp-name--card:hover {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 10px;
+  gap: 2px;
   margin-top: 14px;
   padding-right: 4px;
 }
@@ -12812,7 +12807,6 @@ button.emp-name--card:hover {
   gap: 6px;
   flex: 0 0 auto;
   width: max-content;
-  max-width: 38%;
   text-align: left;
 }
 
@@ -12823,11 +12817,11 @@ button.emp-name--card:hover {
   height: 7px;
   border-radius: 999px;
   background: var(--vac-pending);
-  box-sizing: content-box;
+  box-sizing: border-box;
 }
 
-.vac-request-created-toast__seg:nth-child(2) .vac-request-created-toast__bar {
-  width: calc(100% + 12px);
+.vac-request-created-toast__seg:nth-child(2) {
+  padding-right: 6px;
 }
 
 .vac-request-created-toast__seg.is-done .vac-request-created-toast__bar {
