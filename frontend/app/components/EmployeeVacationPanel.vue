@@ -98,23 +98,6 @@
           <div class="vac-request-created-toast__copy">
             <p class="vac-request-created-toast__title">Заявка успешно создана</p>
             <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
-            <div
-              class="vac-request-created-toast__path"
-              :class="requestCreatedToast.twoStep ? 'is-two-step' : 'is-one-step'"
-              aria-hidden="true"
-            >
-              <span
-                v-for="(step, index) in requestCreatedToast.path"
-                :key="step"
-                class="vac-request-created-toast__seg"
-                :class="{
-                  'is-done': index === 0,
-                  'is-current': index === 1
-                }"
-              >
-                {{ step }}
-              </span>
-            </div>
           </div>
           <img
             class="vac-request-created-toast__palm"
@@ -548,8 +531,6 @@ const submitting = ref(false);
 type RequestCreatedToast = {
   route: string;
   note: string;
-  twoStep: boolean;
-  path: string[];
 };
 const requestCreatedToast = ref<RequestCreatedToast | null>(null);
 let requestCreatedToastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -570,12 +551,10 @@ const showRequestCreatedToast = () => {
   const emp = currentEmployee.value;
   const twoStep = emp ? needsTwoStepApproval(emp) : false;
   requestCreatedToast.value = {
-    twoStep,
     route: twoStep
       ? 'Она ушла группхеду. После него — директор отдела.'
       : 'Она ушла руководителю на согласование.',
-    note: REQUEST_CREATED_NOTE,
-    path: twoStep ? ['Создана', 'Группхед', 'Директор'] : ['Создана', 'Руководитель']
+    note: REQUEST_CREATED_NOTE
   };
   requestCreatedToastTimer = setTimeout(() => {
     requestCreatedToast.value = null;

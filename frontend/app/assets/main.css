@@ -11893,6 +11893,70 @@ button.emp-name--card:hover {
   margin-top: 4px;
 }
 
+.emp-request-path {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.emp-request-path:has(.emp-request-path__seg:nth-child(3)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.emp-request-path__seg {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #8a8a8a;
+}
+
+.emp-request-path__seg::before {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: #d8d8d2;
+}
+
+.emp-request-path__seg.is-done {
+  color: #3d5a00;
+}
+
+.emp-request-path__seg.is-done::before {
+  background: #b8d84a;
+}
+
+.emp-request-path__seg.is-current {
+  color: #7a5a00;
+}
+
+.emp-request-path__seg.is-current::before {
+  background: #f5d76e;
+}
+
+.emp-request-path__seg.is-rejected {
+  color: #9b1c1c;
+}
+
+.emp-request-path__seg.is-rejected::before {
+  background: #ef6b6b;
+}
+
+.emp-request-path--approved .emp-request-path__seg.is-done {
+  color: #2f5d2f;
+}
+
+.emp-request-path--approved .emp-request-path__seg.is-done::before {
+  background: var(--vac-approved, #6dbf6d);
+}
+
+/* legacy pills (другие экраны / обучалка) */
 .emp-request-meta .pill {
   display: inline-flex;
   align-items: center;
@@ -12584,11 +12648,10 @@ button.emp-name--card:hover {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #141414;
+  background: #eeeee8;
   border: 2px solid #1a1a1a;
-  border-radius: 22px;
-  box-shadow: 5px 5px 0 #ddf365;
-  color: #fff;
+  border-radius: 18px;
+  color: #1a1a1a;
   font-family: inherit;
   animation: vac-request-created-toast-in 0.22s ease-out;
 }
@@ -12625,57 +12688,11 @@ button.emp-name--card:hover {
 }
 
 .vac-request-created-toast__route {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 0.82rem;
   line-height: 1.4;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.vac-request-created-toast__path {
-  display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.vac-request-created-toast__path.is-two-step {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.vac-request-created-toast__seg {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  font-size: 0.62rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: rgba(255, 255, 255, 0.45);
-  text-transform: none;
-}
-
-.vac-request-created-toast__seg::before {
-  content: '';
-  display: block;
-  height: 5px;
-  border-radius: 999px;
-  background: #3a3a3a;
-}
-
-.vac-request-created-toast__seg.is-done {
-  color: #ddf365;
-}
-
-.vac-request-created-toast__seg.is-done::before {
-  background: #ddf365;
-}
-
-.vac-request-created-toast__seg.is-current {
-  color: #f5d76e;
-}
-
-.vac-request-created-toast__seg.is-current::before {
-  background: #f5d76e;
+  color: #4a4a4a;
 }
 
 .vac-request-created-toast__palm {
@@ -12685,7 +12702,7 @@ button.emp-name--card:hover {
   object-fit: cover;
   border-radius: 50%;
   border: 2px solid #1a1a1a;
-  background: #000;
+  background: #fff;
   flex-shrink: 0;
 }
 
@@ -12696,6 +12713,7 @@ button.emp-name--card:hover {
   padding: 12px 16px 14px;
   background: #f5d76e;
   color: #1a1a1a;
+  border-top: 2px solid #1a1a1a;
 }
 
 .vac-request-created-toast__warn-badge {
@@ -12731,14 +12749,14 @@ button.emp-name--card:hover {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: rgba(255, 255, 255, 0.65);
+  color: #5a5a5a;
   font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .vac-request-created-toast__close:hover {
-  color: #fff;
+  color: #1a1a1a;
 }
 
 .vac-emp-body {

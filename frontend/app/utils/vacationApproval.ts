@@ -237,3 +237,55 @@ export function vacationPendingStatusLabel(
   if (step === 'manager') return 'На согласовании у руководителя';
   return 'На согласовании';
 }
+
+export type VacationApprovalPathSegState = 'done' | 'current' | 'todo' | 'rejected';
+
+export type VacationApprovalPathSeg = {
+  label: string;
+  state: VacationApprovalPathSegState;
+};
+
+/** Компактный путь согласования для карточки «Мои заявки». */
+export function resolveVacationApprovalPath(
+  request: { status: string; approval_step?: VacationApprovalStep; employee?: string },
+  employee?: VacationEmployeeRef | null
+): VacationApprovalPathSeg[] {
+  const twoStep = employee ? needsTwoStepApproval(employee) : false;
+  const inTwoStepDept = Boolean(employee && getTwoStepConfig(employee.department));
+  const labels = twoStep
+    ? ['Создана', 'Группхед', 'Директор']
+    : inTwoStepDept
+      ? ['Создана', 'Директор']
+      : ['Создана', 'Руководитель'];
+
+  if (request.status === 'approved') {
+    return labels.map((label) => ({ label, state: 'done' as const }));
+  }
+
+  const step = resolveRequestApprovalStep(request, employee ?? undefined);
+  const currentIdx = (() => {
+    if (twoStep) return step === 'director' ? 2 : 1;
+    return 1;
+  })();
+
+  if (request.status === 'rejected') {
+    return labels.map((label, index) => {
+      if (index < currentIdx) return { label, state: 'done' as const };
+      if (index === currentIdx) return { label, state: 'rejected' as const };
+      return { label, state: 'todo' as const };
+    });
+  }
+
+  if (request.status === 'pending') {
+    return labels.map((label, index) => {
+      if (index < currentIdx) return { label, state: 'done' as const };
+      if (index === currentIdx) return { label, state: 'current' as const };
+      return { label, state: 'todo' as const };
+    });
+  }
+
+  return labels.map((label, index) => ({
+    label,
+    state: index === 0 ? ('done' as const) : ('todo' as const)
+  }));
+}

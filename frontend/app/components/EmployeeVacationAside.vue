@@ -134,7 +134,20 @@
                 >
               </span>
               <div class="emp-request-meta">
-                <span class="pill" :class="req.status">{{ statusLabel(req) }}</span>
+                <div
+                  class="emp-request-path"
+                  :class="`emp-request-path--${req.status}`"
+                  :aria-label="statusLabel(req)"
+                >
+                  <span
+                    v-for="seg in approvalPath(req)"
+                    :key="`${req.id}-${seg.label}`"
+                    class="emp-request-path__seg"
+                    :class="`is-${seg.state}`"
+                  >
+                    {{ seg.label }}
+                  </span>
+                </div>
                 <span v-if="isTrainingRequest(req)" class="vac-training-tag">Учебная</span>
                 <span
                   v-if="req.status === 'pending' && requestAdvance(req).status === 'advance'"
@@ -261,6 +274,7 @@ import {
 } from '~/utils/vacationReservations';
 import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
+import { resolveVacationApprovalPath } from '~/utils/vacationApproval';
 
 const props = defineProps<{
   viewYear: number;
@@ -411,6 +425,9 @@ const balance = computed(() =>
 
 const statusLabel = (req: VacationRequest) =>
   requestStatusLabel(req, currentEmployee.value ?? undefined);
+
+const approvalPath = (req: VacationRequest) =>
+  resolveVacationApprovalPath(req, currentEmployee.value ?? null);
 
 const canDownloadVacationApplication = (req: VacationRequest) =>
   !isTrainingRequest(req) &&
