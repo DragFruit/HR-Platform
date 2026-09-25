@@ -79,9 +79,26 @@
       <strong>{{ formError.title }}:</strong> {{ formError.text }}
     </p>
 
-    <p v-if="requestCreatedNotice" class="vac-emp-application-notice" role="status">
-      <span class="vac-emp-application-notice__text">Заявка создана.</span>
-    </p>
+    <Teleport to="body">
+      <div
+        v-if="requestCreatedToast"
+        class="vac-request-created-toast"
+        role="status"
+        aria-live="polite"
+      >
+        <p class="vac-request-created-toast__title">Заявка создана</p>
+        <p class="vac-request-created-toast__text">{{ requestCreatedToast.route }}</p>
+        <p class="vac-request-created-toast__note">{{ requestCreatedToast.note }}</p>
+        <button
+          type="button"
+          class="vac-request-created-toast__close"
+          aria-label="Закрыть"
+          @click="dismissRequestCreatedToast"
+        >
+          ×
+        </button>
+      </div>
+    </Teleport>
 
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
         <div
@@ -211,6 +228,7 @@ import {
   GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE,
   GROUP_LEAD_OVERLAP_POPOVER_TITLE
 } from '~/utils/vacationGroupLeadOverlap';
+import { needsTwoStepApproval } from '~/utils/vacationApproval';
 
 const props = defineProps<{
   viewYear: number;
@@ -495,7 +513,41 @@ const formAssessment = computed(() => {
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
 const submitting = ref(false);
-const requestCreatedNotice = ref(false);
+
+type RequestCreatedToast = { route: string; note: string };
+const requestCreatedToast = ref<RequestCreatedToast | null>(null);
+let requestCreatedToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+const REQUEST_CREATED_NOTE =
+  'Пока статус не зелёный — отпуск не одобрен. Билеты и планы лучше не покупать заранее.';
+
+const dismissRequestCreatedToast = () => {
+  requestCreatedToast.value = null;
+  if (requestCreatedToastTimer) {
+    clearTimeout(requestCreatedToastTimer);
+    requestCreatedToastTimer = null;
+  }
+};
+
+const showRequestCreatedToast = () => {
+  dismissRequestCreatedToast();
+  const emp = currentEmployee.value;
+  const twoStep = emp ? needsTwoStepApproval(emp) : false;
+  requestCreatedToast.value = {
+    route: twoStep
+      ? 'Сначала группхед, потом директор отдела.'
+      : 'Ушла руководителю на согласование.',
+    note: REQUEST_CREATED_NOTE
+  };
+  requestCreatedToastTimer = setTimeout(() => {
+    requestCreatedToast.value = null;
+    requestCreatedToastTimer = null;
+  }, 10000);
+};
+
+onUnmounted(() => {
+  dismissRequestCreatedToast();
+});
 
 const formatVacationRange = (start: string, end: string) => {
   const fmt = (iso: string) =>
@@ -574,7 +626,7 @@ watch(
     form.end = '';
     formError.value = null;
     clarifyHint.value = '';
-    requestCreatedNotice.value = false;
+    dismissRequestCreatedToast();
   }
 );
 
@@ -712,11 +764,11 @@ const submitRequest = async () => {
   }
 
   submitting.value = true;
-  requestCreatedNotice.value = false;
+  dismissRequestCreatedToast();
   try {
     const created = await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
     if (created) {
-      requestCreatedNotice.value = true;
+      showRequestCreatedToast();
     }
     if (created && pendingClarifyReservationId.value) {
       await deleteReservation(pendingClarifyReservationId.value);

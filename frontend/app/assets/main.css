@@ -12574,24 +12574,75 @@ button.emp-name--card:hover {
   font-weight: 700;
 }
 
-.vac-emp-application-notice {
+.vac-request-created-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1200;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
   margin: 0;
-  padding: 8px 12px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--text, #1a1a1a);
+  padding: 14px 36px 14px 14px;
   background: #f4f1ff;
-  border: 1px solid rgba(116, 81, 244, 0.35);
-  border-radius: 8px;
-  flex-shrink: 0;
+  border: 2px solid #1a1a1a;
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 #ddf365;
+  color: #1a1a1a;
+  font-family: inherit;
+  animation: vac-request-created-toast-in 0.22s ease-out;
 }
 
-.vac-emp-application-notice__text {
-  font-weight: 600;
+@keyframes vac-request-created-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.vac-request-created-toast__title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.vac-request-created-toast__text,
+.vac-request-created-toast__note {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.vac-request-created-toast__text {
+  margin-bottom: 8px;
+}
+
+.vac-request-created-toast__note {
+  color: #3a3a3a;
+}
+
+.vac-request-created-toast__close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1a1a1a;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vac-request-created-toast__close:hover {
+  opacity: 0.7;
 }
 
 .vac-emp-body {
