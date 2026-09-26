@@ -48,12 +48,28 @@
       </div>
     </div>
 
+    <div v-if="showIntro" class="ps-hub__intro">
+      <PitStopRaccoonGuide
+        size="hub"
+        :line="introLine"
+        :show-nav="true"
+        :can-skip="true"
+        :next-label="introNextLabel"
+        @next="onIntroNext"
+        @skip="dismissIntro"
+      />
+    </div>
+
     <p v-if="loadError" class="ps-hub__err ps-hub__err--float">{{ loadError }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { RACCOON_INTRO_STORAGE_KEY, RACCOON_LORE_LINES } from '~/events/pit-stop-14/raccoonLines';
+
 definePageMeta({ layout: 'default' });
+
+const INTRO_KEY = RACCOON_INTRO_STORAGE_KEY;
 
 /** % от PNG — против часовой: 1 старт … 5 дозаправка → 6 пасхалка → 7 пазл → 8 финиш */
 const PIN_POS: Record<number, { left: number; top: number }> = {
@@ -80,8 +96,28 @@ const hub = ref<HubItem[]>([]);
 const loadError = ref('');
 const stageEl = ref<HTMLElement | null>(null);
 const mapStyle = ref<Record<string, string>>({});
+const showIntro = ref(false);
+const introStep = ref(0);
 
 const TRACK_AR = 1280 / 720;
+
+const introLine = computed(() => RACCOON_LORE_LINES[introStep.value] || RACCOON_LORE_LINES[0]);
+const introNextLabel = computed(() =>
+  introStep.value >= RACCOON_LORE_LINES.length - 1 ? 'Поехали' : 'Дальше'
+);
+
+const dismissIntro = () => {
+  showIntro.value = false;
+  if (import.meta.client) localStorage.setItem(INTRO_KEY, '1');
+};
+
+const onIntroNext = () => {
+  if (introStep.value >= RACCOON_LORE_LINES.length - 1) {
+    dismissIntro();
+    return;
+  }
+  introStep.value += 1;
+};
 
 const fitMap = () => {
   const stage = stageEl.value;
@@ -107,6 +143,9 @@ const fitMap = () => {
 let stageRo: ResizeObserver | null = null;
 
 onMounted(() => {
+  if (import.meta.client && !localStorage.getItem(INTRO_KEY)) {
+    showIntro.value = true;
+  }
   void load();
   nextTick(() => {
     fitMap();
@@ -350,10 +389,32 @@ watch(hub, () => nextTick(fitMap));
   line-height: 1.3;
 }
 
+.ps-hub__intro {
+  position: absolute;
+  z-index: 6;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-width: 720px;
+  padding: 8px;
+  pointer-events: none;
+}
+.ps-hub__intro :deep(.ps-raccoon) {
+  pointer-events: auto;
+}
+.ps-hub__intro :deep(.ps-raccoon__btn--ghost) {
+  color: #eeeee8;
+}
+
 @media (max-width: 720px) {
   .ps-hub__pin {
     width: 28px;
     height: 38px;
+  }
+  .ps-hub__intro {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
   }
 }
 

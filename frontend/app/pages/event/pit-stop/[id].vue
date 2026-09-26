@@ -19,14 +19,8 @@
       </p>
 
       <div v-else class="pit-garage__hud">
-        <aside class="pit-garage__raccoon" aria-label="Рассказчик">
-          <img
-            class="pit-garage__raccoon-art"
-            :src="raccoonArt"
-            alt=""
-            draggable="false"
-          />
-          <p class="pit-garage__bubble">{{ raccoonLine }}</p>
+        <aside class="pit-garage__guide">
+          <PitStopRaccoonGuide size="cp" :line="raccoonLine" />
         </aside>
 
         <div class="pit-garage__tags" aria-label="Бирки шифра">
@@ -204,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { RACCOON_BASE_WAIST_SRC, RACCOON_CP1_LINES } from '~/events/pit-stop-14/raccoonLines';
+import { RACCOON_CP1_LINES } from '~/events/pit-stop-14/raccoonLines';
 
 const route = useRoute();
 const id = computed(() => Number(route.params.id));
@@ -236,7 +230,6 @@ const boxOpened = ref(false);
 const fileRef = ref<HTMLInputElement | null>(null);
 const garageArtLocked = '/events/pit-stop-14/cp1/garage-locked.png';
 const garageArtOpen = '/events/pit-stop-14/cp1/garage-open.png';
-const raccoonArt = RACCOON_BASE_WAIST_SRC;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const raccoonLine = computed(() => {
@@ -490,35 +483,9 @@ onUnmounted(() => {
     #0a0a0c 100%
   );
 }
-.pit-garage__raccoon {
-  display: grid;
-  grid-template-columns: minmax(88px, 120px) minmax(0, 1fr);
-  gap: 10px;
-  align-items: end;
-  width: min(520px, 100%);
+.pit-garage__guide {
+  width: min(640px, 100%);
   margin: 0 auto;
-}
-.pit-garage__raccoon-art {
-  width: 100%;
-  height: auto;
-  max-height: 140px;
-  object-fit: contain;
-  object-position: bottom center;
-  user-select: none;
-  pointer-events: none;
-  filter: drop-shadow(3px 3px 0 #111);
-}
-.pit-garage__bubble {
-  margin: 0 0 8px;
-  padding: 10px 12px;
-  font-size: clamp(0.78rem, 2vw, 0.9rem);
-  line-height: 1.35;
-  font-weight: 600;
-  color: #111;
-  background: #eeeee8;
-  border: 2px solid #111;
-  border-radius: 14px 14px 14px 4px;
-  box-shadow: 3px 3px 0 #ddf365;
 }
 .pit-garage__tags {
   position: relative;
@@ -636,13 +603,6 @@ onUnmounted(() => {
   }
   .pit-garage__tags {
     width: min(280px, 78vw);
-  }
-  .pit-garage__raccoon-art {
-    max-height: 110px;
-  }
-  .pit-garage__bubble {
-    font-size: 0.75rem;
-    padding: 8px 10px;
   }
 }
 
