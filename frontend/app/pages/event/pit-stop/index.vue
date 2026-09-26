@@ -50,45 +50,12 @@
       </div>
     </div>
 
-    <aside class="ps-hub__dock">
-      <div class="ps-hub__dock-main">
-        <p class="ps-hub__eyebrow">Корпоратив · 9 октября · 14 Years on Track</p>
-        <h1 class="ps-hub__title">{{ hubTitle }}</h1>
-        <p class="ps-hub__lead">{{ hubLead }}</p>
-        <p class="ps-hub__lap-label">
-          Круг {{ me?.player?.completed ?? 0 }} / 8
-          <template v-if="me?.partner">
-            · пилот <strong>{{ me.partner.name }}</strong>
-          </template>
-          <template v-else> · пара ещё не собрана</template>
-        </p>
-      </div>
-
-      <form v-if="!me?.partner" class="ps-hub__join" @submit.prevent="joinPair">
-        <label class="ps-hub__field">
-          <span>ID напарника</span>
-          <input v-model="partnerIdInput" class="ps-hub__input" type="number" min="1" required />
-        </label>
-        <label class="ps-hub__check">
-          <input v-model="isRemote" type="checkbox" />
-          Удалёнка
-        </label>
-        <button type="submit" class="ps-hub__cta" :disabled="joining">Создать пару</button>
-        <p v-if="joinError" class="ps-hub__err">{{ joinError }}</p>
-      </form>
-    </aside>
-
     <p v-if="loadError" class="ps-hub__err ps-hub__err--float">{{ loadError }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { PIT_STOP_HUB_LEAD, PIT_STOP_HUB_TITLE } from '~/events/pit-stop-14';
-
 definePageMeta({ layout: 'default' });
-
-const hubTitle = PIT_STOP_HUB_TITLE;
-const hubLead = PIT_STOP_HUB_LEAD;
 
 /** % от PNG трассы — центры чек-поинтов на полотне (clean-gen без красных пинов) */
 const PIN_POS: Record<number, { left: number; top: number }> = {
@@ -111,16 +78,8 @@ type HubItem = {
   status: string;
 };
 
-const me = ref<{
-  player: { completed: number } | null;
-  partner: { name: string } | null;
-} | null>(null);
 const hub = ref<HubItem[]>([]);
 const loadError = ref('');
-const joinError = ref('');
-const joining = ref(false);
-const partnerIdInput = ref('');
-const isRemote = ref(false);
 const stageEl = ref<HTMLElement | null>(null);
 const mapStyle = ref<Record<string, string>>({});
 
@@ -200,37 +159,12 @@ const load = async () => {
   try {
     await $fetch('/api/event/pit-stop/join', {
       method: 'POST',
-      body: { isRemote: isRemote.value }
+      body: { isRemote: false }
     });
-    const data = await $fetch<{
-      player: { completed: number } | null;
-      partner: { name: string } | null;
-      hub: HubItem[];
-    }>('/api/event/pit-stop/me');
-    me.value = { player: data.player, partner: data.partner };
+    const data = await $fetch<{ hub: HubItem[] }>('/api/event/pit-stop/me');
     hub.value = data.hub;
   } catch (e: unknown) {
     loadError.value = e instanceof Error ? e.message : 'Не удалось загрузить ивент';
-  }
-};
-
-const joinPair = async () => {
-  joining.value = true;
-  joinError.value = '';
-  try {
-    await $fetch('/api/event/pit-stop/join', {
-      method: 'POST',
-      body: {
-        partnerUserId: Number(partnerIdInput.value),
-        isRemote: isRemote.value
-      }
-    });
-    await load();
-  } catch (e: unknown) {
-    const err = e as { data?: { statusMessage?: string }; message?: string };
-    joinError.value = err?.data?.statusMessage || err?.message || 'Ошибка пары';
-  } finally {
-    joining.value = false;
   }
 };
 
@@ -242,7 +176,6 @@ watch(hub, () => nextTick(fitMap));
   --ps-bg: #1d1d1f;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
-  --ps-dock-h: 76px;
   --ps-pin: clamp(32px, 4.8vmin, 48px);
   position: relative;
   width: 100%;
@@ -267,7 +200,6 @@ watch(hub, () => nextTick(fitMap));
   width: 100%;
   display: grid;
   place-items: center;
-  /* запас под пины у краёв трассы */
   padding: calc(var(--ps-pin) * 0.7 + 8px) calc(var(--ps-pin) * 0.7 + 10px);
   box-sizing: border-box;
   overflow: hidden;
@@ -381,123 +313,6 @@ watch(hub, () => nextTick(fitMap));
   }
 }
 
-.ps-hub__dock {
-  position: relative;
-  z-index: 5;
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 12px 16px;
-  min-height: var(--ps-dock-h);
-  height: var(--ps-dock-h);
-  overflow: hidden;
-  padding: 8px 14px;
-  background: linear-gradient(180deg, transparent 0%, rgba(29, 29, 31, 0.92) 28%, #1d1d1f 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ps-hub__dock-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.ps-hub__eyebrow {
-  margin: 0;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ps-lime);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ps-hub__title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.ps-hub__lead {
-  display: none;
-}
-
-.ps-hub__lap-label {
-  margin: 0;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.65);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ps-hub__lap-label strong {
-  color: var(--ps-lime);
-}
-
-.ps-hub__join {
-  flex: 0 0 auto;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  background: #eeeee8;
-  color: #111;
-  border: 2px solid #111;
-  border-radius: 12px;
-  box-shadow: 2px 2px 0 var(--ps-violet);
-}
-
-.ps-hub__field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.65rem;
-  font-weight: 700;
-}
-
-.ps-hub__field span {
-  line-height: 1;
-}
-
-.ps-hub__input {
-  width: 88px;
-  min-height: 36px;
-  padding: 4px 8px;
-  border: 2px solid #111;
-  border-radius: 8px;
-  font-size: 0.9rem;
-}
-
-.ps-hub__check {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  white-space: nowrap;
-}
-
-.ps-hub__cta {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 2px solid #111;
-  border-radius: 10px;
-  background: var(--ps-lime);
-  font-weight: 800;
-  font-size: 0.8rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.ps-hub__cta:disabled {
-  opacity: 0.55;
-}
-
 .ps-hub__err {
   margin: 0;
   font-size: 0.78rem;
@@ -508,7 +323,7 @@ watch(hub, () => nextTick(fitMap));
 .ps-hub__err--float {
   position: absolute;
   left: 16px;
-  bottom: 120px;
+  bottom: 16px;
   z-index: 5;
   padding: 10px 12px;
   background: #ffe0e0;
