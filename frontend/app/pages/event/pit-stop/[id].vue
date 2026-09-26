@@ -133,16 +133,9 @@
         <p v-else>Смотри видео и введи кодовое слово из титров:</p>
         <input v-model="codeInput" class="input" autocomplete="off" />
         <button type="button" class="button primary pit-cp__btn" @click="finishFlag">Финиш</button>
-        <video
-          v-if="isRemote"
-          class="pit-cp__video"
-          controls
-          playsinline
-          poster=""
-          src="/events/pit-stop-14/remote-finale.mp4"
-        >
-          Видео появится здесь
-        </video>
+        <div v-if="isRemote" class="pit-cp__video pit-cp__video--placeholder">
+          Праздничное видео появится здесь к 9 октября
+        </div>
       </section>
     </template>
 
@@ -440,6 +433,15 @@ onUnmounted(() => {
   border-radius: 12px;
   background: #111;
   min-height: 160px;
+}
+.pit-cp__video--placeholder {
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  color: #ddf365;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
 }
 .pit-cp__remote {
   display: flex;
