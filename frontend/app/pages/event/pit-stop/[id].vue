@@ -1,11 +1,20 @@
 <template>
   <div class="pit-cp">
-    <NuxtLink to="/event/pit-stop" class="pit-cp__back">← К трассе</NuxtLink>
+    <div class="pit-cp__top">
+      <NuxtLink to="/event/pit-stop" class="pit-cp__back">← К трассе</NuxtLink>
+      <span class="pit-cp__badge">Чек-поинт {{ String(id).padStart(2, '0') }}</span>
+    </div>
 
-    <p v-if="!unlocked" class="pit-cp__locked">🔒 Чек-поинт ещё закрыт.</p>
+    <p v-if="!unlocked" class="pit-cp__locked">
+      <span class="pit-cp__lock-ico" aria-hidden="true">🔒</span>
+      Бокс ещё закрыт — откроется в 09:00 МСК
+    </p>
     <template v-else-if="copy">
-      <h1 class="pit-cp__title">{{ copy.title }}</h1>
-      <p class="pit-cp__body">{{ copy.body }}</p>
+      <header class="pit-cp__hero">
+        <div class="pit-cp__chequer" aria-hidden="true" />
+        <h1 class="pit-cp__title">{{ copy.title.replace(/^Чек-поинт\s+\d+:\s*/i, '') }}</h1>
+        <p class="pit-cp__body">{{ copy.body }}</p>
+      </header>
 
       <!-- 1 cipher -->
       <section v-if="id === 1" class="pit-cp__panel">
@@ -310,61 +319,139 @@ onUnmounted(() => {
 
 <style scoped>
 .pit-cp {
+  --ps-asphalt: #1a1a1a;
+  --ps-lime: #ddf365;
+  --ps-violet: #7451f4;
+  --ps-cream: #eeeee8;
   max-width: 560px;
   margin: 0 auto;
-  padding: 16px 16px 64px;
+  padding: 0 0 64px;
   overscroll-behavior-y: contain;
   touch-action: manipulation;
 }
+.pit-cp__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
 .pit-cp__back {
-  display: inline-block;
-  margin-bottom: 16px;
-  font-weight: 600;
-  color: #7451f4;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ps-violet);
+  text-decoration: none;
+}
+.pit-cp__badge {
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--ps-lime);
+  border: 1.5px solid #111;
+  border-radius: 999px;
+}
+.pit-cp__hero {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 22px 18px 22px 34px;
+  background: var(--ps-asphalt);
+  color: #fff;
+  border-bottom: 4px solid var(--ps-lime);
+  overflow: hidden;
+}
+.pit-cp__chequer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18px;
+  background: repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
 }
 .pit-cp__title {
   margin: 0 0 10px;
   font-size: 1.35rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 .pit-cp__body {
-  margin: 0 0 20px;
+  margin: 0;
   line-height: 1.45;
-  color: #333;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.82);
 }
 .pit-cp__panel {
   display: grid;
   gap: 12px;
-  padding: 16px;
-  background: #eeeee8;
+  margin: 0 16px;
+  padding: 18px 16px;
+  background: var(--ps-cream);
   border: 2px solid #111;
-  border-radius: 16px;
+  border-radius: 18px;
+  box-shadow: 5px 5px 0 var(--ps-violet);
 }
 .pit-cp__label {
   display: grid;
   gap: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-weight: 700;
+  font-size: 0.8rem;
 }
 .pit-cp__btn {
-  min-height: 48px;
+  min-height: 52px;
   min-width: 48px;
+  border: 2px solid #111;
+  border-radius: 14px;
+  background: var(--ps-lime);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #111;
+}
+.pit-cp__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .pit-cp__btn--ignition {
-  min-height: 72px;
-  font-size: 1.1rem;
-  font-weight: 800;
+  min-height: 80px;
+  font-size: 1.15rem;
+  background: #fff;
+  color: #111;
+}
+.pit-cp__btn--ignition:active {
+  background: var(--ps-lime);
 }
 .pit-cp__code {
   font-size: 1.05rem;
+  font-weight: 700;
+}
+.pit-cp__code strong {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  color: var(--ps-violet);
 }
 .pit-cp__ok {
-  color: #388073;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, #388073 18%, white);
+  border: 2px solid #388073;
+  border-radius: 12px;
+  color: #1f4a42;
   font-weight: 700;
 }
 .pit-cp__locked {
-  font-size: 1.1rem;
+  margin: 24px 16px;
+  padding: 28px 18px;
+  text-align: center;
+  font-size: 1rem;
   font-weight: 700;
+  background: #f2f2ee;
+  border: 2px dashed #111;
+  border-radius: 16px;
+}
+.pit-cp__lock-ico {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.6rem;
 }
 .pit-cp__arrows {
   display: flex;
@@ -376,9 +463,10 @@ onUnmounted(() => {
   height: 56px;
   border: 2px solid #111;
   border-radius: 14px;
-  background: #ddf365;
+  background: var(--ps-lime);
   font-size: 1.4rem;
   touch-action: manipulation;
+  box-shadow: 2px 2px 0 #111;
 }
 .pit-cp__arrow:disabled {
   opacity: 0.4;
@@ -388,25 +476,29 @@ onUnmounted(() => {
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   aspect-ratio: 1;
+  padding: 8px;
+  background: #111;
+  border-radius: 12px;
 }
 .pit-cp__cell {
-  background: #c8c8c0;
+  background: #3a3a3a;
   border-radius: 4px;
 }
 .pit-cp__cell.is-car {
-  background: #7451f4;
+  background: var(--ps-violet);
 }
 .pit-cp__cell.is-finish {
-  background: #ddf365;
+  background: var(--ps-lime);
 }
 .pit-cp__fog {
   padding: 48px 16px;
   text-align: center;
   font-weight: 800;
   letter-spacing: 0.08em;
-  background: #1a1a1a;
-  color: #ddf365;
+  background: #111;
+  color: var(--ps-lime);
   border-radius: 12px;
+  border: 2px solid var(--ps-lime);
 }
 .pit-cp__grid {
   display: grid;
@@ -419,14 +511,14 @@ onUnmounted(() => {
   border: 2px solid #111;
   border-radius: 12px;
   background: #fff;
-  font-weight: 700;
+  font-weight: 800;
   touch-action: manipulation;
 }
 .pit-cp__grid-cell.is-glow {
-  box-shadow: inset 0 0 0 3px #7451f4;
+  box-shadow: inset 0 0 0 3px var(--ps-violet);
 }
 .pit-cp__grid-cell.is-pressed {
-  background: #ddf365;
+  background: var(--ps-lime);
 }
 .pit-cp__video {
   width: 100%;
@@ -438,14 +530,25 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  color: #ddf365;
+  color: var(--ps-lime);
   font-weight: 700;
   font-size: 0.9rem;
   text-align: center;
+  border: 2px dashed rgba(221, 243, 101, 0.5);
 }
 .pit-cp__remote {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
+}
+.pit-cp :deep(.input),
+.pit-cp input.input {
+  min-height: 48px;
+  border: 2px solid #111;
+  border-radius: 12px;
+}
+.vac-emp-error {
+  margin: 12px 16px 0;
 }
 </style>
