@@ -19,13 +19,15 @@
       </p>
 
       <div v-else class="pit-garage__hud">
-        <p class="pit-garage__story">
-          <strong>Ключ от гаража.</strong>
-          Собери шифр с
-          <span v-if="partnerName">{{ partnerName }}</span>
-          <span v-else>напарником</span>
-          — и открой бокс.
-        </p>
+        <aside class="pit-garage__raccoon" aria-label="Рассказчик">
+          <img
+            class="pit-garage__raccoon-art"
+            :src="raccoonArt"
+            alt=""
+            draggable="false"
+          />
+          <p class="pit-garage__bubble">{{ raccoonLine }}</p>
+        </aside>
 
         <div class="pit-garage__tags" aria-label="Бирки шифра">
           <img
@@ -55,7 +57,7 @@
             class="pit-garage__cta"
             :disabled="boxOpened || !codeInput.trim()"
           >
-            {{ boxOpened ? 'Бокс открыт' : 'Открыть бокс' }}
+            {{ boxOpened ? 'Гараж открыт' : 'Открыть гараж' }}
           </button>
         </form>
 
@@ -202,6 +204,8 @@
 </template>
 
 <script setup lang="ts">
+import { RACCOON_BASE_WAIST_SRC, RACCOON_CP1_LINES } from '~/events/pit-stop-14/raccoonLines';
+
 const route = useRoute();
 const id = computed(() => Number(route.params.id));
 
@@ -232,7 +236,14 @@ const boxOpened = ref(false);
 const fileRef = ref<HTMLInputElement | null>(null);
 const garageArtLocked = '/events/pit-stop-14/cp1/garage-locked.png';
 const garageArtOpen = '/events/pit-stop-14/cp1/garage-open.png';
+const raccoonArt = RACCOON_BASE_WAIST_SRC;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const raccoonLine = computed(() => {
+  if (boxOpened.value) return RACCOON_CP1_LINES.afterOpen;
+  if (partnerName.value) return RACCOON_CP1_LINES.withPartner(partnerName.value);
+  return RACCOON_CP1_LINES.intro;
+});
 
 const carIndex = computed(() => {
   if (!pair.value) return -1;
@@ -282,7 +293,7 @@ const openBox = () =>
       body: { code: codeInput.value }
     });
     boxOpened.value = true;
-    actionOk.value = 'Бокс открыт — болид на пит-лейне.';
+    actionOk.value = 'Гараж открыт, болид на месте.';
   });
 
 const installPart = () =>
@@ -479,22 +490,35 @@ onUnmounted(() => {
     #0a0a0c 100%
   );
 }
-.pit-garage__story {
+.pit-garage__raccoon {
+  display: grid;
+  grid-template-columns: minmax(88px, 120px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+  width: min(520px, 100%);
   margin: 0 auto;
-  max-width: 28em;
-  text-align: center;
-  font-size: clamp(0.82rem, 2.2vw, 0.95rem);
+}
+.pit-garage__raccoon-art {
+  width: 100%;
+  height: auto;
+  max-height: 140px;
+  object-fit: contain;
+  object-position: bottom center;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(3px 3px 0 #111);
+}
+.pit-garage__bubble {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  font-size: clamp(0.78rem, 2vw, 0.9rem);
   line-height: 1.35;
-  color: rgba(244, 244, 240, 0.9);
-  text-shadow: 0 1px 3px #000;
-}
-.pit-garage__story strong {
-  color: #ddf365;
-  font-weight: 800;
-}
-.pit-garage__story span {
-  color: #c4b5ff;
-  font-weight: 700;
+  font-weight: 600;
+  color: #111;
+  background: #eeeee8;
+  border: 2px solid #111;
+  border-radius: 14px 14px 14px 4px;
+  box-shadow: 3px 3px 0 #ddf365;
 }
 .pit-garage__tags {
   position: relative;
@@ -613,8 +637,12 @@ onUnmounted(() => {
   .pit-garage__tags {
     width: min(280px, 78vw);
   }
-  .pit-garage__story {
-    font-size: 0.78rem;
+  .pit-garage__raccoon-art {
+    max-height: 110px;
+  }
+  .pit-garage__bubble {
+    font-size: 0.75rem;
+    padding: 8px 10px;
   }
 }
 
