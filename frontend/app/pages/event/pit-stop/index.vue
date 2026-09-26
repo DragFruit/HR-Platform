@@ -57,15 +57,15 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' });
 
-/** % от PNG трассы — центры чек-поинтов на полотне (clean-gen без красных пинов) */
+/** % от PNG — обход против часовой: старт (28.09) там, где был 08.10; вторая — где был 06.10 */
 const PIN_POS: Record<number, { left: number; top: number }> = {
-  1: { left: 16.2, top: 60.3 },
-  2: { left: 23.7, top: 88.6 },
-  3: { left: 56.6, top: 88.6 },
+  1: { left: 32.0, top: 20.6 },
+  2: { left: 63.8, top: 20.7 },
+  3: { left: 84.1, top: 39.6 },
   4: { left: 84.1, top: 59.9 },
-  5: { left: 84.1, top: 39.6 },
-  6: { left: 63.8, top: 20.7 },
-  7: { left: 32.0, top: 20.6 },
+  5: { left: 56.6, top: 88.6 },
+  6: { left: 23.7, top: 88.6 },
+  7: { left: 16.2, top: 60.3 },
   8: { left: 34.3, top: 39.4 }
 };
 
