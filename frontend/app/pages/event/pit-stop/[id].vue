@@ -1,72 +1,68 @@
 <template>
-  <!-- Точка 1: свой экран-гараж, без общего hero/panel -->
+  <!-- Точка 1: арт гаража full-bleed + тонкий UI поверх -->
   <div v-if="id === 1" class="pit-cp pit-cp--onescreen pit-garage">
-    <header class="pit-garage__bar">
-      <NuxtLink to="/event/pit-stop" class="pit-garage__back">← К трассе</NuxtLink>
-      <span class="pit-garage__badge">01 · Ключ</span>
-    </header>
+    <div class="pit-garage__scene" aria-live="polite">
+      <img
+        class="pit-garage__art"
+        :src="boxOpened ? garageArtOpen : garageArtLocked"
+        :alt="boxOpened ? 'Бокс открыт — болид на пит-лейне' : 'Закрытый гараж с болидом №14'"
+        draggable="false"
+      />
 
-    <p v-if="!unlocked" class="pit-garage__locked">
-      Бокс ещё закрыт — откроется 28 сентября в 09:00 МСК
-    </p>
+      <header class="pit-garage__bar">
+        <NuxtLink to="/event/pit-stop" class="pit-garage__back">← Трасса</NuxtLink>
+        <span class="pit-garage__badge">01</span>
+      </header>
 
-    <template v-else>
-      <div class="pit-garage__stage" aria-live="polite">
-        <div class="pit-garage__door" :class="{ 'is-open': boxOpened }">
-          <div class="pit-garage__door-panel" aria-hidden="true">
-            <span class="pit-garage__chequer" />
-            <span class="pit-garage__handle" />
-          </div>
-          <p class="pit-garage__sign">{{ boxOpened ? 'БОКС ОТКРЫТ' : 'ЗАПЕРТО' }}</p>
-        </div>
+      <p v-if="!unlocked" class="pit-garage__locked">
+        Бокс ещё закрыт — 28 сентября в 09:00 МСК
+      </p>
 
-        <div class="pit-garage__story">
-          <h1 class="pit-garage__title">Ключ от гаража</h1>
-          <p class="pit-garage__lead">
-            Болид внутри. Замок ждёт полный шифр —
-            <template v-if="partnerName">
-              вторая половина у <strong>{{ partnerName }}</strong>.
-            </template>
-            <template v-else>вторая половина у напарника.</template>
-          </p>
-        </div>
+      <div v-else class="pit-garage__hud">
+        <p class="pit-garage__story">
+          <strong>Ключ от гаража.</strong>
+          Собери шифр с
+          <span v-if="partnerName">{{ partnerName }}</span>
+          <span v-else>напарником</span>
+          — и открой бокс.
+        </p>
 
-        <div class="pit-garage__tags">
-          <div class="pit-garage__tag pit-garage__tag--mine">
-            <span class="pit-garage__tag-label">Твоя бирка</span>
-            <code class="pit-garage__tag-code">VIBE_{{ cipherHalf || '····' }}</code>
-          </div>
-          <div class="pit-garage__tag pit-garage__tag--partner">
-            <span class="pit-garage__tag-label">Бирка напарника</span>
-            <code class="pit-garage__tag-code">VIBE_????</code>
-            <span class="pit-garage__tag-hint">спроси в чате</span>
-          </div>
+        <div class="pit-garage__tags" aria-label="Бирки шифра">
+          <img
+            class="pit-garage__tags-art"
+            src="/events/pit-stop-14/cp1/key-tags.png"
+            alt=""
+            draggable="false"
+          />
+          <code class="pit-garage__tag-code pit-garage__tag-code--mine">
+            VIBE_{{ cipherHalf || '····' }}
+          </code>
+          <code class="pit-garage__tag-code pit-garage__tag-code--partner">????</code>
+          <span class="pit-garage__tag-hint">спроси в чате</span>
         </div>
 
         <form class="pit-garage__lock" @submit.prevent="openBox">
-          <label class="pit-garage__lock-label">
-            Полный ключ
-            <input
-              v-model="codeInput"
-              class="pit-garage__input"
-              autocomplete="off"
-              placeholder="VIBE_····_····"
-              :disabled="boxOpened"
-            />
-          </label>
+          <input
+            v-model="codeInput"
+            class="pit-garage__input"
+            autocomplete="off"
+            placeholder="VIBE_····_····"
+            aria-label="Полный ключ"
+            :disabled="boxOpened"
+          />
           <button
             type="submit"
             class="pit-garage__cta"
             :disabled="boxOpened || !codeInput.trim()"
           >
-            {{ boxOpened ? 'Гараж открыт' : 'Открыть бокс' }}
+            {{ boxOpened ? 'Бокс открыт' : 'Открыть бокс' }}
           </button>
         </form>
-      </div>
-    </template>
 
-    <p v-if="actionError" class="pit-garage__err">{{ actionError }}</p>
-    <p v-if="actionOk" class="pit-garage__ok">{{ actionOk }}</p>
+        <p v-if="actionError" class="pit-garage__err">{{ actionError }}</p>
+        <p v-if="actionOk" class="pit-garage__ok">{{ actionOk }}</p>
+      </div>
+    </div>
   </div>
 
   <!-- Остальные точки — временно общий каркас, у каждой свой интерактив позже -->
@@ -234,6 +230,8 @@ const actionError = ref('');
 const actionOk = ref('');
 const boxOpened = ref(false);
 const fileRef = ref<HTMLInputElement | null>(null);
+const garageArtLocked = '/events/pit-stop-14/cp1/garage-locked.png';
+const garageArtOpen = '/events/pit-stop-14/cp1/garage-open.png';
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const carIndex = computed(() => {
@@ -391,229 +389,192 @@ onUnmounted(() => {
   touch-action: manipulation;
 }
 
-/* ——— Гараж (точка 1), один экран ——— */
+/* ——— Гараж (точка 1): арт full-bleed + HUD ——— */
 .pit-garage {
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
   padding: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(116, 81, 244, 0.22), transparent 55%),
-    linear-gradient(180deg, #252528 0%, #1a1a1c 45%, #141416 100%);
+  background: #121214;
   color: #f4f4f0;
   overflow: hidden;
 }
+.pit-garage__scene {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.pit-garage__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  user-select: none;
+  pointer-events: none;
+}
 .pit-garage__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex: 0 0 auto;
   gap: 12px;
-  padding: 10px 16px 6px;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 100%);
 }
 .pit-garage__back {
   font-weight: 700;
   font-size: 0.82rem;
-  color: var(--ps-lime);
+  color: #ddf365;
   text-decoration: none;
+  text-shadow: 0 1px 2px #000;
 }
 .pit-garage__badge {
   padding: 3px 10px;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: var(--ps-lime);
+  background: #ddf365;
   color: #111;
   border: 1.5px solid #111;
   border-radius: 999px;
 }
 .pit-garage__locked {
-  margin: auto 20px;
-  padding: 20px 16px;
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  right: 16px;
+  bottom: 28%;
+  margin: 0;
+  padding: 16px 14px;
   text-align: center;
   font-weight: 700;
-  background: rgba(238, 238, 232, 0.08);
-  border: 2px dashed rgba(238, 238, 232, 0.35);
+  background: rgba(18, 18, 20, 0.82);
+  border: 2px solid rgba(221, 243, 101, 0.45);
   border-radius: 14px;
+  backdrop-filter: blur(6px);
 }
-.pit-garage__stage {
-  flex: 1 1 auto;
-  min-height: 0;
+.pit-garage__hud {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1.1fr) auto auto auto;
-  gap: 10px;
-  padding: 4px 16px 14px;
-  align-content: stretch;
-}
-.pit-garage__door {
-  position: relative;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  border: 2px solid #111;
-  border-radius: 12px;
-  background: #0e0e10;
-  box-shadow: 4px 4px 0 #111;
-  overflow: hidden;
-}
-.pit-garage__door-panel {
-  position: absolute;
-  inset: 8% 12% 18%;
-  background: linear-gradient(180deg, #3a3a40 0%, #2a2a2e 55%, #1f1f22 100%);
-  border: 2px solid #111;
-  border-radius: 8px;
-  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  transform-origin: top center;
-}
-.pit-garage__door.is-open .pit-garage__door-panel {
-  transform: translateY(-88%);
-}
-.pit-garage__chequer {
-  position: absolute;
-  inset: 0;
-  opacity: 0.35;
-  background: repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0 / 18px 18px;
-}
-.pit-garage__handle {
-  position: absolute;
-  right: 10%;
-  top: 50%;
-  width: 14px;
-  height: 36px;
-  margin-top: -18px;
-  border-radius: 6px;
-  background: var(--ps-lime);
-  border: 2px solid #111;
-  box-shadow: 2px 2px 0 #111;
-}
-.pit-garage__sign {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  padding: 6px 14px;
-  font-size: clamp(0.75rem, 2.2vw, 0.95rem);
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  background: var(--ps-violet);
-  color: #fff;
-  border: 2px solid #111;
-  border-radius: 8px;
-  box-shadow: 3px 3px 0 #111;
-}
-.pit-garage__door.is-open .pit-garage__sign {
-  background: var(--ps-lime);
-  color: #111;
+  gap: 8px;
+  padding: 48px 14px 14px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(10, 10, 12, 0.55) 18%,
+    rgba(10, 10, 12, 0.92) 55%,
+    #0a0a0c 100%
+  );
 }
 .pit-garage__story {
-  text-align: center;
-  max-width: 36em;
   margin: 0 auto;
-}
-.pit-garage__title {
-  margin: 0 0 4px;
-  font-size: clamp(1.15rem, 3.2vw, 1.55rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.pit-garage__lead {
-  margin: 0;
-  font-size: clamp(0.78rem, 1.8vw, 0.9rem);
+  max-width: 28em;
+  text-align: center;
+  font-size: clamp(0.82rem, 2.2vw, 0.95rem);
   line-height: 1.35;
-  color: rgba(244, 244, 240, 0.78);
+  color: rgba(244, 244, 240, 0.9);
+  text-shadow: 0 1px 3px #000;
 }
-.pit-garage__lead strong {
-  color: var(--ps-lime);
+.pit-garage__story strong {
+  color: #ddf365;
   font-weight: 800;
+}
+.pit-garage__story span {
+  color: #c4b5ff;
+  font-weight: 700;
 }
 .pit-garage__tags {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  max-width: 520px;
-  width: 100%;
+  position: relative;
+  width: min(360px, 92vw);
   margin: 0 auto;
+  aspect-ratio: 16 / 9;
 }
-.pit-garage__tag {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 2px solid #111;
-  border-radius: 12px;
-  background: var(--ps-cream);
-  color: #111;
-  box-shadow: 3px 3px 0 var(--ps-violet);
-}
-.pit-garage__tag--partner {
-  box-shadow: 3px 3px 0 var(--ps-lime);
-  opacity: 0.92;
-}
-.pit-garage__tag-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #555;
+.pit-garage__tags-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 .pit-garage__tag-code {
+  position: absolute;
+  top: 52%;
+  width: 38%;
+  margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+  font-size: clamp(0.62rem, 2.4vw, 0.78rem);
   font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--ps-violet);
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.1;
+  pointer-events: none;
 }
-.pit-garage__tag--partner .pit-garage__tag-code {
-  color: #666;
-  letter-spacing: 0.08em;
+.pit-garage__tag-code--mine {
+  left: 6%;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+.pit-garage__tag-code--partner {
+  right: 6%;
+  color: #222;
 }
 .pit-garage__tag-hint {
-  font-size: 0.68rem;
+  position: absolute;
+  right: 8%;
+  bottom: 6%;
+  font-size: 0.62rem;
   font-weight: 700;
-  color: #666;
+  color: rgba(244, 244, 240, 0.65);
 }
 .pit-garage__lock {
   display: grid;
+  grid-template-columns: 1fr auto;
   gap: 8px;
-  max-width: 420px;
-  width: 100%;
+  width: min(420px, 100%);
   margin: 0 auto;
-}
-.pit-garage__lock-label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(244, 244, 240, 0.7);
 }
 .pit-garage__input {
   min-height: 48px;
   padding: 0 14px;
   border: 2px solid #111;
   border-radius: 12px;
-  background: #fff;
+  background: #eeeee8;
   color: #111;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  box-shadow: 3px 3px 0 #7451f4;
 }
 .pit-garage__input:disabled {
   opacity: 0.65;
 }
 .pit-garage__cta {
-  min-height: 52px;
+  min-height: 48px;
+  padding: 0 16px;
   border: 2px solid #111;
-  border-radius: 14px;
-  background: var(--ps-lime);
+  border-radius: 12px;
+  background: #ddf365;
   color: #111;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   cursor: pointer;
   box-shadow: 3px 3px 0 #111;
+  white-space: nowrap;
   touch-action: manipulation;
 }
 .pit-garage__cta:disabled {
@@ -623,34 +584,50 @@ onUnmounted(() => {
 }
 .pit-garage__err,
 .pit-garage__ok {
-  flex: 0 0 auto;
-  margin: 0 16px 10px;
+  margin: 0 auto;
+  max-width: 420px;
+  width: 100%;
   padding: 8px 12px;
   border-radius: 10px;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  text-align: center;
 }
 .pit-garage__err {
-  background: color-mix(in srgb, #c0392b 18%, transparent);
+  background: color-mix(in srgb, #c0392b 28%, transparent);
   border: 2px solid #c0392b;
   color: #ffb4a8;
 }
 .pit-garage__ok {
-  background: color-mix(in srgb, #388073 22%, transparent);
+  background: color-mix(in srgb, #388073 28%, transparent);
   border: 2px solid #388073;
   color: #b8f0e0;
 }
 
-@media (max-height: 680px) {
-  .pit-garage__stage {
+@media (max-height: 720px) {
+  .pit-garage__hud {
     gap: 6px;
-    padding-bottom: 8px;
+    padding-top: 36px;
+    padding-bottom: 10px;
   }
-  .pit-garage__tag {
-    padding: 8px 10px;
+  .pit-garage__tags {
+    width: min(280px, 78vw);
   }
-  .pit-garage__lead {
+  .pit-garage__story {
     font-size: 0.78rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .pit-garage__art {
+    object-position: center 42%;
+  }
+  .pit-garage__hud {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .pit-garage__tags {
+    width: min(400px, 40vw);
   }
 }
 
