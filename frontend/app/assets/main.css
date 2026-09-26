@@ -730,6 +730,7 @@ a {
 .shell-main:has(.ps-hub) .content,
 .shell-main:has(.pit-cp) .content {
   padding: 0;
+  background: #1a1a1a;
 }
 
 .shell-main:has(.ps-hub) .content .page-root,

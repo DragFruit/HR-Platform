@@ -1,98 +1,82 @@
 <template>
   <div class="ps-hub">
-    <header class="ps-hub__hero">
-      <div class="ps-hub__chequer" aria-hidden="true" />
-      <div class="ps-hub__hero-inner">
-        <p class="ps-hub__eyebrow">Корпоратив · 9 октября · 14 Years on Track</p>
-        <h1 class="ps-hub__title">
-          <span class="ps-hub__flag" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="28" height="28">
-              <rect width="16" height="16" fill="#111" />
-              <rect x="0" y="0" width="4" height="4" fill="#ddf365" />
-              <rect x="8" y="0" width="4" height="4" fill="#ddf365" />
-              <rect x="4" y="4" width="4" height="4" fill="#ddf365" />
-              <rect x="12" y="4" width="4" height="4" fill="#ddf365" />
-              <rect x="0" y="8" width="4" height="4" fill="#ddf365" />
-              <rect x="8" y="8" width="4" height="4" fill="#ddf365" />
-              <rect x="4" y="12" width="4" height="4" fill="#ddf365" />
-              <rect x="12" y="12" width="4" height="4" fill="#ddf365" />
+    <div class="ps-hub__stage">
+      <img
+        class="ps-hub__track"
+        src="/events/pit-stop-14/track.png"
+        alt="Гоночная трасса Pit Stop 14"
+        width="1280"
+        height="720"
+        draggable="false"
+      />
+
+      <template v-for="item in hub" :key="item.id">
+        <NuxtLink
+          v-if="canOpen(item)"
+          :to="`/event/pit-stop/${item.id}`"
+          class="ps-hub__pin"
+          :class="[`is-${item.status}`, { 'is-current': isCurrent(item) }]"
+          :style="pinStyle(item.id)"
+          :title="shortTitle(item.title)"
+          :aria-label="`${shortTitle(item.title)} — ${statusLabel(item.status)}`"
+        >
+          <span class="ps-hub__pin-ring" aria-hidden="true" />
+          <span class="ps-hub__pin-core">{{ item.id }}</span>
+        </NuxtLink>
+        <button
+          v-else
+          type="button"
+          class="ps-hub__pin is-locked"
+          :style="pinStyle(item.id)"
+          disabled
+          :title="item.lockedLabel || 'Закрыто'"
+          :aria-label="`${shortTitle(item.title)} — закрыто`"
+        >
+          <span class="ps-hub__pin-ring" aria-hidden="true" />
+          <span class="ps-hub__pin-core" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+              <path
+                d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+              <rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5" stroke="currentColor" stroke-width="1.6" />
             </svg>
           </span>
-          {{ hubTitle }}
-        </h1>
-        <p class="ps-hub__lead">{{ hubLead }}</p>
+        </button>
+      </template>
+    </div>
 
-        <div class="ps-hub__lap" aria-label="Прогресс круга">
-          <span
-            v-for="n in 8"
-            :key="n"
-            class="ps-hub__lap-seg"
-            :class="{ 'is-done': (me?.player?.completed ?? 0) >= n }"
-          />
-        </div>
+    <aside class="ps-hub__dock">
+      <div class="ps-hub__dock-main">
+        <p class="ps-hub__eyebrow">Корпоратив · 9 октября · 14 Years on Track</p>
+        <h1 class="ps-hub__title">{{ hubTitle }}</h1>
+        <p class="ps-hub__lead">{{ hubLead }}</p>
         <p class="ps-hub__lap-label">
           Круг {{ me?.player?.completed ?? 0 }} / 8
           <template v-if="me?.partner">
             · пилот <strong>{{ me.partner.name }}</strong>
           </template>
+          <template v-else> · пара ещё не собрана</template>
         </p>
       </div>
-    </header>
 
-    <form v-if="!me?.partner" class="ps-hub__join" @submit.prevent="joinPair">
-      <div class="ps-hub__join-head">
-        <span class="ps-hub__join-badge">Парный заезд</span>
-        <h2 class="ps-hub__join-title">Найди напарника</h2>
-        <p class="ps-hub__join-hint">Введи его ID в Vibe / Bitrix — откроете бокс вместе.</p>
-      </div>
-      <label class="ps-hub__field">
-        <span>ID напарника</span>
-        <input v-model="partnerIdInput" class="ps-hub__input" type="number" min="1" required />
-      </label>
-      <label class="ps-hub__check">
-        <input v-model="isRemote" type="checkbox" />
-        Я на удалёнке (финиш 9.10 — видео)
-      </label>
-      <button type="submit" class="ps-hub__cta" :disabled="joining">Создать пару</button>
-      <p v-if="joinError" class="ps-hub__err">{{ joinError }}</p>
-    </form>
+      <form v-if="!me?.partner" class="ps-hub__join" @submit.prevent="joinPair">
+        <label class="ps-hub__field">
+          <span>ID напарника</span>
+          <input v-model="partnerIdInput" class="ps-hub__input" type="number" min="1" required />
+        </label>
+        <label class="ps-hub__check">
+          <input v-model="isRemote" type="checkbox" />
+          Удалёнка
+        </label>
+        <button type="submit" class="ps-hub__cta" :disabled="joining">Создать пару</button>
+        <p v-if="joinError" class="ps-hub__err">{{ joinError }}</p>
+      </form>
+    </aside>
 
-    <ol class="ps-hub__lane">
-      <li v-for="item in hub" :key="item.id" class="ps-hub__stall">
-        <NuxtLink
-          v-if="item.unlocked && item.status !== 'locked' && item.status !== 'stopped'"
-          :to="`/event/pit-stop/${item.id}`"
-          class="ps-hub__card"
-          :class="[`is-${item.status}`]"
-        >
-          <span class="ps-hub__num">{{ String(item.id).padStart(2, '0') }}</span>
-          <span class="ps-hub__meta">
-            <strong>{{ shortTitle(item.title) }}</strong>
-            <span class="ps-hub__status">{{ statusLabel(item.status) }}</span>
-          </span>
-          <span class="ps-hub__go" aria-hidden="true">→</span>
-        </NuxtLink>
-        <div v-else class="ps-hub__card is-locked" aria-disabled="true">
-          <span class="ps-hub__num ps-hub__num--lock" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="18" height="18" fill="none">
-              <path
-                d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-              <rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-            </svg>
-          </span>
-          <span class="ps-hub__meta">
-            <strong>{{ shortTitle(item.title) }}</strong>
-            <span class="ps-hub__status">{{ item.lockedLabel || 'LOCKED · 09:00 МСК' }}</span>
-          </span>
-        </div>
-      </li>
-    </ol>
-
-    <p v-if="loadError" class="ps-hub__err">{{ loadError }}</p>
+    <p v-if="loadError" class="ps-hub__err ps-hub__err--float">{{ loadError }}</p>
   </div>
 </template>
 
@@ -103,6 +87,18 @@ definePageMeta({ layout: 'default' });
 
 const hubTitle = PIT_STOP_HUB_TITLE;
 const hubLead = PIT_STOP_HUB_LEAD;
+
+/** % от PNG трассы — центры бывших красных пинов (v4) */
+const PIN_POS: Record<number, { left: number; top: number }> = {
+  1: { left: 15.6, top: 60.3 },
+  2: { left: 23.7, top: 93.9 },
+  3: { left: 56.6, top: 93.9 },
+  4: { left: 84.7, top: 59.9 },
+  5: { left: 84.8, top: 39.7 },
+  6: { left: 63.9, top: 16.5 },
+  7: { left: 32.0, top: 16.3 },
+  8: { left: 34.3, top: 39.5 }
+};
 
 type HubItem = {
   id: number;
@@ -127,12 +123,23 @@ const isRemote = ref(false);
 const shortTitle = (t: string) => t.replace(/^Чек-поинт\s+\d+:\s*/i, '');
 
 const statusLabel = (s: string) => {
-  if (s === 'done') return 'Финиш точки';
-  if (s === 'pending_review') return 'На пит-стопе HR';
-  if (s === 'in_progress') return 'В боксе';
-  if (s === 'stopped') return 'Красный флаг';
-  return 'Бокс открыт';
+  if (s === 'done') return 'Пройдено';
+  if (s === 'pending_review') return 'На проверке HR';
+  if (s === 'in_progress') return 'В процессе';
+  if (s === 'stopped') return 'Стоп';
+  return 'Открыто';
 };
+
+const pinStyle = (id: number) => {
+  const p = PIN_POS[id] ?? { left: 50, top: 50 };
+  return { left: `${p.left}%`, top: `${p.top}%` };
+};
+
+const canOpen = (item: HubItem) =>
+  item.unlocked && item.status !== 'locked' && item.status !== 'stopped';
+
+const isCurrent = (item: HubItem) =>
+  canOpen(item) && item.status !== 'done' && item.status !== 'pending_review';
 
 const load = async () => {
   loadError.value = '';
@@ -178,45 +185,145 @@ onMounted(load);
 
 <style scoped>
 .ps-hub {
-  --ps-asphalt: #1a1a1a;
+  --ps-bg: #1a1a1a;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
-  --ps-cream: #eeeee8;
+  position: relative;
   width: 100%;
-  max-width: none;
+  min-height: calc(100dvh - 64px);
   margin: 0;
-  padding: 0 0 56px;
+  padding: 0;
+  background: var(--ps-bg);
+  color: #fff;
   overscroll-behavior-y: contain;
   touch-action: manipulation;
+  display: flex;
+  flex-direction: column;
 }
 
-.ps-hub__hero {
+.ps-hub__stage {
   position: relative;
-  margin: 0 0 24px;
-  padding: 32px 28px 28px;
-  background: var(--ps-asphalt);
-  color: #fff;
-  overflow: hidden;
-  border-bottom: 4px solid var(--ps-lime);
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  line-height: 0;
 }
 
-.ps-hub__chequer {
+.ps-hub__track {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ps-hub__pin {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 28px;
-  background: repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0 / 14px 14px;
-  opacity: 0.9;
+  z-index: 2;
+  width: 52px;
+  height: 52px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  color: #111;
+  cursor: pointer;
+  background: transparent;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.ps-hub__hero-inner {
+.ps-hub__pin-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ps-lime);
+  border: 2px solid #111;
+  box-shadow: 0 0 0 3px rgba(221, 243, 101, 0.25), 3px 3px 0 #111;
+}
+
+.ps-hub__pin-core {
   position: relative;
-  padding-left: 24px;
-  max-width: none;
+  z-index: 1;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ps-hub__pin.is-current .ps-hub__pin-ring {
+  animation: ps-pin-pulse 1.6s ease-in-out infinite;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(116, 81, 244, 0.45), 3px 3px 0 var(--ps-violet);
+}
+
+.ps-hub__pin.is-done .ps-hub__pin-ring {
+  background: #388073;
+  box-shadow: 3px 3px 0 #111;
+}
+
+.ps-hub__pin.is-done .ps-hub__pin-core {
+  color: #fff;
+}
+
+.ps-hub__pin.is-locked {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.ps-hub__pin.is-locked .ps-hub__pin-ring {
+  background: #5a5a5a;
+  box-shadow: none;
+  border-color: #333;
+}
+
+.ps-hub__pin.is-locked .ps-hub__pin-core {
+  color: #c8c8c0;
+  display: grid;
+  place-items: center;
+}
+
+.ps-hub__pin:not(.is-locked):hover {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.ps-hub__pin:not(.is-locked):focus-visible {
+  outline: 2px solid var(--ps-violet);
+  outline-offset: 4px;
+}
+
+@keyframes ps-pin-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(116, 81, 244, 0.35), 3px 3px 0 var(--ps-violet);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(116, 81, 244, 0.12), 3px 3px 0 var(--ps-violet);
+  }
+}
+
+.ps-hub__dock {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+  padding: 14px 20px 20px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 28%, #111 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ps-hub__dock-main {
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .ps-hub__eyebrow {
-  margin: 0 0 10px;
-  font-size: 0.7rem;
+  margin: 0 0 6px;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -224,248 +331,105 @@ onMounted(load);
 }
 
 .ps-hub__title {
-  margin: 0 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: clamp(1.6rem, 5vw, 2.1rem);
+  margin: 0 0 6px;
+  font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.ps-hub__flag {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 2px solid #fff;
-  border-radius: 10px;
-  background: #111;
 }
 
 .ps-hub__lead {
-  margin: 0 0 18px;
-  max-width: 42em;
-  font-size: 1rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.ps-hub__lap {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.ps-hub__lap-seg {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.ps-hub__lap-seg.is-done {
-  background: var(--ps-lime);
-  border-color: var(--ps-lime);
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 40em;
 }
 
 .ps-hub__lap-label {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .ps-hub__lap-label strong {
   color: var(--ps-lime);
-  font-weight: 700;
 }
 
 .ps-hub__join {
-  margin: 0 24px 24px;
-  padding: 20px 20px;
-  background: var(--ps-cream);
-  border: 2px solid #111;
-  border-radius: 18px;
-  box-shadow: 5px 5px 0 var(--ps-violet);
+  flex: 0 1 320px;
   display: grid;
-  gap: 12px;
-  max-width: 480px;
-}
-
-.ps-hub__join-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: var(--ps-lime);
-  border: 1.5px solid #111;
-  border-radius: 999px;
-}
-
-.ps-hub__join-title {
-  margin: 8px 0 4px;
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-.ps-hub__join-hint {
-  margin: 0 0 4px;
-  font-size: 0.85rem;
-  color: #555;
-  line-height: 1.4;
+  gap: 8px;
+  padding: 12px;
+  background: #eeeee8;
+  color: #111;
+  border: 2px solid #111;
+  border-radius: 14px;
+  box-shadow: 3px 3px 0 var(--ps-violet);
 }
 
 .ps-hub__field {
   display: grid;
-  gap: 6px;
-  font-size: 0.8rem;
+  gap: 4px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
 .ps-hub__input {
-  min-height: 48px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 8px 12px;
   border: 2px solid #111;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 1rem;
-  background: #fff;
 }
 
 .ps-hub__check {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.85rem;
-  min-height: 44px;
+  gap: 8px;
+  font-size: 0.8rem;
+  min-height: 40px;
 }
 
 .ps-hub__cta {
-  min-height: 52px;
-  margin-top: 4px;
+  min-height: 44px;
   border: 2px solid #111;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--ps-lime);
   font-weight: 800;
-  font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 3px 3px 0 #111;
 }
 
 .ps-hub__cta:disabled {
   opacity: 0.55;
-  cursor: wait;
-}
-
-.ps-hub__cta:hover:not(:disabled) {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 #111;
-}
-
-.ps-hub__lane {
-  list-style: none;
-  margin: 0;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-}
-
-.ps-hub__card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  min-height: 72px;
-  padding: 14px 16px;
-  border: 2px solid #111;
-  border-radius: 16px;
-  background: #fff;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 4px 4px 0 var(--ps-lime);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-.ps-hub__card:hover:not(.is-locked) {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--ps-lime);
-}
-
-.ps-hub__card.is-done {
-  box-shadow: 4px 4px 0 #388073;
-  background: color-mix(in srgb, #388073 8%, white);
-}
-
-.ps-hub__card.is-locked {
-  opacity: 0.62;
-  box-shadow: none;
-  background: #f2f2ee;
-  cursor: not-allowed;
-}
-
-.ps-hub__num {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  border-radius: 12px;
-  background: #111;
-  color: var(--ps-lime);
-  border: 2px solid #111;
-}
-
-.ps-hub__num--lock {
-  background: #c8c8c0;
-  color: #333;
-}
-
-.ps-hub__meta {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.ps-hub__meta strong {
-  font-size: 0.95rem;
-  line-height: 1.25;
-  font-weight: 800;
-}
-
-.ps-hub__status {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #666;
-  letter-spacing: 0.02em;
-}
-
-.ps-hub__go {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--ps-violet);
-  color: #fff;
-  font-weight: 800;
-  border: 2px solid #111;
 }
 
 .ps-hub__err {
-  margin: 12px 24px 0;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a11;
+}
+
+.ps-hub__err--float {
+  position: absolute;
+  left: 16px;
+  bottom: 120px;
+  z-index: 5;
   padding: 10px 12px;
   background: #ffe0e0;
   border: 2px solid #111;
   border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.85rem;
+  color: #111;
+  line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .ps-hub__pin {
+    width: 44px;
+    height: 44px;
+  }
+  .ps-hub__pin-core {
+    font-size: 0.85rem;
+  }
 }
 </style>
