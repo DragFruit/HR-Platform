@@ -5,7 +5,7 @@ import {
   findPlayer,
   myCipherHalf,
   partnerOf,
-  readPitStop
+  readPitStopForRequest
 } from '../../../utils/pitStopStore';
 import {
   buildHubTimeline,
@@ -18,7 +18,7 @@ import type { PitStopCheckpointId } from '../../../../app/events/pit-stop-14/typ
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
-  const state = await readPitStop();
+  const state = await readPitStopForRequest();
   const now = new Date();
   const stopped = isPitStopGameStopped(now);
   let player = findPlayer(state, session.id);

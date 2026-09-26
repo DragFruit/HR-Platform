@@ -23,6 +23,7 @@
 - Состояние: `server/data/pit-stop-14.json` + `pitStopStore.ts`.
 - Пары и синхрон (точки 2–4, 6): пока **polling** `/api/event/pit-stop/pair-state` (WebSocket — следующий слой).
 - Награды в каталог ачивок — только после ответа заказчика по секции/публичности.
+- **Стейдж QA:** все точки открыты; автопара Драго (2684) ↔ Музыка (2353) — `ensureStagingQaPair`.
 
 ## Mobile
 

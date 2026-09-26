@@ -3,14 +3,14 @@ import {
   findPair,
   findPlayer,
   partnerOf,
-  readPitStop
+  readPitStopForRequest
 } from '../../../utils/pitStopStore';
 import { PIT_STOP_ASSEMBLY_PARTS } from '../../../../app/events/pit-stop-14/copy';
 
 /** Polling-состояние пары для точек 2–4, 6. */
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
-  const state = await readPitStop();
+  const state = await readPitStopForRequest();
   const me = findPlayer(state, session.id);
   if (!me?.pairId) {
     return { pair: null };
