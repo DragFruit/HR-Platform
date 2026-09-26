@@ -190,6 +190,7 @@ onMounted(load);
   --ps-bg: #1a1a1a;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
+  --ps-dock-h: 88px;
   position: relative;
   width: 100%;
   height: 100%;
@@ -209,7 +210,8 @@ onMounted(load);
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  padding: 8px 12px 4px;
+  /* низ под док — трасса целиком над панелью */
+  padding: 4px 10px calc(var(--ps-dock-h) + 4px);
   display: grid;
   place-items: center;
   container-type: size;
@@ -217,7 +219,7 @@ onMounted(load);
 
 .ps-hub__map {
   position: relative;
-  /* вписать 16:9 в доступный бокс stage без скролла */
+  /* вписать 16:9 в stage без скролла и обрезки */
   width: min(100cqw, calc(100cqh * 1280 / 720));
   height: min(100cqh, calc(100cqw * 720 / 1280));
   max-width: 100%;
@@ -324,24 +326,36 @@ onMounted(load);
 }
 
 .ps-hub__dock {
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 10px 20px;
-  padding: 8px 16px 12px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 28%, #111 100%);
+  gap: 8px 16px;
+  min-height: var(--ps-dock-h);
+  max-height: 42%;
+  overflow: auto;
+  padding: 10px 16px 12px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 36%, #0d0d0d 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.ps-hub__dock > * {
+  pointer-events: auto;
 }
 
 .ps-hub__dock-main {
-  flex: 1 1 280px;
+  flex: 1 1 240px;
   min-width: 0;
 }
 
 .ps-hub__eyebrow {
-  margin: 0 0 6px;
-  font-size: 0.68rem;
+  margin: 0 0 2px;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -349,23 +363,27 @@ onMounted(load);
 }
 
 .ps-hub__title {
-  margin: 0 0 4px;
-  font-size: 1.15rem;
+  margin: 0 0 2px;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .ps-hub__lead {
-  margin: 0 0 4px;
-  font-size: 0.8rem;
-  line-height: 1.35;
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  line-height: 1.3;
   color: rgba(255, 255, 255, 0.72);
-  max-width: 40em;
+  max-width: 42em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .ps-hub__lap-label {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.65);
 }
 
