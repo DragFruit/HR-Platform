@@ -1,7 +1,7 @@
 <template>
   <div class="ps-hub">
-    <div class="ps-hub__stage">
-      <div class="ps-hub__map">
+    <div ref="stageEl" class="ps-hub__stage">
+      <div class="ps-hub__map" :style="mapStyle">
         <img
           class="ps-hub__track"
           src="/events/pit-stop-14/track.png"
@@ -121,6 +121,58 @@ const joinError = ref('');
 const joining = ref(false);
 const partnerIdInput = ref('');
 const isRemote = ref(false);
+const stageEl = ref<HTMLElement | null>(null);
+const mapStyle = ref<Record<string, string>>({});
+
+const TRACK_AR = 1280 / 720;
+
+const fitMap = () => {
+  const stage = stageEl.value;
+  if (!stage) return;
+  const cs = getComputedStyle(stage);
+  const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const aw = stage.clientWidth - padX;
+  const ah = stage.clientHeight - padY;
+  if (aw < 48 || ah < 48) return;
+  let w = aw;
+  let h = w / TRACK_AR;
+  if (h > ah) {
+    h = ah;
+    w = h * TRACK_AR;
+  }
+  mapStyle.value = {
+    width: `${Math.floor(w)}px`,
+    height: `${Math.floor(h)}px`
+  };
+};
+
+let stageRo: ResizeObserver | null = null;
+
+onMounted(() => {
+  void load();
+  nextTick(() => {
+    fitMap();
+    requestAnimationFrame(fitMap);
+  });
+  if (typeof ResizeObserver !== 'undefined' && stageEl.value) {
+    stageRo = new ResizeObserver(() => fitMap());
+    stageRo.observe(stageEl.value);
+  } else {
+    nextTick(() => {
+      if (typeof ResizeObserver !== 'undefined' && stageEl.value) {
+        stageRo = new ResizeObserver(() => fitMap());
+        stageRo.observe(stageEl.value);
+      }
+    });
+  }
+  window.addEventListener('resize', fitMap);
+});
+
+onBeforeUnmount(() => {
+  stageRo?.disconnect();
+  window.removeEventListener('resize', fitMap);
+});
 
 const shortTitle = (t: string) => t.replace(/^Чек-поинт\s+\d+:\s*/i, '');
 
@@ -182,7 +234,7 @@ const joinPair = async () => {
   }
 };
 
-onMounted(load);
+watch(hub, () => nextTick(fitMap));
 </script>
 
 <style scoped>
@@ -190,7 +242,8 @@ onMounted(load);
   --ps-bg: #1a1a1a;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
-  --ps-dock-h: 88px;
+  --ps-dock-h: 76px;
+  --ps-pin: clamp(32px, 4.8vmin, 48px);
   position: relative;
   width: 100%;
   height: 100%;
@@ -207,24 +260,25 @@ onMounted(load);
 }
 
 .ps-hub__stage {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  /* низ под док — трасса целиком над панелью */
-  padding: 4px 10px calc(var(--ps-dock-h) + 4px);
   display: grid;
   place-items: center;
-  container-type: size;
+  /* запас под пины у краёв трассы */
+  padding: calc(var(--ps-pin) * 0.55 + 6px) calc(var(--ps-pin) * 0.55 + 8px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .ps-hub__map {
   position: relative;
-  /* вписать 16:9 в stage без скролла и обрезки */
-  width: min(100cqw, calc(100cqh * 1280 / 720));
-  height: min(100cqh, calc(100cqw * 720 / 1280));
+  box-sizing: border-box;
+  line-height: 0;
   max-width: 100%;
   max-height: 100%;
-  line-height: 0;
 }
 
 .ps-hub__track {
@@ -240,8 +294,8 @@ onMounted(load);
 .ps-hub__pin {
   position: absolute;
   z-index: 2;
-  width: clamp(36px, 5.5cqmin, 52px);
-  height: clamp(36px, 5.5cqmin, 52px);
+  width: var(--ps-pin);
+  height: var(--ps-pin);
   margin: 0;
   padding: 0;
   border: 0;
@@ -326,65 +380,57 @@ onMounted(load);
 }
 
 .ps-hub__dock {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   z-index: 5;
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 16px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px 16px;
   min-height: var(--ps-dock-h);
-  max-height: 42%;
-  overflow: auto;
-  padding: 10px 16px 12px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 36%, #0d0d0d 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  pointer-events: none;
-}
-
-.ps-hub__dock > * {
-  pointer-events: auto;
+  height: var(--ps-dock-h);
+  overflow: hidden;
+  padding: 8px 14px;
+  background: #111;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .ps-hub__dock-main {
-  flex: 1 1 240px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .ps-hub__eyebrow {
-  margin: 0 0 2px;
-  font-size: 0.62rem;
+  margin: 0;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ps-lime);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ps-hub__title {
-  margin: 0 0 2px;
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .ps-hub__lead {
-  margin: 0 0 2px;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  color: rgba(255, 255, 255, 0.72);
-  max-width: 42em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: none;
 }
 
 .ps-hub__lap-label {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ps-hub__lap-label strong {
@@ -392,47 +438,58 @@ onMounted(load);
 }
 
 .ps-hub__join {
-  flex: 0 1 320px;
-  display: grid;
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 6px 8px;
   background: #eeeee8;
   color: #111;
   border: 2px solid #111;
-  border-radius: 14px;
-  box-shadow: 3px 3px 0 var(--ps-violet);
+  border-radius: 12px;
+  box-shadow: 2px 2px 0 var(--ps-violet);
 }
 
 .ps-hub__field {
-  display: grid;
-  gap: 4px;
-  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.65rem;
   font-weight: 700;
 }
 
+.ps-hub__field span {
+  line-height: 1;
+}
+
 .ps-hub__input {
-  min-height: 44px;
-  padding: 8px 12px;
+  width: 88px;
+  min-height: 36px;
+  padding: 4px 8px;
   border: 2px solid #111;
-  border-radius: 10px;
-  font-size: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
 }
 
 .ps-hub__check {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  min-height: 40px;
+  gap: 6px;
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .ps-hub__cta {
-  min-height: 44px;
+  min-height: 36px;
+  padding: 0 12px;
   border: 2px solid #111;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--ps-lime);
   font-weight: 800;
+  font-size: 0.8rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .ps-hub__cta:disabled {

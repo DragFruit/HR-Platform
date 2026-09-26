@@ -726,7 +726,7 @@ a {
   overflow: hidden;
 }
 
-/* Pit Stop: на всю ширину + один экран без скролла */
+/* Pit Stop: как VPN — один экран, без скролла, на всю ширину */
 .app-viewport:has(.ps-hub) {
   height: 100dvh;
   max-height: 100dvh;
@@ -753,6 +753,7 @@ a {
   align-items: stretch;
 }
 
+.app-shell:has(.ps-hub) > .sidebar,
 .app-shell:has(.ps-hub) > .shell-main {
   min-height: 0;
   max-height: 100%;
