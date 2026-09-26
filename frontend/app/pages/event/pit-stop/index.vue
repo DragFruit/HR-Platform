@@ -4,7 +4,7 @@
       <div class="ps-hub__map" :style="mapStyle">
         <img
           class="ps-hub__track"
-          src="/events/pit-stop-14/track.png"
+          src="/events/pit-stop-14/track.png?v=5"
           alt=""
           width="1280"
           height="720"
@@ -90,16 +90,16 @@ definePageMeta({ layout: 'default' });
 const hubTitle = PIT_STOP_HUB_TITLE;
 const hubLead = PIT_STOP_HUB_LEAD;
 
-/** % от PNG трассы — центры бывших красных пинов (v4) */
+/** % от PNG трассы — центры чек-поинтов на полотне (clean-gen без красных пинов) */
 const PIN_POS: Record<number, { left: number; top: number }> = {
-  1: { left: 15.6, top: 60.3 },
-  2: { left: 23.7, top: 93.9 },
-  3: { left: 56.6, top: 93.9 },
-  4: { left: 84.7, top: 59.9 },
-  5: { left: 84.8, top: 39.7 },
-  6: { left: 63.9, top: 16.5 },
-  7: { left: 32.0, top: 16.3 },
-  8: { left: 34.3, top: 39.5 }
+  1: { left: 16.2, top: 60.3 },
+  2: { left: 23.7, top: 88.6 },
+  3: { left: 56.6, top: 88.6 },
+  4: { left: 84.1, top: 59.9 },
+  5: { left: 84.1, top: 39.6 },
+  6: { left: 63.8, top: 20.7 },
+  7: { left: 32.0, top: 20.6 },
+  8: { left: 34.3, top: 39.4 }
 };
 
 type HubItem = {
@@ -268,7 +268,7 @@ watch(hub, () => nextTick(fitMap));
   display: grid;
   place-items: center;
   /* запас под пины у краёв трассы */
-  padding: calc(var(--ps-pin) * 0.55 + 6px) calc(var(--ps-pin) * 0.55 + 8px);
+  padding: calc(var(--ps-pin) * 0.7 + 8px) calc(var(--ps-pin) * 0.7 + 10px);
   box-sizing: border-box;
   overflow: hidden;
 }
