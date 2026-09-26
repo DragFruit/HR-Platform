@@ -726,6 +726,27 @@ a {
   overflow: hidden;
 }
 
+/* Pit Stop: на всю ширину контента, без узкой колонки */
+.shell-main:has(.ps-hub) .content,
+.shell-main:has(.pit-cp) .content {
+  padding: 0;
+}
+
+.shell-main:has(.ps-hub) .content .page-root,
+.shell-main:has(.pit-cp) .content .page-root {
+  gap: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.shell-main:has(.ps-hub) .content .page-root > .ps-hub,
+.shell-main:has(.pit-cp) .content .page-root > .pit-cp,
+.shell-main:has(.ps-hub) .content > .ps-hub,
+.shell-main:has(.pit-cp) .content > .pit-cp {
+  width: 100%;
+  max-width: none;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;

@@ -323,8 +323,9 @@ onUnmounted(() => {
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
   --ps-cream: #eeeee8;
-  max-width: 560px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 0 0 64px;
   overscroll-behavior-y: contain;
   touch-action: manipulation;
@@ -334,7 +335,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 10px;
+  padding: 14px 24px 10px;
 }
 .pit-cp__back {
   font-weight: 700;
@@ -354,8 +355,8 @@ onUnmounted(() => {
 }
 .pit-cp__hero {
   position: relative;
-  margin: 0 0 16px;
-  padding: 22px 18px 22px 34px;
+  margin: 0 0 20px;
+  padding: 28px 28px 28px 44px;
   background: var(--ps-asphalt);
   color: #fff;
   border-bottom: 4px solid var(--ps-lime);
@@ -369,22 +370,25 @@ onUnmounted(() => {
 }
 .pit-cp__title {
   margin: 0 0 10px;
-  font-size: 1.35rem;
+  max-width: 28em;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 .pit-cp__body {
   margin: 0;
+  max-width: 42em;
   line-height: 1.45;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.82);
 }
 .pit-cp__panel {
   display: grid;
-  gap: 12px;
-  margin: 0 16px;
-  padding: 18px 16px;
+  gap: 14px;
+  margin: 0 24px;
+  padding: 22px 20px;
+  max-width: 640px;
   background: var(--ps-cream);
   border: 2px solid #111;
   border-radius: 18px;
@@ -430,8 +434,9 @@ onUnmounted(() => {
   color: var(--ps-violet);
 }
 .pit-cp__ok {
-  margin: 12px 16px 0;
+  margin: 12px 24px 0;
   padding: 10px 12px;
+  max-width: 640px;
   background: color-mix(in srgb, #388073 18%, white);
   border: 2px solid #388073;
   border-radius: 12px;
@@ -439,7 +444,7 @@ onUnmounted(() => {
   font-weight: 700;
 }
 .pit-cp__locked {
-  margin: 24px 16px;
+  margin: 24px 24px;
   padding: 28px 18px;
   text-align: center;
   font-size: 1rem;
@@ -549,6 +554,6 @@ onUnmounted(() => {
   border-radius: 12px;
 }
 .vac-emp-error {
-  margin: 12px 16px 0;
+  margin: 12px 24px 0;
 }
 </style>

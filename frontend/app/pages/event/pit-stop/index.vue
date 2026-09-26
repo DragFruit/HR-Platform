@@ -182,8 +182,9 @@ onMounted(load);
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
   --ps-cream: #eeeee8;
-  max-width: 720px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 0 0 56px;
   overscroll-behavior-y: contain;
   touch-action: manipulation;
@@ -191,8 +192,8 @@ onMounted(load);
 
 .ps-hub__hero {
   position: relative;
-  margin: 0 0 20px;
-  padding: 28px 20px 24px;
+  margin: 0 0 24px;
+  padding: 32px 28px 28px;
   background: var(--ps-asphalt);
   color: #fff;
   overflow: hidden;
@@ -209,7 +210,8 @@ onMounted(load);
 
 .ps-hub__hero-inner {
   position: relative;
-  padding-left: 20px;
+  padding-left: 24px;
+  max-width: none;
 }
 
 .ps-hub__eyebrow {
@@ -245,8 +247,8 @@ onMounted(load);
 
 .ps-hub__lead {
   margin: 0 0 18px;
-  max-width: 36em;
-  font-size: 0.95rem;
+  max-width: 42em;
+  font-size: 1rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.82);
 }
@@ -282,14 +284,15 @@ onMounted(load);
 }
 
 .ps-hub__join {
-  margin: 0 16px 20px;
-  padding: 18px 16px;
+  margin: 0 24px 24px;
+  padding: 20px 20px;
   background: var(--ps-cream);
   border: 2px solid #111;
   border-radius: 18px;
   box-shadow: 5px 5px 0 var(--ps-violet);
   display: grid;
   gap: 12px;
+  max-width: 480px;
 }
 
 .ps-hub__join-badge {
@@ -366,9 +369,10 @@ onMounted(load);
 .ps-hub__lane {
   list-style: none;
   margin: 0;
-  padding: 0 16px;
+  padding: 0 24px;
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
 }
 
 .ps-hub__card {
@@ -456,7 +460,7 @@ onMounted(load);
 }
 
 .ps-hub__err {
-  margin: 12px 16px 0;
+  margin: 12px 24px 0;
   padding: 10px 12px;
   background: #ffe0e0;
   border: 2px solid #111;
