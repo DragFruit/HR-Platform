@@ -21,8 +21,12 @@
             :title="shortTitle(item.title)"
             :aria-label="`${shortTitle(item.title)} — ${statusLabel(item.status)}`"
           >
-            <span class="ps-hub__pin-ring" aria-hidden="true" />
-            <span class="ps-hub__pin-core">{{ item.id }}</span>
+            <span class="ps-hub__flag" aria-hidden="true">
+              <svg viewBox="0 0 28 36" width="100%" height="100%" fill="none">
+                <path class="ps-hub__flag-pole" d="M4 2v32" stroke-width="2.2" stroke-linecap="round" />
+                <path class="ps-hub__flag-cloth" d="M5 3.5 L24 11.5 L5 19.5 Z" />
+              </svg>
+            </span>
           </NuxtLink>
           <button
             v-else
@@ -33,16 +37,10 @@
             :title="item.lockedLabel || 'Закрыто'"
             :aria-label="`${shortTitle(item.title)} — закрыто`"
           >
-            <span class="ps-hub__pin-ring" aria-hidden="true" />
-            <span class="ps-hub__pin-core" aria-hidden="true">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
-                <path
-                  d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  stroke-linecap="round"
-                />
-                <rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5" stroke="currentColor" stroke-width="1.6" />
+            <span class="ps-hub__flag" aria-hidden="true">
+              <svg viewBox="0 0 28 36" width="100%" height="100%" fill="none">
+                <path class="ps-hub__flag-pole" d="M4 2v32" stroke-width="2.2" stroke-linecap="round" />
+                <path class="ps-hub__flag-cloth" d="M5 3.5 L24 11.5 L5 19.5 Z" />
               </svg>
             </span>
           </button>
@@ -176,7 +174,8 @@ watch(hub, () => nextTick(fitMap));
   --ps-bg: #1d1d1f;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
-  --ps-pin: clamp(32px, 4.8vmin, 48px);
+  --ps-pin-w: clamp(22px, 3.4vmin, 34px);
+  --ps-pin-h: clamp(30px, 4.6vmin, 44px);
   position: relative;
   width: 100%;
   height: 100%;
@@ -200,7 +199,7 @@ watch(hub, () => nextTick(fitMap));
   width: 100%;
   display: grid;
   place-items: center;
-  padding: calc(var(--ps-pin) * 0.7 + 8px) calc(var(--ps-pin) * 0.7 + 10px);
+  padding: calc(var(--ps-pin-h) * 0.55 + 8px) calc(var(--ps-pin-w) * 0.7 + 10px);
   box-sizing: border-box;
   overflow: hidden;
   background: var(--ps-bg);
@@ -228,88 +227,106 @@ watch(hub, () => nextTick(fitMap));
 .ps-hub__pin {
   position: absolute;
   z-index: 2;
-  width: var(--ps-pin);
-  height: var(--ps-pin);
+  width: var(--ps-pin-w);
+  height: var(--ps-pin-h);
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
+  /* якорь у основания древка */
+  transform: translate(-18%, -92%);
+  display: block;
   text-decoration: none;
-  color: #111;
+  color: inherit;
   cursor: pointer;
   background: transparent;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transform-origin: 14% 94%;
 }
 
-.ps-hub__pin-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--ps-lime);
-  border: 2px solid #111;
-  box-shadow: 0 0 0 3px rgba(221, 243, 101, 0.25), 3px 3px 0 #111;
+.ps-hub__flag {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 14% 94%;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.45));
+  transition: filter 0.15s ease;
 }
 
-.ps-hub__pin-core {
-  position: relative;
-  z-index: 1;
-  font-size: 0.95rem;
-  font-weight: 800;
-  line-height: 1;
+.ps-hub__flag-pole {
+  stroke: #eeeee8;
 }
 
-.ps-hub__pin.is-current .ps-hub__pin-ring {
-  animation: ps-pin-pulse 1.6s ease-in-out infinite;
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(116, 81, 244, 0.45), 3px 3px 0 var(--ps-violet);
+.ps-hub__flag-cloth {
+  fill: var(--ps-lime);
+  stroke: #111;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
 }
 
-.ps-hub__pin.is-done .ps-hub__pin-ring {
-  background: #388073;
-  box-shadow: 3px 3px 0 #111;
+.ps-hub__pin.is-current .ps-hub__flag-cloth {
+  fill: #fff;
+  stroke: var(--ps-violet);
 }
 
-.ps-hub__pin.is-done .ps-hub__pin-core {
-  color: #fff;
+.ps-hub__pin.is-current .ps-hub__flag {
+  animation: ps-flag-sway 1.35s ease-in-out infinite;
+}
+
+.ps-hub__pin.is-done .ps-hub__flag-cloth {
+  fill: #388073;
+  stroke: #111;
 }
 
 .ps-hub__pin.is-locked {
   cursor: not-allowed;
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
-.ps-hub__pin.is-locked .ps-hub__pin-ring {
-  background: #5a5a5a;
-  box-shadow: none;
-  border-color: #333;
+.ps-hub__pin.is-locked .ps-hub__flag-cloth {
+  fill: #6a6a6a;
+  stroke: #333;
 }
 
-.ps-hub__pin.is-locked .ps-hub__pin-core {
-  color: #c8c8c0;
-  display: grid;
-  place-items: center;
+.ps-hub__pin.is-locked .ps-hub__flag-pole {
+  stroke: #9a9a9a;
 }
 
-.ps-hub__pin:not(.is-locked):hover {
-  transform: translate(-50%, -50%) scale(1.08);
+.ps-hub__pin:hover .ps-hub__flag,
+.ps-hub__pin:focus-visible .ps-hub__flag {
+  animation: ps-flag-tremble 0.42s ease-in-out infinite;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.55));
 }
 
 .ps-hub__pin:not(.is-locked):focus-visible {
   outline: 2px solid var(--ps-violet);
   outline-offset: 4px;
+  border-radius: 4px;
 }
 
-@keyframes ps-pin-pulse {
+@keyframes ps-flag-tremble {
   0%,
   100% {
-    box-shadow: 0 0 0 4px rgba(116, 81, 244, 0.35), 3px 3px 0 var(--ps-violet);
+    transform: rotate(-7deg);
+  }
+  25% {
+    transform: rotate(8deg);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(116, 81, 244, 0.12), 3px 3px 0 var(--ps-violet);
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes ps-flag-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(5deg);
   }
 }
 
@@ -335,11 +352,16 @@ watch(hub, () => nextTick(fitMap));
 
 @media (max-width: 720px) {
   .ps-hub__pin {
-    width: 44px;
-    height: 44px;
+    width: 28px;
+    height: 38px;
   }
-  .ps-hub__pin-core {
-    font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-hub__pin.is-current .ps-hub__flag,
+  .ps-hub__pin:hover .ps-hub__flag,
+  .ps-hub__pin:focus-visible .ps-hub__flag {
+    animation: none;
   }
 }
 </style>
