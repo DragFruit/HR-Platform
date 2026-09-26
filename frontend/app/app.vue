@@ -35,8 +35,43 @@
 
       <ul class="nav-list">
         <li v-for="item in navItems" :key="item.to">
+          <div
+            v-if="item.to === '/profile' && !item.locked"
+            class="nav-profile"
+            :class="{
+              'is-lit':
+                isNavItemActive('/profile') || route.path.startsWith('/event/pit-stop')
+            }"
+          >
+            <NuxtLink
+              to="/profile"
+              class="nav-profile__link"
+              :class="{ 'router-link-active': isNavItemActive('/profile') }"
+            >
+              Профиль
+            </NuxtLink>
+            <NuxtLink
+              v-if="showPitStopFlag"
+              to="/event/pit-stop"
+              class="nav-profile__flag"
+              aria-label="Pit Stop 14 — корпоративный квест"
+              title="Pit Stop 14"
+            >
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <rect width="16" height="16" fill="#111" />
+                <rect x="0" y="0" width="4" height="4" fill="#fff" />
+                <rect x="8" y="0" width="4" height="4" fill="#fff" />
+                <rect x="4" y="4" width="4" height="4" fill="#fff" />
+                <rect x="12" y="4" width="4" height="4" fill="#fff" />
+                <rect x="0" y="8" width="4" height="4" fill="#fff" />
+                <rect x="8" y="8" width="4" height="4" fill="#fff" />
+                <rect x="4" y="12" width="4" height="4" fill="#fff" />
+                <rect x="12" y="12" width="4" height="4" fill="#fff" />
+              </svg>
+            </NuxtLink>
+          </div>
           <NuxtLink
-            v-if="!item.locked"
+            v-else-if="!item.locked"
             :to="item.to"
             class="nav-link"
             :class="{ 'router-link-active': isNavItemActive(item.to) }"
@@ -141,7 +176,8 @@ const { isActive: tenureCelebrationActive } = useTenureCelebration();
 const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
-const { homePath } = useLaunchScope();
+const { homePath, isPathAllowed } = useLaunchScope();
+const showPitStopFlag = computed(() => isPathAllowed('/event/pit-stop'));
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';

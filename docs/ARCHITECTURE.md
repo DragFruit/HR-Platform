@@ -124,6 +124,7 @@ flowchart TB
 - `vacations.vue` — employee UI или `VacationsManagerExperience` (manager/hr)
 - `tasks.vue`, `store.vue`, `wallet.vue`, `profile/index.vue`
 - `ideas/index.vue` — банк идей (сотрудник)
+- `event/pit-stop/` — временный ивент **Pit Stop 14** (модуль `app/events/pit-stop-14/`, API `/api/event/pit-stop/*`, данные `server/data/pit-stop-14.json`)
 - `knowledge/index.vue` — поиск / чат ИИ; FAB «написать» слева внизу → `/knowledge/write` (`KnowledgeArticleWorkspace.vue`: редактор как у админа + свои статьи / команда / ревью). `knowledge/[id].vue` — статья. Сид `data/knowledgeBaseCatalog.ts`. Поиск: `utils/knowledgeSearch.ts`, `useKnowledgeSearch`. ИИ: `useKnowledgeAiAnswer` + `POST /api/knowledge/yandex-ask`, `useKnowledgeAiChat`. Оценка страницы: `POST /api/knowledge/feedback` → админ-уведомление `page_feedback` + imbot Драго. Подсказки: `knowledgeSearchPhrases.ts`.
 - Статьи сотрудников: страница `/knowledge/write`; `useKnowledgeAuthor` + API `GET/POST /api/knowledge/articles`, `PATCH …/:id`, `POST …/submit|moderate|comments`. Модель: `authorUserId`, `comments[]`, `pendingRevision`, статусы `draft|pending_review|published|revision_requested|rejected`. Notify: `knowledgeNotifications.ts` → `createUserNotification` + `notifyBitrixSystemUser` (как отпуска/идеи); bell link → `/knowledge/write`.
 - Картинки статей: HTML `src="/knowledge/article-{bitrixId}/…"` → файлы в `frontend/public/knowledge/article-*/` **обязательно в git** вместе с `server/data/knowledge-articles.json`. Деплой: `merge-knowledge-articles-seed.mjs` не затирает админские правки целиком, но обновляет `body`/`coverImage`, если сид несёт локальные `/knowledge/article-…`, на сервере остался Bitrix-chrome `/devs/asset/`, или `body` на сервере экранирован (`&lt;a` / `&lt;br` — артефакт старого markdown-детекта в WYSIWYG). Платформенные статьи Vibe (`kb-vibe-vacations-digital`, `kb-vibe-vacations-other`, `kb-vibe-ideas`) и кейсы ecom (`kb-case-ecom-*`, `kb-case-ecom-index`; MD в `docs/knowledge-cases/ecom/`) всегда берутся из сида; retired id (`kb-vibe-vacations`) с целевого файла снимается. Тела без блочных тегов нормализуются в `knowledgeArticleHtml.ts` (decode + обёртка `<div>`). Перенос из Bitrix: `scripts/bitrix/scrape-devs-articles.mjs` → `migrate-devs-to-knowledge.mjs` (временные HTML в `scripts/bitrix/tmp/`, в git не кладём).
@@ -139,6 +140,7 @@ flowchart TB
 - `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
+- `admin/quest-dashboard.vue` — мониторинг Pit Stop 14 + аппрув кофе
 - `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
 
 ---

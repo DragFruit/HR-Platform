@@ -285,6 +285,7 @@
         <path d="M13.2 6.8 17.2 10.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
     </NuxtLink>
+    <PitStopEasterFlag />
   </div>
 </template>
 
