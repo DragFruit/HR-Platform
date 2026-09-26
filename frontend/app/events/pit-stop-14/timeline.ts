@@ -99,11 +99,25 @@ export function isPitStopRewardsDue(now: Date = new Date()): boolean {
   return now.getTime() >= Date.parse(PIT_STOP_REWARDS_AT);
 }
 
+/** Стейдж / явный флаг — все точки открыты для прогона игр (на бою никогда). */
+export function isPitStopTestUnlockAll(): boolean {
+  if (typeof process !== 'undefined') {
+    if (process.env.PIT_STOP_DEV_UNLOCK === '1') return true;
+    if (process.env.NUXT_PUBLIC_PIT_STOP_DEV_UNLOCK === '1') return true;
+    if (process.env.NUXT_PUBLIC_APP_ENV === 'staging') return true;
+  }
+  try {
+    const appEnv = String(useRuntimeConfig().public.appEnv || '');
+    if (appEnv === 'staging') return true;
+  } catch {
+    /* вне Nuxt-контекста */
+  }
+  return false;
+}
+
 export function isCheckpointUnlocked(id: PitStopCheckpointId, now: Date = new Date()): boolean {
   if (isPitStopGameStopped(now)) return false;
-  // Локальная отладка до 28.09: NUXT_PUBLIC_PIT_STOP_DEV_UNLOCK=1
-  if (import.meta.dev && process.env.NUXT_PUBLIC_PIT_STOP_DEV_UNLOCK === '1') return true;
-  if (typeof process !== 'undefined' && process.env.PIT_STOP_DEV_UNLOCK === '1') return true;
+  if (isPitStopTestUnlockAll()) return true;
   const def = pitStopCheckpointById(id);
   return now.getTime() >= moscowNineAmMs(def.unlockDate);
 }
