@@ -239,7 +239,7 @@ watch(hub, () => nextTick(fitMap));
 
 <style scoped>
 .ps-hub {
-  --ps-bg: #1a1a1a;
+  --ps-bg: #1d1d1f;
   --ps-lime: #ddf365;
   --ps-violet: #7451f4;
   --ps-dock-h: 76px;
@@ -271,6 +271,7 @@ watch(hub, () => nextTick(fitMap));
   padding: calc(var(--ps-pin) * 0.7 + 8px) calc(var(--ps-pin) * 0.7 + 10px);
   box-sizing: border-box;
   overflow: hidden;
+  background: var(--ps-bg);
 }
 
 .ps-hub__map {
@@ -279,6 +280,7 @@ watch(hub, () => nextTick(fitMap));
   line-height: 0;
   max-width: 100%;
   max-height: 100%;
+  background: transparent;
 }
 
 .ps-hub__track {
@@ -391,8 +393,8 @@ watch(hub, () => nextTick(fitMap));
   height: var(--ps-dock-h);
   overflow: hidden;
   padding: 8px 14px;
-  background: #111;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, transparent 0%, rgba(29, 29, 31, 0.92) 28%, #1d1d1f 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ps-hub__dock-main {

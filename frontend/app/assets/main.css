@@ -770,7 +770,7 @@ a {
 
 .shell-main:has(.ps-hub) .content {
   padding: 0;
-  background: #1a1a1a;
+  background: #1d1d1f;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -812,7 +812,7 @@ a {
 
 .shell-main:has(.pit-cp) .content {
   padding: 0;
-  background: #1a1a1a;
+  background: #1d1d1f;
 }
 
 .shell-main:has(.pit-cp) .content .page-root {
