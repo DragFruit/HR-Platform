@@ -94,47 +94,35 @@
         >
           ×
         </button>
-        <div class="vac-request-created-toast__art" aria-hidden="true">
-          <div class="vac-request-created-toast__frame">
-            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tl" />
-            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tr1" />
-            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--tr2" />
-            <span class="vac-request-created-toast__tab vac-request-created-toast__tab--bl" />
-            <img
-              class="vac-request-created-toast__photo"
-              src="/images/vacations/request-created-rest.png?v=1"
-              alt=""
-              width="120"
-              height="160"
+        <div class="vac-request-created-toast__decor" aria-hidden="true">
+          <span class="vac-request-created-toast__blob vac-request-created-toast__blob--a" />
+          <span class="vac-request-created-toast__blob vac-request-created-toast__blob--b" />
+        </div>
+        <div class="vac-request-created-toast__icon" aria-hidden="true">
+          <svg viewBox="0 0 40 40" width="40" height="40" fill="none">
+            <circle cx="20" cy="20" r="20" fill="#1e4a48" />
+            <path
+              d="M12.5 15.2c0-2.4 2.1-4.4 4.7-4.4h5.6c2.6 0 4.7 2 4.7 4.4v5.1c0 2.4-2.1 4.4-4.7 4.4h-1.3l-3.2 2.6v-2.6h-1.1c-2.6 0-4.7-2-4.7-4.4v-5.1z"
+              stroke="#fff"
+              stroke-width="1.6"
+              stroke-linejoin="round"
             />
-            <span class="vac-request-created-toast__frame-foot" />
-          </div>
+            <path
+              d="M16.8 19.1l2.2 2.2 4.2-4.4"
+              stroke="#fff"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
         </div>
-        <div class="vac-request-created-toast__main">
-          <div class="vac-request-created-toast__copy">
-            <p class="vac-request-created-toast__title">Заявка успешно создана</p>
-            <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
-          </div>
-          <div
-            class="vac-request-created-toast__path"
-            :aria-label="requestCreatedToast.path.map((s) => s.label).join(' → ')"
-          >
-            <span
-              v-for="seg in requestCreatedToast.path"
-              :key="seg.label"
-              class="vac-request-created-toast__seg"
-              :class="`is-${seg.state}`"
-            >
-              <span class="vac-request-created-toast__bar" aria-hidden="true">
-                <span v-if="seg.state === 'current'" class="vac-request-created-toast__dot" />
-              </span>
-              <span class="vac-request-created-toast__seg-label">{{ seg.label }}</span>
-            </span>
-          </div>
+        <div class="vac-request-created-toast__copy">
+          <p class="vac-request-created-toast__title">Заявка создана</p>
+          <p class="vac-request-created-toast__route">{{ requestCreatedToast.route }}</p>
         </div>
-        <div class="vac-request-created-toast__warn">
-          <span class="vac-request-created-toast__warn-badge" aria-hidden="true">●</span>
-          <p class="vac-request-created-toast__warn-text">{{ requestCreatedToast.note }}</p>
+        <div class="vac-request-created-toast__glass">
+          <span class="vac-request-created-toast__glass-mark" aria-hidden="true">!</span>
+          <p class="vac-request-created-toast__glass-text">{{ requestCreatedToast.note }}</p>
         </div>
       </aside>
     </Teleport>
@@ -267,11 +255,7 @@ import {
   GROUP_LEAD_OVERLAP_BLOCKED_MESSAGE,
   GROUP_LEAD_OVERLAP_POPOVER_TITLE
 } from '~/utils/vacationGroupLeadOverlap';
-import {
-  needsTwoStepApproval,
-  resolveVacationApprovalPath,
-  type VacationApprovalPathSeg
-} from '~/utils/vacationApproval';
+import { needsTwoStepApproval } from '~/utils/vacationApproval';
 
 const props = defineProps<{
   viewYear: number;
@@ -560,7 +544,6 @@ const submitting = ref(false);
 type RequestCreatedToast = {
   route: string;
   note: string;
-  path: VacationApprovalPathSeg[];
 };
 const requestCreatedToast = ref<RequestCreatedToast | null>(null);
 let requestCreatedToastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -580,16 +563,11 @@ const showRequestCreatedToast = () => {
   dismissRequestCreatedToast();
   const emp = currentEmployee.value;
   const twoStep = emp ? needsTwoStepApproval(emp) : false;
-  const path = resolveVacationApprovalPath(
-    { status: 'pending', approval_step: twoStep ? 'manager' : 'director' },
-    emp ?? null
-  );
   requestCreatedToast.value = {
     route: twoStep
       ? 'Она ушла группхеду. После него — директор отдела.'
       : 'Она ушла руководителю на согласование.',
-    note: REQUEST_CREATED_NOTE,
-    path
+    note: REQUEST_CREATED_NOTE
   };
   requestCreatedToastTimer = setTimeout(() => {
     requestCreatedToast.value = null;
