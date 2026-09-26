@@ -10,7 +10,7 @@ import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../ap
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
-  if (isPitStopGameStopped() || !isCheckpointUnlocked(6)) {
+  if (isPitStopGameStopped() || !isCheckpointUnlocked(7)) {
     throw createError({ statusCode: 403, statusMessage: 'Чек-поинт закрыт' });
   }
   const body = await readBody<{ cell?: number }>(event);
@@ -43,8 +43,8 @@ export default defineEventHandler(async (event) => {
     const bDone = pair.puzzleGlowA.every((c) => pair.puzzlePressedB.includes(c));
     if (aDone && bDone) {
       const partner = findPlayer(state, role === 'A' ? pair.userIdB : pair.userIdA);
-      setCheckpointStatus(me, 6, 'done');
-      if (partner) setCheckpointStatus(partner, 6, 'done');
+      setCheckpointStatus(me, 7, 'done');
+      if (partner) setCheckpointStatus(partner, 7, 'done');
       return { ok: true, done: true };
     }
     return { ok: true, done: false, pressed: mine };

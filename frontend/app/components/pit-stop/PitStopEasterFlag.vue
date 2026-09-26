@@ -10,7 +10,7 @@
     🏁
   </button>
   <p v-if="shown" class="pit-stop-easter-flag__code" role="status">
-    Код: <strong>{{ code }}</strong> — введи в чек-поинте 7
+    Код: <strong>{{ code }}</strong> — введи в чек-поинте 6
   </p>
 </template>
 
@@ -26,7 +26,7 @@ const shown = ref(false);
 const code = PIT_STOP_EASTER_CODE;
 
 onMounted(() => {
-  visible.value = isCheckpointUnlocked(7) && !isPitStopGameStopped();
+  visible.value = isCheckpointUnlocked(6) && !isPitStopGameStopped();
 });
 
 const reveal = () => {

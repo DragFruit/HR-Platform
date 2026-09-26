@@ -55,7 +55,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' });
 
-/** % от PNG — обход против часовой: старт (28.09) там, где был 08.10; вторая — где был 06.10 */
+/** % от PNG — против часовой: 1 старт … 5 дозаправка → 6 пасхалка → 7 пазл → 8 финиш */
 const PIN_POS: Record<number, { left: number; top: number }> = {
   1: { left: 32.0, top: 20.6 },
   2: { left: 63.8, top: 20.7 },

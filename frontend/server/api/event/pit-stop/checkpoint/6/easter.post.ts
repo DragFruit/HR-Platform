@@ -9,7 +9,7 @@ import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../ap
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
-  if (isPitStopGameStopped() || !isCheckpointUnlocked(7)) {
+  if (isPitStopGameStopped() || !isCheckpointUnlocked(6)) {
     throw createError({ statusCode: 403, statusMessage: 'Чек-поинт закрыт' });
   }
   const body = await readBody<{ code?: string }>(event);
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   return mutatePitStop((s) => {
     const me = findPlayer(s, session.id);
     if (!me) throw createError({ statusCode: 400, statusMessage: 'Сначала /join' });
-    setCheckpointStatus(me, 7, 'done');
+    setCheckpointStatus(me, 6, 'done');
     return { ok: true };
   });
 });

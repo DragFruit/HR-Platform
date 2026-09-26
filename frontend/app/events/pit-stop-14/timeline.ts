@@ -41,17 +41,17 @@ export const PIT_STOP_CHECKPOINTS: PitStopCheckpointDef[] = [
   },
   {
     id: 6,
-    slug: 'puzzle',
-    title: 'Чек-поинт 6: Общий пазл',
+    slug: 'easter',
+    title: 'Чек-поинт 6: Пасхалка на трассе',
     unlockDate: '2026-10-06',
-    kind: 'pair'
+    kind: 'solo'
   },
   {
     id: 7,
-    slug: 'easter',
-    title: 'Чек-поинт 7: Пасхалка на трассе',
+    slug: 'puzzle',
+    title: 'Чек-поинт 7: Общий пазл',
     unlockDate: '2026-10-08',
-    kind: 'solo'
+    kind: 'pair'
   },
   {
     id: 8,
@@ -104,11 +104,12 @@ export function isPitStopTestUnlockAll(): boolean {
   if (typeof process !== 'undefined') {
     if (process.env.PIT_STOP_DEV_UNLOCK === '1') return true;
     if (process.env.NUXT_PUBLIC_PIT_STOP_DEV_UNLOCK === '1') return true;
-    if (process.env.NUXT_PUBLIC_APP_ENV === 'staging') return true;
+    const env = process.env.NUXT_PUBLIC_APP_ENV || '';
+    if (env === 'staging' || env === 'development') return true;
   }
   try {
     const appEnv = String(useRuntimeConfig().public.appEnv || '');
-    if (appEnv === 'staging') return true;
+    if (appEnv === 'staging' || appEnv === 'development') return true;
   } catch {
     /* вне Nuxt-контекста */
   }
