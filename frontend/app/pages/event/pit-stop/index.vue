@@ -1,51 +1,53 @@
 <template>
   <div class="ps-hub">
     <div class="ps-hub__stage">
-      <img
-        class="ps-hub__track"
-        src="/events/pit-stop-14/track.png"
-        alt="Гоночная трасса Pit Stop 14"
-        width="1280"
-        height="720"
-        draggable="false"
-      />
+      <div class="ps-hub__map">
+        <img
+          class="ps-hub__track"
+          src="/events/pit-stop-14/track.png"
+          alt=""
+          width="1280"
+          height="720"
+          draggable="false"
+        />
 
-      <template v-for="item in hub" :key="item.id">
-        <NuxtLink
-          v-if="canOpen(item)"
-          :to="`/event/pit-stop/${item.id}`"
-          class="ps-hub__pin"
-          :class="[`is-${item.status}`, { 'is-current': isCurrent(item) }]"
-          :style="pinStyle(item.id)"
-          :title="shortTitle(item.title)"
-          :aria-label="`${shortTitle(item.title)} — ${statusLabel(item.status)}`"
-        >
-          <span class="ps-hub__pin-ring" aria-hidden="true" />
-          <span class="ps-hub__pin-core">{{ item.id }}</span>
-        </NuxtLink>
-        <button
-          v-else
-          type="button"
-          class="ps-hub__pin is-locked"
-          :style="pinStyle(item.id)"
-          disabled
-          :title="item.lockedLabel || 'Закрыто'"
-          :aria-label="`${shortTitle(item.title)} — закрыто`"
-        >
-          <span class="ps-hub__pin-ring" aria-hidden="true" />
-          <span class="ps-hub__pin-core" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
-              <path
-                d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              />
-              <rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5" stroke="currentColor" stroke-width="1.6" />
-            </svg>
-          </span>
-        </button>
-      </template>
+        <template v-for="item in hub" :key="item.id">
+          <NuxtLink
+            v-if="canOpen(item)"
+            :to="`/event/pit-stop/${item.id}`"
+            class="ps-hub__pin"
+            :class="[`is-${item.status}`, { 'is-current': isCurrent(item) }]"
+            :style="pinStyle(item.id)"
+            :title="shortTitle(item.title)"
+            :aria-label="`${shortTitle(item.title)} — ${statusLabel(item.status)}`"
+          >
+            <span class="ps-hub__pin-ring" aria-hidden="true" />
+            <span class="ps-hub__pin-core">{{ item.id }}</span>
+          </NuxtLink>
+          <button
+            v-else
+            type="button"
+            class="ps-hub__pin is-locked"
+            :style="pinStyle(item.id)"
+            disabled
+            :title="item.lockedLabel || 'Закрыто'"
+            :aria-label="`${shortTitle(item.title)} — закрыто`"
+          >
+            <span class="ps-hub__pin-ring" aria-hidden="true" />
+            <span class="ps-hub__pin-core" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+                <path
+                  d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+                <rect x="3.25" y="7" width="9.5" height="6.75" rx="1.5" stroke="currentColor" stroke-width="1.6" />
+              </svg>
+            </span>
+          </button>
+        </template>
+      </div>
     </div>
 
     <aside class="ps-hub__dock">
@@ -190,7 +192,8 @@ onMounted(load);
   --ps-violet: #7451f4;
   position: relative;
   width: 100%;
-  min-height: calc(100dvh - 64px);
+  height: 100%;
+  min-height: 0;
   margin: 0;
   padding: 0;
   background: var(--ps-bg);
@@ -199,20 +202,35 @@ onMounted(load);
   touch-action: manipulation;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .ps-hub__stage {
-  position: relative;
   flex: 1 1 auto;
-  width: 100%;
   min-height: 0;
+  width: 100%;
+  padding: 8px 12px 4px;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.ps-hub__map {
+  position: relative;
+  /* вписать 16:9 в доступный бокс stage без скролла */
+  width: min(100cqw, calc(100cqh * 1280 / 720));
+  height: min(100cqh, calc(100cqw * 720 / 1280));
+  max-width: 100%;
+  max-height: 100%;
   line-height: 0;
 }
 
 .ps-hub__track {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
   user-select: none;
   pointer-events: none;
 }
@@ -220,8 +238,8 @@ onMounted(load);
 .ps-hub__pin {
   position: absolute;
   z-index: 2;
-  width: 52px;
-  height: 52px;
+  width: clamp(36px, 5.5cqmin, 52px);
+  height: clamp(36px, 5.5cqmin, 52px);
   margin: 0;
   padding: 0;
   border: 0;
@@ -310,8 +328,8 @@ onMounted(load);
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 16px 24px;
-  padding: 14px 20px 20px;
+  gap: 10px 20px;
+  padding: 8px 16px 12px;
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 28%, #111 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -331,16 +349,16 @@ onMounted(load);
 }
 
 .ps-hub__title {
-  margin: 0 0 6px;
-  font-size: 1.35rem;
+  margin: 0 0 4px;
+  font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .ps-hub__lead {
-  margin: 0 0 8px;
-  font-size: 0.88rem;
-  line-height: 1.4;
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  line-height: 1.35;
   color: rgba(255, 255, 255, 0.72);
   max-width: 40em;
 }

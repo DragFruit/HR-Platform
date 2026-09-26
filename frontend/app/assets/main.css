@@ -726,23 +726,101 @@ a {
   overflow: hidden;
 }
 
-/* Pit Stop: на всю ширину контента, без узкой колонки */
-.shell-main:has(.ps-hub) .content,
+/* Pit Stop: на всю ширину + один экран без скролла */
+.app-viewport:has(.ps-hub) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.app-viewport:has(.ps-hub) > .app-shell {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.app-viewport:has(.ps-hub) > .app-site-footer {
+  display: none;
+}
+
+.app-shell:has(.ps-hub) {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.app-shell:has(.ps-hub) > .shell-main {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.shell-main:has(.ps-hub) {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.shell-main:has(.ps-hub) .content {
+  padding: 0;
+  background: #1a1a1a;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+.shell-main:has(.ps-hub) .content > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-main:has(.ps-hub) .content .page-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  gap: 0;
+  max-width: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shell-main:has(.ps-hub) .content .page-root > .ps-hub,
+.shell-main:has(.ps-hub) .content > .ps-hub {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
+  max-width: none;
+  overflow: hidden;
+}
+
 .shell-main:has(.pit-cp) .content {
   padding: 0;
   background: #1a1a1a;
 }
 
-.shell-main:has(.ps-hub) .content .page-root,
 .shell-main:has(.pit-cp) .content .page-root {
   gap: 0;
   max-width: none;
   width: 100%;
 }
 
-.shell-main:has(.ps-hub) .content .page-root > .ps-hub,
 .shell-main:has(.pit-cp) .content .page-root > .pit-cp,
-.shell-main:has(.ps-hub) .content > .ps-hub,
 .shell-main:has(.pit-cp) .content > .pit-cp {
   width: 100%;
   max-width: none;
