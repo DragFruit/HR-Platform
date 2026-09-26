@@ -20,7 +20,13 @@
 
       <div v-else class="pit-garage__hud">
         <aside class="pit-garage__guide">
-          <PitStopRaccoonGuide size="cp" :line="raccoonLine" />
+          <PitStopRaccoonGuide
+            size="cp"
+            :line="raccoonLine"
+            :show-nav="cp1ShowNav"
+            :next-label="cp1NextLabel"
+            @next="onCp1Next"
+          />
         </aside>
 
         <div class="pit-garage__tags" aria-label="Бирки шифра">
@@ -227,15 +233,42 @@ const isRemote = ref(false);
 const actionError = ref('');
 const actionOk = ref('');
 const boxOpened = ref(false);
+const cp1Step = ref(0);
 const fileRef = ref<HTMLInputElement | null>(null);
 const garageArtLocked = '/events/pit-stop-14/cp1/garage-locked.png';
 const garageArtOpen = '/events/pit-stop-14/cp1/garage-open.png';
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+/** Точка 1: строго 1 → 2 → 3, потом afterOpen после открытия. */
+const cp1Lines = computed(() => {
+  if (boxOpened.value) return [RACCOON_CP1_LINES.afterOpen];
+  return [
+    RACCOON_CP1_LINES.intro,
+    RACCOON_CP1_LINES.rule,
+    RACCOON_CP1_LINES.withPartner(partnerName.value)
+  ];
+});
+
 const raccoonLine = computed(() => {
-  if (boxOpened.value) return RACCOON_CP1_LINES.afterOpen;
-  if (partnerName.value) return RACCOON_CP1_LINES.withPartner(partnerName.value);
-  return RACCOON_CP1_LINES.intro;
+  const lines = cp1Lines.value;
+  const i = Math.min(cp1Step.value, lines.length - 1);
+  return lines[i] || lines[0];
+});
+
+const cp1ShowNav = computed(() => !boxOpened.value && cp1Step.value < cp1Lines.value.length - 1);
+
+const cp1NextLabel = computed(() => 'Дальше');
+
+const onCp1Next = () => {
+  if (cp1Step.value < cp1Lines.value.length - 1) cp1Step.value += 1;
+};
+
+watch(boxOpened, (opened) => {
+  if (opened) cp1Step.value = 0;
+});
+
+watch(id, () => {
+  cp1Step.value = 0;
 });
 
 const carIndex = computed(() => {
@@ -486,6 +519,10 @@ onUnmounted(() => {
 .pit-garage__guide {
   width: min(640px, 100%);
   margin: 0 auto;
+}
+.pit-garage__guide :deep(.ps-raccoon__btn--ghost) {
+  color: #eeeee8;
+  border-color: rgba(238, 238, 232, 0.45);
 }
 .pit-garage__tags {
   position: relative;
