@@ -17,7 +17,7 @@ export const RACCOON_CP1_LINES = {
 } as const;
 
 /** Базовый арт по пояс (locked look, прозрачный фон). */
-export const RACCOON_BASE_WAIST_SRC = '/events/pit-stop-14/mascot/raccoon-base-waist.png?v=3';
+export const RACCOON_BASE_WAIST_SRC = '/events/pit-stop-14/mascot/raccoon-base-waist.png?v=4';
 
 /** Первый вход на хаб: ключ localStorage. */
 export const RACCOON_INTRO_STORAGE_KEY = 'vbi-pit-stop-raccoon-intro-v1';
