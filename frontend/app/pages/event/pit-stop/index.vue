@@ -16,7 +16,10 @@
             v-if="canOpen(item)"
             :to="`/event/pit-stop/${item.id}`"
             class="ps-hub__pin"
-            :class="[`is-${item.status}`, { 'is-current': isCurrent(item) }]"
+            :class="[
+              `is-${item.status}`,
+              { 'is-current': isCurrent(item), 'is-pulse': pulseId === item.id }
+            ]"
             :style="pinStyle(item.id)"
             :title="shortTitle(item.title)"
             :aria-label="`${shortTitle(item.title)} — ${statusLabel(item.status)}`"
@@ -32,6 +35,7 @@
             v-else
             type="button"
             class="ps-hub__pin is-locked"
+            :class="{ 'is-pulse': pulseId === item.id }"
             :style="pinStyle(item.id)"
             disabled
             :title="item.lockedLabel || 'Закрыто'"
@@ -98,6 +102,11 @@ const stageEl = ref<HTMLElement | null>(null);
 const mapStyle = ref<Record<string, string>>({});
 const showIntro = ref(false);
 const introStep = ref(0);
+const pulseId = ref<number | null>(null);
+let pulseTimer: ReturnType<typeof setTimeout> | null = null;
+
+const route = useRoute();
+const router = useRouter();
 
 const TRACK_AR = 1280 / 720;
 
@@ -142,10 +151,25 @@ const fitMap = () => {
 
 let stageRo: ResizeObserver | null = null;
 
+const consumePulseQuery = () => {
+  const raw = route.query.pulse;
+  const n = Number(Array.isArray(raw) ? raw[0] : raw);
+  if (!Number.isInteger(n) || n < 1 || n > 8) return;
+  pulseId.value = n;
+  void router.replace({ path: '/event/pit-stop', query: {} });
+  if (pulseTimer) clearTimeout(pulseTimer);
+  // одна волна подсветки, потом гасим
+  pulseTimer = setTimeout(() => {
+    pulseId.value = null;
+    pulseTimer = null;
+  }, 3200);
+};
+
 onMounted(() => {
   if (import.meta.client && !localStorage.getItem(INTRO_KEY)) {
     showIntro.value = true;
   }
+  consumePulseQuery();
   void load();
   nextTick(() => {
     fitMap();
@@ -168,6 +192,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stageRo?.disconnect();
   window.removeEventListener('resize', fitMap);
+  if (pulseTimer) clearTimeout(pulseTimer);
 });
 
 const shortTitle = (t: string) => t.replace(/^Чек-поинт\s+\d+:\s*/i, '');
@@ -312,6 +337,18 @@ watch(hub, () => nextTick(fitMap));
   animation: ps-flag-sway 1.35s ease-in-out infinite;
 }
 
+.ps-hub__pin.is-pulse .ps-hub__flag-cloth {
+  fill: #fff;
+  stroke: var(--ps-violet);
+  stroke-width: 2;
+}
+
+.ps-hub__pin.is-pulse .ps-hub__flag {
+  animation: ps-flag-pulse 0.7s ease-in-out 4;
+  filter: drop-shadow(0 0 10px rgba(221, 243, 101, 0.85)) drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.45));
+  z-index: 5;
+}
+
 .ps-hub__pin.is-done .ps-hub__flag-cloth {
   fill: #388073;
   stroke: #111;
@@ -369,6 +406,16 @@ watch(hub, () => nextTick(fitMap));
   }
 }
 
+@keyframes ps-flag-pulse {
+  0%,
+  100% {
+    transform: rotate(-6deg) scale(1);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.35);
+  }
+}
+
 .ps-hub__err {
   margin: 0;
   font-size: 0.78rem;
@@ -420,6 +467,7 @@ watch(hub, () => nextTick(fitMap));
 
 @media (prefers-reduced-motion: reduce) {
   .ps-hub__pin.is-current .ps-hub__flag,
+  .ps-hub__pin.is-pulse .ps-hub__flag,
   .ps-hub__pin:hover .ps-hub__flag,
   .ps-hub__pin:focus-visible .ps-hub__flag {
     animation: none;

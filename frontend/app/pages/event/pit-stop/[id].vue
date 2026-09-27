@@ -18,7 +18,7 @@
         Бокс ещё закрыт — 28 сентября в 09:00 МСК
       </p>
 
-      <div v-else class="pit-garage__hud">
+      <div v-else class="pit-garage__hud" :class="{ 'is-done': boxOpened }">
         <aside class="pit-garage__guide">
           <PitStopRaccoonGuide
             size="cp"
@@ -29,40 +29,46 @@
           />
         </aside>
 
-        <div class="pit-garage__tags" aria-label="Бирки шифра">
-          <img
-            class="pit-garage__tags-art"
-            src="/events/pit-stop-14/cp1/key-tags.png"
-            alt=""
-            draggable="false"
-          />
-          <code class="pit-garage__tag-code pit-garage__tag-code--mine">
-            {{ cipherHalf || '····' }}
-          </code>
-          <code class="pit-garage__tag-code pit-garage__tag-code--partner">????</code>
-          <span class="pit-garage__tag-hint">спроси в чате</span>
-        </div>
+        <template v-if="!boxOpened">
+          <div class="pit-garage__tags" aria-label="Бирки шифра">
+            <img
+              class="pit-garage__tags-art"
+              src="/events/pit-stop-14/cp1/key-tags.png"
+              alt=""
+              draggable="false"
+            />
+            <code class="pit-garage__tag-code pit-garage__tag-code--mine">
+              {{ cipherHalf || '····' }}
+            </code>
+            <code class="pit-garage__tag-code pit-garage__tag-code--partner">????</code>
+            <span class="pit-garage__tag-hint">спроси в чате</span>
+          </div>
 
-        <form class="pit-garage__lock" @submit.prevent="openBox">
-          <input
-            v-model="codeInput"
-            class="pit-garage__input"
-            autocomplete="off"
-            placeholder="····_····"
-            aria-label="Полный ключ"
-            :disabled="boxOpened"
-          />
-          <button
-            type="submit"
-            class="pit-garage__cta"
-            :disabled="boxOpened || !codeInput.trim()"
-          >
-            {{ boxOpened ? 'Гараж открыт' : 'Открыть гараж' }}
+          <form class="pit-garage__lock" @submit.prevent="openBox">
+            <input
+              v-model="codeInput"
+              class="pit-garage__input"
+              autocomplete="off"
+              placeholder="····_····"
+              aria-label="Полный ключ"
+            />
+            <button
+              type="submit"
+              class="pit-garage__cta"
+              :disabled="!codeInput.trim()"
+            >
+              Открыть гараж
+            </button>
+          </form>
+
+          <p v-if="actionError" class="pit-garage__err">{{ actionError }}</p>
+        </template>
+
+        <div v-else class="pit-garage__next">
+          <button type="button" class="pit-garage__next-btn" @click="goToNextCheckpoint">
+            К следующему заданию
           </button>
-        </form>
-
-        <p v-if="actionError" class="pit-garage__err">{{ actionError }}</p>
-        <p v-if="actionOk" class="pit-garage__ok">{{ actionOk }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -261,6 +267,11 @@ const cp1NextLabel = computed(() => 'Дальше');
 
 const onCp1Next = () => {
   if (cp1Step.value < cp1Lines.value.length - 1) cp1Step.value += 1;
+};
+
+const goToNextCheckpoint = () => {
+  const nextId = Math.min(8, id.value + 1);
+  navigateTo({ path: '/event/pit-stop', query: { pulse: String(nextId) } });
 };
 
 watch(boxOpened, (opened) => {
@@ -528,6 +539,33 @@ onUnmounted(() => {
 .pit-garage__guide :deep(.ps-raccoon__btn--ghost) {
   color: #eeeee8;
   border-color: rgba(238, 238, 232, 0.45);
+}
+.pit-garage__hud.is-done {
+  padding-top: 20px;
+}
+.pit-garage__hud.is-done .pit-garage__guide {
+  width: min(720px, 100%);
+}
+.pit-garage__hud.is-done :deep(.ps-raccoon--cp .ps-raccoon__art) {
+  width: clamp(180px, 30vmin, 280px);
+  max-height: clamp(220px, 40vmin, 320px);
+}
+.pit-garage__next {
+  width: min(420px, 100%);
+  margin: 8px auto 0;
+  display: grid;
+}
+.pit-garage__next-btn {
+  min-height: 52px;
+  border: 2px solid #111;
+  border-radius: 14px;
+  background: #ddf365;
+  color: #111;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #111;
+  touch-action: manipulation;
 }
 .pit-garage__tags {
   position: relative;
