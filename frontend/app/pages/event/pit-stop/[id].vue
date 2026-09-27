@@ -37,7 +37,7 @@
             draggable="false"
           />
           <code class="pit-garage__tag-code pit-garage__tag-code--mine">
-            VIBE_{{ cipherHalf || '····' }}
+            {{ cipherHalf || '····' }}
           </code>
           <code class="pit-garage__tag-code pit-garage__tag-code--partner">????</code>
           <span class="pit-garage__tag-hint">спроси в чате</span>
@@ -48,7 +48,7 @@
             v-model="codeInput"
             class="pit-garage__input"
             autocomplete="off"
-            placeholder="VIBE_····_····"
+            placeholder="····_····"
             aria-label="Полный ключ"
             :disabled="boxOpened"
           />
@@ -283,7 +283,7 @@ const loadMe = async () => {
     partner: { name: string } | null;
     hub: { id: number; status: string }[];
     checkpoints: { id: number; unlocked: boolean; copy: { title: string; body: string } }[];
-    player: { isRemote?: boolean } | null;
+    player: { isRemote?: boolean; role?: 'A' | 'B' | null } | null;
   }>('/api/event/pit-stop/me');
   const cp = data.checkpoints.find((c) => c.id === id.value);
   unlocked.value = Boolean(cp?.unlocked);
@@ -293,6 +293,11 @@ const loadMe = async () => {
   if (data.player?.isRemote != null) isRemote.value = data.player.isRemote;
   const hubItem = data.hub.find((h) => h.id === id.value);
   if (id.value === 1 && hubItem?.status === 'done') boxOpened.value = true;
+  // Точка 1: в поле уже своя половина кода (4 буквы), без VIBE_
+  if (id.value === 1 && data.cipherHalf && !boxOpened.value && !codeInput.value) {
+    const half = data.cipherHalf.toUpperCase();
+    codeInput.value = data.player?.role === 'B' ? `____${half}` : `${half}____`;
+  }
 };
 
 const loadPair = async () => {

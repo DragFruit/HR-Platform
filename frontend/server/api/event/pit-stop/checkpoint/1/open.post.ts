@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     if (raw !== pair.cipher) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Неверный код. Твой фрагмент: VIBE_${myCipherHalf(pair, role)}`
+        statusMessage: `Неверный код. Твой фрагмент: ${myCipherHalf(pair, role)}`
       });
     }
     const partnerId = role === 'A' ? pair.userIdB : pair.userIdA;
