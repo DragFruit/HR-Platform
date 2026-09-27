@@ -1,15 +1,15 @@
 /** Маска трассы + стартовая точка для хаба Pit Stop. */
 
 export const TRACK_IMG_SRC = '/events/pit-stop-14/track.png?v=5';
-export const TRACK_CAR_SRC = '/events/pit-stop-14/car-top.png';
+export const TRACK_CAR_SRC = '/events/pit-stop-14/car-top.png?v=2';
 export const TRACK_W = 1280;
 export const TRACK_H = 720;
 
-/** Перед флагом 01, против часовой (с пина 8 вверх к 1). % от карты. */
-export const TRACK_START = { left: 30.2, top: 26.4, angleDeg: -8 };
+/** Перед флагом 01, на верхней горизонтали. % от карты. */
+export const TRACK_START = { left: 31.9, top: 25.2, angleDeg: 0 };
 
-/** Линия старта чуть южнее машинки. */
-export const TRACK_START_LINE = { left: 30.2, top: 28.6, widthPct: 7.2, angleDeg: 82 };
+/** Линия старта поперёк асфальта (горизонталь на горизонтальном участке). */
+export const TRACK_START_LINE = { left: 31.9, top: 27.8, widthPct: 10.8, angleDeg: 0 };
 
 const LUM_TRACK_MIN = 55;
 
@@ -77,7 +77,6 @@ export function clampCarToTrack(
   to: { left: number; top: number }
 ): { left: number; top: number } {
   if (carFitsOnTrack(mask, to.left, to.top)) return to;
-  // скольжение по осям
   const xOnly = { left: to.left, top: from.top };
   if (carFitsOnTrack(mask, xOnly.left, xOnly.top)) return xOnly;
   const yOnly = { left: from.left, top: to.top };

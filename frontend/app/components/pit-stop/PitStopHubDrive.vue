@@ -222,21 +222,27 @@ onBeforeUnmount(() => {
 }
 .ps-drive__start {
   position: absolute;
-  height: 10px;
+  height: 9px;
   border: 1.5px solid #111;
-  border-radius: 2px;
-  background: repeating-conic-gradient(#111 0% 25%, #eeeee8 0% 50%) 0 0 / 10px 10px;
-  box-shadow: 2px 2px 0 rgba(221, 243, 101, 0.55);
+  border-radius: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    #111 0 7px,
+    #eeeee8 7px 14px
+  );
+  box-shadow: 0 0 0 1px rgba(221, 243, 101, 0.35);
   pointer-events: none;
+  z-index: 2;
 }
 .ps-drive__car {
   position: absolute;
-  width: clamp(28px, 4.2vmin, 44px);
-  height: clamp(28px, 4.2vmin, 44px);
+  width: clamp(34px, 5vmin, 52px);
+  height: clamp(34px, 5vmin, 52px);
   pointer-events: none;
   filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.55));
   will-change: left, top, transform;
   z-index: 4;
+  background: transparent;
 }
 .ps-drive__car img {
   display: block;
@@ -244,6 +250,7 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: contain;
   user-select: none;
+  background: transparent;
 }
 .ps-drive__stick {
   position: fixed;
