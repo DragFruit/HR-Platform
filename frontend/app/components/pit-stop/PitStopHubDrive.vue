@@ -347,13 +347,10 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-@media (min-width: 900px) {
+/* Стик только на телефоне/таче; на ПК/ноуте — WASD */
+@media (hover: hover) and (pointer: fine) {
   .ps-drive__stick {
-    opacity: 0.72;
-  }
-  .ps-drive__stick:hover,
-  .ps-drive__stick.is-active {
-    opacity: 1;
+    display: none;
   }
 }
 </style>
