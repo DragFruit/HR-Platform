@@ -1,21 +1,5 @@
 <template>
   <div class="ps-drive" aria-label="Управление болидом">
-    <img
-      v-for="d in decor"
-      :key="d.id"
-      class="ps-drive__decor"
-      :src="d.src"
-      alt=""
-      draggable="false"
-      :style="{
-        left: `${d.left}%`,
-        top: `${d.top}%`,
-        width: `${d.widthPct}%`,
-        zIndex: d.z ?? 1,
-        transform: `translate(-50%, -50%) rotate(${d.rotate ?? 0}deg)${d.flipX ? ' scaleX(-1)' : ''}`
-      }"
-    />
-
     <div
       class="ps-drive__start"
       :style="{
@@ -64,11 +48,9 @@ import {
   loadTrackMask,
   type TrackMask
 } from '~/events/pit-stop-14/trackDrive';
-import { TRACK_DECOR } from '~/events/pit-stop-14/trackDecor';
 
 const carSrc = TRACK_CAR_SRC;
 const startLine = TRACK_START_LINE;
-const decor = TRACK_DECOR;
 
 const car = reactive({
   left: TRACK_START.left,
@@ -97,7 +79,6 @@ let raf = 0;
 let lastTs = 0;
 let stickPtr: number | null = null;
 
-/** %/с² и лимиты скорости */
 const ACCEL = 28;
 const MAX_SPEED = 14;
 const FRICTION = 9;
@@ -187,7 +168,6 @@ const tick = (ts: number) => {
     vel.y += iy * ACCEL * dt;
   }
 
-  // трение
   const speed = Math.hypot(vel.x, vel.y);
   if (speed > 0.001) {
     const decel = Math.min(speed, FRICTION * dt);
@@ -198,7 +178,6 @@ const tick = (ts: number) => {
     vel.y = 0;
   }
 
-  // clamp max speed
   const sp2 = Math.hypot(vel.x, vel.y);
   if (sp2 > MAX_SPEED) {
     vel.x = (vel.x / sp2) * MAX_SPEED;
@@ -226,10 +205,8 @@ const tick = (ts: number) => {
       vel.x *= -BOUNCE;
       vel.y *= 0.85;
     } else {
-      // оба направления упёрлись — отскок по нормали скорости
       vel.x *= -BOUNCE;
       vel.y *= -BOUNCE;
-      // чуть отодвинуть внутрь трассы
       const back = 0.15;
       const bx = car.left - Math.sign(vel.x || 1) * back;
       const by = car.top - Math.sign(vel.y || 1) * back;
@@ -292,14 +269,6 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 3;
   pointer-events: none;
-}
-.ps-drive__decor {
-  position: absolute;
-  height: auto;
-  max-width: none;
-  pointer-events: none;
-  user-select: none;
-  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.4));
 }
 .ps-drive__start {
   position: absolute;
