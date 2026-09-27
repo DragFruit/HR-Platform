@@ -222,13 +222,13 @@ onBeforeUnmount(() => {
 }
 .ps-drive__start {
   position: absolute;
-  height: 9px;
+  height: 8px;
   border: 1.5px solid #111;
   border-radius: 1px;
   background: repeating-linear-gradient(
     90deg,
-    #111 0 7px,
-    #eeeee8 7px 14px
+    #111 0 6px,
+    #eeeee8 6px 12px
   );
   box-shadow: 0 0 0 1px rgba(221, 243, 101, 0.35);
   pointer-events: none;

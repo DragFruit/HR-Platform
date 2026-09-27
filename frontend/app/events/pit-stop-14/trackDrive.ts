@@ -8,8 +8,8 @@ export const TRACK_H = 720;
 /** Перед флагом 01, на верхней горизонтали. % от карты. */
 export const TRACK_START = { left: 31.9, top: 25.2, angleDeg: 0 };
 
-/** Линия старта поперёк асфальта (горизонталь на горизонтальном участке). */
-export const TRACK_START_LINE = { left: 31.9, top: 27.8, widthPct: 10.8, angleDeg: 0 };
+/** Линия старта поперёк полотна (вертикаль на горизонтальном участке). */
+export const TRACK_START_LINE = { left: 31.9, top: 24.7, widthPct: 6.4, angleDeg: 90 };
 
 const LUM_TRACK_MIN = 55;
 
