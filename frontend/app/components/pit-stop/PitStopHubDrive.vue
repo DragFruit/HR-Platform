@@ -1,5 +1,21 @@
 <template>
   <div class="ps-drive" aria-label="Управление болидом">
+    <img
+      v-for="d in decor"
+      :key="d.id"
+      class="ps-drive__decor"
+      :src="d.src"
+      alt=""
+      draggable="false"
+      :style="{
+        left: `${d.left}%`,
+        top: `${d.top}%`,
+        width: `${d.widthPct}%`,
+        zIndex: d.z ?? 1,
+        transform: `translate(-50%, -50%) rotate(${d.rotate ?? 0}deg)${d.flipX ? ' scaleX(-1)' : ''}`
+      }"
+    />
+
     <div
       class="ps-drive__start"
       :style="{
@@ -45,19 +61,22 @@ import {
   TRACK_START,
   TRACK_START_LINE,
   carFitsOnTrack,
-  clampCarToTrack,
   loadTrackMask,
   type TrackMask
 } from '~/events/pit-stop-14/trackDrive';
+import { TRACK_DECOR } from '~/events/pit-stop-14/trackDecor';
 
 const carSrc = TRACK_CAR_SRC;
 const startLine = TRACK_START_LINE;
+const decor = TRACK_DECOR;
 
 const car = reactive({
   left: TRACK_START.left,
   top: TRACK_START.top,
   angleDeg: TRACK_START.angleDeg
 });
+
+const vel = reactive({ x: 0, y: 0 });
 
 const keys = reactive({
   up: false,
@@ -78,7 +97,11 @@ let raf = 0;
 let lastTs = 0;
 let stickPtr: number | null = null;
 
-const SPEED = 9.5; // % карты в секунду
+/** %/с² и лимиты скорости */
+const ACCEL = 28;
+const MAX_SPEED = 14;
+const FRICTION = 9;
+const BOUNCE = 0.42;
 
 const onKey = (e: KeyboardEvent, down: boolean) => {
   const k = e.key.toLowerCase();
@@ -148,29 +171,79 @@ const tick = (ts: number) => {
   lastTs = ts;
   if (!dt) return;
 
-  let mx = 0;
-  let my = 0;
-  if (keys.left) mx -= 1;
-  if (keys.right) mx += 1;
-  if (keys.up) my -= 1;
-  if (keys.down) my += 1;
-  mx += stickVec.x;
-  my += stickVec.y;
+  let ix = 0;
+  let iy = 0;
+  if (keys.left) ix -= 1;
+  if (keys.right) ix += 1;
+  if (keys.up) iy -= 1;
+  if (keys.down) iy += 1;
+  ix += stickVec.x;
+  iy += stickVec.y;
+  const inputMag = Math.hypot(ix, iy);
+  if (inputMag > 0.08) {
+    ix /= inputMag;
+    iy /= inputMag;
+    vel.x += ix * ACCEL * dt;
+    vel.y += iy * ACCEL * dt;
+  }
 
-  const mag = Math.hypot(mx, my);
-  if (mag < 0.08) return;
-  mx /= mag;
-  my /= mag;
+  // трение
+  const speed = Math.hypot(vel.x, vel.y);
+  if (speed > 0.001) {
+    const decel = Math.min(speed, FRICTION * dt);
+    vel.x -= (vel.x / speed) * decel;
+    vel.y -= (vel.y / speed) * decel;
+  } else {
+    vel.x = 0;
+    vel.y = 0;
+  }
 
-  const step = SPEED * dt;
-  const next = clampCarToTrack(
-    mask,
-    { left: car.left, top: car.top },
-    { left: car.left + mx * step, top: car.top + my * step }
-  );
-  car.left = next.left;
-  car.top = next.top;
-  car.angleDeg = (Math.atan2(mx, -my) * 180) / Math.PI;
+  // clamp max speed
+  const sp2 = Math.hypot(vel.x, vel.y);
+  if (sp2 > MAX_SPEED) {
+    vel.x = (vel.x / sp2) * MAX_SPEED;
+    vel.y = (vel.y / sp2) * MAX_SPEED;
+  }
+
+  if (Math.hypot(vel.x, vel.y) < 0.05 && inputMag < 0.08) return;
+
+  const tryLeft = car.left + vel.x * dt;
+  const tryTop = car.top + vel.y * dt;
+
+  const okFull = carFitsOnTrack(mask, tryLeft, tryTop);
+  if (okFull) {
+    car.left = tryLeft;
+    car.top = tryTop;
+  } else {
+    const okX = carFitsOnTrack(mask, tryLeft, car.top);
+    const okY = carFitsOnTrack(mask, car.left, tryTop);
+    if (okX && !okY) {
+      car.left = tryLeft;
+      vel.y *= -BOUNCE;
+      vel.x *= 0.85;
+    } else if (okY && !okX) {
+      car.top = tryTop;
+      vel.x *= -BOUNCE;
+      vel.y *= 0.85;
+    } else {
+      // оба направления упёрлись — отскок по нормали скорости
+      vel.x *= -BOUNCE;
+      vel.y *= -BOUNCE;
+      // чуть отодвинуть внутрь трассы
+      const back = 0.15;
+      const bx = car.left - Math.sign(vel.x || 1) * back;
+      const by = car.top - Math.sign(vel.y || 1) * back;
+      if (carFitsOnTrack(mask, bx, car.top)) car.left = bx;
+      if (carFitsOnTrack(mask, car.left, by)) car.top = by;
+    }
+  }
+
+  const moveSp = Math.hypot(vel.x, vel.y);
+  if (moveSp > 0.4) {
+    car.angleDeg = (Math.atan2(vel.x, -vel.y) * 180) / Math.PI;
+  } else if (inputMag > 0.08) {
+    car.angleDeg = (Math.atan2(ix, -iy) * 180) / Math.PI;
+  }
 };
 
 onMounted(async () => {
@@ -198,7 +271,7 @@ onMounted(async () => {
       }
     }
   } catch {
-    /* без маски машинка стоит на старте */
+    /* без маски */
   }
   raf = requestAnimationFrame(tick);
 });
@@ -220,16 +293,20 @@ onBeforeUnmount(() => {
   z-index: 3;
   pointer-events: none;
 }
+.ps-drive__decor {
+  position: absolute;
+  height: auto;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.4));
+}
 .ps-drive__start {
   position: absolute;
   height: 8px;
   border: 1.5px solid #111;
   border-radius: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    #111 0 6px,
-    #eeeee8 6px 12px
-  );
+  background: repeating-linear-gradient(90deg, #111 0 6px, #eeeee8 6px 12px);
   box-shadow: 0 0 0 1px rgba(221, 243, 101, 0.35);
   pointer-events: none;
   z-index: 2;
@@ -303,7 +380,6 @@ onBeforeUnmount(() => {
 
 @media (min-width: 900px) {
   .ps-drive__stick {
-    /* на десктопе тоже доступен, но меньше мешает */
     opacity: 0.72;
   }
   .ps-drive__stick:hover,
