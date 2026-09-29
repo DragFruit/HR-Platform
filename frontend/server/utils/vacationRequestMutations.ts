@@ -325,8 +325,8 @@ export async function patchVacationRequest(
       }
     }
 
-    // HR/админ тоже не откатывают согласованную заявку в pending через старую вкладку —
-    // только approve/reject (или правка дат с сохранением статуса).
+    // HR/админ не откатывают согласованную заявку в pending через старую вкладку
+    // одним только status=pending (без смены дат). Смена дат сотрудником — ниже.
     if (changesDecision && elevated && patch.status === 'pending' && found.item.status !== 'pending') {
       throw createError({
         statusCode: 409,
@@ -405,16 +405,32 @@ export async function patchVacationRequest(
       }
     }
 
+    // Сотрудник поменял даты → заявка снова на согласование руководителю (рыжий pending),
+    // даже если раньше уже была approved. HR/админ при правке чужих дат статус не трогаем.
+    if (changesDates && !decision && !elevated && previousRequest) {
+      const datesActuallyChanged =
+        found.item.start !== previousRequest.start || found.item.end !== previousRequest.end;
+      if (
+        datesActuallyChanged &&
+        (previousRequest.status === 'approved' || previousRequest.status === 'pending')
+      ) {
+        found.item.status = 'pending';
+        found.item.approval_step = owner
+          ? initialApprovalStep(owner as VacationEmployeeRef, found.item.employee)
+          : 'manager';
+      }
+    }
+
     nextRequest = { ...found.item };
     return syncApprovedVacationsToBitrix(previous, state);
   });
 
-  // Отклонили ранее согласованный отпуск — пальму в Bitrix снимаем (как при удалении).
+  // Сняли согласование (reject или смена дат → снова pending) — пальму в Bitrix убираем.
   if (
     previousRequest &&
     nextRequest &&
     previousRequest.status === 'approved' &&
-    nextRequest.status === 'rejected' &&
+    (nextRequest.status === 'rejected' || nextRequest.status === 'pending') &&
     previousRequest.bitrix_absence_id
   ) {
     try {
@@ -441,7 +457,10 @@ export async function patchVacationRequest(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[bitrix-vacation] remove on reject failed for request #${id}:`, message);
+      console.error(
+        `[bitrix-vacation] remove on unapprove failed for request #${id}:`,
+        message
+      );
       try {
         const employee = await findEmployeeByName(previousRequest.employee);
         await createBitrixVacationSyncFailedNotification({
@@ -451,11 +470,11 @@ export async function patchVacationRequest(
           request_id: previousRequest.id,
           start: previousRequest.start,
           end: previousRequest.end,
-          error: `Не удалось снять отметку об отпуске в Bitrix при отклонении заявки: ${message}`
+          error: `Не удалось снять отметку об отпуске в Bitrix при снятии согласования: ${message}`
         });
       } catch (notifyError) {
         console.error(
-          '[bitrix-vacation] admin notify on reject failed:',
+          '[bitrix-vacation] admin notify on unapprove failed:',
           notifyError instanceof Error ? notifyError.message : String(notifyError)
         );
       }
