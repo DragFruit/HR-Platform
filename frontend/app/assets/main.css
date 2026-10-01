@@ -18247,11 +18247,14 @@ button.button {
   max-width: 96%;
 }
 
+/* Советы: без внутреннего скролла (заказчик). Clearance под арт — без overflow:auto. */
 .pvm-slide--pace .pvm-copy,
 .pvm-slide--fresh .pvm-copy,
 .pvm-slide--weekend .pvm-copy,
 .pvm-slide--triggers .pvm-copy {
   max-width: 96%;
+  flex: 0 0 auto;
+  overflow: hidden;
   padding-bottom: var(--pvm-art-clearance);
 }
 
@@ -18260,8 +18263,15 @@ button.button {
   padding-bottom: 38%;
 }
 
+/* tip2 (fresh): меньше phantom-padding — раньше 40% + overflow:auto давали полосу скролла */
 .pvm-slide--fresh .pvm-copy {
-  padding-bottom: 40%;
+  padding-bottom: 30%;
+}
+
+.pvm-slide--fresh .pvm-text {
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .pvm-text {
