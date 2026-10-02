@@ -10,13 +10,23 @@
           height="720"
           draggable="false"
         />
-        <PitStopHubDrive :color="color" :best-ms="myBestMs" @lap="onLap" />
+        <PitStopHubDrive
+          :color="color"
+          :best-ms="myBestMs"
+          :paused="showIntro"
+          @lap="onLap"
+          @finish="onFinish"
+        />
+        <PitStopFinishParty ref="partyRef" />
       </div>
     </div>
 
     <aside class="ps-hub__side">
       <section class="ps-garage" aria-labelledby="ps-garage-title">
-        <h2 id="ps-garage-title" class="ps-garage__title">Гараж</h2>
+        <div class="ps-garage__head">
+          <h2 id="ps-garage-title" class="ps-garage__title">Гараж</h2>
+          <button type="button" class="ps-garage__help" @click="openIntro">Енот</button>
+        </div>
         <div class="ps-garage__cars" role="radiogroup" aria-label="Цвет болида">
           <button
             v-for="c in CAR_COLORS"
@@ -40,7 +50,14 @@
           <div class="ps-board__checker" aria-hidden="true" />
           <h2 id="ps-board-title" class="ps-board__title">Тайминг</h2>
           <p class="ps-board__sub">Лучший круг · {{ board.total }} {{ pilotsWord(board.total) }}</p>
+          <p v-if="board.publishedAt" class="ps-board__sched">
+            Обновлено в {{ mskTime(board.publishedAt) }} · следующее в {{ mskTime(board.nextAt) }}
+          </p>
         </header>
+
+        <p v-if="pendingBest" class="ps-board__pending">
+          Твой рекорд {{ formatLapMs(pendingBest) }} попадёт в таблицу в {{ mskTime(board.nextAt) }}
+        </p>
 
         <ol v-if="board.top.length" class="ps-board__list">
           <li
@@ -78,6 +95,22 @@
         <p v-if="loadError" class="ps-board__err">{{ loadError }}</p>
       </section>
     </aside>
+
+    <div v-if="showIntro" class="ps-hub__intro" role="dialog" aria-modal="true" aria-label="Енот объясняет правила">
+      <div class="ps-hub__intro-box">
+        <PitStopRaccoonGuide
+          size="hub"
+          :line="introStepData.line"
+          :art-src="introStepData.art"
+          :show-nav="true"
+          :can-skip="introStep < RACCOON_RACE_INTRO.length - 1"
+          :next-label="introStep >= RACCOON_RACE_INTRO.length - 1 ? 'Поехали!' : 'Дальше'"
+          @next="onIntroNext"
+          @skip="dismissIntro"
+        />
+        <p class="ps-hub__intro-step">{{ introStep + 1 }} / {{ RACCOON_RACE_INTRO.length }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -91,6 +124,7 @@ import {
   isCarColorId,
   type CarColorId
 } from '~/events/pit-stop-14/trackDrive';
+import { RACCOON_RACE_INTRO, RACCOON_RACE_INTRO_STORAGE_KEY } from '~/events/pit-stop-14/raccoonLines';
 
 definePageMeta({ layout: 'default' });
 
@@ -101,19 +135,69 @@ type BoardRow = {
   department: string;
   bestMs: number;
   color: string;
-  laps: number;
   isMe: boolean;
 };
+
+type Board = {
+  top: BoardRow[];
+  me: BoardRow | null;
+  total: number;
+  myLiveBestMs: number | null;
+  publishedAt: string;
+  nextAt: string;
+};
+
+const { user } = useAuth();
+const partyRef = ref<{ play: (name: string) => void } | null>(null);
+
+const showIntro = ref(false);
+const introStep = ref(0);
+const introStepData = computed(() => RACCOON_RACE_INTRO[introStep.value] ?? RACCOON_RACE_INTRO[0]!);
+
+const openIntro = () => {
+  for (const s of RACCOON_RACE_INTRO) new Image().src = s.art;
+  introStep.value = 0;
+  showIntro.value = true;
+};
+
+const dismissIntro = () => {
+  showIntro.value = false;
+  localStorage.setItem(RACCOON_RACE_INTRO_STORAGE_KEY, '1');
+};
+
+const onIntroNext = () => {
+  if (introStep.value >= RACCOON_RACE_INTRO.length - 1) dismissIntro();
+  else introStep.value += 1;
+};
+
+/** «Фамилия Имя» → имя; одно слово — как есть. */
+const firstName = (full: string | undefined) => {
+  const parts = (full || '').trim().split(/\s+/).filter(Boolean);
+  return parts[1] ?? parts[0] ?? 'Пилот';
+};
+
+const onFinish = () => {
+  partyRef.value?.play(firstName(user.value?.name));
+};
+
+const mskTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
 
 const TRACK_AR = 1280 / 720;
 
 const stageEl = ref<HTMLElement | null>(null);
 const mapStyle = ref<Record<string, string>>({});
 const color = ref<CarColorId>('violet');
-const board = ref<{ top: BoardRow[]; me: BoardRow | null; total: number }>({ top: [], me: null, total: 0 });
+const board = ref<Board>({ top: [], me: null, total: 0, myLiveBestMs: null, publishedAt: '', nextAt: '' });
 const loadError = ref('');
 
-const myBestMs = computed(() => board.value.me?.bestMs ?? null);
+const myBestMs = computed(() => board.value.myLiveBestMs);
+const pendingBest = computed(() => {
+  const live = board.value.myLiveBestMs;
+  if (live == null) return null;
+  const shown = board.value.me?.bestMs;
+  return shown == null || live < shown ? live : null;
+});
 const leaderMs = computed(() => board.value.top[0]?.bestMs ?? 0);
 
 const safeColor = (c: string): CarColorId => (isCarColorId(c) ? c : 'violet');
@@ -148,15 +232,14 @@ const loadBoard = async () => {
 
 const onLap = async (ms: number) => {
   try {
-    await $fetch('/api/event/pit-stop/race/lap', {
+    const res = await $fetch<{ bestMs: number }>('/api/event/pit-stop/race/lap', {
       method: 'POST',
       body: { ms, color: color.value }
     });
+    board.value.myLiveBestMs = res.bestMs;
   } catch {
     loadError.value = 'Круг не сохранился — проверь связь';
-    return;
   }
-  await loadBoard();
 };
 
 const fitMap = () => {
@@ -183,6 +266,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
   if (isCarColorId(saved)) color.value = saved;
+  if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
   void loadBoard();
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible') void loadBoard();
@@ -272,8 +356,31 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   box-shadow: 4px 4px 0 var(--ps-lime);
 }
+.ps-garage__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ps-garage__help {
+  padding: 3px 10px;
+  border: 2px solid #111;
+  border-radius: 999px;
+  background: var(--ps-violet);
+  color: #fff;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #111;
+}
+.ps-garage__help:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #111;
+}
 .ps-garage__title {
-  margin: 0 0 8px;
+  margin: 0;
   font-family: Unbounded, 'Golos Text', sans-serif;
   font-size: 0.78rem;
   font-weight: 800;
@@ -355,6 +462,20 @@ onBeforeUnmount(() => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(238, 238, 232, 0.55);
+}
+.ps-board__sched {
+  margin: 4px 0 0;
+  font-size: 0.62rem;
+  color: rgba(238, 238, 232, 0.45);
+}
+.ps-board__pending {
+  margin: 0;
+  padding: 7px 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #111;
+  background: var(--ps-lime);
 }
 .ps-board__list {
   flex: 1 1 auto;
@@ -462,7 +583,43 @@ onBeforeUnmount(() => {
   background: #ff6b5b;
 }
 
+.ps-hub__intro {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(17, 17, 17, 0.72);
+}
+.ps-hub__intro-box {
+  position: relative;
+  width: min(920px, 100%);
+}
+.ps-hub__intro-box :deep(.ps-raccoon--hub .ps-raccoon__art) {
+  width: clamp(180px, 30vmin, 320px);
+  max-height: clamp(220px, 52vmin, 440px);
+}
+.ps-hub__intro-box :deep(.ps-raccoon__bubble) {
+  font-size: clamp(0.84rem, 1.6vw, 1rem);
+  line-height: 1.5;
+}
+.ps-hub__intro-step {
+  position: absolute;
+  right: 4px;
+  top: -22px;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(238, 238, 232, 0.6);
+}
+
 @media (max-width: 960px) {
+  .ps-hub__intro {
+    position: fixed;
+    overflow-y: auto;
+  }
   .ps-hub {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;

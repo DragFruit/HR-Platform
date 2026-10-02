@@ -15,7 +15,7 @@
 
     <div class="ps-drive__hud" aria-live="polite">
       <div class="ps-drive__hud-row is-main">
-        <span class="ps-drive__hud-label">Круг</span>
+        <span class="ps-drive__hud-label">Круг {{ raceLap }}/{{ RACE_LAPS }}</span>
         <span class="ps-drive__hud-time">{{ formatLapMs(lapStartTs == null ? null : currentMs) }}</span>
       </div>
       <div class="ps-drive__hud-row">
@@ -40,6 +40,7 @@
     <button type="button" class="ps-drive__reset" @click="resetCar">На старт</button>
 
     <div
+      v-show="!paused"
       ref="stickRoot"
       class="ps-drive__stick"
       :class="{ 'is-active': stickActive }"
@@ -63,6 +64,7 @@ import {
   LAP_ZONES,
   LAP_ZONE_R,
   MIN_LAP_MS,
+  RACE_LAPS,
   START_LINE,
   TRACK_H,
   TRACK_SPAWN,
@@ -78,9 +80,19 @@ import {
 const props = defineProps<{
   color: CarColorId;
   bestMs: number | null;
+  paused?: boolean;
 }>();
 
-const emit = defineEmits<{ lap: [ms: number] }>();
+const emit = defineEmits<{ lap: [ms: number]; finish: [bestLapMs: number] }>();
+
+const lapsDone = ref(0);
+let raceBestMs: number | null = null;
+const raceLap = computed(() => Math.min(RACE_LAPS, lapsDone.value + 1));
+
+const resetRace = () => {
+  lapsDone.value = 0;
+  raceBestMs = null;
+};
 
 const carImg = computed(() => carSrc(props.color));
 
@@ -138,11 +150,13 @@ const resetCar = () => {
   car.angleDeg = TRACK_SPAWN.angleDeg;
   speed = 0;
   resetLap();
+  resetRace();
 };
 
 const onKey = (e: KeyboardEvent, down: boolean) => {
   const t = e.target as HTMLElement | null;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (props.paused && down) return;
   const k = e.key.toLowerCase();
   if (k === 'arrowup' || k === 'w' || k === 'ц') keys.up = down;
   else if (k === 'arrowdown' || k === 's' || k === 'ы') keys.down = down;
@@ -223,16 +237,27 @@ const checkLine = (px: number, py: number, nx: number, ny: number, now: number) 
       if (ms >= MIN_LAP_MS) {
         lastLapMs.value = ms;
         const record = props.bestMs == null || ms < props.bestMs;
-        showFlash(record ? 'record' : 'ok', record ? `Рекорд! ${formatLapMs(ms)}` : formatLapMs(ms));
+        raceBestMs = raceBestMs == null ? ms : Math.min(raceBestMs, ms);
+        lapsDone.value += 1;
         emit('lap', ms);
+        if (lapsDone.value >= RACE_LAPS) {
+          showFlash('record', `Финиш! Лучший круг ${formatLapMs(raceBestMs)}`, 3200);
+          emit('finish', raceBestMs);
+          resetRace();
+        } else {
+          showFlash(record ? 'record' : 'ok', record ? `Рекорд! ${formatLapMs(ms)}` : formatLapMs(ms));
+        }
       }
+    } else if (lapStartTs.value != null) {
+      resetRace();
     }
     zonesHit.value = LAP_ZONES.map(() => false);
     lapStartTs.value = now;
     currentMs.value = 0;
   } else if (px >= START_LINE.x && nx < START_LINE.x) {
-    if (lapStartTs.value != null) showFlash('bad', 'Против хода — круг не засчитан');
+    if (lapStartTs.value != null) showFlash('bad', 'Против хода — заезд сначала');
     resetLap();
+    resetRace();
   }
 };
 
@@ -256,6 +281,11 @@ const tick = (ts: number) => {
     const d = angleDiff(target, car.angleDeg);
     steer = Math.max(-1, Math.min(1, d / 35));
     throttle = Math.abs(d) > 120 ? 0.35 : Math.min(1, stickMag * 1.15);
+  }
+
+  if (props.paused) {
+    throttle = 0;
+    steer = 0;
   }
 
   if (!started.value && (throttle !== 0 || steer !== 0)) started.value = true;

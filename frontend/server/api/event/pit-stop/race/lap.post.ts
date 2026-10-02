@@ -1,5 +1,5 @@
 import { requireVbiSession } from '../../../../utils/session';
-import { isValidLapMs, readRaceRecords, submitLap } from '../../../../utils/pitStopRaceStore';
+import { isValidLapMs, submitLap } from '../../../../utils/pitStopRaceStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -14,7 +14,5 @@ export default defineEventHandler(async (event) => {
     ms: body.ms,
     color: body.color
   });
-  const records = await readRaceRecords();
-  const rank = records.findIndex((r) => r.userId === session.id) + 1;
-  return { bestMs: record.bestMs, laps: record.laps, improved, rank };
+  return { bestMs: record.bestMs, laps: record.laps, improved };
 });
