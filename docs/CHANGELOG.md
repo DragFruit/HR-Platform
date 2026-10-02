@@ -2,6 +2,19 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-10-02
+
+### Pit Stop 14 — гонки на трассе вместо квеста
+
+- Хаб `/event/pit-stop` теперь просто заезды: новая картинговая трасса (трибуны, боксы, покрышки, поребрики), болид с рулём (газ/тормоз + поворот), таймер круга.
+- Круг засчитывается при пересечении линии старта на восток, если проехал все 5 контрольных зон; против хода — круг сбрасывается. Сервер не примет круг быстрее 8 с.
+- Гараж: 7 цветов болида (`localStorage` `vbi-pit-stop-car-color-v1`).
+- Таблица «Тайминг» — лучший круг каждого сотрудника, отставание от лидера.
+- Флажки чек-поинтов, енот и join/me с хаба убраны; код квеста (`[id].vue`, `checkpoint/*`, `pitStopStore`) остался в репозитории.
+- Файлы: `pages/event/pit-stop/index.vue`, `components/pit-stop/PitStopHubDrive.vue`, `events/pit-stop-14/trackDrive.ts`, `server/utils/pitStopRaceStore.ts`, `server/api/event/pit-stop/race/{lap.post,leaderboard.get}.ts`, `public/events/pit-stop-14/{track-race.jpg,track-race-mask.png,cars/*}`.
+- Данные: `server/data/pit-stop-race.json` (runtime, в git не хранится).
+- Проверка: `/event/pit-stop` → W/↑ — газ, A/D — руль, проехать круг → время в «Тайминге».
+
 ## 2026-10-01
 
 ### Памятка после отпуска — без скролла на советах

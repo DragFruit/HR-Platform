@@ -1,26 +1,43 @@
 <template>
-  <div class="ps-drive" aria-label="Управление болидом">
-    <div
-      class="ps-drive__start"
-      :style="{
-        left: `${startLine.left}%`,
-        top: `${startLine.top}%`,
-        width: `${startLine.widthPct}%`,
-        transform: `translate(-50%, -50%) rotate(${startLine.angleDeg}deg)`
-      }"
-      aria-hidden="true"
-    />
-
+  <div class="ps-drive" aria-label="Заезд по трассе">
     <div
       class="ps-drive__car"
       :style="{
-        left: `${car.left}%`,
-        top: `${car.top}%`,
+        left: `${(car.x / TRACK_W) * 100}%`,
+        top: `${(car.y / TRACK_H) * 100}%`,
+        width: `${((CAR_WIDTH * CAR_SPRITE_SCALE) / TRACK_W) * 100}%`,
+        height: `${((CAR_LEN * CAR_SPRITE_SCALE) / TRACK_H) * 100}%`,
         transform: `translate(-50%, -50%) rotate(${car.angleDeg}deg)`
       }"
     >
-      <img :src="carSrc" alt="" draggable="false" />
+      <img :src="carImg" alt="" draggable="false" />
     </div>
+
+    <div class="ps-drive__hud" aria-live="polite">
+      <div class="ps-drive__hud-row is-main">
+        <span class="ps-drive__hud-label">Круг</span>
+        <span class="ps-drive__hud-time">{{ formatLapMs(lapStartTs == null ? null : currentMs) }}</span>
+      </div>
+      <div class="ps-drive__hud-row">
+        <span class="ps-drive__hud-label">Прошлый</span>
+        <span class="ps-drive__hud-time">{{ formatLapMs(lastLapMs) }}</span>
+      </div>
+      <div class="ps-drive__hud-row is-best">
+        <span class="ps-drive__hud-label">Рекорд</span>
+        <span class="ps-drive__hud-time">{{ formatLapMs(bestMs) }}</span>
+      </div>
+      <div class="ps-drive__hud-zones" aria-hidden="true">
+        <i v-for="(z, i) in zonesHit" :key="i" :class="{ 'is-hit': z }" />
+      </div>
+    </div>
+
+    <p v-if="flash" class="ps-drive__flash" :class="`is-${flash.kind}`">{{ flash.text }}</p>
+    <p v-else-if="!started" class="ps-drive__hint">
+      <span class="ps-drive__hint-desk">W / ↑ — газ · A D / ← → — руль · R — на старт</span>
+      <span class="ps-drive__hint-touch">Тяни круг — болид едет туда</span>
+    </p>
+
+    <button type="button" class="ps-drive__reset" @click="resetCar">На старт</button>
 
     <div
       ref="stickRoot"
@@ -34,71 +51,106 @@
         :style="{ transform: `translate(${stickX}px, ${stickY}px)` }"
         aria-hidden="true"
       />
-      <span class="ps-drive__stick-hint">ездить</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import {
-  TRACK_CAR_SRC,
-  TRACK_START,
-  TRACK_START_LINE,
+  CAR_LEN,
+  CAR_SPRITE_SCALE,
+  CAR_WIDTH,
+  LAP_ZONES,
+  LAP_ZONE_R,
+  MIN_LAP_MS,
+  START_LINE,
+  TRACK_H,
+  TRACK_SPAWN,
+  TRACK_W,
   carFitsOnTrack,
+  carSrc,
+  formatLapMs,
   loadTrackMask,
+  type CarColorId,
   type TrackMask
 } from '~/events/pit-stop-14/trackDrive';
 
-const carSrc = TRACK_CAR_SRC;
-const startLine = TRACK_START_LINE;
+const props = defineProps<{
+  color: CarColorId;
+  bestMs: number | null;
+}>();
 
-const car = reactive({
-  left: TRACK_START.left,
-  top: TRACK_START.top,
-  angleDeg: TRACK_START.angleDeg
-});
+const emit = defineEmits<{ lap: [ms: number] }>();
 
-const vel = reactive({ x: 0, y: 0 });
+const carImg = computed(() => carSrc(props.color));
 
-const keys = reactive({
-  up: false,
-  down: false,
-  left: false,
-  right: false
-});
+const car = reactive({ x: TRACK_SPAWN.x, y: TRACK_SPAWN.y, angleDeg: TRACK_SPAWN.angleDeg });
+let speed = 0;
+
+const keys = reactive({ up: false, down: false, left: false, right: false });
 
 const stickRoot = ref<HTMLElement | null>(null);
 const stickActive = ref(false);
 const stickX = ref(0);
 const stickY = ref(0);
-const stickVec = reactive({ x: 0, y: 0 });
+const stickVec = { x: 0, y: 0 };
 const STICK_R = 42;
+let stickPtr: number | null = null;
+
+const started = ref(false);
+const lapStartTs = ref<number | null>(null);
+const currentMs = ref(0);
+const lastLapMs = ref<number | null>(null);
+const zonesHit = ref<boolean[]>(LAP_ZONES.map(() => false));
+const flash = ref<{ kind: 'ok' | 'bad' | 'record'; text: string } | null>(null);
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
 
 let mask: TrackMask | null = null;
 let raf = 0;
 let lastTs = 0;
-let stickPtr: number | null = null;
 
-const ACCEL = 28;
-const MAX_SPEED = 14;
-const FRICTION = 9;
-const BOUNCE = 0.42;
+/** px/с и рад/с в координатах трассы 1280×720 */
+const MAX_SPEED = 290;
+const MAX_REVERSE = 90;
+const ACCEL = 260;
+const BRAKE = 520;
+const DRAG = 150;
+const TURN = 3.1;
+
+const showFlash = (kind: 'ok' | 'bad' | 'record', text: string, ms = 1800) => {
+  flash.value = { kind, text };
+  if (flashTimer) clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => {
+    flash.value = null;
+    flashTimer = null;
+  }, ms);
+};
+
+const resetLap = () => {
+  lapStartTs.value = null;
+  currentMs.value = 0;
+  zonesHit.value = LAP_ZONES.map(() => false);
+};
+
+const resetCar = () => {
+  car.x = TRACK_SPAWN.x;
+  car.y = TRACK_SPAWN.y;
+  car.angleDeg = TRACK_SPAWN.angleDeg;
+  speed = 0;
+  resetLap();
+};
 
 const onKey = (e: KeyboardEvent, down: boolean) => {
+  const t = e.target as HTMLElement | null;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   const k = e.key.toLowerCase();
-  if (k === 'arrowup' || k === 'w' || k === 'ц') {
-    keys.up = down;
-    e.preventDefault();
-  } else if (k === 'arrowdown' || k === 's' || k === 'ы') {
-    keys.down = down;
-    e.preventDefault();
-  } else if (k === 'arrowleft' || k === 'a' || k === 'ф') {
-    keys.left = down;
-    e.preventDefault();
-  } else if (k === 'arrowright' || k === 'd' || k === 'в') {
-    keys.right = down;
-    e.preventDefault();
-  }
+  if (k === 'arrowup' || k === 'w' || k === 'ц') keys.up = down;
+  else if (k === 'arrowdown' || k === 's' || k === 'ы') keys.down = down;
+  else if (k === 'arrowleft' || k === 'a' || k === 'ф') keys.left = down;
+  else if (k === 'arrowright' || k === 'd' || k === 'в') keys.right = down;
+  else if ((k === 'r' || k === 'к') && down) resetCar();
+  else return;
+  e.preventDefault();
 };
 
 const keyDown = (e: KeyboardEvent) => onKey(e, true);
@@ -108,10 +160,8 @@ const setStickFromEvent = (ev: PointerEvent) => {
   const el = stickRoot.value;
   if (!el) return;
   const r = el.getBoundingClientRect();
-  const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
-  let dx = ev.clientX - cx;
-  let dy = ev.clientY - cy;
+  let dx = ev.clientX - (r.left + r.width / 2);
+  let dy = ev.clientY - (r.top + r.height / 2);
   const len = Math.hypot(dx, dy) || 1;
   if (len > STICK_R) {
     dx = (dx / len) * STICK_R;
@@ -145,6 +195,47 @@ const onStickUp = (ev: PointerEvent) => {
   stickVec.y = 0;
 };
 
+const angleDiff = (target: number, from: number) => {
+  let d = (target - from) % 360;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+};
+
+/** У бортика поворот не должен клинить: ищем сдвиг на 1–3 px, где болид помещается. */
+const findNudge = (m: TrackMask, angleDeg: number) => {
+  for (const r of [1.5, 3]) {
+    for (let k = 0; k < 8; k++) {
+      const x = Math.cos((k * Math.PI) / 4) * r;
+      const y = Math.sin((k * Math.PI) / 4) * r;
+      if (carFitsOnTrack(m, car.x + x, car.y + y, angleDeg)) return { x, y };
+    }
+  }
+  return null;
+};
+
+const checkLine = (px: number, py: number, nx: number, ny: number, now: number) => {
+  const inBand = (ny >= START_LINE.yMin && ny <= START_LINE.yMax) || (py >= START_LINE.yMin && py <= START_LINE.yMax);
+  if (!inBand) return;
+  if (px < START_LINE.x && nx >= START_LINE.x) {
+    if (lapStartTs.value != null && zonesHit.value.every(Boolean)) {
+      const ms = Math.round(now - lapStartTs.value);
+      if (ms >= MIN_LAP_MS) {
+        lastLapMs.value = ms;
+        const record = props.bestMs == null || ms < props.bestMs;
+        showFlash(record ? 'record' : 'ok', record ? `Рекорд! ${formatLapMs(ms)}` : formatLapMs(ms));
+        emit('lap', ms);
+      }
+    }
+    zonesHit.value = LAP_ZONES.map(() => false);
+    lapStartTs.value = now;
+    currentMs.value = 0;
+  } else if (px >= START_LINE.x && nx < START_LINE.x) {
+    if (lapStartTs.value != null) showFlash('bad', 'Против хода — круг не засчитан');
+    resetLap();
+  }
+};
+
 const tick = (ts: number) => {
   raf = requestAnimationFrame(tick);
   if (!mask) return;
@@ -152,74 +243,81 @@ const tick = (ts: number) => {
   lastTs = ts;
   if (!dt) return;
 
-  let ix = 0;
-  let iy = 0;
-  if (keys.left) ix -= 1;
-  if (keys.right) ix += 1;
-  if (keys.up) iy -= 1;
-  if (keys.down) iy += 1;
-  ix += stickVec.x;
-  iy += stickVec.y;
-  const inputMag = Math.hypot(ix, iy);
-  if (inputMag > 0.08) {
-    ix /= inputMag;
-    iy /= inputMag;
-    vel.x += ix * ACCEL * dt;
-    vel.y += iy * ACCEL * dt;
+  let throttle = 0;
+  let steer = 0;
+  if (keys.up) throttle += 1;
+  if (keys.down) throttle -= 1;
+  if (keys.left) steer -= 1;
+  if (keys.right) steer += 1;
+
+  const stickMag = Math.hypot(stickVec.x, stickVec.y);
+  if (stickMag > 0.15) {
+    const target = (Math.atan2(stickVec.x, -stickVec.y) * 180) / Math.PI;
+    const d = angleDiff(target, car.angleDeg);
+    steer = Math.max(-1, Math.min(1, d / 35));
+    throttle = Math.abs(d) > 120 ? 0.35 : Math.min(1, stickMag * 1.15);
   }
 
-  const speed = Math.hypot(vel.x, vel.y);
-  if (speed > 0.001) {
-    const decel = Math.min(speed, FRICTION * dt);
-    vel.x -= (vel.x / speed) * decel;
-    vel.y -= (vel.y / speed) * decel;
-  } else {
-    vel.x = 0;
-    vel.y = 0;
+  if (!started.value && (throttle !== 0 || steer !== 0)) started.value = true;
+
+  if (throttle > 0) {
+    speed += (speed < 0 ? BRAKE : ACCEL) * throttle * dt;
+  } else if (throttle < 0) {
+    speed += (speed > 0 ? BRAKE : ACCEL * 0.6) * throttle * dt;
+  } else if (speed !== 0) {
+    const d = Math.min(Math.abs(speed), DRAG * dt);
+    speed -= Math.sign(speed) * d;
   }
+  speed = Math.max(-MAX_REVERSE, Math.min(MAX_SPEED, speed));
 
-  const sp2 = Math.hypot(vel.x, vel.y);
-  if (sp2 > MAX_SPEED) {
-    vel.x = (vel.x / sp2) * MAX_SPEED;
-    vel.y = (vel.y / sp2) * MAX_SPEED;
-  }
-
-  if (Math.hypot(vel.x, vel.y) < 0.05 && inputMag < 0.08) return;
-
-  const tryLeft = car.left + vel.x * dt;
-  const tryTop = car.top + vel.y * dt;
-
-  const okFull = carFitsOnTrack(mask, tryLeft, tryTop);
-  if (okFull) {
-    car.left = tryLeft;
-    car.top = tryTop;
-  } else {
-    const okX = carFitsOnTrack(mask, tryLeft, car.top);
-    const okY = carFitsOnTrack(mask, car.left, tryTop);
-    if (okX && !okY) {
-      car.left = tryLeft;
-      vel.y *= -BOUNCE;
-      vel.x *= 0.85;
-    } else if (okY && !okX) {
-      car.top = tryTop;
-      vel.x *= -BOUNCE;
-      vel.y *= 0.85;
+  if (steer !== 0 && Math.abs(speed) > 1) {
+    const grip = Math.min(1, Math.abs(speed) / 90) * (1 - 0.25 * Math.min(1, Math.abs(speed) / MAX_SPEED));
+    const turnDeg = (steer * TURN * grip * Math.sign(speed) * dt * 180) / Math.PI;
+    const nextAngle = car.angleDeg + turnDeg;
+    if (carFitsOnTrack(mask, car.x, car.y, nextAngle)) {
+      car.angleDeg = nextAngle;
     } else {
-      vel.x *= -BOUNCE;
-      vel.y *= -BOUNCE;
-      const back = 0.15;
-      const bx = car.left - Math.sign(vel.x || 1) * back;
-      const by = car.top - Math.sign(vel.y || 1) * back;
-      if (carFitsOnTrack(mask, bx, car.top)) car.left = bx;
-      if (carFitsOnTrack(mask, car.left, by)) car.top = by;
+      const nudge = findNudge(mask, nextAngle);
+      if (nudge) {
+        car.x += nudge.x;
+        car.y += nudge.y;
+        car.angleDeg = nextAngle;
+      }
     }
   }
 
-  const moveSp = Math.hypot(vel.x, vel.y);
-  if (moveSp > 0.4) {
-    car.angleDeg = (Math.atan2(vel.x, -vel.y) * 180) / Math.PI;
-  } else if (inputMag > 0.08) {
-    car.angleDeg = (Math.atan2(ix, -iy) * 180) / Math.PI;
+  const now = performance.now();
+  if (lapStartTs.value != null) currentMs.value = now - lapStartTs.value;
+
+  if (Math.abs(speed) < 0.5) return;
+
+  const a = (car.angleDeg * Math.PI) / 180;
+  const dx = Math.sin(a) * speed * dt;
+  const dy = -Math.cos(a) * speed * dt;
+  const px = car.x;
+  const py = car.y;
+
+  if (carFitsOnTrack(mask, px + dx, py + dy, car.angleDeg)) {
+    car.x = px + dx;
+    car.y = py + dy;
+  } else if (carFitsOnTrack(mask, px + dx, py, car.angleDeg)) {
+    car.x = px + dx;
+    speed *= 0.55;
+  } else if (carFitsOnTrack(mask, px, py + dy, car.angleDeg)) {
+    car.y = py + dy;
+    speed *= 0.55;
+  } else {
+    speed *= -0.25;
+  }
+
+  checkLine(px, py, car.x, car.y, now);
+
+  if (lapStartTs.value != null) {
+    LAP_ZONES.forEach((z, i) => {
+      if (!zonesHit.value[i] && Math.hypot(car.x - z.x, car.y - z.y) <= LAP_ZONE_R) {
+        zonesHit.value[i] = true;
+      }
+    });
   }
 };
 
@@ -231,36 +329,23 @@ onMounted(async () => {
   window.addEventListener('pointercancel', onStickUp);
   try {
     mask = await loadTrackMask();
-    if (!carFitsOnTrack(mask, car.left, car.top)) {
-      outer: for (let r = 0.3; r <= 3; r += 0.3) {
-        for (let a = 0; a < 360; a += 30) {
-          const rad = (a * Math.PI) / 180;
-          const p = {
-            left: TRACK_START.left + Math.cos(rad) * r,
-            top: TRACK_START.top + Math.sin(rad) * r
-          };
-          if (carFitsOnTrack(mask, p.left, p.top)) {
-            car.left = p.left;
-            car.top = p.top;
-            break outer;
-          }
-        }
-      }
-    }
   } catch {
-    /* без маски */
+    showFlash('bad', 'Трасса не загрузилась — обнови страницу', 6000);
   }
   raf = requestAnimationFrame(tick);
 });
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf);
+  if (flashTimer) clearTimeout(flashTimer);
   window.removeEventListener('keydown', keyDown);
   window.removeEventListener('keyup', keyUp);
   window.removeEventListener('pointermove', onStickMove);
   window.removeEventListener('pointerup', onStickUp);
   window.removeEventListener('pointercancel', onStickUp);
 });
+
+defineExpose({ resetCar });
 </script>
 
 <style scoped>
@@ -269,26 +354,14 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 3;
   pointer-events: none;
-}
-.ps-drive__start {
-  position: absolute;
-  height: 8px;
-  border: 1.5px solid #111;
-  border-radius: 1px;
-  background: repeating-linear-gradient(90deg, #111 0 6px, #eeeee8 6px 12px);
-  box-shadow: 0 0 0 1px rgba(221, 243, 101, 0.35);
-  pointer-events: none;
-  z-index: 2;
+  font-family: 'Golos Text', system-ui, sans-serif;
 }
 .ps-drive__car {
   position: absolute;
-  width: clamp(34px, 5vmin, 52px);
-  height: clamp(34px, 5vmin, 52px);
   pointer-events: none;
-  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.45));
   will-change: left, top, transform;
   z-index: 4;
-  background: transparent;
 }
 .ps-drive__car img {
   display: block;
@@ -296,8 +369,126 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: contain;
   user-select: none;
-  background: transparent;
 }
+
+.ps-drive__hud {
+  position: absolute;
+  left: 50%;
+  bottom: 1.2%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 12px;
+  background: rgba(17, 17, 17, 0.9);
+  border: 2px solid #111;
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 #ddf365;
+  color: #eeeee8;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.ps-drive__hud-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.ps-drive__hud-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(238, 238, 232, 0.6);
+}
+.ps-drive__hud-time {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.ps-drive__hud-row.is-main .ps-drive__hud-time {
+  font-size: 1.05rem;
+  color: #fff;
+}
+.ps-drive__hud-row.is-best .ps-drive__hud-time {
+  color: #ddf365;
+}
+.ps-drive__hud-zones {
+  display: flex;
+  gap: 3px;
+}
+.ps-drive__hud-zones i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(238, 238, 232, 0.18);
+}
+.ps-drive__hud-zones i.is-hit {
+  background: #ddf365;
+}
+
+.ps-drive__flash,
+.ps-drive__hint {
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  transform: translateX(-50%);
+  z-index: 5;
+  margin: 0;
+  padding: 7px 14px;
+  border: 2px solid #111;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.ps-drive__hint {
+  background: rgba(17, 17, 17, 0.85);
+  color: #eeeee8;
+  font-weight: 600;
+}
+.ps-drive__flash.is-ok {
+  background: #eeeee8;
+  color: #111;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+.ps-drive__flash.is-record {
+  background: #ddf365;
+  color: #111;
+  box-shadow: 3px 3px 0 #7451f4;
+}
+.ps-drive__flash.is-bad {
+  background: #ff6b5b;
+  color: #111;
+}
+.ps-drive__hint-touch {
+  display: none;
+}
+
+.ps-drive__reset {
+  position: absolute;
+  right: 1.2%;
+  top: 2%;
+  z-index: 5;
+  pointer-events: auto;
+  padding: 6px 12px;
+  border: 2px solid #111;
+  border-radius: 8px;
+  background: #eeeee8;
+  color: #111;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #111;
+}
+.ps-drive__reset:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #111;
+}
+
 .ps-drive__stick {
   position: fixed;
   left: max(16px, env(safe-area-inset-left));
@@ -333,24 +524,46 @@ onBeforeUnmount(() => {
   box-shadow: 2px 2px 0 #111;
   will-change: transform;
 }
-.ps-drive__stick-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  text-align: center;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(238, 238, 232, 0.55);
-  pointer-events: none;
-}
 
-/* Стик только на телефоне/таче; на ПК/ноуте — WASD */
+/* Стик только на телефоне/таче; на ПК/ноуте — клавиатура */
 @media (hover: hover) and (pointer: fine) {
   .ps-drive__stick {
     display: none;
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  .ps-drive__hint-desk {
+    display: none;
+  }
+  .ps-drive__hint-touch {
+    display: inline;
+  }
+}
+@media (max-width: 720px) {
+  .ps-drive__hud {
+    gap: 8px;
+    padding: 3px 8px;
+  }
+  .ps-drive__hud-label {
+    font-size: 0.5rem;
+  }
+  .ps-drive__hud-time {
+    font-size: 0.66rem;
+  }
+  .ps-drive__hud-row.is-main .ps-drive__hud-time {
+    font-size: 0.78rem;
+  }
+  .ps-drive__hud-zones {
+    display: none;
+  }
+  .ps-drive__flash,
+  .ps-drive__hint {
+    font-size: 0.66rem;
+    top: 2%;
+  }
+  .ps-drive__reset {
+    padding: 4px 8px;
+    font-size: 0.64rem;
   }
 }
 </style>
