@@ -154,7 +154,12 @@ import { formatEmployeeShortName } from '~/utils/employeeName';
 const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
 const { ideas } = useIdeasBank();
+const { winners, hydrate: hydratePitStopWinners, hydrated: pitStopWinnersHydrated } = usePitStopWinners();
 const runtimeConfig = useRuntimeConfig();
+
+if (import.meta.client && !pitStopWinnersHydrated.value) {
+  void hydratePitStopWinners();
+}
 
 const cardRef = ref<HTMLElement | null>(null);
 const position = ref({ left: 0, top: 0 });
@@ -212,7 +217,8 @@ const ideasDone = computed(() => {
 const achievements = computed(() => {
   const emp = employee.value;
   if (!emp) return [];
-  return publicAchievementsForEmployee(emp, ideasDone.value).slice(0, 5);
+  const pitStopWinnerUserIds = new Set(winners.value.map((w) => w.userId));
+  return publicAchievementsForEmployee(emp, ideasDone.value, { pitStopWinnerUserIds }).slice(0, 5);
 });
 
 /** Плитки как на эскизе (ровно 5 слотов). */

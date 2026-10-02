@@ -1,20 +1,46 @@
 /**
  * Звуки заезда Pit Stop — синтез Web Audio (бесплатно, без внешних файлов).
- * Движок, визг в повороте, тихий удар о бортик, триумф + аплодисменты.
+ * Движок (многослойный), визг в повороте, удар о бортик, триумф + аплодисменты.
  */
 
 type Ctx = AudioContext;
 
 let ctx: Ctx | null = null;
 let master: GainNode | null = null;
-let engineOsc: OscillatorNode | null = null;
-let engineGain: GainNode | null = null;
-let engineLfo: OscillatorNode | null = null;
+let engineBus: GainNode | null = null;
+let engOscLow: OscillatorNode | null = null;
+let engOscMid: OscillatorNode | null = null;
+let engOscHigh: OscillatorNode | null = null;
+let engMixGain: GainNode | null = null;
+let engFilter: BiquadFilterNode | null = null;
+let engShaper: WaveShaperNode | null = null;
+let exhaustNoise: AudioBufferSourceNode | null = null;
+let exhaustGain: GainNode | null = null;
+let exhaustFilter: BiquadFilterNode | null = null;
 let tireOsc: OscillatorNode | null = null;
 let tireGain: GainNode | null = null;
 let unlocked = false;
 let bumpCooldown = 0;
 let triumphPlaying = false;
+
+const makeSaturationCurve = (drive: number) => {
+  const n = 256;
+  const curve = new Float32Array(n);
+  const k = Math.max(0.5, drive);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / (n - 1) - 1;
+    curve[i] = Math.tanh(k * x) / Math.tanh(k);
+  }
+  return curve;
+};
+
+const loopNoiseBuffer = (c: Ctx, seconds = 0.25) => {
+  const len = Math.floor(c.sampleRate * seconds);
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+};
 
 const ensure = () => {
   if (typeof window === 'undefined') return null;
@@ -23,7 +49,7 @@ const ensure = () => {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.55;
+    master.gain.value = 0.52;
     master.connect(ctx.destination);
   }
   return ctx;
@@ -45,27 +71,73 @@ export const unlockRaceAudio = async () => {
 
 const startLoops = () => {
   const c = ensure();
-  if (!c || !master || engineOsc) return;
+  if (!c || !master || engOscMid) return;
 
-  engineOsc = c.createOscillator();
-  engineOsc.type = 'sawtooth';
-  engineOsc.frequency.value = 55;
-  engineGain = c.createGain();
-  engineGain.gain.value = 0;
-  const engFilter = c.createBiquadFilter();
+  engineBus = c.createGain();
+  engineBus.gain.value = 0;
+  engMixGain = c.createGain();
+  engMixGain.gain.value = 0.85;
+
+  engFilter = c.createBiquadFilter();
   engFilter.type = 'lowpass';
-  engFilter.frequency.value = 420;
-  engineLfo = c.createOscillator();
-  engineLfo.frequency.value = 8;
-  const lfoGain = c.createGain();
-  lfoGain.gain.value = 4;
-  engineLfo.connect(lfoGain);
-  lfoGain.connect(engineOsc.frequency);
-  engineOsc.connect(engFilter);
-  engFilter.connect(engineGain);
-  engineGain.connect(master);
-  engineOsc.start();
-  engineLfo.start();
+  engFilter.frequency.value = 520;
+  engFilter.Q.value = 0.65;
+
+  engShaper = c.createWaveShaper();
+  engShaper.curve = makeSaturationCurve(2.2);
+  engShaper.oversample = '2x';
+
+  engOscLow = c.createOscillator();
+  engOscLow.type = 'sine';
+  engOscLow.frequency.value = 38;
+
+  engOscMid = c.createOscillator();
+  engOscMid.type = 'sawtooth';
+  engOscMid.frequency.value = 76;
+
+  engOscHigh = c.createOscillator();
+  engOscHigh.type = 'triangle';
+  engOscHigh.frequency.value = 152;
+
+  const lowG = c.createGain();
+  lowG.gain.value = 0.55;
+  const midG = c.createGain();
+  midG.gain.value = 0.32;
+  const highG = c.createGain();
+  highG.gain.value = 0.12;
+
+  exhaustFilter = c.createBiquadFilter();
+  exhaustFilter.type = 'bandpass';
+  exhaustFilter.frequency.value = 420;
+  exhaustFilter.Q.value = 1.1;
+
+  exhaustGain = c.createGain();
+  exhaustGain.gain.value = 0;
+
+  exhaustNoise = c.createBufferSource();
+  exhaustNoise.buffer = loopNoiseBuffer(c);
+  exhaustNoise.loop = true;
+
+  engOscLow.connect(lowG);
+  engOscMid.connect(midG);
+  engOscHigh.connect(highG);
+  lowG.connect(engMixGain);
+  midG.connect(engMixGain);
+  highG.connect(engMixGain);
+
+  exhaustNoise.connect(exhaustFilter);
+  exhaustFilter.connect(exhaustGain);
+  exhaustGain.connect(engMixGain);
+
+  engMixGain.connect(engFilter);
+  engFilter.connect(engShaper);
+  engShaper.connect(engineBus);
+  engineBus.connect(master);
+
+  engOscLow.start();
+  engOscMid.start();
+  engOscHigh.start();
+  exhaustNoise.start();
 
   tireOsc = c.createOscillator();
   tireOsc.type = 'triangle';
@@ -82,14 +154,38 @@ const startLoops = () => {
   tireOsc.start();
 };
 
-/** 0…1 throttle/speed — громкость и тон разгона. */
+/** 0…1 throttle/speed — громкость и обороты. */
 export const setEngine = (speedNorm: number, throttle: number) => {
-  if (!unlocked || !ctx || !engineOsc || !engineGain) return;
+  if (!unlocked || !ctx || !engOscMid || !engineBus || !engFilter) return;
   const t = ctx.currentTime;
-  const going = speedNorm > 0.02 || throttle > 0.05;
-  const target = going ? 0.04 + speedNorm * 0.1 + Math.max(0, throttle) * 0.04 : 0;
-  engineGain.gain.setTargetAtTime(target, t, 0.08);
-  engineOsc.frequency.setTargetAtTime(55 + speedNorm * 140 + Math.max(0, throttle) * 30, t, 0.1);
+  const th = Math.max(0, Math.min(1, throttle));
+  const sp = Math.max(0, Math.min(1, speedNorm));
+  const load = Math.min(1, sp * 0.85 + th * 0.55);
+  const going = sp > 0.02 || th > 0.05;
+
+  const rpmHz = going ? 28 + load * 118 + th * 22 : 22;
+  const f0 = rpmHz;
+  const f1 = rpmHz * 2.01;
+  const f2 = rpmHz * 3.08;
+
+  engOscLow!.frequency.setTargetAtTime(f0 * 0.5, t, 0.07);
+  engOscMid!.frequency.setTargetAtTime(f1, t, 0.06);
+  engOscHigh!.frequency.setTargetAtTime(f2, t, 0.05);
+  const cutoff = going ? 380 + load * 4200 + th * 600 : 280;
+  engFilter.frequency.setTargetAtTime(cutoff, t, 0.09);
+  engFilter.Q.setTargetAtTime(going ? 0.55 + load * 0.35 : 0.4, t, 0.12);
+
+  if (exhaustFilter) {
+    exhaustFilter.frequency.setTargetAtTime(280 + load * 2200, t, 0.08);
+  }
+
+  const vol = going ? 0.035 + load * 0.11 + th * 0.045 : 0;
+  engineBus.gain.setTargetAtTime(vol, t, 0.07);
+
+  if (exhaustGain) {
+    const exh = going ? 0.012 + load * 0.055 + th * 0.02 : 0;
+    exhaustGain.gain.setTargetAtTime(exh, t, 0.06);
+  }
 };
 
 /** |steer| 0…1 при скорости — лёгкий визг шин. */

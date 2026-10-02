@@ -167,6 +167,7 @@
 import { PLATFORM_NAME } from '~/data/platformBrand';
 import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
 
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
@@ -177,7 +178,9 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath, isPathAllowed } = useLaunchScope();
-const showPitStopFlag = computed(() => isPathAllowed('/event/pit-stop'));
+const showPitStopFlag = computed(
+  () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped()
+);
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';

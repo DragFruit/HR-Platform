@@ -123,9 +123,18 @@ export function useAchievements() {
   const { serverItems } = useProfileActivity();
   const { revealedCount: salesBestCount, hydrate: hydrateSalesBest, hydrated: salesBestHydrated } =
     useSalesBest();
+  const {
+    hydrate: hydratePitStopWinners,
+    hydrated: pitStopWinnersHydrated,
+    hasPitStopAchievement,
+    achievementId: pitStopAchievementId
+  } = usePitStopWinners();
 
   if (import.meta.client && !salesBestHydrated.value) {
     void hydrateSalesBest();
+  }
+  if (import.meta.client && !pitStopWinnersHydrated.value) {
+    void hydratePitStopWinners();
   }
 
   const earnedIds = computed(() => {
@@ -211,6 +220,9 @@ export function useAchievements() {
 
     // —— Лучший специалист продаж (после reveal_on) ——
     for (const id of tierAchievementIds('sales-best', salesBestCount.value)) ids.add(id);
+
+    // —— Pit Stop 14: топ-3 после стопа 10.10 03:00 МСК ——
+    if (hasPitStopAchievement(uid)) ids.add(pitStopAchievementId);
 
     return ids;
   });

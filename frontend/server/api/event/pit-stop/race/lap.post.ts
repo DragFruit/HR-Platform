@@ -1,8 +1,12 @@
 import { requireVbiSession } from '../../../../utils/session';
+import { isPitStopGameStopped } from '../../../../../app/events/pit-stop-14/timeline';
 import { isValidLapMs, submitLap } from '../../../../utils/pitStopRaceStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
+  if (isPitStopGameStopped()) {
+    throw createError({ statusCode: 403, statusMessage: 'Ивент завершён' });
+  }
   const body = await readBody<{ ms?: unknown; color?: unknown }>(event);
   if (!isValidLapMs(body?.ms)) {
     throw createError({ statusCode: 400, statusMessage: 'Круг не засчитан' });

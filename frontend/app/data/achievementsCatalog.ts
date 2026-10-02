@@ -1,13 +1,14 @@
 import { VACATION_TRAINING_ACHIEVEMENT } from '~/data/vacationTrainingQuest';
 
-/** Секции в оверлее «Все ачивки» (до 7 блоков). */
+/** Секции в оверлее «Все ачивки». */
 export type AchievementSection =
   | 'tenure-career'
   | 'vacation'
   | 'talks'
   | 'learning'
   | 'store'
-  | 'leadership';
+  | 'leadership'
+  | 'corporate-culture';
 
 export const ACHIEVEMENT_SECTION_META: Record<
   AchievementSection,
@@ -18,7 +19,8 @@ export const ACHIEVEMENT_SECTION_META: Record<
   talks: { title: 'Выступления и кейсы', order: 3 },
   learning: { title: 'Обучение', order: 4 },
   store: { title: 'Магазин', order: 5 },
-  leadership: { title: 'Лидерство и инициатива', order: 6 }
+  leadership: { title: 'Лидерство и инициатива', order: 6 },
+  'corporate-culture': { title: 'Корпоративная культура', order: 7 }
 };
 
 export const ACHIEVEMENT_SECTION_ORDER = (
@@ -276,7 +278,17 @@ export const ACHIEVEMENTS_CATALOG: AchievementDef[] = [
     imageSrc: '/achievements/sales-best.png',
     section: 'leadership' as const,
     sortOrder: 130 + index
-  }))
+  })),
+
+  // —— Корпоративная культура ——
+  {
+    id: 'pit-stop-14',
+    title: 'Легенда трека — 14',
+    subtitle: 'Топ-3 лучшего круга Pit Stop 14',
+    emoji: '🏁',
+    section: 'corporate-culture',
+    sortOrder: 10
+  }
 ];
 
 export type AchievementCatalogItem = AchievementDef & { earned: boolean };

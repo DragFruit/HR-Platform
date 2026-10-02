@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeJsonAtomic, createMutationQueue } from './atomicJson';
+import { getDeployAppEnv } from './appEnv';
 import {
   MAX_LAP_MS,
   MIN_LAP_MS,
   isCarColorId,
   type CarColorId
 } from '../../app/events/pit-stop-14/trackDrive';
+import { isPitStopGameStopped, PIT_STOP_STOP_AT } from '../../app/events/pit-stop-14/timeline';
 
 const DATA_FILE = join(process.cwd(), 'server/data/pit-stop-race.json');
 const enqueue = createMutationQueue();
@@ -26,19 +28,42 @@ export type PitStopRaceRecord = {
   history?: BestImprovement[];
 };
 
-type PitStopRaceState = { records: PitStopRaceRecord[] };
+export type PitStopRaceWinner = {
+  userId: number;
+  rank: number;
+  name: string;
+  bestMs: number;
+};
+
+type PitStopRaceState = {
+  records: PitStopRaceRecord[];
+  winners?: PitStopRaceWinner[];
+  finalizedAt?: string | null;
+};
 
 async function readState(): Promise<PitStopRaceState> {
   try {
     const raw = JSON.parse(await readFile(DATA_FILE, 'utf8')) as Partial<PitStopRaceState>;
-    return { records: Array.isArray(raw.records) ? raw.records : [] };
+    return {
+      records: Array.isArray(raw.records) ? raw.records : [],
+      winners: Array.isArray(raw.winners) ? raw.winners : undefined,
+      finalizedAt: typeof raw.finalizedAt === 'string' ? raw.finalizedAt : null
+    };
   } catch {
-    return { records: [] };
+    return { records: [], winners: undefined, finalizedAt: null };
   }
 }
 
 export async function readRaceRecords(): Promise<PitStopRaceRecord[]> {
   return (await readState()).records;
+}
+
+/** QA-аккаунты стейджа — не показываем в таблице (тестовые заезды). */
+const STAGING_LEADERBOARD_EXCLUDE_USER_IDS = new Set([2353, 2684]);
+
+export function raceRecordsForLeaderboard(records: PitStopRaceRecord[]): PitStopRaceRecord[] {
+  if (getDeployAppEnv() !== 'staging') return records;
+  return records.filter((r) => !STAGING_LEADERBOARD_EXCLUDE_USER_IDS.has(r.userId));
 }
 
 export const isValidLapMs = (ms: unknown): ms is number =>
@@ -76,6 +101,46 @@ export function leaderboardSlots(now: Date = new Date()): { publishedAt: Date; n
     publishedAt: toUtc(dayStartMsk, lastHour),
     nextAt: nextHour == null ? toUtc(dayStartMsk + 86400_000, 0) : toUtc(dayStartMsk, nextHour)
   };
+}
+
+const computeTop3Winners = (records: PitStopRaceRecord[]): PitStopRaceWinner[] => {
+  const cutoff = new Date(PIT_STOP_STOP_AT);
+  return raceRecordsForLeaderboard(records)
+    .map((r) => ({ r, best: bestAsOf(r, cutoff) }))
+    .filter((x): x is { r: PitStopRaceRecord; best: { ms: number; at: string } } => x.best != null)
+    .sort((a, b) => a.best.ms - b.best.ms || a.best.at.localeCompare(b.best.at))
+    .slice(0, 3)
+    .map(({ r, best }, i) => ({
+      userId: r.userId,
+      rank: i + 1,
+      name: r.name,
+      bestMs: best.ms
+    }));
+};
+
+/**
+ * После стопа ивента один раз фиксирует топ-3 для ачивки `pit-stop-14`.
+ * Вызывается лениво с API — без отдельного крона.
+ */
+export async function ensureRaceFinalized(now: Date = new Date()): Promise<{
+  winners: PitStopRaceWinner[];
+  finalizedAt: string | null;
+}> {
+  if (!isPitStopGameStopped(now)) {
+    return { winners: [], finalizedAt: null };
+  }
+  return enqueue(async () => {
+    const state = await readState();
+    if (state.finalizedAt && Array.isArray(state.winners)) {
+      return { winners: state.winners, finalizedAt: state.finalizedAt };
+    }
+    const winners = computeTop3Winners(state.records);
+    const finalizedAt = new Date().toISOString();
+    state.winners = winners;
+    state.finalizedAt = finalizedAt;
+    await writeJsonAtomic(DATA_FILE, state);
+    return { winners, finalizedAt };
+  });
 }
 
 export async function submitLap(input: {

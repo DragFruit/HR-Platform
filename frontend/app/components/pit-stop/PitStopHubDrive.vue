@@ -1,5 +1,12 @@
 <template>
   <div class="ps-drive" aria-label="Заезд по трассе">
+    <button
+      v-if="finished"
+      type="button"
+      class="ps-drive__tap-restart"
+      aria-label="Новый заезд"
+      @click="restartRace"
+    />
     <div
       class="ps-drive__car"
       :style="{
@@ -31,8 +38,14 @@
       </div>
     </div>
 
-    <p v-if="finished" class="ps-drive__again" role="status">
-      <kbd>Пробел</kbd> — проехать ещё раз
+    <p v-if="countdown != null" class="ps-drive__countdown" aria-live="assertive">{{ countdownLabel }}</p>
+    <p
+      v-else-if="finished"
+      class="ps-drive__again"
+      role="status"
+    >
+      <span class="ps-drive__again-desk"><kbd>Пробел</kbd> — проехать ещё раз</span>
+      <span class="ps-drive__again-touch">Нажми для нового заезда</span>
     </p>
     <p v-else-if="flash" class="ps-drive__flash" :class="`is-${flash.kind}`">{{ flash.text }}</p>
     <p v-else-if="!started" class="ps-drive__hint">
@@ -40,10 +53,12 @@
       <span class="ps-drive__hint-touch">Тяни круг — болид едет туда</span>
     </p>
 
-    <button type="button" class="ps-drive__reset" @click="restartRace">На старт</button>
+    <button type="button" class="ps-drive__reset" :disabled="countdown != null || closed" @click="restartRace">
+      На старт
+    </button>
 
     <div
-      v-show="!paused && !finished"
+      v-show="!paused && !finished && !closed && countdown == null"
       ref="stickRoot"
       class="ps-drive__stick"
       :class="{ 'is-active': stickActive }"
@@ -91,6 +106,7 @@ const props = defineProps<{
   color: CarColorId;
   bestMs: number | null;
   paused?: boolean;
+  closed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -99,6 +115,13 @@ const emit = defineEmits<{
 }>();
 
 const finished = ref(false);
+const countdown = ref<number | null>(null);
+const countdownLabel = computed(() => {
+  if (countdown.value == null) return '';
+  return countdown.value === 0 ? 'Поехали!' : String(countdown.value);
+});
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
 const carImg = computed(() => carSrc(props.color));
 
 const car = reactive({ x: TRACK_SPAWN.x, y: TRACK_SPAWN.y, angleDeg: TRACK_SPAWN.angleDeg });
@@ -134,6 +157,15 @@ const BRAKE = 520;
 const DRAG = 150;
 const TURN = 3.1;
 
+const vibe = (pattern: number | number[]) => {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    /* ignore */
+  }
+};
+
 const showFlash = (kind: 'ok' | 'bad' | 'record', text: string, ms = 1800) => {
   flash.value = { kind, text };
   if (flashTimer) clearTimeout(flashTimer);
@@ -149,23 +181,57 @@ const resetLap = () => {
   zonesHit.value = LAP_ZONES.map(() => false);
 };
 
-const restartRace = () => {
-  void unlockRaceAudio();
+const clearCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  countdown.value = null;
+};
+
+const placeOnSpawn = () => {
   car.x = TRACK_SPAWN.x;
   car.y = TRACK_SPAWN.y;
   car.angleDeg = TRACK_SPAWN.angleDeg;
   speed = 0;
+  keys.up = keys.down = keys.left = keys.right = false;
+  stickVec.x = 0;
+  stickVec.y = 0;
+  stickActive.value = false;
+  stickX.value = 0;
+  stickY.value = 0;
+};
+
+const restartRace = () => {
+  if (props.closed || props.paused) return;
+  void unlockRaceAudio();
+  clearCountdown();
+  placeOnSpawn();
   finished.value = false;
   started.value = false;
   flash.value = null;
   resetLap();
   hushEngine();
+
+  countdown.value = 3;
+  vibe(40);
+  countdownTimer = setInterval(() => {
+    if (countdown.value == null) return;
+    if (countdown.value <= 0) {
+      clearCountdown();
+      started.value = false;
+      return;
+    }
+    const next = countdown.value - 1;
+    countdown.value = next;
+    vibe(next === 0 ? [50, 40, 80] : 35);
+  }, 800);
 };
 
 const onKey = (e: KeyboardEvent, down: boolean) => {
   const t = e.target as HTMLElement | null;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-  if (props.paused && down) return;
+  if (props.paused || props.closed) return;
 
   if (down && (e.code === 'Space' || e.key === ' ')) {
     if (finished.value) {
@@ -177,7 +243,7 @@ const onKey = (e: KeyboardEvent, down: boolean) => {
 
   void unlockRaceAudio();
 
-  if (finished.value) return;
+  if (finished.value || countdown.value != null) return;
 
   const k = e.key.toLowerCase();
   if (k === 'arrowup' || k === 'w' || k === 'ц') keys.up = down;
@@ -210,7 +276,7 @@ const setStickFromEvent = (ev: PointerEvent) => {
 };
 
 const onStickDown = (ev: PointerEvent) => {
-  if (finished.value || props.paused) return;
+  if (finished.value || props.paused || props.closed || countdown.value != null) return;
   void unlockRaceAudio();
   stickActive.value = true;
   stickPtr = ev.pointerId;
@@ -262,14 +328,19 @@ const completeLap = (ms: number) => {
   keys.up = keys.down = keys.left = keys.right = false;
   stickVec.x = 0;
   stickVec.y = 0;
+  stickActive.value = false;
+  stickX.value = 0;
+  stickY.value = 0;
   hushEngine();
   emit('lap', ms);
   emit('finish', { ms, improved });
   if (improved) {
     showFlash('record', `Рекорд! ${formatLapMs(ms)}`, 3200);
     playTriumph();
+    vibe([40, 60, 40, 60, 120]);
   } else {
     showFlash('ok', formatLapMs(ms), 2200);
+    vibe(30);
   }
 };
 
@@ -301,7 +372,7 @@ const tick = (ts: number) => {
   lastTs = ts;
   if (!dt) return;
 
-  if (finished.value || props.paused) {
+  if (finished.value || props.paused || props.closed || countdown.value != null) {
     hushEngine();
     return;
   }
@@ -371,13 +442,16 @@ const tick = (ts: number) => {
     car.x = px + dx;
     speed *= 0.55;
     playBump(0.35);
+    vibe(18);
   } else if (carFitsOnTrack(mask, px, py + dy, car.angleDeg)) {
     car.y = py + dy;
     speed *= 0.55;
     playBump(0.35);
+    vibe(18);
   } else {
     speed *= -0.25;
     playBump(0.7);
+    vibe(45);
   }
 
   checkLine(px, py, car.x, car.y, now);
@@ -408,6 +482,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf);
   if (flashTimer) clearTimeout(flashTimer);
+  clearCountdown();
   hushEngine();
   window.removeEventListener('keydown', keyDown);
   window.removeEventListener('keyup', keyUp);
@@ -427,6 +502,19 @@ defineExpose({ restartRace });
   pointer-events: none;
   font-family: 'Golos Text', system-ui, sans-serif;
 }
+.ps-drive__tap-restart {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 .ps-drive__car {
   position: absolute;
   pointer-events: none;
@@ -440,54 +528,59 @@ defineExpose({ restartRace });
   height: 100%;
   object-fit: contain;
   user-select: none;
+  pointer-events: none;
 }
 
 .ps-drive__hud {
   position: absolute;
-  left: 50%;
-  bottom: 1.2%;
-  transform: translateX(-50%);
+  left: 1.2%;
+  top: 2%;
   z-index: 5;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 5px 12px;
-  background: rgba(17, 17, 17, 0.9);
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+  padding: 6px 10px;
   border: 2px solid #111;
   border-radius: 10px;
-  box-shadow: 3px 3px 0 #ddf365;
+  background: rgba(17, 17, 17, 0.78);
   color: #eeeee8;
-  line-height: 1.1;
-  white-space: nowrap;
+  pointer-events: none;
 }
 .ps-drive__hud-row {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 4.2rem;
 }
-.ps-drive__hud-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(238, 238, 232, 0.6);
-}
-.ps-drive__hud-time {
-  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-.ps-drive__hud-row.is-main .ps-drive__hud-time {
-  font-size: 1.05rem;
-  color: #fff;
+.ps-drive__hud-row.is-main {
+  min-width: 5.2rem;
 }
 .ps-drive__hud-row.is-best .ps-drive__hud-time {
   color: #ddf365;
 }
+.ps-drive__hud-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(238, 238, 232, 0.55);
+}
+.ps-drive__hud-time {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.ps-drive__hud-row.is-main .ps-drive__hud-time {
+  font-size: 1rem;
+}
 .ps-drive__hud-zones {
   display: flex;
-  gap: 3px;
+  gap: 4px;
+  align-self: center;
+  padding-bottom: 2px;
 }
 .ps-drive__hud-zones i {
   width: 6px;
@@ -499,9 +592,27 @@ defineExpose({ restartRace });
   background: #ddf365;
 }
 
+.ps-drive__countdown {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 8;
+  margin: 0;
+  min-width: 1.2em;
+  font-family: Unbounded, 'Golos Text', sans-serif;
+  font-size: clamp(3.2rem, 14vw, 6.5rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  color: #ddf365;
+  text-shadow: 4px 4px 0 #111, -1px -1px 0 #111;
+  pointer-events: none;
+  user-select: none;
+}
+
 .ps-drive__flash,
-.ps-drive__hint,
-.ps-drive__again {
+.ps-drive__hint {
   position: absolute;
   left: 50%;
   top: 4%;
@@ -517,10 +628,27 @@ defineExpose({ restartRace });
   line-height: 1.2;
 }
 .ps-drive__again {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 7;
+  margin: 0;
+  padding: 14px 22px;
+  border: 2px solid #111;
+  border-radius: 16px;
+  font-size: clamp(0.88rem, 2.4vw, 1.05rem);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  max-width: min(92%, 420px);
   background: #ddf365;
   color: #111;
-  box-shadow: 3px 3px 0 #7451f4;
+  box-shadow: 4px 4px 0 #7451f4;
   pointer-events: none;
+}
+.ps-drive__again-touch {
+  display: none;
 }
 .ps-drive__again kbd {
   display: inline-block;
@@ -560,7 +688,7 @@ defineExpose({ restartRace });
   position: absolute;
   right: 1.2%;
   top: 2%;
-  z-index: 5;
+  z-index: 9;
   pointer-events: auto;
   padding: 6px 12px;
   border: 2px solid #111;
@@ -573,7 +701,11 @@ defineExpose({ restartRace });
   cursor: pointer;
   box-shadow: 2px 2px 0 #111;
 }
-.ps-drive__reset:active {
+.ps-drive__reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ps-drive__reset:active:not(:disabled) {
   transform: translate(1px, 1px);
   box-shadow: 1px 1px 0 #111;
 }
@@ -627,6 +759,12 @@ defineExpose({ restartRace });
   .ps-drive__hint-touch {
     display: inline;
   }
+  .ps-drive__again-desk {
+    display: none;
+  }
+  .ps-drive__again-touch {
+    display: inline;
+  }
 }
 @media (max-width: 720px) {
   .ps-drive__hud {
@@ -646,10 +784,13 @@ defineExpose({ restartRace });
     display: none;
   }
   .ps-drive__flash,
-  .ps-drive__hint,
-  .ps-drive__again {
+  .ps-drive__hint {
     font-size: 0.66rem;
     top: 2%;
+  }
+  .ps-drive__again {
+    padding: 12px 18px;
+    font-size: 0.82rem;
   }
   .ps-drive__reset {
     padding: 4px 8px;

@@ -11,18 +11,23 @@
           draggable="false"
         />
         <PitStopHubDrive
+          v-if="!eventClosed"
           :color="color"
           :best-ms="myBestMs"
           :paused="showIntro"
           @lap="onLap"
           @finish="onFinish"
         />
+        <div v-else class="ps-hub__closed" role="status">
+          <p class="ps-hub__closed-title">Финиш ивента</p>
+          <p class="ps-hub__closed-text">Заезды закрыты 10 октября в 03:00 МСК. Итоги — в тайминге справа.</p>
+        </div>
         <PitStopFinishParty ref="partyRef" />
       </div>
     </div>
 
     <aside class="ps-hub__side">
-      <section class="ps-garage" aria-labelledby="ps-garage-title">
+      <section v-if="!eventClosed" class="ps-garage" aria-labelledby="ps-garage-title">
         <div class="ps-garage__head">
           <h2 id="ps-garage-title" class="ps-garage__title">Гараж</h2>
           <button type="button" class="ps-garage__help" @click="openIntro">Енот</button>
@@ -49,47 +54,67 @@
         <header class="ps-board__head">
           <div class="ps-board__checker" aria-hidden="true" />
           <h2 id="ps-board-title" class="ps-board__title">Тайминг</h2>
-          <p class="ps-board__sub">Лучший круг · {{ board.total }} {{ pilotsWord(board.total) }}</p>
-          <p v-if="board.publishedAt" class="ps-board__sched">
+          <p class="ps-board__sub">
+            {{ eventClosed ? 'Итоги' : 'Лучший круг' }} · {{ board.total }} {{ pilotsWord(board.total) }}
+          </p>
+          <p v-if="eventClosed" class="ps-board__sched">Финальный срез · 10.10 03:00 МСК</p>
+          <p v-else-if="board.publishedAt && board.nextAt" class="ps-board__sched">
             Обновлено в {{ mskTime(board.publishedAt) }} · следующее в {{ mskTime(board.nextAt) }}
           </p>
         </header>
 
-        <p v-if="pendingBest" class="ps-board__pending">
+        <p v-if="pendingBest && board.nextAt" class="ps-board__pending">
           Твой рекорд {{ formatLapMs(pendingBest) }} попадёт в таблицу в {{ mskTime(board.nextAt) }}
         </p>
 
-        <ol v-if="board.top.length" class="ps-board__list">
-          <li
-            v-for="row in board.top"
-            :key="row.userId"
-            class="ps-board__row"
-            :class="[`is-p${row.rank}`, { 'is-me': row.isMe }]"
-          >
-            <span class="ps-board__pos">{{ row.rank }}</span>
-            <img class="ps-board__car" :src="carSrc(safeColor(row.color))" alt="" />
-            <span class="ps-board__who">
-              <span class="ps-board__name">{{ row.isMe ? `${shortName(row.name)} · ты` : shortName(row.name) }}</span>
-              <span v-if="row.department" class="ps-board__dept">{{ row.department }}</span>
-            </span>
-            <span class="ps-board__time">
-              {{ row.rank === 1 ? formatLapMs(row.bestMs) : `+${gap(row.bestMs)}` }}
-            </span>
-          </li>
-          <template v-if="board.me && board.me.rank > board.top.length">
-            <li class="ps-board__gap" aria-hidden="true">···</li>
-            <li class="ps-board__row is-me">
-              <span class="ps-board__pos">{{ board.me.rank }}</span>
-              <img class="ps-board__car" :src="carSrc(safeColor(board.me.color))" alt="" />
+        <div v-if="board.top.length || stickyMe" class="ps-board__body">
+          <ol v-if="board.top.length" class="ps-board__list">
+            <li
+              v-for="row in board.top"
+              :key="row.userId"
+              class="ps-board__row"
+              :class="[`is-p${row.rank}`, { 'is-me': row.isMe }]"
+            >
+              <span class="ps-board__pos">{{ row.rank }}</span>
+              <img class="ps-board__car" :src="carSrc(safeColor(row.color))" alt="" />
               <span class="ps-board__who">
-                <span class="ps-board__name">{{ shortName(board.me.name) }} · ты</span>
+                <span class="ps-board__name">{{ row.isMe ? `${shortName(row.name)} · ты` : shortName(row.name) }}</span>
+                <span v-if="row.department" class="ps-board__dept">{{ row.department }}</span>
               </span>
-              <span class="ps-board__time">+{{ gap(board.me.bestMs) }}</span>
+              <span class="ps-board__time">{{ formatLapMs(row.bestMs) }}</span>
             </li>
-          </template>
-        </ol>
+            <li v-if="board.rest.length" class="ps-board__sep" aria-hidden="true">остальные</li>
+            <li
+              v-for="row in board.rest"
+              :key="row.userId"
+              class="ps-board__row"
+              :class="{ 'is-me': row.isMe }"
+            >
+              <span class="ps-board__pos">{{ row.rank }}</span>
+              <img class="ps-board__car" :src="carSrc(safeColor(row.color))" alt="" />
+              <span class="ps-board__who">
+                <span class="ps-board__name">{{ row.isMe ? `${shortName(row.name)} · ты` : shortName(row.name) }}</span>
+                <span v-if="row.department" class="ps-board__dept">{{ row.department }}</span>
+              </span>
+              <span class="ps-board__time">{{ formatLapMs(row.bestMs) }}</span>
+            </li>
+          </ol>
+          <div v-if="stickyMe" class="ps-board__me" aria-label="Твоё место">
+            <span class="ps-board__pos">{{ stickyMe.rank ?? '—' }}</span>
+            <img
+              v-if="stickyMe.color"
+              class="ps-board__car"
+              :src="carSrc(safeColor(stickyMe.color))"
+              alt=""
+            />
+            <span class="ps-board__who">
+              <span class="ps-board__name">ты</span>
+            </span>
+            <span class="ps-board__time">{{ formatLapMs(stickyMe.bestMs) }}</span>
+          </div>
+        </div>
         <p v-else class="ps-board__empty">
-          Пока пусто. Проедь чистый круг — встанешь на поул.
+          {{ eventClosed ? 'Никто не успел записать круг.' : 'Пока пусто. Проедь чистый круг — встанешь на поул.' }}
         </p>
 
         <p v-if="loadError" class="ps-board__err">{{ loadError }}</p>
@@ -125,6 +150,7 @@ import {
   type CarColorId
 } from '~/events/pit-stop-14/trackDrive';
 import { RACCOON_RACE_INTRO, RACCOON_RACE_INTRO_STORAGE_KEY } from '~/events/pit-stop-14/raccoonLines';
+import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
 
 definePageMeta({ layout: 'default' });
 
@@ -140,11 +166,13 @@ type BoardRow = {
 
 type Board = {
   top: BoardRow[];
+  rest: BoardRow[];
   me: BoardRow | null;
   total: number;
   myLiveBestMs: number | null;
   publishedAt: string;
-  nextAt: string;
+  nextAt: string | null;
+  closed: boolean;
 };
 
 const { user } = useAuth();
@@ -189,20 +217,41 @@ const TRACK_AR = 1280 / 720;
 const stageEl = ref<HTMLElement | null>(null);
 const mapStyle = ref<Record<string, string>>({});
 const color = ref<CarColorId>('violet');
-const board = ref<Board>({ top: [], me: null, total: 0, myLiveBestMs: null, publishedAt: '', nextAt: '' });
+const board = ref<Board>({
+  top: [],
+  rest: [],
+  me: null,
+  total: 0,
+  myLiveBestMs: null,
+  publishedAt: '',
+  nextAt: null,
+  closed: false
+});
 const loadError = ref('');
 
+const eventClosed = computed(() => board.value.closed || isPitStopGameStopped());
 const myBestMs = computed(() => board.value.myLiveBestMs);
 const pendingBest = computed(() => {
+  if (eventClosed.value) return null;
   const live = board.value.myLiveBestMs;
   if (live == null) return null;
   const shown = board.value.me?.bestMs;
   return shown == null || live < shown ? live : null;
 });
-const leaderMs = computed(() => board.value.top[0]?.bestMs ?? 0);
+
+/** Закреп снизу: место в таблице или live-время до публикации. */
+const stickyMe = computed(() => {
+  if (board.value.me) return board.value.me;
+  const live = board.value.myLiveBestMs;
+  if (live == null) return null;
+  return {
+    rank: null as number | null,
+    bestMs: live,
+    color: color.value
+  };
+});
 
 const safeColor = (c: string): CarColorId => (isCarColorId(c) ? c : 'violet');
-const gap = (ms: number) => ((ms - leaderMs.value) / 1000).toFixed(3);
 
 const shortName = (full: string) => {
   const [last, first] = full.trim().split(/\s+/);
@@ -224,7 +273,17 @@ const pickColor = (id: CarColorId) => {
 
 const loadBoard = async () => {
   try {
-    board.value = await $fetch('/api/event/pit-stop/race/leaderboard');
+    const data = await $fetch<Board & { closesAt?: string }>('/api/event/pit-stop/race/leaderboard');
+    board.value = {
+      top: data.top ?? [],
+      rest: data.rest ?? [],
+      me: data.me,
+      total: data.total,
+      myLiveBestMs: data.myLiveBestMs,
+      publishedAt: data.publishedAt,
+      nextAt: data.nextAt,
+      closed: Boolean(data.closed)
+    };
     loadError.value = '';
   } catch {
     loadError.value = 'Тайминг не загрузился';
@@ -232,13 +291,20 @@ const loadBoard = async () => {
 };
 
 const onLap = async (ms: number) => {
+  if (eventClosed.value) return;
   try {
     const res = await $fetch<{ bestMs: number }>('/api/event/pit-stop/race/lap', {
       method: 'POST',
       body: { ms, color: color.value }
     });
     board.value.myLiveBestMs = res.bestMs;
-  } catch {
+  } catch (e: unknown) {
+    const status = (e as { statusCode?: number })?.statusCode;
+    if (status === 403) {
+      board.value.closed = true;
+      loadError.value = 'Ивент завершён';
+      return;
+    }
     loadError.value = 'Круг не сохранился — проверь связь';
   }
 };
@@ -337,6 +403,32 @@ onBeforeUnmount(() => {
   object-fit: cover;
   user-select: none;
   pointer-events: none;
+}
+.ps-hub__closed {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: rgba(17, 17, 17, 0.72);
+  text-align: center;
+}
+.ps-hub__closed-title {
+  margin: 0;
+  font-family: Unbounded, 'Golos Text', sans-serif;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 900;
+  font-style: italic;
+  color: #ddf365;
+}
+.ps-hub__closed-text {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #eeeee8;
 }
 
 .ps-hub__side {
@@ -478,6 +570,12 @@ onBeforeUnmount(() => {
   color: #111;
   background: var(--ps-lime);
 }
+.ps-board__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .ps-board__list {
   flex: 1 1 auto;
   min-height: 0;
@@ -562,11 +660,38 @@ onBeforeUnmount(() => {
 .ps-board__row.is-p1 .ps-board__time {
   color: var(--ps-lime);
 }
-.ps-board__gap {
-  padding: 0 12px;
-  text-align: center;
+.ps-board__sep {
+  margin: 4px 12px;
+  padding: 4px 0 2px;
+  list-style: none;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: rgba(238, 238, 232, 0.35);
-  letter-spacing: 0.3em;
+  border-top: 1px solid rgba(238, 238, 232, 0.12);
+}
+.ps-board__me {
+  flex: none;
+  display: grid;
+  grid-template-columns: 30px 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 8px;
+  border-top: 2px solid #2b2b2e;
+  background: #1b1b1d;
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.35);
+}
+.ps-board__me .ps-board__pos {
+  background: var(--ps-lime);
+  color: #111;
+}
+.ps-board__me .ps-board__name {
+  color: var(--ps-lime);
+}
+.ps-board__me .ps-board__time {
+  color: #fff;
+  font-size: 0.88rem;
 }
 .ps-board__empty {
   margin: 0;
