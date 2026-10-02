@@ -8,6 +8,7 @@
 
 - Новая секция оверлея ачивок: **Корпоративная культура** (`corporate-culture`).
 - Ачивка `pit-stop-14` «Легенда трека — 14»: топ‑3 лучшего круга на **10.10 03:00 МСК**; публичная на визитке.
+- Иконка: зернистый стикер (картинг + 14) — `public/achievements/pit-stop-14.png` (эскиз C).
 - Фиксация winners в `pit-stop-race.json` через `ensureRaceFinalized` (лениво с `/api/event/pit-stop/race/winners` и leaderboard после стопа).
 - Скин аватарки в этой волне не делаем.
 

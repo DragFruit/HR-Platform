@@ -285,7 +285,7 @@ export const ACHIEVEMENTS_CATALOG: AchievementDef[] = [
     id: 'pit-stop-14',
     title: 'Легенда трека — 14',
     subtitle: 'Топ-3 лучшего круга Pit Stop 14',
-    emoji: '🏁',
+    imageSrc: '/achievements/pit-stop-14.png',
     section: 'corporate-culture',
     sortOrder: 10
   }
