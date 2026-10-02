@@ -474,26 +474,46 @@
                 :key="item.id"
                 class="profile-achievements-overlay__card"
                 :class="{
-                  'profile-achievements-overlay__card--locked': !item.earned,
-                  'profile-achievements-overlay__card--round': item.previewRound
+                  'is-locked': !item.earned,
+                  'is-ack': item.earned && isAchievementAcked(item.id)
                 }"
               >
-                <div class="profile-achievements-overlay__icon">
+                <div class="profile-achievements-overlay__art">
                   <img
                     v-if="item.imageSrc"
                     :src="item.imageSrc"
                     :alt="item.title"
-                    width="64"
-                    height="64"
+                    width="120"
+                    height="120"
                     loading="lazy"
                   />
-                  <span v-else aria-hidden="true">{{ item.emoji ?? '🏆' }}</span>
+                  <span v-else class="profile-achievements-overlay__emoji" aria-hidden="true">
+                    {{ item.emoji ?? '🏆' }}
+                  </span>
                 </div>
-                <strong>{{ item.title }}</strong>
-                <span v-if="item.subtitle" class="muted">{{ item.subtitle }}</span>
-                <span class="profile-achievements-overlay__status">
-                  {{ item.earned ? 'Получена' : 'Ещё впереди' }}
-                </span>
+                <div class="profile-achievements-overlay__copy">
+                  <strong class="profile-achievements-overlay__name">{{ item.title }}</strong>
+                  <p v-if="item.subtitle" class="profile-achievements-overlay__desc">
+                    {{ item.subtitle }}
+                  </p>
+                </div>
+                <button
+                  v-if="item.earned"
+                  type="button"
+                  class="profile-achievements-overlay__cta"
+                  :class="{ 'is-done': isAchievementAcked(item.id) }"
+                  @click="ackAchievement(item.id)"
+                >
+                  {{ isAchievementAcked(item.id) ? 'Получена' : 'Понятно!' }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="profile-achievements-overlay__cta is-locked"
+                  disabled
+                >
+                  Ещё впереди
+                </button>
               </li>
             </ul>
           </section>
@@ -596,6 +616,30 @@ const vibeCredsOpen = ref(false);
 const achievementsOpen = ref(false);
 const achievementsPreviewRef = ref<HTMLElement | null>(null);
 const achievementsVisibleCount = ref(8);
+
+const ACH_ACK_KEY = 'vbi-achievements-ack-v1';
+const achievementAckIds = ref<string[]>([]);
+
+const loadAchievementAcks = () => {
+  if (!import.meta.client) return;
+  try {
+    const raw = localStorage.getItem(ACH_ACK_KEY);
+    const parsed = raw ? (JSON.parse(raw) as { ids?: string[] }) : {};
+    achievementAckIds.value = Array.isArray(parsed.ids) ? parsed.ids : [];
+  } catch {
+    achievementAckIds.value = [];
+  }
+};
+
+const isAchievementAcked = (id: string) => achievementAckIds.value.includes(id);
+
+const ackAchievement = (id: string) => {
+  if (isAchievementAcked(id)) return;
+  achievementAckIds.value = [...achievementAckIds.value, id];
+  if (import.meta.client) {
+    localStorage.setItem(ACH_ACK_KEY, JSON.stringify({ ids: achievementAckIds.value }));
+  }
+};
 const activityScrollRef = ref<HTMLElement | null>(null);
 const activityListRef = ref<HTMLElement | null>(null);
 const activityScrollMaxHeight = ref<number | null>(null);
@@ -953,6 +997,7 @@ onMounted(() => {
   hydrateVacations().catch(() => {});
 
   if (import.meta.client) {
+    loadAchievementAcks();
     window.addEventListener('keydown', onAchievementsKeydown);
     nextTick(() => {
       measureAchievementsPreview();

@@ -5080,78 +5080,99 @@ button.org-unit-head--link:hover {
 
 .profile-achievements-overlay__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .profile-achievements-overlay__card {
-  display: grid;
-  gap: 6px;
-  justify-items: center;
-  text-align: center;
-  padding: 16px 12px;
-  border: 2px solid #111;
-  border-radius: 14px;
-  background: #eeeee8;
-  box-shadow: 3px 3px 0 #ddf365;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 280px;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.12);
 }
 
-.profile-achievements-overlay__card--locked {
-  opacity: 0.45;
-  filter: grayscale(0.7);
-  box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.18);
+.profile-achievements-overlay__card.is-locked {
+  opacity: 0.72;
+  filter: grayscale(0.35);
 }
 
-.profile-achievements-overlay__icon {
-  width: 72px;
-  height: 72px;
+.profile-achievements-overlay__art {
   display: grid;
   place-items: center;
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 800;
+  flex: 1 1 auto;
+  min-height: 140px;
+  padding: 20px 16px 8px;
+  background: #fff;
 }
 
-.profile-achievements-overlay__icon img {
-  width: 64px;
-  height: 64px;
+.profile-achievements-overlay__art img {
+  width: 112px;
+  height: 112px;
   object-fit: contain;
 }
 
-.profile-achievements-overlay__card--round {
-  padding: 8px 12px 14px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+.profile-achievements-overlay__emoji {
+  font-size: 3rem;
+  line-height: 1;
 }
 
-.profile-achievements-overlay__card--round.profile-achievements-overlay__card--locked {
-  opacity: 0.45;
-  filter: grayscale(0.7);
+.profile-achievements-overlay__copy {
+  display: grid;
+  gap: 6px;
+  padding: 4px 16px 14px;
+  text-align: center;
 }
 
-.profile-achievements-overlay__card--round .profile-achievements-overlay__icon {
-  width: 88px;
-  height: 88px;
-}
-
-.profile-achievements-overlay__card--round .profile-achievements-overlay__icon img {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.profile-achievements-overlay__card strong {
-  font-size: 0.9rem;
+.profile-achievements-overlay__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
   line-height: 1.25;
+  color: #111;
 }
 
-.profile-achievements-overlay__status {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
+.profile-achievements-overlay__desc {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(17, 17, 17, 0.55);
+}
+
+.profile-achievements-overlay__cta {
+  margin-top: auto;
+  width: 100%;
+  border: 0;
+  border-radius: 0 0 20px 20px;
+  padding: 14px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, #5b7cff 0%, #3d5af1 100%);
+  cursor: pointer;
+}
+
+.profile-achievements-overlay__cta:hover:not(:disabled):not(.is-done) {
+  filter: brightness(1.05);
+}
+
+.profile-achievements-overlay__cta.is-done {
+  background: linear-gradient(180deg, #8fa4ff 0%, #6b82f5 100%);
+  cursor: default;
+}
+
+.profile-achievements-overlay__cta.is-locked,
+.profile-achievements-overlay__cta:disabled {
+  color: rgba(17, 17, 17, 0.45);
+  background: #e8e8e4;
+  cursor: default;
 }
 
 .profile-hub-card--compact {
