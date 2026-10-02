@@ -27,8 +27,8 @@ export const LAP_ZONES: ReadonlyArray<{ x: number; y: number }> = [
 ];
 export const LAP_ZONE_R = 70;
 
-/** Заезд — три круга подряд, после третьего праздник на трибунах. */
-export const RACE_LAPS = 3;
+/** Заезд — один круг; поздравление только если улучшили рекорд. */
+export const RACE_LAPS = 1;
 
 /** Совпадает с серверной проверкой: быстрее — круг не принимается. */
 export const MIN_LAP_MS = 8000;

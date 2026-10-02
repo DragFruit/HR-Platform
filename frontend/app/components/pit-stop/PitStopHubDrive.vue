@@ -15,8 +15,8 @@
 
     <div class="ps-drive__hud" aria-live="polite">
       <div class="ps-drive__hud-row is-main">
-        <span class="ps-drive__hud-label">Круг {{ raceLap }}/{{ RACE_LAPS }}</span>
-        <span class="ps-drive__hud-time">{{ formatLapMs(lapStartTs == null ? null : currentMs) }}</span>
+        <span class="ps-drive__hud-label">{{ finished ? 'Финиш' : 'Круг' }}</span>
+        <span class="ps-drive__hud-time">{{ formatLapMs(finished ? lastLapMs : lapStartTs == null ? null : currentMs) }}</span>
       </div>
       <div class="ps-drive__hud-row">
         <span class="ps-drive__hud-label">Прошлый</span>
@@ -31,16 +31,19 @@
       </div>
     </div>
 
-    <p v-if="flash" class="ps-drive__flash" :class="`is-${flash.kind}`">{{ flash.text }}</p>
+    <p v-if="finished" class="ps-drive__again" role="status">
+      <kbd>Пробел</kbd> — проехать ещё раз
+    </p>
+    <p v-else-if="flash" class="ps-drive__flash" :class="`is-${flash.kind}`">{{ flash.text }}</p>
     <p v-else-if="!started" class="ps-drive__hint">
       <span class="ps-drive__hint-desk">W / ↑ — газ · A D / ← → — руль · R — на старт</span>
       <span class="ps-drive__hint-touch">Тяни круг — болид едет туда</span>
     </p>
 
-    <button type="button" class="ps-drive__reset" @click="resetCar">На старт</button>
+    <button type="button" class="ps-drive__reset" @click="restartRace">На старт</button>
 
     <div
-      v-show="!paused"
+      v-show="!paused && !finished"
       ref="stickRoot"
       class="ps-drive__stick"
       :class="{ 'is-active': stickActive }"
@@ -64,7 +67,6 @@ import {
   LAP_ZONES,
   LAP_ZONE_R,
   MIN_LAP_MS,
-  RACE_LAPS,
   START_LINE,
   TRACK_H,
   TRACK_SPAWN,
@@ -76,6 +78,14 @@ import {
   type CarColorId,
   type TrackMask
 } from '~/events/pit-stop-14/trackDrive';
+import {
+  hushEngine,
+  playBump,
+  playTriumph,
+  setEngine,
+  setSteer,
+  unlockRaceAudio
+} from '~/events/pit-stop-14/raceAudio';
 
 const props = defineProps<{
   color: CarColorId;
@@ -83,17 +93,12 @@ const props = defineProps<{
   paused?: boolean;
 }>();
 
-const emit = defineEmits<{ lap: [ms: number]; finish: [bestLapMs: number] }>();
+const emit = defineEmits<{
+  lap: [ms: number];
+  finish: [payload: { ms: number; improved: boolean }];
+}>();
 
-const lapsDone = ref(0);
-let raceBestMs: number | null = null;
-const raceLap = computed(() => Math.min(RACE_LAPS, lapsDone.value + 1));
-
-const resetRace = () => {
-  lapsDone.value = 0;
-  raceBestMs = null;
-};
-
+const finished = ref(false);
 const carImg = computed(() => carSrc(props.color));
 
 const car = reactive({ x: TRACK_SPAWN.x, y: TRACK_SPAWN.y, angleDeg: TRACK_SPAWN.angleDeg });
@@ -144,25 +149,42 @@ const resetLap = () => {
   zonesHit.value = LAP_ZONES.map(() => false);
 };
 
-const resetCar = () => {
+const restartRace = () => {
+  void unlockRaceAudio();
   car.x = TRACK_SPAWN.x;
   car.y = TRACK_SPAWN.y;
   car.angleDeg = TRACK_SPAWN.angleDeg;
   speed = 0;
+  finished.value = false;
+  started.value = false;
+  flash.value = null;
   resetLap();
-  resetRace();
+  hushEngine();
 };
 
 const onKey = (e: KeyboardEvent, down: boolean) => {
   const t = e.target as HTMLElement | null;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   if (props.paused && down) return;
+
+  if (down && (e.code === 'Space' || e.key === ' ')) {
+    if (finished.value) {
+      e.preventDefault();
+      restartRace();
+      return;
+    }
+  }
+
+  void unlockRaceAudio();
+
+  if (finished.value) return;
+
   const k = e.key.toLowerCase();
   if (k === 'arrowup' || k === 'w' || k === 'ц') keys.up = down;
   else if (k === 'arrowdown' || k === 's' || k === 'ы') keys.down = down;
   else if (k === 'arrowleft' || k === 'a' || k === 'ф') keys.left = down;
   else if (k === 'arrowright' || k === 'd' || k === 'в') keys.right = down;
-  else if ((k === 'r' || k === 'к') && down) resetCar();
+  else if ((k === 'r' || k === 'к') && down) restartRace();
   else return;
   e.preventDefault();
 };
@@ -188,6 +210,8 @@ const setStickFromEvent = (ev: PointerEvent) => {
 };
 
 const onStickDown = (ev: PointerEvent) => {
+  if (finished.value || props.paused) return;
+  void unlockRaceAudio();
   stickActive.value = true;
   stickPtr = ev.pointerId;
   stickRoot.value?.setPointerCapture(ev.pointerId);
@@ -228,28 +252,38 @@ const findNudge = (m: TrackMask, angleDeg: number) => {
   return null;
 };
 
+const completeLap = (ms: number) => {
+  lastLapMs.value = ms;
+  currentMs.value = ms;
+  lapStartTs.value = null;
+  const improved = props.bestMs == null || ms < props.bestMs;
+  finished.value = true;
+  speed = 0;
+  keys.up = keys.down = keys.left = keys.right = false;
+  stickVec.x = 0;
+  stickVec.y = 0;
+  hushEngine();
+  emit('lap', ms);
+  emit('finish', { ms, improved });
+  if (improved) {
+    showFlash('record', `Рекорд! ${formatLapMs(ms)}`, 3200);
+    playTriumph();
+  } else {
+    showFlash('ok', formatLapMs(ms), 2200);
+  }
+};
+
 const checkLine = (px: number, py: number, nx: number, ny: number, now: number) => {
+  if (finished.value) return;
   const inBand = (ny >= START_LINE.yMin && ny <= START_LINE.yMax) || (py >= START_LINE.yMin && py <= START_LINE.yMax);
   if (!inBand) return;
   if (px < START_LINE.x && nx >= START_LINE.x) {
     if (lapStartTs.value != null && zonesHit.value.every(Boolean)) {
       const ms = Math.round(now - lapStartTs.value);
       if (ms >= MIN_LAP_MS) {
-        lastLapMs.value = ms;
-        const record = props.bestMs == null || ms < props.bestMs;
-        raceBestMs = raceBestMs == null ? ms : Math.min(raceBestMs, ms);
-        lapsDone.value += 1;
-        emit('lap', ms);
-        if (lapsDone.value >= RACE_LAPS) {
-          showFlash('record', `Финиш! Лучший круг ${formatLapMs(raceBestMs)}`, 3200);
-          emit('finish', raceBestMs);
-          resetRace();
-        } else {
-          showFlash(record ? 'record' : 'ok', record ? `Рекорд! ${formatLapMs(ms)}` : formatLapMs(ms));
-        }
+        completeLap(ms);
+        return;
       }
-    } else if (lapStartTs.value != null) {
-      resetRace();
     }
     zonesHit.value = LAP_ZONES.map(() => false);
     lapStartTs.value = now;
@@ -257,7 +291,6 @@ const checkLine = (px: number, py: number, nx: number, ny: number, now: number) 
   } else if (px >= START_LINE.x && nx < START_LINE.x) {
     if (lapStartTs.value != null) showFlash('bad', 'Против хода — заезд сначала');
     resetLap();
-    resetRace();
   }
 };
 
@@ -267,6 +300,11 @@ const tick = (ts: number) => {
   const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
   lastTs = ts;
   if (!dt) return;
+
+  if (finished.value || props.paused) {
+    hushEngine();
+    return;
+  }
 
   let throttle = 0;
   let steer = 0;
@@ -283,11 +321,6 @@ const tick = (ts: number) => {
     throttle = Math.abs(d) > 120 ? 0.35 : Math.min(1, stickMag * 1.15);
   }
 
-  if (props.paused) {
-    throttle = 0;
-    steer = 0;
-  }
-
   if (!started.value && (throttle !== 0 || steer !== 0)) started.value = true;
 
   if (throttle > 0) {
@@ -299,6 +332,10 @@ const tick = (ts: number) => {
     speed -= Math.sign(speed) * d;
   }
   speed = Math.max(-MAX_REVERSE, Math.min(MAX_SPEED, speed));
+
+  const speedNorm = Math.min(1, Math.abs(speed) / MAX_SPEED);
+  setEngine(speedNorm, throttle);
+  setSteer(steer, speedNorm);
 
   if (steer !== 0 && Math.abs(speed) > 1) {
     const grip = Math.min(1, Math.abs(speed) / 90) * (1 - 0.25 * Math.min(1, Math.abs(speed) / MAX_SPEED));
@@ -333,11 +370,14 @@ const tick = (ts: number) => {
   } else if (carFitsOnTrack(mask, px + dx, py, car.angleDeg)) {
     car.x = px + dx;
     speed *= 0.55;
+    playBump(0.35);
   } else if (carFitsOnTrack(mask, px, py + dy, car.angleDeg)) {
     car.y = py + dy;
     speed *= 0.55;
+    playBump(0.35);
   } else {
     speed *= -0.25;
+    playBump(0.7);
   }
 
   checkLine(px, py, car.x, car.y, now);
@@ -368,6 +408,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf);
   if (flashTimer) clearTimeout(flashTimer);
+  hushEngine();
   window.removeEventListener('keydown', keyDown);
   window.removeEventListener('keyup', keyUp);
   window.removeEventListener('pointermove', onStickMove);
@@ -375,7 +416,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointercancel', onStickUp);
 });
 
-defineExpose({ resetCar });
+defineExpose({ restartRace });
 </script>
 
 <style scoped>
@@ -459,7 +500,8 @@ defineExpose({ resetCar });
 }
 
 .ps-drive__flash,
-.ps-drive__hint {
+.ps-drive__hint,
+.ps-drive__again {
   position: absolute;
   left: 50%;
   top: 4%;
@@ -473,6 +515,23 @@ defineExpose({ resetCar });
   font-weight: 800;
   white-space: nowrap;
   line-height: 1.2;
+}
+.ps-drive__again {
+  background: #ddf365;
+  color: #111;
+  box-shadow: 3px 3px 0 #7451f4;
+  pointer-events: none;
+}
+.ps-drive__again kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-right: 4px;
+  border: 2px solid #111;
+  border-radius: 6px;
+  background: #eeeee8;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: 1px 1px 0 #111;
 }
 .ps-drive__hint {
   background: rgba(17, 17, 17, 0.85);
@@ -587,7 +646,8 @@ defineExpose({ resetCar });
     display: none;
   }
   .ps-drive__flash,
-  .ps-drive__hint {
+  .ps-drive__hint,
+  .ps-drive__again {
     font-size: 0.66rem;
     top: 2%;
   }

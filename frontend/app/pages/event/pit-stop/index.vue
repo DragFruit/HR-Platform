@@ -176,7 +176,8 @@ const firstName = (full: string | undefined) => {
   return parts[1] ?? parts[0] ?? 'Пилот';
 };
 
-const onFinish = () => {
+const onFinish = (payload: { ms: number; improved: boolean }) => {
+  if (!payload.improved) return;
   partyRef.value?.play(firstName(user.value?.name));
 };
 
