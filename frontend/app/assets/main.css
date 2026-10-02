@@ -5106,14 +5106,14 @@ button.org-unit-head--link:hover {
   display: grid;
   place-items: center;
   flex: 1 1 auto;
-  min-height: 140px;
-  padding: 20px 16px 8px;
-  background: #fff;
+  min-height: 168px;
+  padding: 16px 12px 4px;
+  background: transparent;
 }
 
 .profile-achievements-overlay__art img {
-  width: 112px;
-  height: 112px;
+  width: 168px;
+  height: 168px;
   object-fit: contain;
 }
 

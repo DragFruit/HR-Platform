@@ -4,6 +4,11 @@
 
 ## 2026-10-02
 
+### Ачивка «Календарь отпусков» — без серого фона, крупнее
+
+- PNG `kalendar-otpuskov`: вырезан серый paper-фон (прозрачный), стикер крупнее в кадре.
+- Оверлей ачивок: арт без подложки, иконка 168px (было 112).
+
 ### Ачивка «Календарь отпусков» — эскиз B (ромб)
 
 - Иконка `kalendar-otpuskov`: синий ромб, календарь с блоками отпуска + пальма, зернистый sticker-pack. Файл: `public/achievements/kalendar-otpuskov.png`. Эскизы: `docs/design-refs/achievements/kalendar-otpuskov/sketches-v4/`.
