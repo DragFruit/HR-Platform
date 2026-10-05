@@ -20,7 +20,7 @@
         />
         <div v-else class="ps-hub__closed" role="status">
           <p class="ps-hub__closed-title">Финиш ивента</p>
-          <p class="ps-hub__closed-text">Заезды закрыты 10 октября в 03:00 МСК. Итоги — в тайминге справа.</p>
+          <p class="ps-hub__closed-text">Заезды закрыты 10 октября в 03:00 МСК. Итоги — в рейтинге справа.</p>
         </div>
         <PitStopFinishParty ref="partyRef" />
       </div>
@@ -172,13 +172,14 @@ type Board = {
 };
 
 const { user, authReady } = useAuth();
-const { isAdmin } = usePlatformContext();
+/** Аккаунт admin не играет — даже если в UI переключили на «сотрудник». */
+const isAuthAdmin = computed(() => user.value?.role === 'admin');
 const partyRef = ref<{ play: (name: string) => void } | null>(null);
 
 watch(
-  [authReady, isAdmin],
+  [authReady, isAuthAdmin],
   () => {
-    if (authReady.value && isAdmin.value) {
+    if (authReady.value && isAuthAdmin.value) {
       void navigateTo('/admin/quest-dashboard', { replace: true });
     }
   },
@@ -298,11 +299,18 @@ const onLap = async (ms: number) => {
     });
     board.value.myLiveBestMs = res.bestMs;
   } catch (e: unknown) {
-    const status = (e as { statusCode?: number })?.statusCode;
-    if (status === 403) {
-      board.value.closed = true;
-      loadError.value = 'Ивент завершён';
-      return;
+    const err = e as { statusCode?: number; statusMessage?: string; data?: { statusMessage?: string } };
+    if (err.statusCode === 403) {
+      const msg = `${err.statusMessage || ''} ${err.data?.statusMessage || ''}`.toLowerCase();
+      if (msg.includes('админ')) {
+        void navigateTo('/admin/quest-dashboard', { replace: true });
+        return;
+      }
+      if (msg.includes('заверш') || isPitStopGameStopped()) {
+        board.value.closed = true;
+        loadError.value = 'Ивент завершён';
+        return;
+      }
     }
     loadError.value = 'Круг не сохранился — проверь связь';
   }
@@ -330,7 +338,7 @@ let stageRo: ResizeObserver | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
-  if (isAdmin.value) return;
+  if (isAuthAdmin.value) return;
   const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
   if (isCarColorId(saved)) color.value = saved;
   if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
