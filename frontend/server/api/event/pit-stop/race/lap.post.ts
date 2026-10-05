@@ -4,6 +4,9 @@ import { isValidLapMs, submitLap } from '../../../../utils/pitStopRaceStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
+  if (session.role === 'admin') {
+    throw createError({ statusCode: 403, statusMessage: 'Админу игра недоступна' });
+  }
   if (isPitStopGameStopped()) {
     throw createError({ statusCode: 403, statusMessage: 'Ивент завершён' });
   }

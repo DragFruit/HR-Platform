@@ -14,7 +14,9 @@ export const LAUNCH_VACATIONS_ADMIN_NOTIFICATIONS_PATH = '/admin/notifications';
 export const LAUNCH_VACATIONS_ADMIN_IDEAS_PATH = '/admin/ideas';
 export const LAUNCH_VACATIONS_ADMIN_KNOWLEDGE_PATH = '/admin/knowledge';
 export const LAUNCH_VACATIONS_ADMIN_ORGANIZATION_PATH = '/admin/organization';
+export const LAUNCH_VACATIONS_ADMIN_QUEST_DASHBOARD_PATH = '/admin/quest-dashboard';
 export const LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH = '/organization';
+export const LAUNCH_VACATIONS_PIT_STOP_PATH = '/event/pit-stop';
 
 export function useLaunchScope() {
   const config = useRuntimeConfig();
@@ -94,6 +96,15 @@ export function useLaunchScope() {
       path === LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH ||
       path.startsWith(`${LAUNCH_VACATIONS_EMPLOYEE_ORGANIZATION_PATH}/`)
     ) {
+      return true;
+    }
+    if (
+      path === LAUNCH_VACATIONS_ADMIN_QUEST_DASHBOARD_PATH ||
+      path.startsWith(`${LAUNCH_VACATIONS_ADMIN_QUEST_DASHBOARD_PATH}/`)
+    ) {
+      return true;
+    }
+    if (path === LAUNCH_VACATIONS_PIT_STOP_PATH || path.startsWith(`${LAUNCH_VACATIONS_PIT_STOP_PATH}/`)) {
       return true;
     }
     return false;

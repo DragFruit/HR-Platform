@@ -179,7 +179,7 @@ const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRol
   usePlatformContext();
 const { homePath, isPathAllowed } = useLaunchScope();
 const showPitStopFlag = computed(
-  () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped()
+  () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped() && !isAdmin.value
 );
 const platformName = PLATFORM_NAME;
 

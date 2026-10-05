@@ -1,33 +1,54 @@
 import { requireRole } from '../../utils/requireRole';
-import { completedCount, readPitStop } from '../../utils/pitStopStore';
-import { PIT_STOP_CHECKPOINTS } from '../../../app/events/pit-stop-14/timeline';
+import { readEmployees, type ServerEmployee } from '../../utils/employeesStore';
+import { readRaceRecords, readRaceVisits } from '../../utils/pitStopRaceStore';
+
+/** Возможные id сессии сотрудника в race-данных. */
+function raceUserIds(emp: ServerEmployee): number[] {
+  const ids = new Set<number>();
+  if (emp.platform_user_id != null && emp.platform_user_id > 0) ids.add(emp.platform_user_id);
+  if (emp.bitrix_user_id != null && emp.bitrix_user_id > 0) ids.add(emp.bitrix_user_id);
+  if (emp.id > 0) ids.add(emp.id);
+  return [...ids];
+}
 
 export default defineEventHandler(async (event) => {
   await requireRole(event, ['admin']);
-  const state = await readPitStop();
+  const [employees, records, visits] = await Promise.all([
+    readEmployees(),
+    readRaceRecords(),
+    readRaceVisits()
+  ]);
 
-  const rows = state.players.map((p) => {
-    const current =
-      PIT_STOP_CHECKPOINTS.map((c) => c.id).find((id) => p.checkpoints[id] !== 'done') ?? 8;
-    const status = p.checkpoints[current as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8] ?? 'open';
-    return {
-      userId: p.userId,
-      name: p.name,
-      pairId: p.pairId,
-      isRemote: p.isRemote,
-      completed: completedCount(p),
-      point: current,
-      status,
-      coffeePending: p.checkpoints[5] === 'pending_review',
-      coffeePhotoPath: p.coffeePhotoPath ?? null,
-      rewardsGranted: Boolean(p.rewardsGranted)
-    };
-  });
+  const recordByUser = new Map(records.map((r) => [r.userId, r]));
+  const visitByUser = new Map(visits.map((v) => [v.userId, v]));
+
+  const rows = employees
+    .filter((emp) => emp.account_role !== 'admin')
+    .map((emp) => {
+      const ids = raceUserIds(emp);
+      const record = ids.map((id) => recordByUser.get(id)).find(Boolean);
+      const visit = ids.map((id) => visitByUser.get(id)).find(Boolean);
+      const laps = record?.laps ?? 0;
+      const entered = Boolean(visit || record);
+      return {
+        employeeId: emp.id,
+        name: emp.name,
+        department: emp.department || '',
+        entered,
+        laps
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  const enteredCount = rows.filter((r) => r.entered).length;
+  const racedCount = rows.filter((r) => r.laps > 0).length;
 
   return {
-    pairs: state.pairs.length,
     players: rows,
-    coffeeQueue: rows.filter((r) => r.coffeePending),
-    finalizedAt: state.finalizedAt
+    summary: {
+      total: rows.length,
+      entered: enteredCount,
+      raced: racedCount
+    }
   };
 });

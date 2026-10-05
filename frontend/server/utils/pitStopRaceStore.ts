@@ -35,8 +35,16 @@ export type PitStopRaceWinner = {
   bestMs: number;
 };
 
+/** Заход на хаб гонки (даже без круга). */
+export type PitStopRaceVisit = {
+  userId: number;
+  name: string;
+  at: string;
+};
+
 type PitStopRaceState = {
   records: PitStopRaceRecord[];
+  visits?: PitStopRaceVisit[];
   winners?: PitStopRaceWinner[];
   finalizedAt?: string | null;
 };
@@ -46,16 +54,46 @@ async function readState(): Promise<PitStopRaceState> {
     const raw = JSON.parse(await readFile(DATA_FILE, 'utf8')) as Partial<PitStopRaceState>;
     return {
       records: Array.isArray(raw.records) ? raw.records : [],
+      visits: Array.isArray(raw.visits) ? raw.visits : [],
       winners: Array.isArray(raw.winners) ? raw.winners : undefined,
       finalizedAt: typeof raw.finalizedAt === 'string' ? raw.finalizedAt : null
     };
   } catch {
-    return { records: [], winners: undefined, finalizedAt: null };
+    return { records: [], visits: [], winners: undefined, finalizedAt: null };
   }
 }
 
 export async function readRaceRecords(): Promise<PitStopRaceRecord[]> {
   return (await readState()).records;
+}
+
+export async function readRaceVisits(): Promise<PitStopRaceVisit[]> {
+  return (await readState()).visits ?? [];
+}
+
+/** Идемпотентно: первый заход на хаб. */
+export async function recordRaceVisit(input: {
+  userId: number;
+  name: string;
+}): Promise<{ visit: PitStopRaceVisit; created: boolean }> {
+  return enqueue(async () => {
+    const state = await readState();
+    if (!state.visits) state.visits = [];
+    const existing = state.visits.find((v) => v.userId === input.userId);
+    if (existing) {
+      existing.name = input.name;
+      await writeJsonAtomic(DATA_FILE, state);
+      return { visit: existing, created: false };
+    }
+    const visit: PitStopRaceVisit = {
+      userId: input.userId,
+      name: input.name,
+      at: new Date().toISOString()
+    };
+    state.visits.push(visit);
+    await writeJsonAtomic(DATA_FILE, state);
+    return { visit, created: true };
+  });
 }
 
 /** QA-аккаунты стейджа — не показываем в таблице (тестовые заезды). */

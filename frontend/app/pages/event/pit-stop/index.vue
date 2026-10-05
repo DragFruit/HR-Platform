@@ -175,8 +175,19 @@ type Board = {
   closed: boolean;
 };
 
-const { user } = useAuth();
+const { user, authReady } = useAuth();
+const { isAdmin } = usePlatformContext();
 const partyRef = ref<{ play: (name: string) => void } | null>(null);
+
+watch(
+  [authReady, isAdmin],
+  () => {
+    if (authReady.value && isAdmin.value) {
+      void navigateTo('/admin/quest-dashboard', { replace: true });
+    }
+  },
+  { immediate: true }
+);
 
 const showIntro = ref(false);
 const introStep = ref(0);
@@ -331,9 +342,11 @@ let stageRo: ResizeObserver | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
+  if (isAdmin.value) return;
   const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
   if (isCarColorId(saved)) color.value = saved;
   if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
+  void $fetch('/api/event/pit-stop/race/visit', { method: 'POST', body: {} }).catch(() => {});
   void loadBoard();
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible') void loadBoard();

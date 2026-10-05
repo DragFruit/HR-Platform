@@ -1,47 +1,37 @@
 <template>
   <div class="quest-dash">
     <header class="quest-dash__head">
-      <h1>Quest dashboard · Pit Stop 14</h1>
-      <p class="muted">Живой прогресс · аппрув кофе-брейка</p>
+      <h1>Pit Stop 14 · статистика</h1>
+      <p class="muted">Разогревочная гонка · кто заходил и сколько кругов проехал</p>
     </header>
 
     <div class="quest-dash__actions">
-      <button type="button" class="button primary" :disabled="busy" @click="approveAll">
-        АППРУВ ВСЕХ ДОСТУПНЫХ
-      </button>
-      <button type="button" class="button ghost" @click="load">Обновить</button>
+      <p v-if="summary" class="quest-dash__summary">
+        Заходили {{ summary.entered }} из {{ summary.total }}
+        · с кругами {{ summary.raced }}
+      </p>
+      <button type="button" class="button ghost" :disabled="loading" @click="load">Обновить</button>
     </div>
 
     <p v-if="error" class="vac-emp-error">{{ error }}</p>
-
-    <section v-if="coffeeQueue.length" class="quest-dash__coffee">
-      <h2>Кофе на проверке ({{ coffeeQueue.length }})</h2>
-      <ul>
-        <li v-for="row in coffeeQueue" :key="row.userId">
-          {{ row.name }}
-          <button type="button" class="button ghost" @click="approveOne(row.userId)">Аппрув</button>
-        </li>
-      </ul>
-    </section>
 
     <div class="quest-dash__table-wrap">
       <table class="quest-dash__table">
         <thead>
           <tr>
             <th>ФИО</th>
-            <th>Точка</th>
-            <th>Статус</th>
-            <th>Прогресс</th>
-            <th>Remote</th>
+            <th>Заходил в игру</th>
+            <th>Кругов</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in players" :key="row.userId">
+          <tr v-for="row in players" :key="row.employeeId">
             <td>{{ row.name }}</td>
-            <td>{{ row.point }}</td>
-            <td>{{ row.status }}</td>
-            <td>{{ row.completed }}/8</td>
-            <td>{{ row.isRemote ? 'да' : 'нет' }}</td>
+            <td>{{ row.entered ? 'да' : 'нет' }}</td>
+            <td>{{ row.laps }}</td>
+          </tr>
+          <tr v-if="!loading && !players.length">
+            <td colspan="3" class="muted">Нет сотрудников в справочнике</td>
           </tr>
         </tbody>
       </table>
@@ -53,52 +43,32 @@
 definePageMeta({ layout: 'default' });
 
 type Row = {
-  userId: number;
+  employeeId: number;
   name: string;
-  point: number;
-  status: string;
-  completed: number;
-  isRemote: boolean;
-  coffeePending: boolean;
+  department: string;
+  entered: boolean;
+  laps: number;
 };
+
+type Summary = { total: number; entered: number; raced: number };
 
 const players = ref<Row[]>([]);
-const coffeeQueue = ref<Row[]>([]);
+const summary = ref<Summary | null>(null);
 const error = ref('');
-const busy = ref(false);
+const loading = ref(false);
 
 const load = async () => {
+  loading.value = true;
   error.value = '';
   try {
-    const data = await $fetch<{ players: Row[]; coffeeQueue: Row[] }>(
-      '/api/admin/quest-dashboard'
-    );
+    const data = await $fetch<{ players: Row[]; summary: Summary }>('/api/admin/quest-dashboard');
     players.value = data.players;
-    coffeeQueue.value = data.coffeeQueue;
+    summary.value = data.summary;
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Ошибка загрузки';
-  }
-};
-
-const approveAll = async () => {
-  busy.value = true;
-  try {
-    await $fetch('/api/admin/quest-dashboard/coffee-approve', {
-      method: 'POST',
-      body: { all: true }
-    });
-    await load();
   } finally {
-    busy.value = false;
+    loading.value = false;
   }
-};
-
-const approveOne = async (userId: number) => {
-  await $fetch('/api/admin/quest-dashboard/coffee-approve', {
-    method: 'POST',
-    body: { userId }
-  });
-  await load();
 };
 
 onMounted(load);
@@ -116,28 +86,14 @@ onMounted(load);
 .quest-dash__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 16px 0;
-}
-.quest-dash__coffee {
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  background: #eeeee8;
-  border: 2px solid #111;
-  border-radius: 12px;
-}
-.quest-dash__coffee ul {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-.quest-dash__coffee li {
-  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin: 16px 0;
+}
+.quest-dash__summary {
+  margin: 0;
+  font-size: 0.95rem;
 }
 .quest-dash__table-wrap {
   overflow-x: auto;

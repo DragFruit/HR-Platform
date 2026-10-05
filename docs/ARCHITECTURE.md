@@ -140,7 +140,7 @@ flowchart TB
 - `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
-- `admin/quest-dashboard.vue` — мониторинг Pit Stop 14 + аппрув кофе
+- `admin/quest-dashboard.vue` — статистика разогревочной гонки Pit Stop (ФИО / заходил / кругов); админ в игру не заходит
 - `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
 
 ---
