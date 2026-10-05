@@ -40,7 +40,9 @@
             class="nav-profile"
             :class="{
               'is-lit':
-                isNavItemActive('/profile') || route.path.startsWith('/event/pit-stop')
+                isNavItemActive('/profile') ||
+                route.path.startsWith('/event/pit-stop') ||
+                route.path.startsWith('/admin/quest-dashboard')
             }"
           >
             <NuxtLink
@@ -52,9 +54,13 @@
             </NuxtLink>
             <NuxtLink
               v-if="showPitStopFlag"
-              to="/event/pit-stop"
+              :to="pitStopFlagTo"
               class="nav-profile__flag"
-              aria-label="Pit Stop 14 — корпоративный квест"
+              :aria-label="
+                isAuthAdmin
+                  ? 'Pit Stop 14 — статистика'
+                  : 'Pit Stop 14 — корпоративный квест'
+              "
               title="Pit Stop 14"
             >
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
@@ -178,12 +184,13 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath, isPathAllowed } = useLaunchScope();
+/** Аккаунт admin — флаг ведёт в статистику, не в игру. */
+const isAuthAdmin = computed(() => user.value?.role === 'admin');
 const showPitStopFlag = computed(
-  () =>
-    isPathAllowed('/event/pit-stop') &&
-    !isPitStopGameStopped() &&
-    !isAdmin.value &&
-    user.value?.role !== 'admin'
+  () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped()
+);
+const pitStopFlagTo = computed(() =>
+  isAuthAdmin.value ? '/admin/quest-dashboard' : '/event/pit-stop'
 );
 const platformName = PLATFORM_NAME;
 
