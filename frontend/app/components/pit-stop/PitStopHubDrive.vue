@@ -20,10 +20,10 @@
       <img :src="carImg" alt="" draggable="false" />
     </div>
 
-    <div class="ps-drive__hud" aria-live="polite">
+    <div class="ps-drive__hud">
       <div class="ps-drive__hud-row is-main">
         <span class="ps-drive__hud-label">{{ finished ? 'Финиш' : 'Круг' }}</span>
-        <span class="ps-drive__hud-time">{{ formatLapMs(finished ? lastLapMs : lapStartTs == null ? null : currentMs) }}</span>
+        <span ref="lapTimeEl" class="ps-drive__hud-time" aria-live="off" />
       </div>
       <div class="ps-drive__hud-row">
         <span class="ps-drive__hud-label">Прошлый</span>
@@ -141,9 +141,29 @@ const started = ref(false);
 const lapStartTs = ref<number | null>(null);
 const currentMs = ref(0);
 const lastLapMs = ref<number | null>(null);
+const lapTimeEl = ref<HTMLElement | null>(null);
 const zonesHit = ref<boolean[]>(LAP_ZONES.map(() => false));
 const flash = ref<{ kind: 'ok' | 'bad' | 'record'; text: string } | null>(null);
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
+/** Последняя строка в «Круг» — пишем в DOM напрямую, без Vue каждый кадр (иначе цифры «липнут»). */
+let paintedLapText = '';
+
+const paintLapTime = (ms: number | null) => {
+  const text = formatLapMs(ms);
+  if (text === paintedLapText && lapTimeEl.value?.textContent === text) return;
+  paintedLapText = text;
+  const el = lapTimeEl.value;
+  if (el) el.textContent = text;
+};
+
+watch([finished, lastLapMs], () => {
+  nextTick(() => {
+    paintedLapText = '';
+    if (finished.value) paintLapTime(lastLapMs.value);
+    else if (lapStartTs.value == null) paintLapTime(null);
+    else paintLapTime(currentMs.value);
+  });
+});
 
 let mask: TrackMask | null = null;
 let raf = 0;
@@ -179,6 +199,7 @@ const resetLap = () => {
   lapStartTs.value = null;
   currentMs.value = 0;
   zonesHit.value = LAP_ZONES.map(() => false);
+  paintLapTime(null);
 };
 
 const clearCountdown = () => {
@@ -322,6 +343,7 @@ const completeLap = (ms: number) => {
   lastLapMs.value = ms;
   currentMs.value = ms;
   lapStartTs.value = null;
+  paintLapTime(ms);
   const improved = props.bestMs == null || ms < props.bestMs;
   finished.value = true;
   speed = 0;
@@ -359,6 +381,7 @@ const checkLine = (px: number, py: number, nx: number, ny: number, now: number) 
     zonesHit.value = LAP_ZONES.map(() => false);
     lapStartTs.value = now;
     currentMs.value = 0;
+    paintLapTime(0);
   } else if (px >= START_LINE.x && nx < START_LINE.x) {
     if (lapStartTs.value != null) showFlash('bad', 'Против хода — заезд сначала');
     resetLap();
@@ -425,7 +448,10 @@ const tick = (ts: number) => {
   }
 
   const now = performance.now();
-  if (lapStartTs.value != null) currentMs.value = now - lapStartTs.value;
+  if (lapStartTs.value != null) {
+    currentMs.value = now - lapStartTs.value;
+    paintLapTime(currentMs.value);
+  }
 
   if (Math.abs(speed) < 0.5) return;
 
@@ -466,6 +492,7 @@ const tick = (ts: number) => {
 };
 
 onMounted(async () => {
+  paintLapTime(null);
   window.addEventListener('keydown', keyDown, { passive: false });
   window.addEventListener('keyup', keyUp);
   window.addEventListener('pointermove', onStickMove);
@@ -543,9 +570,11 @@ defineExpose({ restartRace });
   padding: 6px 10px;
   border: 2px solid #111;
   border-radius: 10px;
-  background: rgba(17, 17, 17, 0.78);
+  background: rgba(17, 17, 17, 0.92);
   color: #eeeee8;
   pointer-events: none;
+  isolation: isolate;
+  transform: translateZ(0);
 }
 .ps-drive__hud-row {
   display: flex;
@@ -554,7 +583,7 @@ defineExpose({ restartRace });
   min-width: 4.2rem;
 }
 .ps-drive__hud-row.is-main {
-  min-width: 5.2rem;
+  min-width: 5.6rem;
 }
 .ps-drive__hud-row.is-best .ps-drive__hud-time {
   color: #ddf365;
@@ -567,14 +596,23 @@ defineExpose({ restartRace });
   color: rgba(238, 238, 232, 0.55);
 }
 .ps-drive__hud-time {
+  display: block;
+  box-sizing: border-box;
+  min-width: 9ch;
+  overflow: hidden;
+  white-space: nowrap;
   font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 0.82rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
+  background: #111;
+  /* без теней — иначе на части GPU цифры «липнут» поверх следующих кадров */
+  text-shadow: none;
 }
 .ps-drive__hud-row.is-main .ps-drive__hud-time {
   font-size: 1rem;
+  min-width: 10ch;
 }
 .ps-drive__hud-zones {
   display: flex;
