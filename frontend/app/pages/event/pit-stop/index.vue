@@ -53,10 +53,7 @@
       <section class="ps-board" aria-labelledby="ps-board-title">
         <header class="ps-board__head">
           <div class="ps-board__checker" aria-hidden="true" />
-          <h2 id="ps-board-title" class="ps-board__title">Тайминг</h2>
-          <p class="ps-board__sub">
-            {{ eventClosed ? 'Итоги' : 'Лучший круг' }} · {{ board.total }} {{ pilotsWord(board.total) }}
-          </p>
+          <h2 id="ps-board-title" class="ps-board__title">Рейтинг</h2>
           <p v-if="eventClosed" class="ps-board__sched">Финальный срез · 10.10 03:00 МСК</p>
           <p v-else-if="board.publishedAt && board.nextAt" class="ps-board__sched">
             Обновлено в {{ mskTime(board.publishedAt) }} · следующее в {{ mskTime(board.nextAt) }}
@@ -268,14 +265,6 @@ const shortName = (full: string) => {
   return first ? `${last} ${first[0]}.` : full;
 };
 
-const pilotsWord = (n: number) => {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'пилот';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'пилота';
-  return 'пилотов';
-};
-
 const pickColor = (id: CarColorId) => {
   color.value = id;
   if (import.meta.client) localStorage.setItem(CAR_COLOR_STORAGE_KEY, id);
@@ -296,7 +285,7 @@ const loadBoard = async () => {
     };
     loadError.value = '';
   } catch {
-    loadError.value = 'Тайминг не загрузился';
+    loadError.value = 'Рейтинг не загрузился';
   }
 };
 
@@ -559,14 +548,6 @@ onBeforeUnmount(() => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
-}
-.ps-board__sub {
-  margin: 2px 0 0;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(238, 238, 232, 0.55);
 }
 .ps-board__sched {
   margin: 4px 0 0;
