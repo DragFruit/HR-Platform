@@ -83,7 +83,6 @@
               </span>
               <span class="ps-board__time">{{ formatLapMs(row.bestMs) }}</span>
             </li>
-            <li v-if="board.rest.length" class="ps-board__sep" aria-hidden="true">остальные</li>
             <li
               v-for="row in board.rest"
               :key="row.userId"
@@ -672,17 +671,6 @@ onBeforeUnmount(() => {
 }
 .ps-board__row.is-p1 .ps-board__time {
   color: var(--ps-lime);
-}
-.ps-board__sep {
-  margin: 4px 12px;
-  padding: 4px 0 2px;
-  list-style: none;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(238, 238, 232, 0.35);
-  border-top: 1px solid rgba(238, 238, 232, 0.12);
 }
 .ps-board__me {
   flex: none;
