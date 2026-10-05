@@ -57,7 +57,7 @@
               :to="pitStopFlagTo"
               class="nav-profile__flag"
               :aria-label="
-                isAuthAdmin
+                isAdmin
                   ? 'Pit Stop 14 — статистика'
                   : 'Pit Stop 14 — корпоративный квест'
               "
@@ -184,13 +184,12 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath, isPathAllowed } = useLaunchScope();
-/** Аккаунт admin — флаг ведёт в статистику, не в игру. */
-const isAuthAdmin = computed(() => user.value?.role === 'admin');
+/** Режим UI: админ → статистика; сотрудник (в т.ч. admin, переключившийся) → игра. */
 const showPitStopFlag = computed(
   () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped()
 );
 const pitStopFlagTo = computed(() =>
-  isAuthAdmin.value ? '/admin/quest-dashboard' : '/event/pit-stop'
+  isAdmin.value ? '/admin/quest-dashboard' : '/event/pit-stop'
 );
 const platformName = PLATFORM_NAME;
 

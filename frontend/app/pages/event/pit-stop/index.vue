@@ -172,14 +172,14 @@ type Board = {
 };
 
 const { user, authReady } = useAuth();
-/** Аккаунт admin не играет — даже если в UI переключили на «сотрудник». */
-const isAuthAdmin = computed(() => user.value?.role === 'admin');
+const { isAdmin } = usePlatformContext();
 const partyRef = ref<{ play: (name: string) => void } | null>(null);
 
+/** Только UI-режим «Администратор» → статистика; как сотрудник — играет. */
 watch(
-  [authReady, isAuthAdmin],
+  [authReady, isAdmin],
   () => {
-    if (authReady.value && isAuthAdmin.value) {
+    if (authReady.value && isAdmin.value) {
       void navigateTo('/admin/quest-dashboard', { replace: true });
     }
   },
@@ -302,10 +302,6 @@ const onLap = async (ms: number) => {
     const err = e as { statusCode?: number; statusMessage?: string; data?: { statusMessage?: string } };
     if (err.statusCode === 403) {
       const msg = `${err.statusMessage || ''} ${err.data?.statusMessage || ''}`.toLowerCase();
-      if (msg.includes('админ')) {
-        void navigateTo('/admin/quest-dashboard', { replace: true });
-        return;
-      }
       if (msg.includes('заверш') || isPitStopGameStopped()) {
         board.value.closed = true;
         loadError.value = 'Ивент завершён';
@@ -338,7 +334,7 @@ let stageRo: ResizeObserver | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
-  if (isAuthAdmin.value) return;
+  if (isAdmin.value) return;
   const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
   if (isCarColorId(saved)) color.value = saved;
   if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
