@@ -81,21 +81,29 @@
         <form class="vac-mob-dates" data-tour="vac-create-form" @submit.prevent="submitRequest">
           <label class="vac-mob-dates__field">
             <span>с</span>
-            <input
-              v-model="form.start"
-              type="date"
-              :min="allowPastDates ? undefined : minIso"
-              :disabled="isHistoricalYear || submitting"
-            />
+            <span class="vac-mob-dates__control">
+              <input
+                v-model="form.start"
+                type="date"
+                :class="{ 'is-empty': !form.start }"
+                :min="allowPastDates ? undefined : minIso"
+                :disabled="isHistoricalYear || submitting"
+              />
+              <span v-if="!form.start" class="vac-mob-dates__ph" aria-hidden="true">дд.мм.гггг</span>
+            </span>
           </label>
           <label class="vac-mob-dates__field">
             <span>по</span>
-            <input
-              v-model="form.end"
-              type="date"
-              :min="allowPastDates ? undefined : minIso"
-              :disabled="isHistoricalYear || submitting"
-            />
+            <span class="vac-mob-dates__control">
+              <input
+                v-model="form.end"
+                type="date"
+                :class="{ 'is-empty': !form.end }"
+                :min="allowPastDates ? undefined : minIso"
+                :disabled="isHistoricalYear || submitting"
+              />
+              <span v-if="!form.end" class="vac-mob-dates__ph" aria-hidden="true">дд.мм.гггг</span>
+            </span>
           </label>
           <button
             type="submit"
@@ -110,6 +118,11 @@
           <span class="vac-mob-balance__num">{{ mobileBalanceRemain }}</span>
         </div>
       </div>
+
+      <p v-if="!isHistoricalYear && clarifyHint" class="vac-mob-chrome__hint">{{ clarifyHint }}</p>
+      <p v-if="formError" class="vac-mob-chrome__err">
+        <strong>{{ formError.title }}:</strong> {{ formError.text }}
+      </p>
 
       <nav class="vac-mob-tabs" aria-label="Календарь">
         <VacationYearTab
@@ -144,10 +157,6 @@
           Заявки
         </button>
       </nav>
-      <p v-if="!isHistoricalYear && clarifyHint" class="vac-mob-chrome__hint">{{ clarifyHint }}</p>
-      <p v-if="formError" class="vac-mob-chrome__err">
-        <strong>{{ formError.title }}:</strong> {{ formError.text }}
-      </p>
     </div>
 
     <p v-if="formError" class="vac-emp-error">

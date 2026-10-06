@@ -225,8 +225,8 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    min-height: 62px;
-    padding: 6px 4px 8px;
+    min-height: 60px;
+    padding: 5px 4px 7px;
     border: 2px solid #111;
     border-radius: 24px;
     /* Серый внутри пилюли; снаружи .mob-dock без фона */

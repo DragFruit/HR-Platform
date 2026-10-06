@@ -9,10 +9,13 @@ defineProps<{
   adminBell?: boolean;
   canSwitchRole?: boolean;
   isAdmin?: boolean;
+  managerSwitch?: boolean;
+  managerMode?: 'manager' | 'employee';
 }>();
 
 const emit = defineEmits<{
   switchRole: [role: 'employee' | 'admin'];
+  switchManagerMode: [mode: 'manager' | 'employee'];
 }>();
 </script>
 
@@ -36,6 +39,24 @@ const emit = defineEmits<{
           @click="emit('switchRole', 'admin')"
         >
           Админ
+        </button>
+      </div>
+      <div v-else-if="managerSwitch" class="mob-top__roles" role="group" aria-label="Режим отпусков">
+        <button
+          type="button"
+          class="mob-top__role"
+          :class="{ 'is-on': managerMode === 'employee' }"
+          @click="emit('switchManagerMode', 'employee')"
+        >
+          Я
+        </button>
+        <button
+          type="button"
+          class="mob-top__role"
+          :class="{ 'is-on': managerMode !== 'employee' }"
+          @click="emit('switchManagerMode', 'manager')"
+        >
+          Руководитель
         </button>
       </div>
     </div>
@@ -105,6 +126,8 @@ const emit = defineEmits<{
     min-width: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-self: stretch;
     gap: 3px;
   }
 

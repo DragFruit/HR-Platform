@@ -127,7 +127,10 @@
         :admin-bell="showAdminNotificationsBell"
         :can-switch-role="canSwitchRole"
         :is-admin="isAdmin"
+        :manager-switch="showManagerSwitch"
+        :manager-mode="managerVacationMode"
         @switch-role="switchRole"
+        @switch-manager-mode="switchManagerMode"
       />
 
       <header class="topbar topbar--desktop">
@@ -189,6 +192,7 @@ import { PLATFORM_NAME } from '~/data/platformBrand';
 import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 import { formatEmployeeShortName } from '~/utils/employeeName';
 import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
+import type { ManagerVacationUiMode } from '~/composables/useManagerVacationMode';
 
 const { balance } = useWallet();
 const { user, showOnboarding, onboardingStep, authReady, isAuthenticated, restoreSession, logout, finishOnboarding } =
@@ -219,6 +223,16 @@ const topbarDisplayName = computed(() => {
 const showAdminNotificationsBell = computed(
   () => isAdmin.value || user.value?.role === 'hr'
 );
+
+/** Руководитель / HR: «Я · Руководитель» в мобильной шапке (как тумблер в aside на десктопе). */
+const managerVacationMode = useManagerVacationMode();
+const showManagerSwitch = computed(
+  () => !canSwitchRole.value && (user.value?.role === 'manager' || user.value?.role === 'hr')
+);
+const switchManagerMode = (mode: ManagerVacationUiMode) => {
+  managerVacationMode.value = mode;
+  if (route.path !== '/vacations') void router.push('/vacations');
+};
 
 const route = useRoute();
 const router = useRouter();

@@ -167,7 +167,7 @@ const {
 } = useVacations();
 
 const activeTab = ref<'calendar' | 'approval'>('calendar');
-const managerUiMode = ref<'manager' | 'employee'>('manager');
+const managerUiMode = useManagerVacationMode();
 const managerViewMode = ref<'detailed' | 'months'>('detailed');
 const focusOnVacation = ref(false);
 const route = useRoute();

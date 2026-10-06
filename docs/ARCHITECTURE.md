@@ -100,6 +100,7 @@ flowchart TB
 | `useEmployees` | `useEmployees.ts` | Справочник ФИО, руководители, связь с аккаунтами |
 | `useEmployeeVisitingCard` | `useEmployeeVisitingCard.ts` | Публичная визитка у клика (команда в профиле, идеи; не календарь отпусков; структура — позже) |
 | `useVacations` | `useVacations.ts` | Заявки, календарь, двухэтапное согласование Digital (`vacationApproval.ts`) |
+| `useManagerVacationMode` | `useManagerVacationMode.ts` | Режим отпусков руководителя/HR `manager` / `employee` (`useState('vac-manager-ui-mode')`): тумблер в aside и «Я · Руководитель» в мобильной шапке |
 | `useOrgStructure` | `useOrgStructure.ts` | Директора, отделы, группы, сетка |
 | `useTasks` | `useTasks.ts` | Задачи геймификации |
 | `useWallet` | `useWallet.ts` | Баланс и транзакции |
