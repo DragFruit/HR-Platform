@@ -4,6 +4,14 @@
 
 ## 2026-10-06
 
+### Сайт как приложение на телефоне (PWA)
+
+- «На экран Домой» → открывается без адресной строки (`display: standalone`), иконка-пирамидка, название «VIBE VBI», старт с `/vacations`.
+- `frontend/public/manifest.webmanifest`, иконки `frontend/public/pwa/icon-{180,192,512}.png`; мета в `nuxt.config.ts` (`apple-mobile-web-app-*`, `theme-color`, `viewport-fit=cover`).
+- iOS: статус-бар прозрачный, фиолетовая шапка уходит под шторку (safe-area уже в `AppMobileTop`); экран входа с отступом под шторку.
+- Android/Chrome: полноэкранный режим только по **HTTPS**; на `http://IP` Chrome добавит обычный ярлык с адресной строкой.
+- Проверка: iPhone Safari → Поделиться → «На экран Домой» → открыть иконку.
+
 ### Отпуска mobile — вёрстка по эскизу
 
 - Шапка: safe-area под шторку; аватар без рамки + колокольчик.

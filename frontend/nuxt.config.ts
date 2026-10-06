@@ -37,9 +37,19 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'VIBE VBI',
+      viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
       script: metrikaHead.script,
       noscript: metrikaHead.noscript,
+      meta: [
+        { name: 'theme-color', content: '#7451f4' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'VIBE VBI' }
+      ],
       link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/pwa/icon-180.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {

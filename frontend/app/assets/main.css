@@ -3114,7 +3114,7 @@ button.org-unit-head--link:hover {
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   background-color: var(--hero-purple);
   background-image:
