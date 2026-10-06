@@ -4,6 +4,13 @@
 
 ## 2026-10-06
 
+### Мобильный shell — компакт по гайдам Apple/Material
+
+- Док ниже и плотнее (~56px), clearance `78px + safe-area`; без focus-ring.
+- Шапка: колокольчик + профиль; флаг Pit Stop — бейдж на аватаре (не третий круг).
+- Отпуск / Ideas / Knowledge ≤900px: те же блоки десктопа, меньше кегль и padding — больше данных на первом экране.
+- Проверка: localhost ≤900 → `/vacations`, `/knowledge`, `/ideas` — блоки как на десктопе, ничего под доком.
+
 ### Мобильный shell — контент не под доком + без focus-ring
 
 - **Scrollport над доком:** `padding-bottom: var(--mobile-nav-clearance)` на `.shell-main`, не внутри скролла `.content` — контент не рисуется под меню на первом экране.

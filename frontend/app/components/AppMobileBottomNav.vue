@@ -107,8 +107,8 @@ const updateOrb = () => {
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
   const target = icon?.getBoundingClientRect() ?? itemRect;
 
-  const size = tab.center ? 52 : 34;
-  const orbCssTop = 6;
+  const size = tab.center ? 44 : 32;
+  const orbCssTop = 4;
   const targetCenterY = target.top + target.height / 2 - barRect.top;
 
   orbX.value = target.left + target.width / 2 - barRect.left;
@@ -214,7 +214,7 @@ watch(
     right: 0;
     bottom: 0;
     z-index: 50;
-    padding: 0 10px max(8px, env(safe-area-inset-bottom));
+    padding: 0 8px max(6px, env(safe-area-inset-bottom));
     pointer-events: none;
   }
 
@@ -225,20 +225,20 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    min-height: 64px;
-    padding: 8px 4px 10px;
+    min-height: 56px;
+    padding: 4px 2px 6px;
     border: 2px solid #111;
-    border-radius: 28px;
+    border-radius: 22px;
     background-color: #eeeee8;
     background-image: var(--noise-url);
     background-size: 180px 180px;
-    box-shadow: 4px 4px 0 #111;
+    box-shadow: 3px 3px 0 #111;
     overflow: visible;
   }
 
   .mob-dock__orb {
     position: absolute;
-    top: 6px;
+    top: 4px;
     left: 0;
     z-index: 0;
     border-radius: 999px;
@@ -279,11 +279,11 @@ watch(
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    gap: 3px;
-    min-height: 50px;
+    gap: 2px;
+    min-height: 44px;
     min-width: 0;
-    padding: 2px 2px 0;
-    border-radius: 16px;
+    padding: 2px 1px 0;
+    border-radius: 14px;
     color: #555;
     text-decoration: none;
     font-weight: 700;
@@ -300,30 +300,30 @@ watch(
   }
 
   .mob-dock__item.is-center {
-    margin-top: -12px;
+    margin-top: -8px;
   }
 
   .mob-dock__icon {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     color: inherit;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   .mob-dock__item.is-on {
@@ -348,7 +348,7 @@ watch(
   }
 
   .mob-dock__label {
-    font-size: 0.56rem;
+    font-size: 0.52rem;
     letter-spacing: 0.01em;
     line-height: 1.1;
     text-align: center;

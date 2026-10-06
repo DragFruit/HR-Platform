@@ -80,9 +80,9 @@
   --transition-brutal: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   /* шапка: padding 16+16 + аватар 36 + border 1 */
   --topbar-height: 69px;
-  --mobile-top-height: 56px;
-  /* Высота дока + внешний padding; shell-main режет контент выше дока */
-  --mobile-nav-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
+  --mobile-top-height: 52px;
+  /* Док ~56px + внешний pad + safe-area; shell-main режет контент выше дока */
+  --mobile-nav-clearance: calc(78px + env(safe-area-inset-bottom, 0px));
 }
 
 *,
@@ -178,7 +178,7 @@ a {
   .shell-main > .content {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 12px;
+    padding: 10px;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -7473,101 +7473,101 @@ button.org-unit-head--link:hover {
   }
 }
 
-/* Мобилка: компактный bento как в референсах */
+/* Мобилка: те же блоки десктопа, компактнее */
 @media (max-width: 900px) {
   .ideas-bank-page {
-    gap: 10px;
-    padding-bottom: 8px;
+    gap: 8px;
+    padding-bottom: 4px;
   }
 
   .ideas-bank-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
-    padding-inline: 2px;
+    gap: 6px;
+    padding-inline: 0;
   }
 
   .ideas-bank-header__lead {
     max-width: none;
     flex: none;
-    font-size: 0.82rem;
-    line-height: 1.35;
+    font-size: 0.76rem;
+    line-height: 1.3;
   }
 
   .ideas-bank-create-btn {
     width: 100%;
     justify-content: center;
-    min-height: 44px;
-    padding: 10px 14px !important;
-    font-size: 0.88rem;
-    box-shadow: 3px 3px 0 var(--accent-lime) !important;
+    min-height: 40px;
+    padding: 8px 12px !important;
+    font-size: 0.82rem;
+    box-shadow: 2px 2px 0 var(--accent-lime) !important;
   }
 
   .ideas-bank-create-btn:hover {
-    box-shadow: 4px 4px 0 var(--accent-lime) !important;
+    box-shadow: 3px 3px 0 var(--accent-lime) !important;
   }
 
   .ideas-bulb-icon {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
   }
 
   .ideas-bank-layout {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .ideas-bank-main {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     min-height: 0;
   }
 
   .ideas-bank-authors {
     order: -1;
-    padding: 12px 12px 14px;
-    box-shadow: 3px 3px 0 #111;
+    padding: 8px 10px 10px;
+    box-shadow: 2px 2px 0 #111;
   }
 
   .ideas-bank-authors::before {
-    width: 64px;
-    height: 64px;
-    top: -18px;
-    right: -16px;
+    width: 48px;
+    height: 48px;
+    top: -12px;
+    right: -10px;
   }
 
   .ideas-bank-authors__title {
-    margin: 0 0 8px;
-    font-size: 0.92rem;
+    margin: 0 0 4px;
+    font-size: 0.84rem;
   }
 
   .ideas-bank-authors__empty {
-    font-size: 0.78rem;
-    line-height: 1.3;
+    font-size: 0.72rem;
+    line-height: 1.25;
   }
 
   .ideas-bank-authors__item {
-    padding: 7px 8px;
-    gap: 6px;
+    padding: 5px 6px;
+    gap: 5px;
   }
 
   .ideas-bank-authors__name {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
   }
 
   .ideas-bank-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .ideas-bank-stat {
     min-height: 0;
     height: auto;
-    padding: 10px 10px 8px;
-    gap: 6px 8px;
-    border-radius: 14px;
-    box-shadow: 3px 3px 0 #111;
+    padding: 7px 8px 6px;
+    gap: 4px 6px;
+    border-radius: 12px;
+    box-shadow: 2px 2px 0 #111;
   }
 
   .ideas-bank-stat:hover {
@@ -7586,31 +7586,31 @@ button.org-unit-head--link:hover {
   }
 
   .ideas-bank-stat__icon {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
   }
 
   .ideas-bank-stat__icon :is(svg) {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
 
   .ideas-bank-stat__value {
-    font-size: 1.35rem;
+    font-size: 1.1rem;
   }
 
   .ideas-bank-stat__label {
     max-width: none;
-    font-size: 0.68rem;
-    line-height: 1.2;
+    font-size: 0.62rem;
+    line-height: 1.15;
   }
 
   /* 5-й блок — на всю ширину, компактнее по высоте */
   .ideas-bank-stat--rejected {
     grid-column: 1 / -1;
-    padding-top: 8px;
-    padding-bottom: 8px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 
   /* Админ stats: перебить min-height: 88px */
@@ -14046,7 +14046,7 @@ button.emp-name--card:hover {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding: 12px !important;
+    padding: 10px !important;
     flex: 1 1 auto !important;
     min-height: 0 !important;
     height: auto !important;
@@ -14075,7 +14075,7 @@ button.emp-name--card:hover {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    gap: 12px;
+    gap: 8px;
     align-content: stretch;
   }
 
@@ -14083,7 +14083,7 @@ button.emp-name--card:hover {
   .vac-emp-body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     overflow: visible;
     min-height: 0;
     height: auto;
@@ -14119,6 +14119,7 @@ button.emp-name--card:hover {
   }
 
   .vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit,
+  .vacations-employee-shell .vac-emp-page--fit .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit,
   .vac-emp-page--fit .employee-aside--fit:not(.employee-aside--embedded) {
     position: relative;
     top: auto;
@@ -14126,7 +14127,103 @@ button.emp-name--card:hover {
     height: auto;
     max-height: none;
     overflow: visible;
-    padding: 14px;
+    padding: 10px !important;
+  }
+
+  /* Компакт: те же блоки десктопа, меньше кегль/паддинги */
+  .vacations-employee-shell .vac-emp-toolbar {
+    padding: 4px 0 6px;
+  }
+
+  .vacations-employee-shell .vac-emp-toolbar__title {
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+
+  .vacations-employee-shell .vac-emp-toolbar__form {
+    gap: 6px 8px;
+  }
+
+  .vacations-employee-shell .vac-emp-toolbar__form .vac-emp-input,
+  .vacations-employee-shell .vac-emp-toolbar__form input[type='date'] {
+    min-height: 40px;
+    font-size: 0.86rem;
+  }
+
+  .vacations-employee-shell .vac-emp-toolbar__form .button,
+  .vacations-employee-shell .vac-emp-toolbar__form button[type='submit'] {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 0.84rem;
+  }
+
+  .vacations-employee-shell .emp-balance-card,
+  .vacations-employee-shell .vac-emp-page--fit .employee-aside--fit .emp-balance-card {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+  }
+
+  .vacations-employee-shell .emp-balance-card-label {
+    font-size: 10px;
+  }
+
+  .vacations-employee-shell .emp-balance-big,
+  .vacations-employee-shell .vac-emp-page--fit .employee-aside--fit .emp-balance-big,
+  .vac-emp-page--fit .employee-aside--fit .emp-balance-big {
+    font-size: 1.5rem !important;
+    margin-top: 2px;
+  }
+
+  .vacations-employee-shell .emp-projection-details {
+    margin-bottom: 8px;
+  }
+
+  .vacations-employee-shell .emp-projection-summary {
+    font-size: 12px;
+  }
+
+  .vacations-employee-shell .mini-table {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .vacations-employee-shell .mini-table th,
+  .vacations-employee-shell .mini-table td {
+    padding: 4px 6px;
+  }
+
+  .vacations-employee-shell .emp-requests-block {
+    --emp-requests-block-height: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    padding: 8px;
+  }
+
+  .vacations-employee-shell .emp-requests-block .emp-requests-heading {
+    font-size: 0.68rem;
+    margin-bottom: 4px;
+  }
+
+  .vacations-employee-shell .emp-requests-empty {
+    font-size: 0.78rem;
+    padding: 6px 0;
+  }
+
+  .vacations-employee-shell .employee-legend-title {
+    margin: 6px 0 2px;
+    font-size: 0.78rem;
+  }
+
+  .vacations-employee-shell .hr-legend-item {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    margin: 1px 0;
+  }
+
+  .vacations-employee-shell .vac-training-prompt {
+    padding: 8px 10px;
+    margin-top: 6px;
   }
 
   .vacations-employee-shell .vac-emp-calendar-slot,
@@ -14159,7 +14256,7 @@ button.emp-name--card:hover {
     max-height: none;
     min-height: 0;
     overflow: visible;
-    padding: 12px 10px;
+    padding: 8px;
   }
 
   .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid,
@@ -14170,7 +14267,7 @@ button.emp-name--card:hover {
     overflow: visible;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: none;
-    gap: 10px 8px;
+    gap: 8px 6px;
     justify-items: stretch;
   }
 
@@ -18088,18 +18185,19 @@ button.button {
   }
 }
 
-/* Мобилка: консоль не под доком, без огромной пустоты сверху */
+/* Мобилка: те же блоки KB, компактная консоль сверху (не гигант по центру) */
 @media (max-width: 900px) {
   .shell-main:has(.kb-page--search) {
     padding-bottom: var(--mobile-nav-clearance);
   }
 
   .shell-main:has(.kb-page--search) .content {
-    padding: 12px !important;
+    padding: 10px !important;
   }
 
   .kb-page--search {
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 10px;
   }
 
   .kb-page--search .kb-console {
@@ -18107,15 +18205,41 @@ button.button {
     width: 100%;
     max-width: none;
     margin: 0;
+    padding: 14px 14px 12px;
+    gap: 10px;
+    border-radius: 22px;
+  }
+
+  .kb-page--search .kb-console__title {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .kb-page--search .kb-mode {
+    padding: 6px 12px;
+    font-size: 0.66rem;
+  }
+
+  .kb-page--search .kb-seek__input {
+    height: 42px;
+    font-size: 0.88rem;
+    padding: 0 14px;
+  }
+
+  .kb-page--search .kb-seek__go {
+    min-width: 96px;
+    height: 42px;
+    padding: 0 14px;
+    font-size: 0.7rem;
   }
 
   .kb-page--search .kb-stage {
     order: 2;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-height: 0;
   }
 
-  /* Есть выдача / чат — stage забирает место, консоль снизу над доком */
+  /* Выдача / чат — консоль снизу как на десктопе (строка ввода внизу) */
   .kb-page--search:has(.kb-hit),
   .kb-page--search:has(.kb-bubble),
   .kb-page--search:has(.kb-empty) {
