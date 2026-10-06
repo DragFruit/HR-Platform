@@ -117,7 +117,20 @@
     </aside>
 
     <div class="shell-main">
-      <header class="topbar">
+      <AppMobileTop
+        :display-name="topbarDisplayName"
+        :user-id="user?.id"
+        :show-event="showPitStopFlag"
+        :event-to="pitStopFlagTo"
+        :event-admin="isAdmin"
+        :show-bell="true"
+        :admin-bell="showAdminNotificationsBell"
+        :can-switch-role="canSwitchRole"
+        :is-admin="isAdmin"
+        @switch-role="switchRole"
+      />
+
+      <header class="topbar topbar--desktop">
         <h1>{{ pageTitle }}</h1>
         <div class="topbar-right">
           <AdminNotificationsBell v-if="showAdminNotificationsBell" />
@@ -146,6 +159,8 @@
           </Transition>
         </NuxtPage>
       </main>
+
+      <AppMobileBottomNav :mode="isAdmin ? 'admin' : 'employee'" />
     </div>
     </div>
 

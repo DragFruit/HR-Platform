@@ -745,8 +745,8 @@ onBeforeUnmount(() => {
   }
   .ps-hub__side {
     overflow: visible;
-    /* место под fixed-стик, чтобы рейтинг не прятался под ним */
-    padding-bottom: 160px;
+    /* стик + нижний док */
+    padding-bottom: calc(160px + var(--mobile-nav-clearance, 88px));
   }
   .ps-garage__title {
     font-size: 1rem;
