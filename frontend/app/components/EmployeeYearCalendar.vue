@@ -1,11 +1,20 @@
 <template>
   <div
     class="emp-cal-grid"
-    :class="{ 'emp-cal-grid--compact': compact, 'emp-cal-grid--selecting': isSelecting }"
+    :class="{
+      'emp-cal-grid--compact': compact,
+      'emp-cal-grid--selecting': isSelecting,
+      'emp-cal-grid--month-focus': focusedMonthIndex != null
+    }"
     role="img"
     :aria-label="`Календарь отпусков за ${year} год`"
   >
-    <div v-for="month in months" :key="month.index" class="emp-cal-month hr-month" :class="monthClass(month.index)">
+    <div
+      v-for="month in visibleMonths"
+      :key="month.index"
+      class="emp-cal-month hr-month"
+      :class="monthClass(month.index)"
+    >
       <div class="hr-month-title">
         <span>{{ month.title }}</span>
         <button
@@ -31,7 +40,7 @@
         </button>
       </div>
       <table class="hr-month-grid">
-        <thead v-if="!compact">
+        <thead v-if="!compact || focusedMonthIndex != null">
           <tr>
             <th v-for="weekday in weekdays" :key="weekday">{{ weekday }}</th>
           </tr>
@@ -88,6 +97,8 @@ const props = defineProps<{
   minSelectableIso?: string;
   /** Подсветка месяца при «Создать заявку» из брони */
   highlightMonthIndex?: number | null;
+  /** Мобилка: один месяц на весь слот (зум после тапа по дате). */
+  focusedMonthIndex?: number | null;
   /** В учебном квесте — всегда показывать +бронь у этого месяца (0–11) */
   reservationControlOverride?: number | null;
   /** Месяцы (0–11), где лимит броней группы исчерпан. */
@@ -109,6 +120,12 @@ const minIso = computed(() => props.minSelectableIso ?? '');
 
 const isSelecting = computed(() => Boolean(props.rangePickStart));
 
+const focusedMonthIndex = computed(() =>
+  props.focusedMonthIndex != null && props.focusedMonthIndex >= 0 && props.focusedMonthIndex <= 11
+    ? props.focusedMonthIndex
+    : null
+);
+
 const reservationByMonth = computed(() => {
   const map = new Map<number, VacationReservation>();
   for (const item of props.reservations ?? []) {
@@ -123,14 +140,25 @@ const months = computed(() => {
   const { approved, pending } = buildDaySetsForEmployee(props.employeeName, props.year, props.requests);
   return MONTHS_RU.map((name, index) => {
     const reservation = reservationByMonth.value.get(index);
+    const focused = focusedMonthIndex.value === index;
     return {
       index,
-      title: props.compact ? name : `${name}, ${String(props.year).slice(-2)}`,
+      title: focused
+        ? `${name} ${props.year}`
+        : props.compact
+          ? name
+          : `${name}, ${String(props.year).slice(-2)}`,
       rows: buildMonthGrid(props.year, index, approved, pending),
       reservation,
       reservationLabel: reservation ? formatReservationLabel(reservation.durationDays) : ''
     };
   });
+});
+
+const visibleMonths = computed(() => {
+  const focus = focusedMonthIndex.value;
+  if (focus == null) return months.value;
+  return months.value.filter((m) => m.index === focus);
 });
 
 const capBlockedMonthSet = computed(
@@ -164,6 +192,9 @@ const monthClass = (monthIndex: number) => {
   }
   if (props.highlightMonthIndex === monthIndex) {
     classes.push('emp-cal-month--highlight');
+  }
+  if (focusedMonthIndex.value === monthIndex) {
+    classes.push('emp-cal-month--focused');
   }
   return classes.length ? classes : undefined;
 };

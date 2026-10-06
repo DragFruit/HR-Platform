@@ -140,12 +140,21 @@
             :years="yearOptions"
             @update:model-value="emit('update:viewYear', $event)"
           />
+          <button
+            v-if="focusedMonthIndex != null"
+            type="button"
+            class="vac-emp-cal-back-year"
+            @click="exitMonthFocus"
+          >
+            ← Весь год
+          </button>
           <section
             ref="calendarPaneRef"
             class="vac-emp-calendar-pane"
             :class="{
               'vac-emp-calendar-pane--embedded': embedded,
-              'vac-emp-calendar-pane--team': showTeamCalendar
+              'vac-emp-calendar-pane--team': showTeamCalendar,
+              'vac-emp-calendar-pane--month-focus': focusedMonthIndex != null
             }"
             :style="teamPaneFitStyle"
             data-tour="vac-calendar"
@@ -167,6 +176,7 @@
               :requests="displayRequests"
               :reservations="employeeReservationsList"
               :highlight-month-index="highlightMonthIndex"
+              :focused-month-index="focusedMonthIndex"
               :range-pick-start="isHistoricalYear ? null : rangePickStart"
               :range-pick-hover="isHistoricalYear ? null : rangePickHover"
               :selected-range-start="isHistoricalYear ? null : form.start || null"
@@ -630,8 +640,30 @@ const {
   }
 });
 
+/** Мобилка ≤900: тап по дате сначала приближает месяц. */
+const MOBILE_CAL_MQ = '(max-width: 900px)';
+const isMobileCal = ref(false);
+const focusedMonthIndex = ref<number | null>(null);
+let mobileCalMq: MediaQueryList | null = null;
+
+const syncMobileCal = () => {
+  isMobileCal.value = Boolean(mobileCalMq?.matches);
+  if (!isMobileCal.value) focusedMonthIndex.value = null;
+};
+
+const exitMonthFocus = () => {
+  focusedMonthIndex.value = null;
+};
+
 const onCalendarDayClick = (...args: Parameters<typeof handleDayClick>) => {
   if (isHistoricalYear.value) return;
+  const cell = args[0];
+  if (isMobileCal.value && cell && !cell.empty && cell.iso) {
+    const month = Number(cell.iso.slice(5, 7)) - 1;
+    if (month >= 0 && month <= 11 && focusedMonthIndex.value !== month) {
+      focusedMonthIndex.value = month;
+    }
+  }
   handleDayClick(...args);
 };
 
@@ -646,6 +678,7 @@ watch(isHistoricalYear, (historical) => {
   form.start = '';
   form.end = '';
   formError.value = null;
+  focusedMonthIndex.value = null;
 });
 
 watch(
@@ -657,6 +690,7 @@ watch(
     formError.value = null;
     clarifyHint.value = '';
     dismissRequestCreatedToast();
+    focusedMonthIndex.value = null;
   }
 );
 
@@ -864,11 +898,16 @@ onMounted(() => {
   void fitTeamTableToSideTabs();
   if (!import.meta.client) return;
   window.addEventListener('resize', fitTeamTableToSideTabs);
+  mobileCalMq = window.matchMedia(MOBILE_CAL_MQ);
+  syncMobileCal();
+  mobileCalMq.addEventListener('change', syncMobileCal);
 });
 
 onBeforeUnmount(() => {
   if (!import.meta.client) return;
   window.removeEventListener('resize', fitTeamTableToSideTabs);
+  mobileCalMq?.removeEventListener('change', syncMobileCal);
+  mobileCalMq = null;
 });
 
 watch(

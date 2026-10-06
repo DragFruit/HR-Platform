@@ -14068,6 +14068,11 @@ button.emp-name--card:hover {
     flex: none !important;
   }
 
+  .vacations-employee-shell .vac-emp-body:not(.vac-emp-body--embedded),
+  .vac-emp-page--fit > .vac-emp-body:not(.vac-emp-body--embedded) {
+    display: contents;
+  }
+
   .vacations-employee-shell .vac-emp-page.vac-emp-page--fit,
   .vac-emp-page.vac-emp-page--fit {
     display: flex !important;
@@ -14079,35 +14084,40 @@ button.emp-name--card:hover {
     align-content: stretch;
   }
 
-  .vacations-employee-shell .vac-emp-body,
-  .vac-emp-body {
-    display: flex;
+  /* Календарь — герой: год 3×4 на первом экране */
+  .vacations-employee-shell .vac-emp-calendar-slot,
+  .vac-emp-calendar-slot {
+    grid-column: unset;
+    grid-row: unset;
+    order: 0;
     flex-direction: column;
-    gap: 8px;
-    overflow: visible;
-    min-height: 0;
+    align-items: stretch;
     height: auto;
+    max-height: none;
+    min-height: min(68dvh, 560px);
+    margin-left: 0;
+    margin-right: 0;
+    overflow: visible;
   }
 
   .vacations-employee-shell .vac-emp-toolbar {
     grid-column: unset;
     grid-row: unset;
     margin-left: 0;
-    order: 0;
+    order: 1;
   }
 
   .vacations-employee-shell .vac-emp-error {
     grid-column: unset;
     grid-row: unset;
-    order: 1;
+    order: 2;
   }
 
-  /* Баланс / заявки — сразу под формой, потом календарь */
   .vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded),
   .vac-emp-page--fit .employee-aside-shell:not(.employee-aside-shell--embedded) {
     grid-column: unset;
     grid-row: unset;
-    order: 2;
+    order: 3;
     position: relative;
     width: 100%;
     min-width: 0;
@@ -14116,6 +14126,155 @@ button.emp-name--card:hover {
     max-height: none;
     margin-top: 0;
     overflow: visible;
+  }
+
+  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-main,
+  .vac-emp-calendar-main {
+    height: 100%;
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .vac-emp-cal-back-year {
+    align-self: flex-start;
+    appearance: none;
+    border: 1.5px solid #1d1d1f;
+    background: #eeeee8;
+    box-shadow: 2px 2px 0 #ddf365;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane,
+  .vac-emp-calendar-pane {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: min(62dvh, 520px);
+    max-height: none;
+    overflow: hidden;
+    padding: 4px 2px;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid,
+  .vac-emp-page--fit .emp-cal-grid--compact {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: min(60dvh, 500px);
+    max-height: none;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 6px 4px;
+    justify-items: stretch;
+    align-items: stretch;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .emp-cal-month {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .emp-cal-month--highlight {
+    outline: none !important;
+    box-shadow: inset 0 0 0 2px #9b6bd4;
+    border-radius: 4px;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .hr-month-title {
+    margin: 0 0 2px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.1;
+    gap: 2px;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .emp-reservation-add-label,
+  .vac-emp-page--fit .emp-cal-grid--compact .emp-reservation-badge--wide {
+    font-size: 0.5rem;
+    padding: 1px 4px;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid th {
+    font-size: 0.48rem;
+    font-weight: 600;
+    padding: 0;
+    color: var(--text-muted);
+    line-height: 1.1;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td {
+    padding: 0;
+    height: auto;
+    vertical-align: middle;
+    text-align: center;
+    border: none;
+    background: transparent;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact .hr-day-num {
+    font-size: 0.55rem;
+    line-height: 1.15;
+  }
+
+  /* Зум: один месяц на весь слот */
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    min-height: min(62dvh, 520px);
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .emp-cal-month--focused {
+    height: 100%;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-title {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-grid th {
+    font-size: 0.7rem;
+    padding: 4px 0;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-day-num {
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+
+  .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-grid td {
+    min-height: 2.2rem;
   }
 
   .vacations-employee-shell .employee-aside-shell:not(.employee-aside-shell--embedded) .employee-aside--fit,
@@ -14224,56 +14383,6 @@ button.emp-name--card:hover {
   .vacations-employee-shell .vac-training-prompt {
     padding: 8px 10px;
     margin-top: 6px;
-  }
-
-  .vacations-employee-shell .vac-emp-calendar-slot,
-  .vac-emp-calendar-slot {
-    grid-column: unset;
-    grid-row: unset;
-    order: 3;
-    flex-direction: column;
-    align-items: stretch;
-    height: auto;
-    max-height: none;
-    min-height: 0;
-    margin-left: 0;
-    margin-right: 0;
-    overflow: visible;
-  }
-
-  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-main,
-  .vac-emp-calendar-main {
-    height: auto;
-    max-height: none;
-    flex: none;
-    overflow: visible;
-  }
-
-  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane,
-  .vac-emp-calendar-pane {
-    flex: none;
-    height: auto;
-    max-height: none;
-    min-height: 0;
-    overflow: visible;
-    padding: 8px;
-  }
-
-  .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane .emp-cal-grid,
-  .vac-emp-page--fit .emp-cal-grid--compact {
-    flex: none;
-    height: auto;
-    max-height: none;
-    overflow: visible;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: none;
-    gap: 8px 6px;
-    justify-items: stretch;
-  }
-
-  .vac-emp-page--fit .emp-cal-grid--compact .emp-cal-month {
-    width: 100%;
-    max-width: none;
   }
 
   /* Ярлык года — в потоке, не поверх тулбара */
