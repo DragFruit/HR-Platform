@@ -71,9 +71,14 @@ export function usePlatformContext() {
 
     role.value = next;
     if (next === 'admin') {
+      // Уже в админке — остаёмся на текущем экране
+      if (route.path.startsWith('/admin')) return;
       router.push(isVacationsOnly.value ? '/admin/employees' : '/admin');
       return;
     }
+    // Режим «Я»: если текущий путь доступен сотруднику — не уводим на главную
+    // (важно для /vacations: админ смотрит свой график без прыжка на /)
+    if (!route.path.startsWith('/admin') && isPathAllowed(route.path)) return;
     router.push(isVacationsOnly.value ? homePath(false) : '/');
   };
 

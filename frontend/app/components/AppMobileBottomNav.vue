@@ -14,7 +14,31 @@ const props = withDefaults(
 );
 
 const { isNavPathUnlocked } = useLaunchScope();
+const { claim, release } = useBottomRightSlot();
 const route = useRoute();
+
+const MOBILE_DOCK_MQ = '(max-width: 900px)';
+let dockMq: MediaQueryList | null = null;
+
+const syncDockSlot = () => {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia(MOBILE_DOCK_MQ).matches) {
+    claim(BOTTOM_RIGHT_SLOT.mobileDock);
+  } else {
+    release(BOTTOM_RIGHT_SLOT.mobileDock);
+  }
+};
+
+onMounted(() => {
+  dockMq = window.matchMedia(MOBILE_DOCK_MQ);
+  syncDockSlot();
+  dockMq.addEventListener('change', syncDockSlot);
+});
+
+onBeforeUnmount(() => {
+  dockMq?.removeEventListener('change', syncDockSlot);
+  release(BOTTOM_RIGHT_SLOT.mobileDock);
+});
 
 const employeeTabs: Tab[] = [
   { to: '/knowledge', label: 'База знаний', icon: 'knowledge' },
@@ -121,7 +145,7 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 40;
+    z-index: 50;
     padding: 0 12px max(10px, env(safe-area-inset-bottom));
     pointer-events: none;
   }

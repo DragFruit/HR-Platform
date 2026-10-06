@@ -20,6 +20,7 @@ alwaysApply: true
 | id | Когда |
 |----|--------|
 | `post-vacation-memo` | памятка не `hidden`: welcome, полёт, чип, карусель |
+| `mobile-dock` | нижний док ≤900px (`AppMobileBottomNav`) |
 
 ## Новый виджет в этом углу
 

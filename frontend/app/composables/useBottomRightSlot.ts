@@ -3,7 +3,9 @@
 const SLOT_KEY = 'vbi-bottom-right-slot';
 
 export const BOTTOM_RIGHT_SLOT = {
-  postVacationMemo: 'post-vacation-memo'
+  postVacationMemo: 'post-vacation-memo',
+  /** Нижний док ≤900px — угол занят, кот оценки не выезжает */
+  mobileDock: 'mobile-dock'
 } as const;
 
 export function useBottomRightSlot() {
