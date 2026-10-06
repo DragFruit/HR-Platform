@@ -101,6 +101,12 @@ import {
   setSteer,
   unlockRaceAudio
 } from '~/events/pit-stop-14/raceAudio';
+import {
+  TELEMETRY_LIMITS,
+  emptyLapTelemetry,
+  type LapKeyEdge,
+  type LapTelemetry
+} from '~/events/pit-stop-14/raceTelemetry';
 
 const props = defineProps<{
   color: CarColorId;
@@ -110,7 +116,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  lap: [ms: number];
+  lap: [ms: number, telemetry: LapTelemetry];
   finish: [payload: { ms: number; improved: boolean }];
 }>();
 
@@ -147,6 +153,36 @@ const flash = ref<{ kind: 'ok' | 'bad' | 'record'; text: string } | null>(null);
 let flashTimer: ReturnType<typeof setTimeout> | null = null;
 /** Последняя строка в «Круг» — пишем в DOM напрямую, без Vue каждый кадр (иначе цифры «липнут»). */
 let paintedLapText = '';
+
+/** Телеметрия текущего круга (античит). */
+let telem = emptyLapTelemetry();
+let lastPathSampleT = -1e9;
+let lastStickSampleT = -1e9;
+
+const resetTelemetry = () => {
+  telem = emptyLapTelemetry();
+  lastPathSampleT = -1e9;
+  lastStickSampleT = -1e9;
+};
+
+const mapKeySlot = (k: string): LapKeyEdge['key'] | null => {
+  if (k === 'arrowup' || k === 'w' || k === 'ц') return 'up';
+  if (k === 'arrowdown' || k === 's' || k === 'ы') return 'down';
+  if (k === 'arrowleft' || k === 'a' || k === 'ф') return 'left';
+  if (k === 'arrowright' || k === 'd' || k === 'в') return 'right';
+  return null;
+};
+
+const recordKeyEdge = (e: KeyboardEvent, down: boolean, slot: LapKeyEdge['key']) => {
+  if (lapStartTs.value == null || finished.value) return;
+  if (telem.keyEdges.length >= TELEMETRY_LIMITS.keyEdges) return;
+  telem.keyEdges.push({
+    t: Math.round(performance.now() - lapStartTs.value),
+    key: slot,
+    down,
+    trusted: e.isTrusted !== false
+  });
+};
 
 const paintLapTime = (ms: number | null) => {
   const text = formatLapMs(ms);
@@ -199,6 +235,7 @@ const resetLap = () => {
   lapStartTs.value = null;
   currentMs.value = 0;
   zonesHit.value = LAP_ZONES.map(() => false);
+  resetTelemetry();
   paintLapTime(null);
 };
 
@@ -267,12 +304,14 @@ const onKey = (e: KeyboardEvent, down: boolean) => {
   if (finished.value || countdown.value != null) return;
 
   const k = e.key.toLowerCase();
-  if (k === 'arrowup' || k === 'w' || k === 'ц') keys.up = down;
-  else if (k === 'arrowdown' || k === 's' || k === 'ы') keys.down = down;
-  else if (k === 'arrowleft' || k === 'a' || k === 'ф') keys.left = down;
-  else if (k === 'arrowright' || k === 'd' || k === 'в') keys.right = down;
+  const slot = mapKeySlot(k);
+  if (slot === 'up') keys.up = down;
+  else if (slot === 'down') keys.down = down;
+  else if (slot === 'left') keys.left = down;
+  else if (slot === 'right') keys.right = down;
   else if ((k === 'r' || k === 'к') && down) restartRace();
   else return;
+  if (slot) recordKeyEdge(e, down, slot);
   e.preventDefault();
 };
 
@@ -342,6 +381,24 @@ const findNudge = (m: TrackMask, angleDeg: number) => {
 const completeLap = (ms: number) => {
   lastLapMs.value = ms;
   currentMs.value = ms;
+  telem.durationMs = ms;
+  if (telem.path.length < TELEMETRY_LIMITS.path) {
+    telem.path.push({ t: ms, x: Math.round(car.x * 10) / 10, y: Math.round(car.y * 10) / 10 });
+  } else if (telem.path.length) {
+    telem.path[telem.path.length - 1] = {
+      t: ms,
+      x: Math.round(car.x * 10) / 10,
+      y: Math.round(car.y * 10) / 10
+    };
+  }
+  const telemetry: LapTelemetry = {
+    keyEdges: telem.keyEdges.slice(0, TELEMETRY_LIMITS.keyEdges),
+    stickSamples: telem.stickSamples.slice(0, TELEMETRY_LIMITS.stickSamples),
+    path: telem.path.slice(0, TELEMETRY_LIMITS.path),
+    zoneAtMs: telem.zoneAtMs.slice(0, LAP_ZONES.length),
+    wallBumps: telem.wallBumps,
+    durationMs: ms
+  };
   lapStartTs.value = null;
   paintLapTime(ms);
   const improved = props.bestMs == null || ms < props.bestMs;
@@ -354,8 +411,9 @@ const completeLap = (ms: number) => {
   stickX.value = 0;
   stickY.value = 0;
   hushEngine();
-  emit('lap', ms);
+  emit('lap', ms, telemetry);
   emit('finish', { ms, improved });
+  resetTelemetry();
   if (improved) {
     showFlash('record', `Рекорд! ${formatLapMs(ms)}`, 3200);
     playTriumph();
@@ -379,6 +437,7 @@ const checkLine = (px: number, py: number, nx: number, ny: number, now: number) 
       }
     }
     zonesHit.value = LAP_ZONES.map(() => false);
+    resetTelemetry();
     lapStartTs.value = now;
     currentMs.value = 0;
     paintLapTime(0);
@@ -451,6 +510,23 @@ const tick = (ts: number) => {
   if (lapStartTs.value != null) {
     currentMs.value = now - lapStartTs.value;
     paintLapTime(currentMs.value);
+    const tLap = Math.round(currentMs.value);
+    if (tLap - lastPathSampleT >= 120 && telem.path.length < TELEMETRY_LIMITS.path) {
+      lastPathSampleT = tLap;
+      telem.path.push({ t: tLap, x: Math.round(car.x * 10) / 10, y: Math.round(car.y * 10) / 10 });
+    }
+    if (
+      stickActive.value &&
+      tLap - lastStickSampleT >= 80 &&
+      telem.stickSamples.length < TELEMETRY_LIMITS.stickSamples
+    ) {
+      lastStickSampleT = tLap;
+      telem.stickSamples.push({
+        t: tLap,
+        x: Math.round(stickVec.x * 100) / 100,
+        y: Math.round(stickVec.y * 100) / 100
+      });
+    }
   }
 
   if (Math.abs(speed) < 0.5) return;
@@ -467,15 +543,18 @@ const tick = (ts: number) => {
   } else if (carFitsOnTrack(mask, px + dx, py, car.angleDeg)) {
     car.x = px + dx;
     speed *= 0.55;
+    if (lapStartTs.value != null) telem.wallBumps += 1;
     playBump(0.35);
     vibe(18);
   } else if (carFitsOnTrack(mask, px, py + dy, car.angleDeg)) {
     car.y = py + dy;
     speed *= 0.55;
+    if (lapStartTs.value != null) telem.wallBumps += 1;
     playBump(0.35);
     vibe(18);
   } else {
     speed *= -0.25;
+    if (lapStartTs.value != null) telem.wallBumps += 1;
     playBump(0.7);
     vibe(45);
   }
@@ -483,9 +562,11 @@ const tick = (ts: number) => {
   checkLine(px, py, car.x, car.y, now);
 
   if (lapStartTs.value != null) {
+    const tLap = Math.round(now - lapStartTs.value);
     LAP_ZONES.forEach((z, i) => {
       if (!zonesHit.value[i] && Math.hypot(car.x - z.x, car.y - z.y) <= LAP_ZONE_R) {
         zonesHit.value[i] = true;
+        if (telem.zoneAtMs[i] == null) telem.zoneAtMs[i] = tLap;
       }
     });
   }

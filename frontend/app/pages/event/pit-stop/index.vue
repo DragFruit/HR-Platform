@@ -147,6 +147,10 @@ import {
 } from '~/events/pit-stop-14/trackDrive';
 import { RACCOON_RACE_INTRO, RACCOON_RACE_INTRO_STORAGE_KEY } from '~/events/pit-stop-14/raccoonLines';
 import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
+import {
+  RACE_TOKEN_STORAGE_KEY,
+  type LapTelemetry
+} from '~/events/pit-stop-14/raceTelemetry';
 
 definePageMeta({ layout: 'default' });
 
@@ -285,12 +289,37 @@ const loadBoard = async () => {
   }
 };
 
-const onLap = async (ms: number) => {
+const ensureRaceToken = async (): Promise<string | null> => {
+  if (!import.meta.client) return null;
+  const cached = sessionStorage.getItem(RACE_TOKEN_STORAGE_KEY);
+  if (cached) return cached;
+  try {
+    const res = await $fetch<{ raceToken?: string }>('/api/event/pit-stop/race/visit', {
+      method: 'POST',
+      body: {}
+    });
+    if (res.raceToken) {
+      sessionStorage.setItem(RACE_TOKEN_STORAGE_KEY, res.raceToken);
+      return res.raceToken;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+const onLap = async (ms: number, telemetry: LapTelemetry) => {
   if (eventClosed.value) return;
   try {
+    let raceToken = import.meta.client ? sessionStorage.getItem(RACE_TOKEN_STORAGE_KEY) : null;
+    if (!raceToken) raceToken = await ensureRaceToken();
+    if (!raceToken) {
+      loadError.value = 'Круг не сохранился — обнови страницу';
+      return;
+    }
     const res = await $fetch<{ bestMs: number }>('/api/event/pit-stop/race/lap', {
       method: 'POST',
-      body: { ms, color: color.value }
+      body: { ms, color: color.value, raceToken, telemetry }
     });
     board.value.myLiveBestMs = res.bestMs;
   } catch (e: unknown) {
@@ -301,6 +330,20 @@ const onLap = async (ms: number) => {
         board.value.closed = true;
         loadError.value = 'Ивент завершён';
         return;
+      }
+      if (import.meta.client) sessionStorage.removeItem(RACE_TOKEN_STORAGE_KEY);
+      const retryToken = await ensureRaceToken();
+      if (retryToken) {
+        try {
+          const res = await $fetch<{ bestMs: number }>('/api/event/pit-stop/race/lap', {
+            method: 'POST',
+            body: { ms, color: color.value, raceToken: retryToken, telemetry }
+          });
+          board.value.myLiveBestMs = res.bestMs;
+          return;
+        } catch {
+          /* fall through */
+        }
       }
     }
     loadError.value = 'Круг не сохранился — проверь связь';
@@ -333,7 +376,11 @@ onMounted(() => {
   const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
   if (isCarColorId(saved)) color.value = saved;
   if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
-  void $fetch('/api/event/pit-stop/race/visit', { method: 'POST', body: {} }).catch(() => {});
+  void $fetch<{ raceToken?: string }>('/api/event/pit-stop/race/visit', { method: 'POST', body: {} })
+    .then((res) => {
+      if (res.raceToken) sessionStorage.setItem(RACE_TOKEN_STORAGE_KEY, res.raceToken);
+    })
+    .catch(() => {});
   void loadBoard();
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible') void loadBoard();

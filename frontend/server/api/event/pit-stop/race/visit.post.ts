@@ -1,6 +1,7 @@
 import { requireVbiSession } from '../../../../utils/session';
 import { recordRaceVisit } from '../../../../utils/pitStopRaceStore';
 import { racePilotFromSession } from '../../../../utils/pitStopRacePilot';
+import { issueRaceToken } from '../../../../utils/pitStopRaceToken';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -9,5 +10,6 @@ export default defineEventHandler(async (event) => {
     userId: session.id,
     name: pilot.name
   });
-  return { ok: true, created, at: visit.at };
+  const raceToken = issueRaceToken(session.id);
+  return { ok: true, created, at: visit.at, raceToken };
 });

@@ -4,6 +4,14 @@
 
 ## 2026-10-06
 
+### Pit Stop — античит бота за рулём + флаг в админке
+
+- Клиент шлёт телеметрию круга + `raceToken` (выдаётся на `visit`); без токена — 403.
+- Сервер: `pitStopAntiCheat.ts` (score ≥ 60 → флаг), запись в `pit-stop-race.json` → `cheat`.
+- `/admin/quest-dashboard`: блок «Подозрение на бота», кнопки Снять / Подтвердить (`cheat-review`).
+- Лидерборд не режется автоматически — только ручной разбор.
+- Проверка: руками круг без флага; `dispatchEvent(KeyboardEvent)` → флаг в админке.
+
 ### Мобильный shell — компакт по гайдам Apple/Material
 
 - Док ниже и плотнее (~56px), clearance `78px + safe-area`; без focus-ring.

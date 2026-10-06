@@ -16,6 +16,17 @@ const enqueue = createMutationQueue();
 /** Каждое улучшение личного рекорда — для срезов таблицы по расписанию. */
 type BestImprovement = { ms: number; at: string };
 
+export type PitStopCheatStatus = 'flagged' | 'cleared' | 'confirmed';
+
+export type PitStopCheatFlag = {
+  status: PitStopCheatStatus;
+  score: number;
+  reasons: string[];
+  at: string;
+  bestMs: number;
+  lapsWhenFlagged: number;
+};
+
 export type PitStopRaceRecord = {
   userId: number;
   name: string;
@@ -26,6 +37,8 @@ export type PitStopRaceRecord = {
   bestAt: string;
   updatedAt: string;
   history?: BestImprovement[];
+  /** Подозрение на бота за рулём — для админки, лидерборд не трогаем. */
+  cheat?: PitStopCheatFlag;
 };
 
 export type PitStopRaceWinner = {
@@ -187,6 +200,8 @@ export async function submitLap(input: {
   department: string;
   ms: number;
   color: unknown;
+  /** Если задан — обновить флаг (не затирает status=confirmed). */
+  cheatFlag?: { score: number; reasons: string[] } | null;
 }): Promise<{ record: PitStopRaceRecord; improved: boolean }> {
   return enqueue(async () => {
     const state = await readState();
@@ -223,7 +238,36 @@ export async function submitLap(input: {
         improved = true;
       }
     }
+
+    if (input.cheatFlag) {
+      const prev = rec.cheat;
+      if (prev?.status !== 'confirmed') {
+        rec.cheat = {
+          status: 'flagged',
+          score: input.cheatFlag.score,
+          reasons: input.cheatFlag.reasons,
+          at: now,
+          bestMs: ms,
+          lapsWhenFlagged: rec.laps
+        };
+      }
+    }
+
     await writeJsonAtomic(DATA_FILE, state);
     return { record: rec, improved };
+  });
+}
+
+export async function setRaceCheatStatus(
+  userId: number,
+  status: PitStopCheatStatus
+): Promise<PitStopRaceRecord | null> {
+  return enqueue(async () => {
+    const state = await readState();
+    const rec = state.records.find((r) => r.userId === userId);
+    if (!rec?.cheat) return null;
+    rec.cheat = { ...rec.cheat, status, at: new Date().toISOString() };
+    await writeJsonAtomic(DATA_FILE, state);
+    return rec;
   });
 }

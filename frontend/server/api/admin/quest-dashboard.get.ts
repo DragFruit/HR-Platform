@@ -37,7 +37,6 @@ export default defineEventHandler(async (event) => {
   const visitByUser = new Map(visits.map((v) => [v.userId, v]));
   const hideStagingTests = getDeployAppEnv() === 'production';
 
-  // Весь справочник (в т.ч. account_role=admin вроде Драго). QA/демо стейджа на бое — нет.
   const rows = employees
     .filter((emp) => !(hideStagingTests && isStagingTestEmployee(emp)))
     .map((emp) => {
@@ -46,25 +45,52 @@ export default defineEventHandler(async (event) => {
       const visit = ids.map((id) => visitByUser.get(id)).find(Boolean);
       const laps = record?.laps ?? 0;
       const entered = Boolean(visit || record);
+      const cheat = record?.cheat
+        ? {
+            status: record.cheat.status,
+            score: record.cheat.score,
+            reasons: record.cheat.reasons,
+            bestMs: record.cheat.bestMs,
+            at: record.cheat.at,
+            raceUserId: record.userId
+          }
+        : null;
       return {
         employeeId: emp.id,
         name: emp.name,
         department: emp.department || '',
         entered,
-        laps
+        laps,
+        bestMs: record?.bestMs ?? null,
+        cheat
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
   const enteredCount = rows.filter((r) => r.entered).length;
   const racedCount = rows.filter((r) => r.laps > 0).length;
+  const flagged = rows
+    .filter((r) => r.cheat?.status === 'flagged' || r.cheat?.status === 'confirmed')
+    .map((r) => ({
+      employeeId: r.employeeId,
+      raceUserId: r.cheat!.raceUserId,
+      name: r.name,
+      department: r.department,
+      bestMs: r.bestMs,
+      cheat: r.cheat as NonNullable<typeof r.cheat>
+    }))
+    .sort((a, b) => b.cheat.score - a.cheat.score || a.name.localeCompare(b.name, 'ru'));
+
+  const flaggedCount = rows.filter((r) => r.cheat?.status === 'flagged').length;
 
   return {
     players: rows,
+    flagged,
     summary: {
       total: rows.length,
       entered: enteredCount,
-      raced: racedCount
+      raced: racedCount,
+      flaggedCount
     }
   };
 });
