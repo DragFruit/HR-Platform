@@ -81,7 +81,8 @@
   /* шапка: padding 16+16 + аватар 36 + border 1 */
   --topbar-height: 69px;
   --mobile-top-height: 56px;
-  --mobile-nav-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
+  /* Высота дока + внешний padding; shell-main режет контент выше дока */
+  --mobile-nav-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 *,
@@ -141,6 +142,9 @@ a {
   .app-shell {
     grid-template-columns: 1fr;
     min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
   }
 
   .sidebar {
@@ -155,6 +159,10 @@ a {
     display: none !important;
   }
 
+  /*
+   * Scrollport заканчивается НАД доком: padding-bottom у shell-main —
+   * пустая полоса, поверх которой fixed-док. Контент не рисуется под меню.
+   */
   .shell-main {
     display: flex;
     flex-direction: column;
@@ -163,12 +171,14 @@ a {
     min-height: 0;
     min-width: 0;
     overflow: hidden;
+    padding-bottom: var(--mobile-nav-clearance);
+    box-sizing: border-box;
   }
 
   .shell-main > .content {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 12px 12px var(--mobile-nav-clearance);
+    padding: 12px;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -179,11 +189,11 @@ a {
     max-width: none;
   }
 
-  /* Спец-страницы на весь экран — учёт нижнего дока */
+  /* Fit-страницы: тот же shell-pad, без сброса padding контента в 16px */
   .shell-main:has(.ps-hub) .content,
   .shell-main:has(.kb-page--search) .content,
   .shell-main:has(.vpn-page) .content {
-    padding-bottom: var(--mobile-nav-clearance);
+    padding: 12px !important;
   }
 }
 
@@ -7467,13 +7477,14 @@ button.org-unit-head--link:hover {
 @media (max-width: 900px) {
   .ideas-bank-page {
     gap: 10px;
-    padding-bottom: 4px;
+    padding-bottom: 8px;
   }
 
   .ideas-bank-header {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    padding-inline: 2px;
   }
 
   .ideas-bank-header__lead {
@@ -14009,18 +14020,24 @@ button.emp-name--card:hover {
 }
 
 @media (max-width: 900px) {
-  /* Отпуска: снять desktop «fit в экран» — иначе aside/календарь/док лежат друг на друге */
+  /* Отпуска: снять desktop «fit в экран» внутри контента, но shell остаётся scrollport над доком */
   .app-viewport:has(.vac-emp-page--fit) > .app-shell,
-  .app-shell:has(.vac-emp-page--fit),
-  .shell-main:has(.vac-emp-page--fit) {
-    height: auto !important;
-    max-height: none !important;
+  .app-shell:has(.vac-emp-page--fit) {
+    height: 100% !important;
+    max-height: 100dvh !important;
     min-height: 0;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .shell-main:has(.vac-emp-page--fit) {
-    min-height: 100dvh;
+    display: flex !important;
+    flex-direction: column;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 0;
+    overflow: hidden !important;
+    padding-bottom: var(--mobile-nav-clearance) !important;
+    box-sizing: border-box;
     grid-template-rows: none;
   }
 
@@ -14029,10 +14046,11 @@ button.emp-name--card:hover {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding: 12px 12px var(--mobile-nav-clearance) !important;
-    height: auto !important;
+    padding: 12px !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
-    flex: none !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
   .shell-main:has(.vac-emp-page--fit) .content .page-root {
@@ -14207,15 +14225,25 @@ button.emp-name--card:hover {
     z-index: 2;
   }
 
-  /* Manager shell — снять desktop fit-in-viewport (иначе таблица/aside/док друг на друге) */
+  /* Manager shell — тот же scrollport над доком */
   .app-viewport:has(.vac-manager-layout--with-aside) > .app-shell,
   .app-viewport:has(.vac-manager-layout--with-aside:not(.vac-manager-layout--employee)) > .app-shell,
-  .app-shell:has(.vac-manager-layout--with-aside),
-  .shell-main:has(.vac-manager-layout--with-aside) {
-    height: auto !important;
-    max-height: none !important;
+  .app-shell:has(.vac-manager-layout--with-aside) {
+    height: 100% !important;
+    max-height: 100dvh !important;
     min-height: 0;
-    overflow: visible !important;
+    overflow: hidden !important;
+  }
+
+  .shell-main:has(.vac-manager-layout--with-aside),
+  .shell-main:has(.vac-manager-layout) {
+    display: flex !important;
+    flex-direction: column;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    padding-bottom: var(--mobile-nav-clearance) !important;
+    box-sizing: border-box;
   }
 
   .shell-main:has(.vac-manager-layout) .content,
@@ -14225,10 +14253,11 @@ button.emp-name--card:hover {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding: 12px 12px var(--mobile-nav-clearance) !important;
-    height: auto !important;
+    padding: 12px !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
-    flex: none !important;
+    height: auto !important;
+    max-height: none !important;
   }
 
   .shell-main:has(.vac-manager-layout--with-aside) .content .page-root,
@@ -18056,6 +18085,54 @@ button.button {
 
   .kb-hit__title {
     font-size: 1.02rem;
+  }
+}
+
+/* Мобилка: консоль не под доком, без огромной пустоты сверху */
+@media (max-width: 900px) {
+  .shell-main:has(.kb-page--search) {
+    padding-bottom: var(--mobile-nav-clearance);
+  }
+
+  .shell-main:has(.kb-page--search) .content {
+    padding: 12px !important;
+  }
+
+  .kb-page--search {
+    justify-content: center;
+  }
+
+  .kb-page--search .kb-console {
+    order: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .kb-page--search .kb-stage {
+    order: 2;
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+
+  /* Есть выдача / чат — stage забирает место, консоль снизу над доком */
+  .kb-page--search:has(.kb-hit),
+  .kb-page--search:has(.kb-bubble),
+  .kb-page--search:has(.kb-empty) {
+    justify-content: flex-start;
+  }
+
+  .kb-page--search:has(.kb-hit) .kb-stage,
+  .kb-page--search:has(.kb-bubble) .kb-stage,
+  .kb-page--search:has(.kb-empty) .kb-stage {
+    flex: 1 1 auto;
+    order: 1;
+  }
+
+  .kb-page--search:has(.kb-hit) .kb-console,
+  .kb-page--search:has(.kb-bubble) .kb-console,
+  .kb-page--search:has(.kb-empty) .kb-console {
+    order: 2;
   }
 }
 

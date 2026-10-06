@@ -146,6 +146,12 @@ watch(
   () => [route.path, props.mode] as const,
   async () => {
     await nextTick();
+    if (typeof document !== 'undefined') {
+      const ae = document.activeElement;
+      if (ae instanceof HTMLElement && ae.closest('.mob-dock')) {
+        ae.blur();
+      }
+    }
     requestAnimationFrame(updateOrb);
   }
 );
@@ -282,6 +288,15 @@ watch(
     text-decoration: none;
     font-weight: 700;
     background: transparent;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-dock__item:focus,
+  .mob-dock__item:focus-visible,
+  .mob-dock__item:active {
+    outline: none;
+    box-shadow: none;
   }
 
   .mob-dock__item.is-center {

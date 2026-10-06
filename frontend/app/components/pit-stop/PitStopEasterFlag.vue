@@ -38,7 +38,7 @@ const reveal = () => {
 .pit-stop-easter-flag {
   position: fixed;
   left: 12px;
-  bottom: 72px;
+  bottom: calc(var(--mobile-nav-clearance, 96px) + 12px);
   z-index: 40;
   width: 48px;
   height: 48px;
@@ -53,7 +53,7 @@ const reveal = () => {
 .pit-stop-easter-flag__code {
   position: fixed;
   left: 68px;
-  bottom: 78px;
+  bottom: calc(var(--mobile-nav-clearance, 96px) + 18px);
   z-index: 40;
   margin: 0;
   padding: 8px 12px;
@@ -62,5 +62,23 @@ const reveal = () => {
   border-radius: 10px;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+/* На мобилке — под шапкой, не над доком и не на строке поиска */
+@media (max-width: 900px) {
+  .pit-stop-easter-flag {
+    top: calc(56px + env(safe-area-inset-top, 0px) + 10px);
+    bottom: auto;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.15rem;
+  }
+  .pit-stop-easter-flag__code {
+    top: calc(56px + env(safe-area-inset-top, 0px) + 14px);
+    bottom: auto;
+    left: 56px;
+    max-width: min(220px, calc(100vw - 70px));
+  }
 }
 </style>
