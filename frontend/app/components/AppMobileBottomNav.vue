@@ -29,16 +29,23 @@ const syncDockSlot = () => {
   }
 };
 
-onMounted(() => {
-  dockMq = window.matchMedia(MOBILE_DOCK_MQ);
-  syncDockSlot();
-  dockMq.addEventListener('change', syncDockSlot);
-});
+const barRef = ref<HTMLElement | null>(null);
+const itemRefs = new Map<string, HTMLElement>();
+const orbReady = ref(false);
+const orbX = ref(0);
+const orbSize = ref(44);
+const orbLift = ref(0);
 
-onBeforeUnmount(() => {
-  dockMq?.removeEventListener('change', syncDockSlot);
-  release(BOTTOM_RIGHT_SLOT.mobileDock);
-});
+const setItemRef = (to: string, el: unknown) => {
+  const node =
+    el instanceof HTMLElement
+      ? el
+      : el && typeof el === 'object' && '$el' in el && (el as { $el: unknown }).$el instanceof HTMLElement
+        ? ((el as { $el: HTMLElement }).$el as HTMLElement)
+        : null;
+  if (node) itemRefs.set(to, node);
+  else itemRefs.delete(to);
+};
 
 const employeeTabs: Tab[] = [
   { to: '/knowledge', label: 'База знаний', icon: 'knowledge' },
@@ -79,55 +86,110 @@ const isActive = (to: string) => {
 };
 
 const isLocked = (to: string) => !isNavPathUnlocked(to);
+
+const activeTab = computed(() => tabs.value.find((tab) => isActive(tab.to)) ?? tabs.value[0]);
+
+const orbStyle = computed(() => ({
+  transform: `translate3d(calc(${orbX.value}px - 50%), ${orbLift.value}px, 0)`,
+  width: `${orbSize.value}px`,
+  height: `${orbSize.value}px`
+}));
+
+const updateOrb = () => {
+  const bar = barRef.value;
+  const tab = activeTab.value;
+  if (!bar || !tab) return;
+  const el = itemRefs.get(tab.to);
+  if (!el) return;
+
+  const barRect = bar.getBoundingClientRect();
+  const itemRect = el.getBoundingClientRect();
+  const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
+  const target = icon?.getBoundingClientRect() ?? itemRect;
+
+  orbX.value = target.left + target.width / 2 - barRect.left;
+  if (tab.center) {
+    orbSize.value = 56;
+    orbLift.value = -18;
+  } else {
+    orbSize.value = 40;
+    orbLift.value = -2;
+  }
+  orbReady.value = true;
+};
+
+let resizeObs: ResizeObserver | null = null;
+
+onMounted(() => {
+  dockMq = window.matchMedia(MOBILE_DOCK_MQ);
+  syncDockSlot();
+  dockMq.addEventListener('change', syncDockSlot);
+
+  nextTick(() => {
+    updateOrb();
+    if (barRef.value) {
+      resizeObs = new ResizeObserver(() => updateOrb());
+      resizeObs.observe(barRef.value);
+    }
+  });
+  window.addEventListener('resize', updateOrb);
+});
+
+onBeforeUnmount(() => {
+  dockMq?.removeEventListener('change', syncDockSlot);
+  release(BOTTOM_RIGHT_SLOT.mobileDock);
+  resizeObs?.disconnect();
+  window.removeEventListener('resize', updateOrb);
+});
+
+watch(
+  () => [route.path, props.mode] as const,
+  async () => {
+    await nextTick();
+    requestAnimationFrame(updateOrb);
+  }
+);
 </script>
 
 <template>
   <nav class="mob-dock" aria-label="Основное меню">
-    <div class="mob-dock__bar">
+    <div ref="barRef" class="mob-dock__bar">
+      <div
+        class="mob-dock__orb"
+        :class="{ 'is-ready': orbReady, 'is-center': !!activeTab?.center, 'is-locked-target': activeTab && isLocked(activeTab.to) }"
+        :style="orbStyle"
+        aria-hidden="true"
+      />
+
       <template v-for="tab in tabs" :key="tab.to">
         <NuxtLink
-          v-if="!isLocked(tab.to) && !tab.center"
+          v-if="!isLocked(tab.to)"
+          :ref="(el) => setItemRef(tab.to, el)"
           :to="tab.to"
           class="mob-dock__item"
-          :class="{ 'is-on': isActive(tab.to) }"
+          :class="{ 'is-on': isActive(tab.to), 'is-center': !!tab.center }"
         >
-          <AppMobileNavIcon :name="tab.icon" />
+          <span class="mob-dock__icon">
+            <AppMobileNavIcon :name="tab.icon" />
+          </span>
           <span class="mob-dock__label">{{ tab.label }}</span>
         </NuxtLink>
 
         <span
-          v-else-if="isLocked(tab.to) && !tab.center"
+          v-else
+          :ref="(el) => setItemRef(tab.to, el)"
           class="mob-dock__item is-locked"
+          :class="{ 'is-on': isActive(tab.to), 'is-center': !!tab.center }"
           role="link"
           aria-disabled="true"
+          :aria-label="`${tab.label} — скоро`"
           :title="lockedHint"
         >
-          <AppMobileNavIcon :name="tab.icon" locked />
-          <span class="mob-dock__label">{{ tab.label }}</span>
-        </span>
-
-        <div v-else class="mob-dock__center-slot">
-          <NuxtLink
-            v-if="!isLocked(tab.to)"
-            :to="tab.to"
-            class="mob-dock__fab"
-            :class="{ 'is-on': isActive(tab.to) }"
-            :aria-label="tab.label"
-          >
-            <AppMobileNavIcon :name="tab.icon" />
-          </NuxtLink>
-          <span
-            v-else
-            class="mob-dock__fab is-locked"
-            role="link"
-            aria-disabled="true"
-            :aria-label="`${tab.label} — скоро`"
-            :title="lockedHint"
-          >
+          <span class="mob-dock__icon">
             <AppMobileNavIcon :name="tab.icon" locked />
           </span>
-          <span class="mob-dock__fab-label">{{ tab.label }}</span>
-        </div>
+          <span class="mob-dock__label">{{ tab.label }}</span>
+        </span>
       </template>
     </div>
   </nav>
@@ -146,7 +208,7 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
     right: 0;
     bottom: 0;
     z-index: 50;
-    padding: 0 12px max(10px, env(safe-area-inset-bottom));
+    padding: 0 10px max(8px, env(safe-area-inset-bottom));
     pointer-events: none;
   }
 
@@ -154,11 +216,11 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
     pointer-events: auto;
     position: relative;
     display: grid;
-    grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
-    gap: 2px;
-    min-height: 64px;
-    padding: 8px 6px 10px;
+    gap: 0;
+    min-height: 62px;
+    padding: 10px 4px 8px;
     border: 2px solid #111;
     border-radius: 28px;
     background-color: #eeeee8;
@@ -167,24 +229,97 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
     box-shadow: 4px 4px 0 #111;
   }
 
+  .mob-dock__orb {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    z-index: 0;
+    border-radius: 999px;
+    border: 2px solid #111;
+    background: #7451f4;
+    box-shadow: 3px 3px 0 #111;
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, width, height;
+    transition:
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.2s ease,
+      opacity 0.15s ease;
+  }
+
+  .mob-dock__orb.is-ready {
+    opacity: 1;
+  }
+
+  .mob-dock__orb.is-center {
+    background: #7451f4;
+  }
+
+  .mob-dock__orb:not(.is-center) {
+    background: #ddf365;
+  }
+
+  .mob-dock__orb.is-locked-target {
+    background: #9b86f0;
+  }
+
   .mob-dock__item {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
+    justify-content: flex-end;
+    gap: 2px;
     min-height: 48px;
-    padding: 4px 2px;
+    min-width: 0;
+    padding: 2px 2px 0;
     border-radius: 16px;
     color: #555;
     text-decoration: none;
     font-weight: 700;
-    transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+    background: transparent;
+  }
+
+  .mob-dock__item.is-center {
+    margin-top: -10px;
+  }
+
+  .mob-dock__icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: inherit;
+  }
+
+  .mob-dock__icon :deep(.mob-nav-ico) {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mob-dock__item.is-center .mob-dock__icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
+    width: 26px;
+    height: 26px;
   }
 
   .mob-dock__item.is-on {
     color: #111;
-    background: #ddf365;
+  }
+
+  .mob-dock__item.is-on.is-center {
+    color: #fff;
+  }
+
+  .mob-dock__item.is-on:not(.is-center) {
+    color: #111;
   }
 
   .mob-dock__item.is-locked {
@@ -192,57 +327,20 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
     cursor: not-allowed;
   }
 
+  .mob-dock__item.is-locked.is-on {
+    opacity: 0.9;
+  }
+
   .mob-dock__label {
-    font-size: 0.58rem;
+    font-size: 0.56rem;
     letter-spacing: 0.01em;
-    line-height: 1.15;
+    line-height: 1.1;
     text-align: center;
     max-width: 100%;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
-  }
-
-  .mob-dock__center-slot {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    min-height: 48px;
-    margin-top: -28px;
-  }
-
-  .mob-dock__fab {
-    display: grid;
-    place-items: center;
-    width: 58px;
-    height: 58px;
-    border-radius: 999px;
-    border: 2px solid #111;
-    background: #7451f4;
-    color: #fff;
-    box-shadow: 3px 3px 0 #111;
-    text-decoration: none;
-  }
-
-  .mob-dock__fab.is-on {
-    background: #ddf365;
-    color: #111;
-  }
-
-  .mob-dock__fab.is-locked {
-    opacity: 0.85;
-    cursor: not-allowed;
-    background: #9b86f0;
-  }
-
-  .mob-dock__fab-label {
-    margin-top: 2px;
-    font-size: 0.62rem;
-    font-weight: 800;
-    color: #111;
   }
 }
 </style>

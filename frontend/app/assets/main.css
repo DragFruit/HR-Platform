@@ -81,7 +81,7 @@
   /* шапка: padding 16+16 + аватар 36 + border 1 */
   --topbar-height: 69px;
   --mobile-top-height: 56px;
-  --mobile-nav-clearance: calc(88px + env(safe-area-inset-bottom, 0px));
+  --mobile-nav-clearance: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 *,
@@ -7431,34 +7431,160 @@ button.org-unit-head--link:hover {
   }
 }
 
-@media (max-width: 720px) {
-  .ideas-bank-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* Мобилка: компактный bento как в референсах */
+@media (max-width: 900px) {
+  .ideas-bank-page {
+    gap: 10px;
+    padding-bottom: 4px;
   }
 
-  .ideas-bank-card {
-    grid-template-columns: 1fr;
+  .ideas-bank-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
-  .ideas-bank-card__votes {
-    flex-direction: row;
-    padding-left: 0;
-    padding-top: 4px;
+  .ideas-bank-header__lead {
+    max-width: none;
+    flex: none;
+    font-size: 0.82rem;
+    line-height: 1.35;
   }
 
   .ideas-bank-create-btn {
     width: 100%;
     justify-content: center;
+    min-height: 44px;
+    padding: 10px 14px !important;
+    font-size: 0.88rem;
+    box-shadow: 3px 3px 0 var(--accent-lime) !important;
   }
-}
 
-@media (max-width: 520px) {
+  .ideas-bank-create-btn:hover {
+    box-shadow: 4px 4px 0 var(--accent-lime) !important;
+  }
+
+  .ideas-bulb-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .ideas-bank-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .ideas-bank-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .ideas-bank-authors {
+    order: -1;
+    padding: 12px 12px 14px;
+    box-shadow: 3px 3px 0 #111;
+  }
+
+  .ideas-bank-authors::before {
+    width: 64px;
+    height: 64px;
+    top: -18px;
+    right: -16px;
+  }
+
+  .ideas-bank-authors__title {
+    margin: 0 0 8px;
+    font-size: 0.92rem;
+  }
+
+  .ideas-bank-authors__empty {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .ideas-bank-authors__item {
+    padding: 7px 8px;
+    gap: 6px;
+  }
+
+  .ideas-bank-authors__name {
+    font-size: 0.78rem;
+  }
+
   .ideas-bank-stats {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ideas-bank-stat {
+    min-height: 0;
+    height: auto;
+    padding: 10px 10px 8px;
+    gap: 6px 8px;
+    border-radius: 14px;
+    box-shadow: 3px 3px 0 #111;
+  }
+
+  .ideas-bank-stat:hover {
+    transform: none;
+    box-shadow: 3px 3px 0 #111;
+  }
+
+  .ideas-bank-stat--review,
+  .ideas-bank-stat--review:hover {
+    box-shadow: 3px 3px 0 var(--accent-lime);
+  }
+
+  .ideas-bank-stat--rejected,
+  .ideas-bank-stat--rejected:hover {
+    box-shadow: 3px 3px 0 var(--danger);
+  }
+
+  .ideas-bank-stat__icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+
+  .ideas-bank-stat__icon :is(svg) {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ideas-bank-stat__value {
+    font-size: 1.35rem;
+  }
+
+  .ideas-bank-stat__label {
+    max-width: none;
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  /* 5-й блок — на всю ширину, не обрезается доком */
+  .ideas-bank-stat--rejected {
+    grid-column: 1 / -1;
+  }
+
+  .ideas-bank-toolbar {
+    padding: 12px;
+  }
+
+  .ideas-bank-toolbar__row {
+    gap: 10px;
+  }
+
+  .ideas-bank-page .filter-btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
   }
 
   .ideas-bank-toolbar__controls {
     grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
   }
 
   .ideas-bank-toolbar__controls .ideas-bank-select,
@@ -7466,7 +7592,54 @@ button.org-unit-head--link:hover {
     grid-column: 1 / -1;
   }
 
+  .ideas-bank-select span,
+  .ideas-bank-search span {
+    font-size: 0.72rem;
+  }
+
+  .ideas-bank-select select,
+  .ideas-bank-search input {
+    min-height: 40px;
+    font-size: 0.88rem;
+  }
+
+  .ideas-bank-toolbar__meta {
+    font-size: 0.78rem;
+  }
+
+  .ideas-bank-feed {
+    margin-top: 2px;
+  }
+
+  .ideas-bank-card {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .ideas-bank-card__votes {
+    flex-direction: row;
+    padding-left: 0;
+    padding-top: 2px;
+  }
+
+  .ideas-bank-card__title {
+    font-size: 0.95rem;
+    line-height: 1.25;
+  }
+
+  .ideas-bank-card__text {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
   .ideas-create-form__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .ideas-bank-card {
     grid-template-columns: 1fr;
   }
 }
