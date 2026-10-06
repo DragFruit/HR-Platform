@@ -75,7 +75,7 @@
               <span class="ps-board__pos">{{ row.rank }}</span>
               <img class="ps-board__car" :src="carSrc(safeColor(row.color))" alt="" />
               <span class="ps-board__who">
-                <span class="ps-board__name">{{ row.isMe ? `${shortName(row.name)} · ты` : shortName(row.name) }}</span>
+                <span class="ps-board__name">{{ row.isMe ? `${row.name} · ты` : row.name }}</span>
                 <span v-if="row.department" class="ps-board__dept">{{ row.department }}</span>
               </span>
               <span class="ps-board__time">{{ formatLapMs(row.bestMs) }}</span>
@@ -89,7 +89,7 @@
               <span class="ps-board__pos">{{ row.rank }}</span>
               <img class="ps-board__car" :src="carSrc(safeColor(row.color))" alt="" />
               <span class="ps-board__who">
-                <span class="ps-board__name">{{ row.isMe ? `${shortName(row.name)} · ты` : shortName(row.name) }}</span>
+                <span class="ps-board__name">{{ row.isMe ? `${row.name} · ты` : row.name }}</span>
                 <span v-if="row.department" class="ps-board__dept">{{ row.department }}</span>
               </span>
               <span class="ps-board__time">{{ formatLapMs(row.bestMs) }}</span>
@@ -260,11 +260,6 @@ const stickyMe = computed(() => {
 });
 
 const safeColor = (c: string): CarColorId => (isCarColorId(c) ? c : 'violet');
-
-const shortName = (full: string) => {
-  const [last, first] = full.trim().split(/\s+/);
-  return first ? `${last} ${first[0]}.` : full;
-};
 
 const pickColor = (id: CarColorId) => {
   color.value = id;
@@ -735,21 +730,78 @@ onBeforeUnmount(() => {
   .ps-hub {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
+    height: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y pinch-zoom;
     padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
   .ps-hub__stage {
-    height: min(56.25vw, 70dvh);
+    height: min(56.25vw, 52dvh);
+    flex: none;
   }
   .ps-hub__side {
     overflow: visible;
-    padding-bottom: 150px;
+    /* место под fixed-стик, чтобы рейтинг не прятался под ним */
+    padding-bottom: 160px;
+  }
+  .ps-garage__title {
+    font-size: 1rem;
+  }
+  .ps-garage__help {
+    font-size: 0.875rem;
+    padding: 6px 12px;
+  }
+  .ps-garage__car {
+    height: 64px;
   }
   .ps-board {
     flex: none;
   }
   .ps-board__list {
     overflow: visible;
+  }
+  .ps-board__title {
+    font-size: 1.15rem;
+  }
+  .ps-board__sched {
+    font-size: 0.8rem;
+  }
+  .ps-board__pending {
+    font-size: 0.875rem;
+    padding: 10px 12px;
+  }
+  .ps-board__row {
+    padding: 10px 12px 10px 8px;
+    gap: 10px;
+  }
+  .ps-board__pos {
+    height: 28px;
+    font-size: 0.85rem;
+  }
+  .ps-board__name {
+    font-size: 1rem;
+  }
+  .ps-board__dept {
+    font-size: 0.8rem;
+  }
+  .ps-board__time {
+    font-size: 0.95rem;
+  }
+  .ps-board__me .ps-board__time {
+    font-size: 1rem;
+  }
+  .ps-board__empty {
+    font-size: 1rem;
+  }
+  .ps-board__err {
+    font-size: 0.875rem;
+  }
+  .ps-hub__intro-box :deep(.ps-raccoon__bubble) {
+    font-size: 1rem;
   }
 }
 </style>

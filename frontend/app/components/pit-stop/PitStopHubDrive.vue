@@ -807,32 +807,36 @@ defineExpose({ restartRace });
 @media (max-width: 720px) {
   .ps-drive__hud {
     gap: 8px;
-    padding: 3px 8px;
+    padding: 6px 10px;
   }
   .ps-drive__hud-label {
-    font-size: 0.5rem;
+    font-size: 0.65rem;
   }
   .ps-drive__hud-time {
-    font-size: 0.66rem;
+    font-size: 0.85rem;
   }
   .ps-drive__hud-row.is-main .ps-drive__hud-time {
-    font-size: 0.78rem;
+    font-size: 1rem;
   }
   .ps-drive__hud-zones {
     display: none;
   }
   .ps-drive__flash,
   .ps-drive__hint {
-    font-size: 0.66rem;
+    font-size: 0.85rem;
     top: 2%;
   }
   .ps-drive__again {
     padding: 12px 18px;
-    font-size: 0.82rem;
+    font-size: 1rem;
   }
   .ps-drive__reset {
-    padding: 4px 8px;
-    font-size: 0.64rem;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  .ps-drive__stick {
+    width: 120px;
+    height: 120px;
   }
 }
 </style>

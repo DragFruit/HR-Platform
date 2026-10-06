@@ -7,6 +7,7 @@ import {
   raceRecordsForLeaderboard,
   readRaceRecords
 } from '../../../../utils/pitStopRaceStore';
+import { racePilotLabelsByUserId } from '../../../../utils/pitStopRacePilot';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -20,19 +21,24 @@ export default defineEventHandler(async (event) => {
     await ensureRaceFinalized();
   }
 
+  const labels = await racePilotLabelsByUserId(records.map((r) => r.userId));
+
   const rows = records
     .map((r) => ({ r, best: bestAsOf(r, cutoff) }))
     .filter((x): x is { r: (typeof records)[number]; best: { ms: number; at: string } } => x.best != null)
     .sort((a, b) => a.best.ms - b.best.ms || a.best.at.localeCompare(b.best.at))
-    .map(({ r, best }, i) => ({
-      rank: i + 1,
-      userId: r.userId,
-      name: r.name,
-      department: r.department,
-      bestMs: best.ms,
-      color: r.color,
-      isMe: r.userId === session.id
-    }));
+    .map(({ r, best }, i) => {
+      const label = labels.get(r.userId);
+      return {
+        rank: i + 1,
+        userId: r.userId,
+        name: label?.name || r.name,
+        department: label?.department || r.department,
+        bestMs: best.ms,
+        color: r.color,
+        isMe: r.userId === session.id
+      };
+    });
 
   const mine = records.find((r) => r.userId === session.id);
 

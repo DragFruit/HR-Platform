@@ -810,6 +810,17 @@ a {
   overflow: hidden;
 }
 
+/* Мобилка: хаб скроллится (гараж + рейтинг), десктоп остаётся без скролла */
+@media (max-width: 960px) {
+  .shell-main:has(.ps-hub) .content .page-root > .ps-hub,
+  .shell-main:has(.ps-hub) .content > .ps-hub {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
+
 .shell-main:has(.pit-cp) .content {
   padding: 0;
   background: #1d1d1f;
