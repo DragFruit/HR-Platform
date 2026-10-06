@@ -120,7 +120,7 @@
         />
         <button
           type="button"
-          class="vac-mob-tabs__btn"
+          class="vac-mob-tabs__btn vac-mob-tabs__btn--mine"
           :class="{ 'is-on': mobChromeTab === 'calendar' && calendarScope === 'mine' }"
           @click="setMobChrome('mine')"
         >
