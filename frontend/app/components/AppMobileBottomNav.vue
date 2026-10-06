@@ -17,10 +17,10 @@ const { isNavPathUnlocked } = useLaunchScope();
 const route = useRoute();
 
 const employeeTabs: Tab[] = [
-  { to: '/knowledge', label: 'Знания', icon: 'knowledge' },
+  { to: '/knowledge', label: 'База знаний', icon: 'knowledge' },
   { to: '/vacations', label: 'Отпуск', icon: 'vacation' },
   { to: '/', label: 'Главная', icon: 'home', center: true },
-  { to: '/ideas', label: 'Идеи', icon: 'ideas' },
+  { to: '/ideas', label: 'Банк идей', icon: 'ideas' },
   { to: '/store', label: 'Магазин', icon: 'store' }
 ];
 
@@ -169,14 +169,15 @@ const isLocked = (to: string) => !isNavPathUnlocked(to);
   }
 
   .mob-dock__label {
-    font-size: 0.62rem;
-    letter-spacing: 0.02em;
-    line-height: 1.1;
+    font-size: 0.58rem;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
     text-align: center;
     max-width: 100%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .mob-dock__center-slot {
