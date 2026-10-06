@@ -1,13 +1,17 @@
 <template>
-  <section class="card section-card">
-    <div class="section-head row">
-      <div>
+  <div class="ideas-bank-page ideas-bank-page--admin">
+  <section class="card section-card ideas-admin-hero">
+    <div class="section-head ideas-admin-hero__head">
+      <div class="ideas-admin-hero__copy">
         <h2 class="section-title">Банк идей</h2>
-        <p class="muted">
+        <p class="muted ideas-admin-hero__lead">
           Все предложения сотрудников. Меняйте этап через подтверждение и при необходимости удаляйте заявки.
         </p>
       </div>
-      <NuxtLink to="/ideas" class="button ghost">Открыть как сотрудник</NuxtLink>
+      <NuxtLink to="/ideas" class="button ghost ideas-admin-hero__link">
+        <span class="ideas-admin-hero__link-full">Открыть как сотрудник</span>
+        <span class="ideas-admin-hero__link-short">Как сотрудник</span>
+      </NuxtLink>
     </div>
 
     <div class="ideas-bank-stats ideas-bank-stats--admin" role="list" aria-label="Сводка по идеям — фильтр по статусу">
@@ -28,7 +32,7 @@
     </div>
   </section>
 
-  <section class="card section-card">
+  <section class="card section-card ideas-admin-list">
     <div class="filters ideas-bank-scope">
       <button
         v-for="filter in statusFilters"
@@ -42,9 +46,9 @@
       </button>
     </div>
 
-    <p class="soft" style="margin: 12px 0 0">{{ filteredIdeas.length }} {{ ideasWord(filteredIdeas.length) }}</p>
+    <p class="soft ideas-admin-list__count">{{ filteredIdeas.length }} {{ ideasWord(filteredIdeas.length) }}</p>
 
-    <ul v-if="filteredIdeas.length" class="ideas-bank-list" style="margin-top: 14px">
+    <ul v-if="filteredIdeas.length" class="ideas-bank-list ideas-admin-list__items">
       <li v-for="idea in filteredIdeas" :key="idea.id" class="ideas-bank-card ideas-bank-card--admin">
         <div class="ideas-bank-card__main">
           <div class="ideas-bank-card__tags">
@@ -112,6 +116,7 @@
 
     <p v-else class="muted state-box compact-state">Идей в этой подборке нет.</p>
   </section>
+  </div>
 
   <OrgConfirmDialog
     :open="Boolean(pendingDeleteId)"

@@ -107,14 +107,14 @@ const updateOrb = () => {
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
   const target = icon?.getBoundingClientRect() ?? itemRect;
 
+  const size = tab.center ? 52 : 34;
+  const orbCssTop = 6;
+  const targetCenterY = target.top + target.height / 2 - barRect.top;
+
   orbX.value = target.left + target.width / 2 - barRect.left;
-  if (tab.center) {
-    orbSize.value = 56;
-    orbLift.value = -18;
-  } else {
-    orbSize.value = 40;
-    orbLift.value = -2;
-  }
+  orbSize.value = size;
+  // Центр кружка = центр иконки (не «висит» над подписью)
+  orbLift.value = targetCenterY - orbCssTop - size / 2;
   orbReady.value = true;
 };
 
@@ -219,25 +219,26 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    min-height: 62px;
-    padding: 10px 4px 8px;
+    min-height: 64px;
+    padding: 8px 4px 10px;
     border: 2px solid #111;
     border-radius: 28px;
     background-color: #eeeee8;
     background-image: var(--noise-url);
     background-size: 180px 180px;
     box-shadow: 4px 4px 0 #111;
+    overflow: visible;
   }
 
   .mob-dock__orb {
     position: absolute;
-    top: 8px;
+    top: 6px;
     left: 0;
     z-index: 0;
     border-radius: 999px;
     border: 2px solid #111;
     background: #7451f4;
-    box-shadow: 3px 3px 0 #111;
+    box-shadow: 2px 2px 0 #111;
     opacity: 0;
     pointer-events: none;
     will-change: transform, width, height;
@@ -272,8 +273,8 @@ watch(
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    gap: 2px;
-    min-height: 48px;
+    gap: 3px;
+    min-height: 50px;
     min-width: 0;
     padding: 2px 2px 0;
     border-radius: 16px;
@@ -284,30 +285,30 @@ watch(
   }
 
   .mob-dock__item.is-center {
-    margin-top: -10px;
+    margin-top: -12px;
   }
 
   .mob-dock__icon {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     color: inherit;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
 
   .mob-dock__item.is-on {
