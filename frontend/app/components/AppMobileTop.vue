@@ -92,7 +92,8 @@ const emit = defineEmits<{
     justify-content: space-between;
     gap: 10px;
     min-height: 52px;
-    padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+    /* Ниже Dynamic Island / шторки */
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
     border-bottom: 2px solid #111;
     background-color: #7451f4;
     background-image: var(--noise-url);
@@ -148,7 +149,9 @@ const emit = defineEmits<{
     flex-shrink: 0;
   }
 
-  .mob-top__actions :deep(.admin-notifications-bell__btn) {
+  .mob-top__actions :deep(.admin-notifications-bell__btn),
+  .mob-top__actions :deep(.vac-notifications-bell__btn),
+  .mob-top__actions :deep(button) {
     width: 40px;
     height: 40px;
   }
@@ -165,10 +168,17 @@ const emit = defineEmits<{
     width: 40px;
     height: 40px;
     border-radius: 999px;
-    border: 2px solid #111;
-    background: #eeeee8;
-    box-shadow: 2px 2px 0 #111;
+    border: none;
+    background: transparent;
+    box-shadow: none;
     overflow: hidden;
+  }
+
+  .mob-top__profile :deep(img),
+  .mob-top__profile :deep(.user-avatar),
+  .mob-top__profile :deep(.user-avatar__img) {
+    border: none !important;
+    box-shadow: none !important;
   }
 
   /* Флаг ивента — бейдж на аватаре (не третий круг в ряду) */

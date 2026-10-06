@@ -2,7 +2,7 @@
   <VacationTrainingOverlay v-if="vacationTrainingEnabled" />
 
   <div class="vac-emp-page" :class="embedded ? 'vac-emp-page--embedded' : 'vac-emp-page--fit'">
-    <header class="vac-emp-toolbar">
+    <header class="vac-emp-toolbar vac-emp-toolbar--desk">
       <form class="vac-emp-toolbar__form" data-tour="vac-create-form" @submit.prevent="submitRequest">
         <h3 class="vac-emp-toolbar__title">Создать заявку на отпуск</h3>
         <span class="vac-emp-toolbar__word">с</span>
@@ -75,6 +75,81 @@
       </form>
     </header>
 
+    <!-- Мобилка ≤900: форма + баланс + вкладки по эскизу -->
+    <div v-if="!embedded" class="vac-mob-chrome" aria-label="Заявка и навигация">
+      <div class="vac-mob-chrome__row">
+        <form class="vac-mob-dates" data-tour="vac-create-form" @submit.prevent="submitRequest">
+          <label class="vac-mob-dates__field">
+            <span>с</span>
+            <input
+              v-model="form.start"
+              type="date"
+              :min="allowPastDates ? undefined : minIso"
+              :disabled="isHistoricalYear || submitting"
+            />
+          </label>
+          <label class="vac-mob-dates__field">
+            <span>по</span>
+            <input
+              v-model="form.end"
+              type="date"
+              :min="allowPastDates ? undefined : minIso"
+              :disabled="isHistoricalYear || submitting"
+            />
+          </label>
+          <button
+            type="submit"
+            class="vac-mob-dates__ok"
+            aria-label="Создать заявку"
+            :disabled="isHistoricalYear || submitting || !form.start || !form.end"
+          >
+            ✓
+          </button>
+        </form>
+        <div class="vac-mob-balance" data-tour="vac-balance" title="Доступно дней отпуска">
+          <span class="vac-mob-balance__num">{{ mobileBalanceRemain }}</span>
+        </div>
+      </div>
+
+      <nav class="vac-mob-tabs" aria-label="Календарь">
+        <VacationYearTab
+          class="vac-mob-tabs__year"
+          :model-value="props.viewYear"
+          :years="yearOptions"
+          @update:model-value="emit('update:viewYear', $event)"
+        />
+        <button
+          type="button"
+          class="vac-mob-tabs__btn"
+          :class="{ 'is-on': mobChromeTab === 'calendar' && calendarScope === 'mine' }"
+          @click="setMobChrome('mine')"
+        >
+          Мой
+        </button>
+        <button
+          v-if="hasTeamCalendar"
+          type="button"
+          class="vac-mob-tabs__btn"
+          :class="{ 'is-on': mobChromeTab === 'calendar' && calendarScope === 'team' }"
+          @click="setMobChrome('team')"
+        >
+          Общий
+        </button>
+        <button
+          type="button"
+          class="vac-mob-tabs__btn"
+          :class="{ 'is-on': mobChromeTab === 'requests' }"
+          @click="mobChromeTab = 'requests'"
+        >
+          Заявки
+        </button>
+      </nav>
+      <p v-if="!isHistoricalYear && clarifyHint" class="vac-mob-chrome__hint">{{ clarifyHint }}</p>
+      <p v-if="formError" class="vac-mob-chrome__err">
+        <strong>{{ formError.title }}:</strong> {{ formError.text }}
+      </p>
+    </div>
+
     <p v-if="formError" class="vac-emp-error">
       <strong>{{ formError.title }}:</strong> {{ formError.text }}
     </p>
@@ -129,13 +204,14 @@
 
     <div class="vac-emp-body" :class="{ 'vac-emp-body--embedded': embedded }">
         <div
+          v-show="mobChromeTab === 'calendar'"
           ref="calendarSlotRef"
           class="vac-emp-calendar-slot"
           :class="{ 'vac-emp-calendar-slot--with-tabs': hasTeamCalendar }"
         >
         <div class="vac-emp-calendar-main">
           <VacationYearTab
-            class="vac-emp-calendar-yeartab"
+            class="vac-emp-calendar-yeartab vac-emp-calendar-yeartab--desk"
             :model-value="props.viewYear"
             :years="yearOptions"
             @update:model-value="emit('update:viewYear', $event)"
@@ -187,6 +263,7 @@
               :reservation-cap-blocked-months="isHistoricalYear ? [] : reservationCapBlockedMonths"
               @day-click="onCalendarDayClick"
               @day-hover="onCalendarDayHover"
+              @month-focus="onMonthFocus"
               @reservation-month-click="openReservationDialog"
               @reservation-cap-blocked="openReservationCapNotice"
             />
@@ -198,6 +275,7 @@
         </div>
         <VacationCalendarScopeToggle
           v-if="hasTeamCalendar"
+          class="vac-cal-side-tabs--desk"
           :model-value="calendarScope"
           @update:model-value="setCalendarScope"
         />
@@ -205,6 +283,8 @@
 
       <EmployeeVacationAside
         v-if="!embedded"
+        class="vac-emp-aside-host"
+        :class="{ 'vac-emp-aside-host--requests': mobChromeTab === 'requests' }"
         :view-year="viewYear"
         :ui-mode="uiMode"
         :team-mode-label="teamModeLabel"
@@ -245,7 +325,7 @@
 <script setup lang="ts">
 import { buildDaySetsForEmployee, isVacationStartInPast, todayIso } from '~/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
-import { assessVacationBalance } from '~/utils/vacationBalance';
+import { assessVacationBalance, calcEmployeeBalance } from '~/utils/vacationBalance';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 import {
@@ -640,20 +720,53 @@ const {
   }
 });
 
-/** Мобилка ≤900: тап по дате сначала приближает месяц. */
+/** Мобилка ≤900: тап по месяцу/дате приближает месяц. */
 const MOBILE_CAL_MQ = '(max-width: 900px)';
 const isMobileCal = ref(false);
 const focusedMonthIndex = ref<number | null>(null);
+/** calendar | requests — вкладки эскиза */
+const mobChromeTab = ref<'calendar' | 'requests'>('calendar');
 let mobileCalMq: MediaQueryList | null = null;
 
 const syncMobileCal = () => {
   isMobileCal.value = Boolean(mobileCalMq?.matches);
-  if (!isMobileCal.value) focusedMonthIndex.value = null;
+  if (!isMobileCal.value) {
+    focusedMonthIndex.value = null;
+    mobChromeTab.value = 'calendar';
+  }
 };
 
 const exitMonthFocus = () => {
   focusedMonthIndex.value = null;
 };
+
+const setMobChrome = (scope: 'mine' | 'team') => {
+  mobChromeTab.value = 'calendar';
+  setCalendarScope(scope);
+  focusedMonthIndex.value = null;
+};
+
+const onMonthFocus = (monthIndex: number) => {
+  if (!isMobileCal.value) return;
+  if (monthIndex < 0 || monthIndex > 11) return;
+  focusedMonthIndex.value = monthIndex;
+};
+
+const mobileBalanceRemain = computed(() => {
+  const y = state.value.primaryYear;
+  const byId = new Map<number, VacationRequest>();
+  for (const yr of [y - 1, y, y + 1]) {
+    for (const req of requestsForYear(yr)) byId.set(req.id, req);
+  }
+  return calcEmployeeBalance(
+    employeeName.value,
+    hireIso.value,
+    [...byId.values()],
+    new Date(),
+    y,
+    currentEmployee.value?.vacation_opening_balance
+  ).remain;
+});
 
 const onCalendarDayClick = (...args: Parameters<typeof handleDayClick>) => {
   if (isHistoricalYear.value) return;

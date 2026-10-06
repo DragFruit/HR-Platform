@@ -107,7 +107,7 @@ const updateOrb = () => {
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
   const target = icon?.getBoundingClientRect() ?? itemRect;
 
-  const size = tab.center ? 44 : 32;
+  const size = tab.center ? 52 : 40;
   const orbCssTop = 4;
   const targetCenterY = target.top + target.height / 2 - barRect.top;
 
@@ -225,13 +225,13 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    min-height: 56px;
-    padding: 4px 2px 6px;
+    min-height: 62px;
+    padding: 6px 4px 8px;
     border: 2px solid #111;
-    border-radius: 22px;
-    background-color: #eeeee8;
-    background-image: var(--noise-url);
-    background-size: 180px 180px;
+    border-radius: 24px;
+    /* Серый внутри пилюли; снаружи .mob-dock без фона */
+    background-color: #d8d8d4;
+    background-image: none;
     box-shadow: 3px 3px 0 #111;
     overflow: visible;
   }
@@ -306,24 +306,24 @@ watch(
   .mob-dock__icon {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     color: inherit;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 22px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
   }
 
   .mob-dock__item.is-on {

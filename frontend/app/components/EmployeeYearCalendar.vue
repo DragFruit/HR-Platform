@@ -6,17 +6,25 @@
       'emp-cal-grid--selecting': isSelecting,
       'emp-cal-grid--month-focus': focusedMonthIndex != null
     }"
+    :style="focusOriginStyle"
     role="img"
     :aria-label="`Календарь отпусков за ${year} год`"
   >
     <div
-      v-for="month in visibleMonths"
+      v-for="month in months"
       :key="month.index"
       class="emp-cal-month hr-month"
       :class="monthClass(month.index)"
+      @click="onMonthSurfaceClick(month.index, $event)"
     >
       <div class="hr-month-title">
-        <span>{{ month.title }}</span>
+        <button
+          type="button"
+          class="hr-month-title__name"
+          @click.stop="emit('month-focus', month.index)"
+        >
+          {{ month.title }}
+        </button>
         <button
           v-if="!isSelecting && showReservationControl(month)"
           type="button"
@@ -91,25 +99,20 @@ const props = defineProps<{
   compact?: boolean;
   rangePickStart?: string | null;
   rangePickHover?: string | null;
-  /** Зафиксированный период из формы — подсветка после выбора на календаре */
   selectedRangeStart?: string | null;
   selectedRangeEnd?: string | null;
   minSelectableIso?: string;
-  /** Подсветка месяца при «Создать заявку» из брони */
   highlightMonthIndex?: number | null;
-  /** Мобилка: один месяц на весь слот (зум после тапа по дате). */
   focusedMonthIndex?: number | null;
-  /** В учебном квесте — всегда показывать +бронь у этого месяца (0–11) */
   reservationControlOverride?: number | null;
-  /** Месяцы (0–11), где лимит броней группы исчерпан. */
   reservationCapBlockedMonths?: number[];
-  /** Прошлый год: без выбора дат и броней. */
   readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
   'day-click': [cell: CalendarDayCell];
   'day-hover': [cell: CalendarDayCell];
+  'month-focus': [monthIndex: number];
   'reservation-month-click': [monthIndex: number];
   'reservation-cap-blocked': [monthIndex: number];
 }>();
@@ -126,6 +129,20 @@ const focusedMonthIndex = computed(() =>
     : null
 );
 
+/** 4 ряда × 3 колонки (эскиз): origin зума из ячейки месяца. */
+const focusOriginStyle = computed(() => {
+  const i = focusedMonthIndex.value;
+  if (i == null) return undefined;
+  const col = i % 3;
+  const row = Math.floor(i / 3);
+  const ox = ((col + 0.5) / 3) * 100;
+  const oy = ((row + 0.5) / 4) * 100;
+  return {
+    '--vac-zoom-ox': `${ox}%`,
+    '--vac-zoom-oy': `${oy}%`
+  };
+});
+
 const reservationByMonth = computed(() => {
   const map = new Map<number, VacationReservation>();
   for (const item of props.reservations ?? []) {
@@ -141,24 +158,16 @@ const months = computed(() => {
   return MONTHS_RU.map((name, index) => {
     const reservation = reservationByMonth.value.get(index);
     const focused = focusedMonthIndex.value === index;
+    const short =
+      name.length > 3 ? name.slice(0, 3) : name;
     return {
       index,
-      title: focused
-        ? `${name} ${props.year}`
-        : props.compact
-          ? name
-          : `${name}, ${String(props.year).slice(-2)}`,
+      title: focused ? `${name} ${props.year}` : props.compact ? short : `${name}, ${String(props.year).slice(-2)}`,
       rows: buildMonthGrid(props.year, index, approved, pending),
       reservation,
       reservationLabel: reservation ? formatReservationLabel(reservation.durationDays) : ''
     };
   });
-});
-
-const visibleMonths = computed(() => {
-  const focus = focusedMonthIndex.value;
-  if (focus == null) return months.value;
-  return months.value.filter((m) => m.index === focus);
 });
 
 const capBlockedMonthSet = computed(
@@ -195,6 +204,8 @@ const monthClass = (monthIndex: number) => {
   }
   if (focusedMonthIndex.value === monthIndex) {
     classes.push('emp-cal-month--focused');
+  } else if (focusedMonthIndex.value != null) {
+    classes.push('emp-cal-month--dimmed');
   }
   return classes.length ? classes : undefined;
 };
@@ -206,6 +217,13 @@ const onReservationClick = (monthIndex: number) => {
     return;
   }
   emit('reservation-month-click', monthIndex);
+};
+
+/** Тап по пустому месту месяца (не по дню) — зум. */
+const onMonthSurfaceClick = (monthIndex: number, ev: MouseEvent) => {
+  const t = ev.target as HTMLElement | null;
+  if (t?.closest('td') || t?.closest('.emp-reservation-add-btn')) return;
+  emit('month-focus', monthIndex);
 };
 
 const previewEnd = computed(() => {
@@ -277,3 +295,18 @@ const onCellHover = (cell: CalendarDayCell) => {
   emit('day-hover', cell);
 };
 </script>
+
+<style scoped>
+.hr-month-title__name {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+</style>
