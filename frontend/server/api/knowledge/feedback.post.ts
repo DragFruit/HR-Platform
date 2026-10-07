@@ -91,33 +91,37 @@ export default defineEventHandler(async (event) => {
     photo_ids: photoIds.length ? photoIds : undefined
   });
 
+  // Bitrix не блокирует ответ клиенту — иначе «Отправить» висит на сети crm.vbi.ru
   if ((fields.comment || photoIds.length) && isBitrixImbotConfigured()) {
-    const admin = await findEmployeeByName(SYSTEM_ADMIN_NAME);
-    const bitrixUserId = admin?.bitrix_user_id ?? admin?.platform_user_id ?? 0;
-    if (bitrixUserId > 0) {
-      const photoLine =
-        photoIds.length === 1
-          ? 'Фото: 1 шт. (смотри в колокольчике Vibe)'
-          : photoIds.length > 1
-            ? `Фото: ${photoIds.length} шт. (смотри в колокольчике Vibe)`
-            : null;
-      const lines = [
-        `Оценка раздела «${label}»: ${fields.stars}/5`,
-        `Кто: ${session.name}`,
-        fields.comment ? `Комментарий: ${fields.comment}` : null,
-        photoLine
-      ].filter(Boolean) as string[];
+    const who = session.name;
+    const stars = fields.stars;
+    const comment = fields.comment;
+    const photoCount = photoIds.length;
+    void (async () => {
       try {
-        await sendBitrixImbotMessage({
-          bitrixUserId,
-          message: lines.join('\n')
-        });
+        const admin = await findEmployeeByName(SYSTEM_ADMIN_NAME);
+        const bitrixUserId = admin?.bitrix_user_id ?? admin?.platform_user_id ?? 0;
+        if (bitrixUserId <= 0) {
+          console.warn(`[knowledge-feedback] нет bitrix id у «${SYSTEM_ADMIN_NAME}»`);
+          return;
+        }
+        const photoLine =
+          photoCount === 1
+            ? 'Фото: 1 шт. (смотри в колокольчике Vibe)'
+            : photoCount > 1
+              ? `Фото: ${photoCount} шт. (смотри в колокольчике Vibe)`
+              : null;
+        const lines = [
+          `Оценка раздела «${label}»: ${stars}/5`,
+          `Кто: ${who}`,
+          comment ? `Комментарий: ${comment}` : null,
+          photoLine
+        ].filter(Boolean) as string[];
+        await sendBitrixImbotMessage({ bitrixUserId, message: lines.join('\n') });
       } catch (err) {
         console.warn('[knowledge-feedback] imbot failed:', err);
       }
-    } else {
-      console.warn(`[knowledge-feedback] нет bitrix id у «${SYSTEM_ADMIN_NAME}»`);
-    }
+    })();
   }
 
   return {

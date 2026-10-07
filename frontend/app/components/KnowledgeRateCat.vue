@@ -225,10 +225,41 @@ const hover = ref(0);
 const comment = ref('');
 const commentHeight = ref<number | null>(null);
 const MAX_PHOTOS = 5;
+const PHOTO_MAX_EDGE = 1280;
+const PHOTO_JPEG_QUALITY = 0.72;
 type PhotoItem = { id: string; file: File; preview: string };
 const photos = ref<PhotoItem[]>([]);
 const photoInputRef = ref<HTMLInputElement | null>(null);
 const sending = ref(false);
+
+/** Сжать фото перед аплоадом — с телефона иначе уходит по 3–5 МБ за кадр. */
+const compressPhotoFile = async (file: File): Promise<File> => {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      bitmap.close();
+      return file;
+    }
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', PHOTO_JPEG_QUALITY)
+    );
+    if (!blob || blob.size >= file.size) return file;
+    const base = file.name.replace(/\.[^.]+$/, '') || 'photo';
+    return new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch {
+    return file;
+  }
+};
 const videoRef = ref<HTMLVideoElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
 const slideRef = ref<HTMLElement | null>(null);
@@ -427,14 +458,16 @@ const removePhoto = (index: number) => {
   if (photoInputRef.value) photoInputRef.value.value = '';
 };
 
-const onPhotoPicked = (event: Event) => {
+const onPhotoPicked = async (event: Event) => {
   const input = event.target as HTMLInputElement;
   const picked = [...(input.files || [])];
   input.value = '';
   if (!picked.length) return;
   const room = MAX_PHOTOS - photos.value.length;
-  for (const file of picked.slice(0, Math.max(0, room))) {
-    if (!file.type.startsWith('image/')) continue;
+  for (const raw of picked.slice(0, Math.max(0, room))) {
+    if (!raw.type.startsWith('image/')) continue;
+    if (raw.size > 12 * 1024 * 1024) continue;
+    const file = await compressPhotoFile(raw);
     if (file.size > 5 * 1024 * 1024) continue;
     photos.value.push({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
