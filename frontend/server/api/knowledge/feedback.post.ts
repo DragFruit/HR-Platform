@@ -6,6 +6,7 @@ import { isBitrixImbotConfigured, sendBitrixImbotMessage } from '../../utils/bit
 import { assertPageFeedbackPhoto, savePageFeedbackPhoto } from '../../utils/pageFeedbackPhoto';
 
 const SYSTEM_ADMIN_NAME = 'Драго Станислава';
+const MAX_PHOTOS = 5;
 
 const PAGE_LABELS: Record<string, string> = {
   '/knowledge': 'База знаний',
@@ -25,7 +26,7 @@ type FeedbackFields = {
   comment: string;
   page: string;
   page_label: string;
-  photo: ReturnType<typeof assertPageFeedbackPhoto> | null;
+  photos: ReturnType<typeof assertPageFeedbackPhoto>[];
 };
 
 async function parseFeedback(event: Parameters<typeof readBody>[0]): Promise<FeedbackFields> {
@@ -36,15 +37,16 @@ async function parseFeedback(event: Parameters<typeof readBody>[0]): Promise<Fee
       const part = parts?.find((item) => item.name === name && !item.filename);
       return part?.data?.toString('utf8') ?? '';
     };
-    const filePart = parts?.find(
-      (item) => (item.name === 'photo' || item.name === 'file') && item.filename
-    );
+    const fileParts =
+      parts?.filter(
+        (item) => (item.name === 'photo' || item.name === 'file') && item.filename
+      ) ?? [];
     return {
       stars: Number(field('stars')),
       comment: String(field('comment') || '').trim().slice(0, 2000),
       page: String(field('page') || '/knowledge').trim() || '/knowledge',
       page_label: String(field('page_label') || '').trim(),
-      photo: filePart ? assertPageFeedbackPhoto(filePart) : null
+      photos: fileParts.slice(0, MAX_PHOTOS).map((part) => assertPageFeedbackPhoto(part))
     };
   }
 
@@ -59,7 +61,7 @@ async function parseFeedback(event: Parameters<typeof readBody>[0]): Promise<Fee
     comment: String(body?.comment || '').trim().slice(0, 2000),
     page: String(body?.page || '/knowledge').trim() || '/knowledge',
     page_label: String(body?.page_label || '').trim(),
-    photo: null
+    photos: []
   };
 }
 
@@ -72,10 +74,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const label = labelForPage(fields.page, fields.page_label || undefined);
-  let photoId: string | undefined;
-  if (fields.photo) {
-    photoId = randomUUID();
-    await savePageFeedbackPhoto(photoId, fields.photo);
+  const photoIds: string[] = [];
+  for (const photo of fields.photos) {
+    const id = randomUUID();
+    await savePageFeedbackPhoto(id, photo);
+    photoIds.push(id);
   }
 
   const notification = await createPageFeedbackNotification({
@@ -84,18 +87,25 @@ export default defineEventHandler(async (event) => {
     stars: fields.stars,
     comment: fields.comment,
     page: fields.page,
-    photo_id: photoId
+    photo_id: photoIds[0],
+    photo_ids: photoIds.length ? photoIds : undefined
   });
 
-  if ((fields.comment || photoId) && isBitrixImbotConfigured()) {
+  if ((fields.comment || photoIds.length) && isBitrixImbotConfigured()) {
     const admin = await findEmployeeByName(SYSTEM_ADMIN_NAME);
     const bitrixUserId = admin?.bitrix_user_id ?? admin?.platform_user_id ?? 0;
     if (bitrixUserId > 0) {
+      const photoLine =
+        photoIds.length === 1
+          ? 'Фото: 1 шт. (смотри в колокольчике Vibe)'
+          : photoIds.length > 1
+            ? `Фото: ${photoIds.length} шт. (смотри в колокольчике Vibe)`
+            : null;
       const lines = [
         `Оценка раздела «${label}»: ${fields.stars}/5`,
         `Кто: ${session.name}`,
         fields.comment ? `Комментарий: ${fields.comment}` : null,
-        photoId ? 'Фото: прикреплено (смотри в колокольчике Vibe)' : null
+        photoLine
       ].filter(Boolean) as string[];
       try {
         await sendBitrixImbotMessage({
@@ -110,5 +120,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return { ok: true, notification_id: notification.id, photo_id: photoId || null };
+  return {
+    ok: true,
+    notification_id: notification.id,
+    photo_ids: photoIds
+  };
 });

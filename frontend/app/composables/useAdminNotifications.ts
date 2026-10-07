@@ -38,7 +38,16 @@ export type AdminNotification = {
   comment?: string;
   page?: string;
   photo_id?: string;
+  photo_ids?: string[];
 };
+
+export function pageFeedbackPhotoIds(item: AdminNotification): string[] {
+  if (item.kind !== 'page_feedback') return [];
+  if (Array.isArray(item.photo_ids) && item.photo_ids.length) {
+    return item.photo_ids.filter(Boolean).slice(0, 5);
+  }
+  return item.photo_id ? [item.photo_id] : [];
+}
 
 const fieldLabels: Record<'name' | 'title', string> = {
   name: 'ФИО',
@@ -154,10 +163,12 @@ export function useAdminNotifications() {
     }
     if (item.kind === 'page_feedback') {
       const note = item.comment?.trim();
-      const photo = item.photo_id ? ' + фото' : '';
+      const n = pageFeedbackPhotoIds(item).length;
+      const photo =
+        n === 1 ? ' + фото' : n > 1 ? ` + ${n} фото` : '';
       return note
         ? `${item.employee_name}: «${note}»${photo}`
-        : `${item.employee_name} оценил(а) страницу${photo ? ' (есть фото)' : ', комментария нет'}.`;
+        : `${item.employee_name} оценил(а) страницу${n ? ` (${n} фото)` : ', комментария нет'}.`;
     }
     if (item.kind === 'knowledge_ai_degraded') {
       const q = item.comment?.trim();
@@ -230,6 +241,7 @@ export function useAdminNotifications() {
     markAllSeen,
     formatNotificationTitle,
     formatNotificationBody,
+    pageFeedbackPhotoIds,
     formatDate,
     notificationActionLabel,
     notificationActionTo

@@ -16027,27 +16027,32 @@ button.emp-name--card:hover {
   color: var(--text-muted-on-light);
 }
 
-.admin-notifications-bell__photo {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.admin-notifications-bell__photos {
+  display: flex;
+  gap: 6px;
   margin: 0 0 8px;
-  padding: 4px 8px 4px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  padding-bottom: 2px;
+}
+
+.admin-notifications-bell__photo {
+  display: block;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
   border: 1.5px solid #111;
-  border-radius: 10px;
+  border-radius: 8px;
+  overflow: hidden;
   background: #eeeee8;
-  color: #111;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-decoration: none;
 }
 
 .admin-notifications-bell__photo img {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border: 1px solid #111;
 }
 
 .admin-notifications-bell__meta {
@@ -16135,27 +16140,32 @@ button.emp-name--card:hover {
   line-height: 1.5;
 }
 
-.admin-notifications-page__photo {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.admin-notifications-page__photos {
+  display: flex;
+  gap: 8px;
   margin: 0 0 10px;
-  padding: 6px 10px 6px 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  padding-bottom: 2px;
+}
+
+.admin-notifications-page__photo {
+  display: block;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
   border: 1.5px solid #111;
-  border-radius: 12px;
+  border-radius: 10px;
+  overflow: hidden;
   background: #eeeee8;
-  color: #111;
-  font-size: 0.84rem;
-  font-weight: 700;
-  text-decoration: none;
 }
 
 .admin-notifications-page__photo img {
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border: 1px solid #111;
 }
 
 .admin-notifications-page__date {
@@ -18522,6 +18532,26 @@ button.button {
 .kb-rate-cat__photo-btn.is-on {
   color: #111;
   background: transparent;
+}
+
+.kb-rate-cat__photo-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Превью в ряд; если не влезают — горизонтальный скролл внутри полоски */
+.kb-rate-cat__photo-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding: 4px 2px 2px 0;
 }
 
 .kb-rate-cat__photo-preview {

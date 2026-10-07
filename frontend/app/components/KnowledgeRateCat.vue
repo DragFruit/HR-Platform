@@ -36,14 +36,20 @@
               class="kb-rate-cat__photo-input"
               type="file"
               accept="image/*"
+              multiple
               capture="environment"
               @change="onPhotoPicked"
             />
             <button
               type="button"
               class="kb-rate-cat__photo-btn"
-              :class="{ 'is-on': Boolean(photoPreview) }"
-              :aria-label="photoPreview ? 'Заменить фото' : 'Добавить фото'"
+              :class="{ 'is-on': photos.length > 0 }"
+              :disabled="photos.length >= MAX_PHOTOS"
+              :aria-label="
+                photos.length >= MAX_PHOTOS
+                  ? `Можно не больше ${MAX_PHOTOS} фото`
+                  : 'Добавить фото'
+              "
               @click="photoInputRef?.click()"
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -57,16 +63,22 @@
                 />
               </svg>
             </button>
-            <div v-if="photoPreview" class="kb-rate-cat__photo-preview">
-              <img :src="photoPreview" alt="" />
-              <button
-                type="button"
-                class="kb-rate-cat__photo-clear"
-                aria-label="Убрать фото"
-                @click="clearPhoto"
+            <div v-if="photos.length" class="kb-rate-cat__photo-scroll">
+              <div
+                v-for="(item, index) in photos"
+                :key="item.id"
+                class="kb-rate-cat__photo-preview"
               >
-                ×
-              </button>
+                <img :src="item.preview" alt="" />
+                <button
+                  type="button"
+                  class="kb-rate-cat__photo-clear"
+                  aria-label="Убрать фото"
+                  @click="removePhoto(index)"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <button type="submit" class="kb-rate-cat__send" :disabled="sending">
               {{ sending ? 'Отправка…' : 'Отправить' }}
@@ -212,8 +224,9 @@ const stars = ref(0);
 const hover = ref(0);
 const comment = ref('');
 const commentHeight = ref<number | null>(null);
-const photoFile = ref<File | null>(null);
-const photoPreview = ref('');
+const MAX_PHOTOS = 5;
+type PhotoItem = { id: string; file: File; preview: string };
+const photos = ref<PhotoItem[]>([]);
 const photoInputRef = ref<HTMLInputElement | null>(null);
 const sending = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -400,40 +413,49 @@ const playVideo = async () => {
   }
 };
 
-const clearPhoto = () => {
-  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
-  photoPreview.value = '';
-  photoFile.value = null;
+const clearPhotos = () => {
+  for (const item of photos.value) URL.revokeObjectURL(item.preview);
+  photos.value = [];
+  if (photoInputRef.value) photoInputRef.value.value = '';
+};
+
+const removePhoto = (index: number) => {
+  const item = photos.value[index];
+  if (!item) return;
+  URL.revokeObjectURL(item.preview);
+  photos.value.splice(index, 1);
   if (photoInputRef.value) photoInputRef.value.value = '';
 };
 
 const onPhotoPicked = (event: Event) => {
   const input = event.target as HTMLInputElement;
-  const file = input.files?.[0] || null;
-  if (!file) return;
-  if (!file.type.startsWith('image/')) {
-    clearPhoto();
-    return;
+  const picked = [...(input.files || [])];
+  input.value = '';
+  if (!picked.length) return;
+  const room = MAX_PHOTOS - photos.value.length;
+  for (const file of picked.slice(0, Math.max(0, room))) {
+    if (!file.type.startsWith('image/')) continue;
+    if (file.size > 5 * 1024 * 1024) continue;
+    photos.value.push({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      preview: URL.createObjectURL(file)
+    });
   }
-  if (file.size > 5 * 1024 * 1024) {
-    clearPhoto();
-    return;
-  }
-  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
-  photoFile.value = file;
-  photoPreview.value = URL.createObjectURL(file);
 };
 
 const submitRating = async (text: string) => {
   markRatedThisPeriod();
   try {
-    if (photoFile.value) {
+    if (photos.value.length) {
       const form = new FormData();
       form.set('stars', String(stars.value));
       form.set('comment', text);
       form.set('page', props.page);
       form.set('page_label', props.pageLabel || props.page);
-      form.set('photo', photoFile.value, photoFile.value.name || 'photo.jpg');
+      for (const item of photos.value) {
+        form.append('photo', item.file, item.file.name || 'photo.jpg');
+      }
       await $fetch('/api/knowledge/feedback', { method: 'POST', body: form });
     } else {
       await $fetch('/api/knowledge/feedback', {
@@ -462,7 +484,7 @@ const pickStars = async (n: number) => {
   }
   step.value = 'comment';
   commentHeight.value = null;
-  clearPhoto();
+  clearPhotos();
 };
 
 const sendFeedback = async () => {
@@ -472,7 +494,7 @@ const sendFeedback = async () => {
     await submitRating(comment.value.trim());
     step.value = 'thanks';
     commentHeight.value = null;
-    clearPhoto();
+    clearPhotos();
     hideTimer = setTimeout(hide, 1200);
   } finally {
     sending.value = false;
@@ -494,6 +516,6 @@ onBeforeUnmount(() => {
   if (showTimer) clearTimeout(showTimer);
   stopCommentResize();
   stopSync();
-  clearPhoto();
+  clearPhotos();
 });
 </script>

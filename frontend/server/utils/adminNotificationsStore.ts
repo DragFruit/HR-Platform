@@ -49,8 +49,10 @@ export type AdminNotification = {
   stars?: number;
   comment?: string;
   page?: string;
-  /** id файла в server/data/page-feedback-photos */
+  /** id файла в server/data/page-feedback-photos (первое фото, legacy) */
   photo_id?: string;
+  /** до 5 фото к оценке */
+  photo_ids?: string[];
 };
 
 type NotificationsState = {
@@ -346,8 +348,10 @@ export async function createPageFeedbackNotification(input: {
   comment?: string;
   page?: string;
   photo_id?: string;
+  photo_ids?: string[];
 }): Promise<AdminNotification> {
   const state = await readState();
+  const photoIds = (input.photo_ids || []).filter(Boolean).slice(0, 5);
   const notification: AdminNotification = {
     id: randomUUID(),
     kind: 'page_feedback',
@@ -356,7 +360,8 @@ export async function createPageFeedbackNotification(input: {
     stars: input.stars,
     comment: input.comment || '',
     page: input.page || '/knowledge',
-    photo_id: input.photo_id || undefined,
+    photo_id: photoIds[0] || input.photo_id || undefined,
+    photo_ids: photoIds.length ? photoIds : undefined,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

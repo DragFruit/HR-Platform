@@ -32,19 +32,24 @@
         <div class="admin-notifications-page__main">
           <p class="admin-notifications-page__title">{{ formatNotificationTitle(item) }}</p>
           <p class="admin-notifications-page__body">{{ formatNotificationBody(item) }}</p>
-          <a
-            v-if="item.kind === 'page_feedback' && item.photo_id"
-            class="admin-notifications-page__photo"
-            :href="`/api/knowledge/feedback/photo/${item.photo_id}`"
-            target="_blank"
-            rel="noopener"
+          <div
+            v-if="item.kind === 'page_feedback' && pageFeedbackPhotoIds(item).length"
+            class="admin-notifications-page__photos"
           >
-            <img
-              :src="`/api/knowledge/feedback/photo/${item.photo_id}`"
-              alt="Фото к оценке"
-            />
-            Открыть фото
-          </a>
+            <a
+              v-for="photoId in pageFeedbackPhotoIds(item)"
+              :key="photoId"
+              class="admin-notifications-page__photo"
+              :href="`/api/knowledge/feedback/photo/${photoId}`"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                :src="`/api/knowledge/feedback/photo/${photoId}`"
+                alt="Фото к оценке"
+              />
+            </a>
+          </div>
           <p class="soft admin-notifications-page__date">{{ formatDate(item.created_at) }}</p>
         </div>
         <div class="admin-notifications-page__actions">
@@ -82,6 +87,7 @@ const {
   markAllSeen,
   formatNotificationTitle,
   formatNotificationBody,
+  pageFeedbackPhotoIds,
   formatDate,
   notificationActionLabel,
   notificationActionTo
