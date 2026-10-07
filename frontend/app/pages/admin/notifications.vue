@@ -32,6 +32,19 @@
         <div class="admin-notifications-page__main">
           <p class="admin-notifications-page__title">{{ formatNotificationTitle(item) }}</p>
           <p class="admin-notifications-page__body">{{ formatNotificationBody(item) }}</p>
+          <a
+            v-if="item.kind === 'page_feedback' && item.photo_id"
+            class="admin-notifications-page__photo"
+            :href="`/api/knowledge/feedback/photo/${item.photo_id}`"
+            target="_blank"
+            rel="noopener"
+          >
+            <img
+              :src="`/api/knowledge/feedback/photo/${item.photo_id}`"
+              alt="Фото к оценке"
+            />
+            Открыть фото
+          </a>
           <p class="soft admin-notifications-page__date">{{ formatDate(item.created_at) }}</p>
         </div>
         <div class="admin-notifications-page__actions">

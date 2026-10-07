@@ -44,3 +44,4 @@ frontend/server/data/knowledge-rag-index.json
 frontend/server/data/vibe-passwords.json
 frontend/server/data/chatgpt-code-telegram-state.json
 frontend/server/data/pit-stop-race.json
+frontend/server/data/page-feedback-photos/

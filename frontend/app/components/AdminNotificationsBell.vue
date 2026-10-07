@@ -46,6 +46,20 @@
         >
           <p class="admin-notifications-bell__title">{{ formatNotificationTitle(item) }}</p>
           <p class="admin-notifications-bell__body">{{ formatNotificationBody(item) }}</p>
+          <a
+            v-if="item.kind === 'page_feedback' && item.photo_id"
+            class="admin-notifications-bell__photo"
+            :href="`/api/knowledge/feedback/photo/${item.photo_id}`"
+            target="_blank"
+            rel="noopener"
+            @click.stop
+          >
+            <img
+              :src="`/api/knowledge/feedback/photo/${item.photo_id}`"
+              alt="Фото к оценке"
+            />
+            Открыть фото
+          </a>
           <div class="admin-notifications-bell__meta">
             <span class="soft">{{ formatDate(item.created_at) }}</span>
             <NuxtLink

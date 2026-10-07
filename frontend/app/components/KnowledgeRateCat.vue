@@ -30,7 +30,44 @@
               @pointerdown="onCommentResizeStart"
             />
           </div>
-          <button type="submit" class="kb-rate-cat__send">Отправить</button>
+          <div class="kb-rate-cat__photo-row">
+            <input
+              ref="photoInputRef"
+              class="kb-rate-cat__photo-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              @change="onPhotoPicked"
+            />
+            <button
+              type="button"
+              class="kb-rate-cat__photo-btn"
+              :aria-label="photoPreview ? 'Заменить фото' : 'Добавить фото'"
+              @click="photoInputRef?.click()"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M4 7h3.2l1.1-2h7.4l1.1 2H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zm8 2.8A4.2 4.2 0 1 0 16.2 14 4.2 4.2 0 0 0 12 9.8zm0 1.8A2.4 2.4 0 1 1 9.6 14 2.4 2.4 0 0 1 12 11.6z"
+                />
+              </svg>
+              <span>{{ photoPreview ? 'Заменить' : 'Добавить фото' }}</span>
+            </button>
+            <div v-if="photoPreview" class="kb-rate-cat__photo-preview">
+              <img :src="photoPreview" alt="" />
+              <button
+                type="button"
+                class="kb-rate-cat__photo-clear"
+                aria-label="Убрать фото"
+                @click="clearPhoto"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="kb-rate-cat__send" :disabled="sending">
+            {{ sending ? 'Отправка…' : 'Отправить' }}
+          </button>
         </form>
       </div>
 
@@ -39,7 +76,9 @@
         class="kb-rate-cat__stage"
         :class="{ 'is-ready': ready, [`is-${step}`]: true }"
       >
-        <p v-if="ready && step === 'stars'" class="kb-rate-cat__ask">Оцените удобство этой страницы</p>
+        <p v-if="ready && step === 'stars'" class="kb-rate-cat__ask">
+          Оцените удобство этой страницы, пожалуйста
+        </p>
         <video
           ref="videoRef"
           class="kb-rate-cat__video"
@@ -169,6 +208,10 @@ const stars = ref(0);
 const hover = ref(0);
 const comment = ref('');
 const commentHeight = ref<number | null>(null);
+const photoFile = ref<File | null>(null);
+const photoPreview = ref('');
+const photoInputRef = ref<HTMLInputElement | null>(null);
+const sending = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
 const slideRef = ref<HTMLElement | null>(null);
@@ -353,18 +396,52 @@ const playVideo = async () => {
   }
 };
 
+const clearPhoto = () => {
+  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
+  photoPreview.value = '';
+  photoFile.value = null;
+  if (photoInputRef.value) photoInputRef.value.value = '';
+};
+
+const onPhotoPicked = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0] || null;
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    clearPhoto();
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    clearPhoto();
+    return;
+  }
+  if (photoPreview.value) URL.revokeObjectURL(photoPreview.value);
+  photoFile.value = file;
+  photoPreview.value = URL.createObjectURL(file);
+};
+
 const submitRating = async (text: string) => {
   markRatedThisPeriod();
   try {
-    await $fetch('/api/knowledge/feedback', {
-      method: 'POST',
-      body: {
-        stars: stars.value,
-        comment: text,
-        page: props.page,
-        page_label: props.pageLabel || props.page
-      }
-    });
+    if (photoFile.value) {
+      const form = new FormData();
+      form.set('stars', String(stars.value));
+      form.set('comment', text);
+      form.set('page', props.page);
+      form.set('page_label', props.pageLabel || props.page);
+      form.set('photo', photoFile.value, photoFile.value.name || 'photo.jpg');
+      await $fetch('/api/knowledge/feedback', { method: 'POST', body: form });
+    } else {
+      await $fetch('/api/knowledge/feedback', {
+        method: 'POST',
+        body: {
+          stars: stars.value,
+          comment: text,
+          page: props.page,
+          page_label: props.pageLabel || props.page
+        }
+      });
+    }
   } catch (err) {
     console.warn('[page-rating] feedback failed:', err);
   }
@@ -381,13 +458,21 @@ const pickStars = async (n: number) => {
   }
   step.value = 'comment';
   commentHeight.value = null;
+  clearPhoto();
 };
 
 const sendFeedback = async () => {
-  await submitRating(comment.value.trim());
-  step.value = 'thanks';
-  commentHeight.value = null;
-  hideTimer = setTimeout(hide, 1200);
+  if (sending.value) return;
+  sending.value = true;
+  try {
+    await submitRating(comment.value.trim());
+    step.value = 'thanks';
+    commentHeight.value = null;
+    clearPhoto();
+    hideTimer = setTimeout(hide, 1200);
+  } finally {
+    sending.value = false;
+  }
 };
 
 onMounted(() => {
@@ -405,5 +490,6 @@ onBeforeUnmount(() => {
   if (showTimer) clearTimeout(showTimer);
   stopCommentResize();
   stopSync();
+  clearPhoto();
 });
 </script>

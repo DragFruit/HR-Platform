@@ -37,6 +37,7 @@ export type AdminNotification = {
   stars?: number;
   comment?: string;
   page?: string;
+  photo_id?: string;
 };
 
 const fieldLabels: Record<'name' | 'title', string> = {
@@ -153,9 +154,10 @@ export function useAdminNotifications() {
     }
     if (item.kind === 'page_feedback') {
       const note = item.comment?.trim();
+      const photo = item.photo_id ? ' + фото' : '';
       return note
-        ? `${item.employee_name}: «${note}»`
-        : `${item.employee_name} оценил(а) страницу, комментария нет.`;
+        ? `${item.employee_name}: «${note}»${photo}`
+        : `${item.employee_name} оценил(а) страницу${photo ? ' (есть фото)' : ', комментария нет'}.`;
     }
     if (item.kind === 'knowledge_ai_degraded') {
       const q = item.comment?.trim();

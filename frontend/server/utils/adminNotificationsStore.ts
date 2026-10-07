@@ -49,6 +49,8 @@ export type AdminNotification = {
   stars?: number;
   comment?: string;
   page?: string;
+  /** id файла в server/data/page-feedback-photos */
+  photo_id?: string;
 };
 
 type NotificationsState = {
@@ -343,6 +345,7 @@ export async function createPageFeedbackNotification(input: {
   stars: number;
   comment?: string;
   page?: string;
+  photo_id?: string;
 }): Promise<AdminNotification> {
   const state = await readState();
   const notification: AdminNotification = {
@@ -353,6 +356,7 @@ export async function createPageFeedbackNotification(input: {
     stars: input.stars,
     comment: input.comment || '',
     page: input.page || '/knowledge',
+    photo_id: input.photo_id || undefined,
     created_at: new Date().toISOString(),
     admin_seen: false
   };

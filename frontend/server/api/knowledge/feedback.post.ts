@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { requireVbiSession } from '../../utils/session';
 import { createPageFeedbackNotification } from '../../utils/adminNotificationsStore';
 import { findEmployeeByName } from '../../utils/employeesStore';
 import { isBitrixImbotConfigured, sendBitrixImbotMessage } from '../../utils/bitrixImbot';
+import { assertPageFeedbackPhoto, savePageFeedbackPhoto } from '../../utils/pageFeedbackPhoto';
 
 const SYSTEM_ADMIN_NAME = 'Драго Станислава';
 
@@ -18,41 +20,83 @@ function labelForPage(page: string, fallback?: string) {
   return PAGE_LABELS[page] || page;
 }
 
-export default defineEventHandler(async (event) => {
-  const session = await requireVbiSession(event);
+type FeedbackFields = {
+  stars: number;
+  comment: string;
+  page: string;
+  page_label: string;
+  photo: ReturnType<typeof assertPageFeedbackPhoto> | null;
+};
+
+async function parseFeedback(event: Parameters<typeof readBody>[0]): Promise<FeedbackFields> {
+  const contentType = String(getHeader(event, 'content-type') || '');
+  if (contentType.includes('multipart/form-data')) {
+    const parts = await readMultipartFormData(event);
+    const field = (name: string) => {
+      const part = parts?.find((item) => item.name === name && !item.filename);
+      return part?.data?.toString('utf8') ?? '';
+    };
+    const filePart = parts?.find(
+      (item) => (item.name === 'photo' || item.name === 'file') && item.filename
+    );
+    return {
+      stars: Number(field('stars')),
+      comment: String(field('comment') || '').trim().slice(0, 2000),
+      page: String(field('page') || '/knowledge').trim() || '/knowledge',
+      page_label: String(field('page_label') || '').trim(),
+      photo: filePart ? assertPageFeedbackPhoto(filePart) : null
+    };
+  }
+
   const body = await readBody<{
     stars?: number;
     comment?: string;
     page?: string;
     page_label?: string;
   }>(event);
+  return {
+    stars: Number(body?.stars),
+    comment: String(body?.comment || '').trim().slice(0, 2000),
+    page: String(body?.page || '/knowledge').trim() || '/knowledge',
+    page_label: String(body?.page_label || '').trim(),
+    photo: null
+  };
+}
 
-  const stars = Number(body?.stars);
-  if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+export default defineEventHandler(async (event) => {
+  const session = await requireVbiSession(event);
+  const fields = await parseFeedback(event);
+
+  if (!Number.isInteger(fields.stars) || fields.stars < 1 || fields.stars > 5) {
     throw createError({ statusCode: 400, statusMessage: 'Нужна оценка от 1 до 5' });
   }
 
-  const comment = String(body?.comment || '').trim().slice(0, 2000);
-  const page = String(body?.page || '/knowledge').trim() || '/knowledge';
-  const label = labelForPage(page, String(body?.page_label || '').trim() || undefined);
+  const label = labelForPage(fields.page, fields.page_label || undefined);
+  let photoId: string | undefined;
+  if (fields.photo) {
+    photoId = randomUUID();
+    await savePageFeedbackPhoto(photoId, fields.photo);
+  }
 
   const notification = await createPageFeedbackNotification({
     employee_id: session.id,
     employee_name: session.name,
-    stars,
-    comment,
-    page
+    stars: fields.stars,
+    comment: fields.comment,
+    page: fields.page,
+    photo_id: photoId
   });
 
-  if (comment && isBitrixImbotConfigured()) {
+  if ((fields.comment || photoId) && isBitrixImbotConfigured()) {
     const admin = await findEmployeeByName(SYSTEM_ADMIN_NAME);
     const bitrixUserId = admin?.bitrix_user_id ?? admin?.platform_user_id ?? 0;
     if (bitrixUserId > 0) {
       const lines = [
-        `Оценка раздела «${label}»: ${stars}/5`,
+        `Оценка раздела «${label}»: ${fields.stars}/5`,
         `Кто: ${session.name}`,
-        `Комментарий: ${comment}`
-      ];
+        fields.comment ? `Комментарий: ${fields.comment}` : null,
+        photoId ? 'Фото: прикреплено (смотри в колокольчике Vibe)' : null
+      ].filter(Boolean) as string[];
       try {
         await sendBitrixImbotMessage({
           bitrixUserId,
@@ -66,5 +110,5 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return { ok: true, notification_id: notification.id };
+  return { ok: true, notification_id: notification.id, photo_id: photoId || null };
 });
