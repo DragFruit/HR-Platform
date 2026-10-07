@@ -18489,7 +18489,8 @@ button.button {
 .kb-rate-cat__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -18676,11 +18677,11 @@ button.button {
   color: rgba(17, 17, 17, 0.4);
 }
 
-.kb-rate-cat__actions .kb-rate-cat__send {
+.kb-rate-cat__send {
   appearance: none;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   align-self: center;
-  margin: 0 0 0 auto;
+  margin: 0;
   padding: 7px 14px;
   border: 1px solid #111;
   border-radius: 999px;
