@@ -6,13 +6,33 @@ export type PageRatingSection = {
   label: string;
 };
 
+/**
+ * Известные разделы (dwell и подписи).
+ * Остальные открытые пути (кроме ивентов) подхватываются в resolvePageRatingSection.
+ */
 export const PAGE_RATING_SECTIONS: PageRatingSection[] = [
   { id: 'knowledge', path: '/knowledge', label: 'База знаний' },
-  { id: 'vacations', path: '/vacations', label: 'Отпуска' },
+  { id: 'vacations', path: '/vacations', label: 'График отпусков' },
   { id: 'ideas', path: '/ideas', label: 'Банк идей' },
+  { id: 'notifications', path: '/notifications', label: 'Уведомления' },
+  { id: 'organization', path: '/organization', label: 'Структура' },
+  { id: 'profile', path: '/profile', label: 'Профиль' },
   { id: 'vpn', path: '/vpn', label: 'VPN' },
-  { id: 'profile', path: '/profile', label: 'Профиль' }
+  { id: 'admin-vacations', path: '/admin/vacations', label: 'Админ · отпуска' },
+  { id: 'admin-notifications', path: '/admin/notifications', label: 'Админ · уведомления' },
+  { id: 'admin-ideas', path: '/admin/ideas', label: 'Админ · банк идей' },
+  { id: 'admin-knowledge', path: '/admin/knowledge', label: 'Админ · база знаний' },
+  { id: 'admin-organization', path: '/admin/organization', label: 'Админ · структура' },
+  { id: 'admin-employees', path: '/admin/employees', label: 'Админ · сотрудники' }
 ];
+
+/** Ивенты (гонки и т.п.) — кот не показывается. */
+export function isPageRatingExcludedPath(path: string): boolean {
+  const p = path.split('?')[0] || '/';
+  if (p === '/event' || p.startsWith('/event/')) return true;
+  if (p === '/admin/quest-dashboard' || p.startsWith('/admin/quest-dashboard/')) return true;
+  return false;
+}
 
 export const PAGE_RATING_PERIOD_DAYS = 60;
 export const PAGE_RATING_DWELL_MS = 60 * 60 * 1000; // 1 час суммарно
@@ -26,12 +46,27 @@ export function pageRatingLabel(path: string): string {
 
 export function resolvePageRatingSection(routePath: string): PageRatingSection | null {
   const path = routePath.split('?')[0] || '/';
-  for (const section of PAGE_RATING_SECTIONS) {
+  if (isPageRatingExcludedPath(path)) return null;
+
+  // Длинные пути первыми (/admin/vacations раньше /admin)
+  const ranked = [...PAGE_RATING_SECTIONS].sort((a, b) => b.path.length - a.path.length);
+  for (const section of ranked) {
     if (path === section.path || path.startsWith(`${section.path}/`)) {
       return section;
     }
   }
-  return null;
+
+  // Остальные открытые страницы: /foo или /admin/foo
+  const parts = path.split('/').filter(Boolean);
+  if (!parts.length) return null;
+  const canonical =
+    parts[0] === 'admin' && parts[1] ? `/${parts[0]}/${parts[1]}` : `/${parts[0]}`;
+  if (isPageRatingExcludedPath(canonical)) return null;
+  return {
+    id: canonical.replace(/^\//, '').replace(/\//g, '-'),
+    path: canonical,
+    label: pageRatingLabel(canonical)
+  };
 }
 
 /** Стабильный день внутри 60-дневного окна (0…59), чтобы не всем разом. */

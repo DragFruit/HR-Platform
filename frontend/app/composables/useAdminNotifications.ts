@@ -56,10 +56,18 @@ const fieldLabels: Record<'name' | 'title', string> = {
 
 const PAGE_FEEDBACK_LABELS: Record<string, string> = {
   '/knowledge': 'База знаний',
-  '/vacations': 'Отпуска',
+  '/vacations': 'График отпусков',
   '/ideas': 'Банк идей',
+  '/notifications': 'Уведомления',
+  '/organization': 'Структура',
   '/vpn': 'VPN',
-  '/profile': 'Профиль'
+  '/profile': 'Профиль',
+  '/admin/vacations': 'Админ · отпуска',
+  '/admin/notifications': 'Админ · уведомления',
+  '/admin/ideas': 'Админ · банк идей',
+  '/admin/knowledge': 'Админ · база знаний',
+  '/admin/organization': 'Админ · структура',
+  '/admin/employees': 'Админ · сотрудники'
 };
 
 function pageFeedbackLabel(page?: string) {
