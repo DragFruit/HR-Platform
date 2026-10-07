@@ -30,7 +30,7 @@
               @pointerdown="onCommentResizeStart"
             />
           </div>
-          <div class="kb-rate-cat__photo-row">
+          <div class="kb-rate-cat__actions">
             <input
               ref="photoInputRef"
               class="kb-rate-cat__photo-input"
@@ -42,16 +42,20 @@
             <button
               type="button"
               class="kb-rate-cat__photo-btn"
+              :class="{ 'is-on': Boolean(photoPreview) }"
               :aria-label="photoPreview ? 'Заменить фото' : 'Добавить фото'"
               @click="photoInputRef?.click()"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                 <path
-                  fill="currentColor"
-                  d="M4 7h3.2l1.1-2h7.4l1.1 2H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zm8 2.8A4.2 4.2 0 1 0 16.2 14 4.2 4.2 0 0 0 12 9.8zm0 1.8A2.4 2.4 0 1 1 9.6 14 2.4 2.4 0 0 1 12 11.6z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.5 7.5v7.2a4.5 4.5 0 0 1-9 0V6.8a3 3 0 0 1 6 0v7.4a1.5 1.5 0 0 1-3 0V7.5"
                 />
               </svg>
-              <span>{{ photoPreview ? 'Заменить' : 'Добавить фото' }}</span>
             </button>
             <div v-if="photoPreview" class="kb-rate-cat__photo-preview">
               <img :src="photoPreview" alt="" />
@@ -64,10 +68,10 @@
                 ×
               </button>
             </div>
+            <button type="submit" class="kb-rate-cat__send" :disabled="sending">
+              {{ sending ? 'Отправка…' : 'Отправить' }}
+            </button>
           </div>
-          <button type="submit" class="kb-rate-cat__send" :disabled="sending">
-            {{ sending ? 'Отправка…' : 'Отправить' }}
-          </button>
         </form>
       </div>
 

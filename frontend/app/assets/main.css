@@ -18486,7 +18486,7 @@ button.button {
   touch-action: none;
 }
 
-.kb-rate-cat__photo-row {
+.kb-rate-cat__actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -18502,36 +18502,35 @@ button.button {
 }
 
 .kb-rate-cat__photo-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 28px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
   margin: 0;
-  padding: 4px 8px;
-  border: 1.5px solid #111;
-  border-radius: 999px;
-  background: #eeeee8;
-  color: #111;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #555;
   cursor: pointer;
-  white-space: nowrap;
+  box-shadow: none;
 }
 
-.kb-rate-cat__photo-btn:hover {
-  background: #ddf365;
+.kb-rate-cat__photo-btn:hover,
+.kb-rate-cat__photo-btn.is-on {
+  color: #111;
+  background: transparent;
 }
 
 .kb-rate-cat__photo-preview {
   position: relative;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border: 1.5px solid #111;
-  border-radius: 8px;
-  overflow: hidden;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #111;
+  border-radius: 6px;
+  overflow: visible;
   background: #eeeee8;
 }
 
@@ -18677,10 +18676,11 @@ button.button {
   color: rgba(17, 17, 17, 0.4);
 }
 
-.kb-rate-cat__send {
+.kb-rate-cat__actions .kb-rate-cat__send {
   appearance: none;
-  align-self: end;
-  margin: 0;
+  flex: 1 1 auto;
+  align-self: center;
+  margin: 0 0 0 auto;
   padding: 7px 14px;
   border: 1px solid #111;
   border-radius: 999px;
@@ -18691,6 +18691,11 @@ button.button {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+.kb-rate-cat__send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (max-width: 720px) {
