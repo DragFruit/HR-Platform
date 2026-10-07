@@ -494,9 +494,9 @@ const downloadVacationApplication = async (req: VacationRequest) => {
 const formatRequestDates = (req: VacationRequest) => {
   const fmt = (iso: string) => {
     const [y, m, d] = iso.split('-');
-    return `${d}.${m}.${y}`;
+    return `${d}.${m}.${String(y).slice(-2)}`;
   };
-  return `${fmt(req.start)} — ${fmt(req.end)}`;
+  return `${fmt(req.start)} - ${fmt(req.end)}`;
 };
 
 const requestPeriodDays = (req: VacationRequest) => countVacationBillableDays(req.start, req.end);
