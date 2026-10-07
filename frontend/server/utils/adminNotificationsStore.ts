@@ -370,6 +370,31 @@ export async function createPageFeedbackNotification(input: {
   return notification;
 }
 
+/** Дописать фото к уже созданной оценке (после JSON-ответа, по одному файлу). */
+export async function appendPageFeedbackPhotoIds(
+  notificationId: string,
+  employeeId: number,
+  newIds: string[]
+): Promise<AdminNotification | null> {
+  const state = await readState();
+  const item = state.items.find((row) => row.id === notificationId);
+  if (!item || item.kind !== 'page_feedback') return null;
+  if (item.employee_id !== employeeId) return null;
+  const merged = [...(item.photo_ids || []), ...(item.photo_id ? [item.photo_id] : []), ...newIds]
+    .filter(Boolean)
+    .filter((id, idx, arr) => arr.indexOf(id) === idx)
+    .slice(0, 5);
+  item.photo_ids = merged.length ? merged : undefined;
+  item.photo_id = merged[0];
+  await writeState(state);
+  return item;
+}
+
+export async function getAdminNotificationById(id: string): Promise<AdminNotification | null> {
+  const state = await readState();
+  return state.items.find((row) => row.id === id) ?? null;
+}
+
 export async function createKnowledgeAiDegradedNotification(input: {
   employee_id: number;
   employee_name: string;

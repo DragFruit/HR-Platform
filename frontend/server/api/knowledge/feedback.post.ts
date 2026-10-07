@@ -1,12 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { requireVbiSession } from '../../utils/session';
 import { createPageFeedbackNotification } from '../../utils/adminNotificationsStore';
 import { findEmployeeByName } from '../../utils/employeesStore';
 import { isBitrixImbotConfigured, sendBitrixImbotMessage } from '../../utils/bitrixImbot';
-import { assertPageFeedbackPhoto, savePageFeedbackPhoto } from '../../utils/pageFeedbackPhoto';
 
 const SYSTEM_ADMIN_NAME = 'Драго Станислава';
-const MAX_PHOTOS = 5;
 
 const PAGE_LABELS: Record<string, string> = {
   '/knowledge': 'База знаний',
@@ -21,82 +18,41 @@ function labelForPage(page: string, fallback?: string) {
   return PAGE_LABELS[page] || page;
 }
 
-type FeedbackFields = {
-  stars: number;
-  comment: string;
-  page: string;
-  page_label: string;
-  photos: ReturnType<typeof assertPageFeedbackPhoto>[];
-};
-
-async function parseFeedback(event: Parameters<typeof readBody>[0]): Promise<FeedbackFields> {
-  const contentType = String(getHeader(event, 'content-type') || '');
-  if (contentType.includes('multipart/form-data')) {
-    const parts = await readMultipartFormData(event);
-    const field = (name: string) => {
-      const part = parts?.find((item) => item.name === name && !item.filename);
-      return part?.data?.toString('utf8') ?? '';
-    };
-    const fileParts =
-      parts?.filter(
-        (item) => (item.name === 'photo' || item.name === 'file') && item.filename
-      ) ?? [];
-    return {
-      stars: Number(field('stars')),
-      comment: String(field('comment') || '').trim().slice(0, 2000),
-      page: String(field('page') || '/knowledge').trim() || '/knowledge',
-      page_label: String(field('page_label') || '').trim(),
-      photos: fileParts.slice(0, MAX_PHOTOS).map((part) => assertPageFeedbackPhoto(part))
-    };
-  }
-
+/**
+ * Оценка страницы: только JSON (stars/comment/page).
+ * Фото — отдельными POST /api/knowledge/feedback/:id/photo (иначе nginx 1 МБ режет весь отзыв).
+ */
+export default defineEventHandler(async (event) => {
+  const session = await requireVbiSession(event);
   const body = await readBody<{
     stars?: number;
     comment?: string;
     page?: string;
     page_label?: string;
+    /** сколько фото клиент дошлёт следом — только для текста в Bitrix */
+    photo_count?: number;
   }>(event);
-  return {
-    stars: Number(body?.stars),
-    comment: String(body?.comment || '').trim().slice(0, 2000),
-    page: String(body?.page || '/knowledge').trim() || '/knowledge',
-    page_label: String(body?.page_label || '').trim(),
-    photos: []
-  };
-}
 
-export default defineEventHandler(async (event) => {
-  const session = await requireVbiSession(event);
-  const fields = await parseFeedback(event);
-
-  if (!Number.isInteger(fields.stars) || fields.stars < 1 || fields.stars > 5) {
+  const stars = Number(body?.stars);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
     throw createError({ statusCode: 400, statusMessage: 'Нужна оценка от 1 до 5' });
   }
 
-  const label = labelForPage(fields.page, fields.page_label || undefined);
-  const photoIds: string[] = [];
-  for (const photo of fields.photos) {
-    const id = randomUUID();
-    await savePageFeedbackPhoto(id, photo);
-    photoIds.push(id);
-  }
+  const comment = String(body?.comment || '').trim().slice(0, 2000);
+  const page = String(body?.page || '/knowledge').trim() || '/knowledge';
+  const label = labelForPage(page, String(body?.page_label || '').trim() || undefined);
+  const photoCount = Math.min(5, Math.max(0, Number(body?.photo_count) || 0));
 
   const notification = await createPageFeedbackNotification({
     employee_id: session.id,
     employee_name: session.name,
-    stars: fields.stars,
-    comment: fields.comment,
-    page: fields.page,
-    photo_id: photoIds[0],
-    photo_ids: photoIds.length ? photoIds : undefined
+    stars,
+    comment,
+    page
   });
 
-  // Bitrix не блокирует ответ клиенту — иначе «Отправить» висит на сети crm.vbi.ru
-  if ((fields.comment || photoIds.length) && isBitrixImbotConfigured()) {
+  if ((comment || photoCount > 0) && isBitrixImbotConfigured()) {
     const who = session.name;
-    const stars = fields.stars;
-    const comment = fields.comment;
-    const photoCount = photoIds.length;
     void (async () => {
       try {
         const admin = await findEmployeeByName(SYSTEM_ADMIN_NAME);
@@ -126,7 +82,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     ok: true,
-    notification_id: notification.id,
-    photo_ids: photoIds
+    notification_id: notification.id
   };
 });

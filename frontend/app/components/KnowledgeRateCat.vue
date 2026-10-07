@@ -480,26 +480,34 @@ const onPhotoPicked = async (event: Event) => {
 const submitRating = async (text: string) => {
   markRatedThisPeriod();
   try {
-    if (photos.value.length) {
-      const form = new FormData();
-      form.set('stars', String(stars.value));
-      form.set('comment', text);
-      form.set('page', props.page);
-      form.set('page_label', props.pageLabel || props.page);
-      for (const item of photos.value) {
-        form.append('photo', item.file, item.file.name || 'photo.jpg');
-      }
-      await $fetch('/api/knowledge/feedback', { method: 'POST', body: form });
-    } else {
-      await $fetch('/api/knowledge/feedback', {
+    // Сначала JSON — уведомление в админку всегда; фото отдельно (nginx режет multipart >1 МБ)
+    const created = await $fetch<{ ok: boolean; notification_id: string }>(
+      '/api/knowledge/feedback',
+      {
         method: 'POST',
         body: {
           stars: stars.value,
           comment: text,
           page: props.page,
-          page_label: props.pageLabel || props.page
+          page_label: props.pageLabel || props.page,
+          photo_count: photos.value.length
         }
-      });
+      }
+    );
+    const notificationId = created?.notification_id;
+    if (notificationId && photos.value.length) {
+      for (const item of photos.value) {
+        try {
+          const form = new FormData();
+          form.set('photo', item.file, item.file.name || 'photo.jpg');
+          await $fetch(`/api/knowledge/feedback/${notificationId}/photo`, {
+            method: 'POST',
+            body: form
+          });
+        } catch (err) {
+          console.warn('[page-rating] photo upload failed:', err);
+        }
+      }
     }
   } catch (err) {
     console.warn('[page-rating] feedback failed:', err);

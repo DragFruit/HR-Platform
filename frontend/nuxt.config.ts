@@ -22,7 +22,9 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    minify: false
+    minify: false,
+    // Оценка с фото / вложения идей — не резать на 1 МБ дефолта
+    bodySizeLimit: 25 * 1024 * 1024
   },
   routeRules: {
     '/**': {

@@ -3,6 +3,9 @@ server {
     listen 8080;
     server_name 45.12.74.25 hr-test.example.com;
 
+    # Оценка страницы с фото (до 5 шт.) и вложения банка идей
+    client_max_body_size 25m;
+
     location / {
         proxy_pass http://127.0.0.1:3301;
         proxy_http_version 1.1;

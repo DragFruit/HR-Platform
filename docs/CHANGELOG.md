@@ -9,6 +9,7 @@
 - Текст: «Оцените удобство этой страницы, пожалуйста».
 - При оценке ≤4★ — до **5 фото** (скрепка слева от «Отправить»); превью в ряд с горизонтальным скроллом, если не влезают в рамку.
 - Быстрее отправка: фото жмутся на клиенте (до 1280px / jpeg ~0.72); ответ API не ждёт Bitrix imbot.
+- Фикс: отзыв с фото не попадал в админку — nginx резал multipart (>1 МБ). Теперь сначала JSON-уведомление, фото по одному `POST /api/knowledge/feedback/:id/photo`. В `deploy/nginx/*.example` — `client_max_body_size 25m`.
 - Фото в `server/data/page-feedback-photos/`, в колокольчике admin/HR (`GET /api/knowledge/feedback/photo/:id`), в Bitrix — число фото.
 - Файлы: `KnowledgeRateCat.vue`, `feedback.post.ts`, `pageFeedbackPhoto.ts`, `AdminNotificationsBell.vue`.
 - Проверка: стейдж → кот → ≤4★ → до 5 фото → скролл превью → колокольчик админа.
