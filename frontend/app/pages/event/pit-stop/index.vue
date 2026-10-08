@@ -1,33 +1,36 @@
 <template>
-  <div class="ps-hub">
+  <div class="ps-hub" :class="{ 'ps-hub--results': showResultsPage }">
     <div ref="stageEl" class="ps-hub__stage">
       <div class="ps-hub__map" :style="mapStyle">
-        <img
-          class="ps-hub__track"
-          :src="TRACK_IMG_SRC"
-          alt="Трасса Pit Stop"
-          width="1280"
-          height="720"
-          draggable="false"
-        />
-        <PitStopHubDrive
-          v-if="!eventClosed"
-          :color="color"
-          :best-ms="myBestMs"
-          :paused="showIntro"
-          @lap="onLap"
-          @finish="onFinish"
-        />
-        <div v-else class="ps-hub__closed" role="status">
-          <p class="ps-hub__closed-title">Финиш ивента</p>
-          <p class="ps-hub__closed-text">Заезды закрыты 10 октября в 03:00 МСК. Итоги — в рейтинге справа.</p>
-        </div>
-        <PitStopFinishParty ref="partyRef" />
+        <PitStopWinnersPodium v-if="showResultsPage" :winners="podiumWinners" />
+        <template v-else>
+          <img
+            class="ps-hub__track"
+            :src="TRACK_IMG_SRC"
+            alt="Трасса Pit Stop"
+            width="1280"
+            height="720"
+            draggable="false"
+          />
+          <PitStopHubDrive
+            v-if="!eventClosed"
+            :color="color"
+            :best-ms="myBestMs"
+            :paused="showIntro"
+            @lap="onLap"
+            @finish="onFinish"
+          />
+          <div v-else class="ps-hub__closed" role="status">
+            <p class="ps-hub__closed-title">Финиш ивента</p>
+            <p class="ps-hub__closed-text">Заезды закрыты 10 октября в 03:00 МСК. Итоги — в рейтинге справа.</p>
+          </div>
+          <PitStopFinishParty ref="partyRef" />
+        </template>
       </div>
     </div>
 
     <aside class="ps-hub__side">
-      <section v-if="!eventClosed" class="ps-garage" aria-labelledby="ps-garage-title">
+      <section v-if="!showResultsPage && !eventClosed" class="ps-garage" aria-labelledby="ps-garage-title">
         <div class="ps-garage__head">
           <h2 id="ps-garage-title" class="ps-garage__title">Гараж</h2>
           <button type="button" class="ps-garage__help" @click="openIntro">Енот</button>
@@ -54,13 +57,10 @@
         <header class="ps-board__head">
           <div class="ps-board__checker" aria-hidden="true" />
           <h2 id="ps-board-title" class="ps-board__title">Рейтинг</h2>
-          <p v-if="eventClosed" class="ps-board__sched">Финальный срез · 10.10 03:00 МСК</p>
-          <p v-else-if="board.publishedAt && board.nextAt" class="ps-board__sched">
-            Обновлено в {{ mskTime(board.publishedAt) }} · следующее в {{ mskTime(board.nextAt) }}
-          </p>
+          <p v-if="showResultsPage || eventClosed" class="ps-board__sched">Финальный срез · 10.10 03:00 МСК</p>
         </header>
 
-        <p v-if="pendingBest && board.nextAt" class="ps-board__pending">
+        <p v-if="!showResultsPage && pendingBest && board.nextAt" class="ps-board__pending">
           Твой рекорд {{ formatLapMs(pendingBest) }} попадёт в таблицу в {{ mskTime(board.nextAt) }}
         </p>
 
@@ -117,7 +117,13 @@
       </section>
     </aside>
 
-    <div v-if="showIntro" class="ps-hub__intro" role="dialog" aria-modal="true" aria-label="Енот объясняет правила">
+    <div
+      v-if="showIntro && !showResultsPage"
+      class="ps-hub__intro"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Енот объясняет правила"
+    >
       <div class="ps-hub__intro-box">
         <PitStopRaccoonGuide
           size="hub"
@@ -146,13 +152,15 @@ import {
   type CarColorId
 } from '~/events/pit-stop-14/trackDrive';
 import { RACCOON_RACE_INTRO, RACCOON_RACE_INTRO_STORAGE_KEY } from '~/events/pit-stop-14/raccoonLines';
-import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
+import { isPitStopGameStopped, isPitStopResultsPageVisible } from '~/events/pit-stop-14/timeline';
 import {
   RACE_TOKEN_STORAGE_KEY,
   type LapTelemetry
 } from '~/events/pit-stop-14/raceTelemetry';
 
 definePageMeta({ layout: 'default' });
+
+type PodiumWinner = { userId: number; rank: number; name: string };
 
 type BoardRow = {
   rank: number;
@@ -177,7 +185,13 @@ type Board = {
 
 const { user, authReady } = useAuth();
 const { isAdmin } = usePlatformContext();
+const { hydrate: hydrateAvatars } = useAvatars();
+const {
+  winners: finalizedWinners,
+  hydrate: hydratePitStopWinners
+} = usePitStopWinners();
 const partyRef = ref<{ play: (name: string) => void } | null>(null);
+const showResultsPage = computed(() => isPitStopResultsPageVisible());
 
 /** Только UI-режим «Администратор» → статистика; как сотрудник — играет. */
 watch(
@@ -242,6 +256,19 @@ const board = ref<Board>({
 const loadError = ref('');
 
 const eventClosed = computed(() => board.value.closed || isPitStopGameStopped());
+/** Топ‑3 для подиума: финализация API, иначе live из рейтинга (превью стейджа). */
+const podiumWinners = computed<PodiumWinner[]>(() => {
+  if (finalizedWinners.value.length) {
+    return finalizedWinners.value.map((w) => ({
+      userId: w.userId,
+      rank: w.rank,
+      name: w.name
+    }));
+  }
+  return board.value.top
+    .filter((r) => r.rank >= 1 && r.rank <= 3)
+    .map((r) => ({ userId: r.userId, rank: r.rank, name: r.name }));
+});
 const myBestMs = computed(() => board.value.myLiveBestMs);
 const pendingBest = computed(() => {
   if (eventClosed.value) return null;
@@ -373,18 +400,24 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
   if (isAdmin.value) return;
-  const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
-  if (isCarColorId(saved)) color.value = saved;
-  if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
-  void $fetch<{ raceToken?: string }>('/api/event/pit-stop/race/visit', { method: 'POST', body: {} })
-    .then((res) => {
-      if (res.raceToken) sessionStorage.setItem(RACE_TOKEN_STORAGE_KEY, res.raceToken);
-    })
-    .catch(() => {});
+  void hydrateAvatars();
+  void hydratePitStopWinners();
   void loadBoard();
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible') void loadBoard();
   }, 30000);
+
+  if (!showResultsPage.value) {
+    const saved = localStorage.getItem(CAR_COLOR_STORAGE_KEY);
+    if (isCarColorId(saved)) color.value = saved;
+    if (!localStorage.getItem(RACCOON_RACE_INTRO_STORAGE_KEY)) openIntro();
+    void $fetch<{ raceToken?: string }>('/api/event/pit-stop/race/visit', { method: 'POST', body: {} })
+      .then((res) => {
+        if (res.raceToken) sessionStorage.setItem(RACE_TOKEN_STORAGE_KEY, res.raceToken);
+      })
+      .catch(() => {});
+  }
+
   nextTick(() => {
     fitMap();
     requestAnimationFrame(fitMap);
@@ -484,6 +517,9 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
+}
+.ps-hub--results .ps-board {
+  flex: 1 1 auto;
 }
 
 /* Гараж */

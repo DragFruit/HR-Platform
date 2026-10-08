@@ -99,6 +99,24 @@ export function isPitStopRewardsDue(now: Date = new Date()): boolean {
   return now.getTime() >= Date.parse(PIT_STOP_REWARDS_AT);
 }
 
+/**
+ * Страница итогов (статика с топ‑3 вместо трассы).
+ * На бою — с 10.10 10:00 МСК; на стейдже — сразу (превью вместо гонки).
+ */
+export function isPitStopResultsPageVisible(now: Date = new Date()): boolean {
+  if (isPitStopRewardsDue(now)) return true;
+  if (typeof process !== 'undefined') {
+    const env = process.env.NUXT_PUBLIC_APP_ENV || '';
+    if (env === 'staging') return true;
+  }
+  try {
+    if (String(useRuntimeConfig().public.appEnv || '') === 'staging') return true;
+  } catch {
+    /* вне Nuxt */
+  }
+  return false;
+}
+
 /** Стейдж / явный флаг — все точки открыты для прогона игр (на бою никогда). */
 export function isPitStopTestUnlockAll(): boolean {
   if (typeof process !== 'undefined') {
