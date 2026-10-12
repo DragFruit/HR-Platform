@@ -33,23 +33,38 @@
     <div
       v-for="slot in slots"
       :key="slot.rank"
-      class="ps-podium__face"
+      class="ps-podium__slot"
       :class="`is-r${slot.rank}`"
       :style="slot.style"
     >
-      <UserAvatar
-        v-if="slot.winner"
-        class="ps-podium__avatar"
-        :user-id="slot.winner.userId"
-        :name="slot.winner.name"
-        :size="240"
-      />
-      <span v-else class="ps-podium__empty" aria-hidden="true" />
+      <div class="ps-podium__face">
+        <img
+          v-if="slot.winner && WINNER_PHOTOS[slot.winner.userId]"
+          class="ps-podium__avatar ps-podium__photo"
+          :src="WINNER_PHOTOS[slot.winner.userId]"
+          :alt="slot.winner.name"
+          draggable="false"
+        />
+        <UserAvatar
+          v-else-if="slot.winner"
+          class="ps-podium__avatar"
+          :user-id="slot.winner.userId"
+          :name="slot.winner.name"
+          :size="240"
+        />
+        <span v-else class="ps-podium__empty" aria-hidden="true" />
+      </div>
+      <div v-if="slot.winner" class="ps-podium__label">
+        <span class="ps-podium__name">{{ slot.winner.name }}</span>
+        <span class="ps-podium__time">{{ formatLapMs(slot.winner.bestMs) }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { formatLapMs } from '~/events/pit-stop-14/trackDrive';
+
 /** Геометрия кругов под маску — % от кадра 1280×720 (c4 clean). */
 const FACE_LAYOUT: Record<1 | 2 | 3, { cx: number; cy: number; d: number }> = {
   1: { cx: 49.92, cy: 33.89, d: 16.0 },
@@ -61,6 +76,14 @@ export type PodiumWinner = {
   userId: number;
   rank: number;
   name: string;
+  bestMs: number;
+};
+
+/** Реальные фото финализированных победителей Pit Stop (перекрывают generic-аватар). */
+const WINNER_PHOTOS: Record<number, string> = {
+  2533: '/events/pit-stop-14/winners/rank-1.jpg',
+  2680: '/events/pit-stop-14/winners/rank-2.jpg',
+  2697: '/events/pit-stop-14/winners/rank-3.jpg'
 };
 
 const props = defineProps<{
@@ -154,11 +177,18 @@ const ariaLabel = computed(() => {
   transform: scaleX(-1);
 }
 
-.ps-podium__face {
+.ps-podium__slot {
   position: absolute;
   z-index: 3;
-  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   transform: translate(-50%, -50%);
+}
+.ps-podium__face {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 50%;
   overflow: hidden;
   background: #0a0a0a;
@@ -174,6 +204,10 @@ const ariaLabel = computed(() => {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
+}
+.ps-podium__photo {
+  object-fit: cover;
+  object-position: center top;
 }
 .ps-podium__face :deep(.user-avatar) {
   display: block;
@@ -193,5 +227,41 @@ const ariaLabel = computed(() => {
   font-size: clamp(1.2rem, 4vw, 2.4rem);
   background: #2b2b2e;
   color: #eeeee8;
+}
+
+.ps-podium__label {
+  margin-top: 0.35em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  max-width: 11em;
+  pointer-events: none;
+}
+.ps-podium__name {
+  font-weight: 800;
+  font-size: clamp(0.62rem, 1.6vw, 0.86rem);
+  line-height: 1.15;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ps-podium__time {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: clamp(0.56rem, 1.35vw, 0.74rem);
+  color: var(--ps-lime, #ddf365);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.ps-podium__slot.is-r1 .ps-podium__name {
+  font-size: clamp(0.72rem, 1.9vw, 1rem);
+}
+.ps-podium__slot.is-r1 .ps-podium__time {
+  font-size: clamp(0.62rem, 1.5vw, 0.82rem);
 }
 </style>

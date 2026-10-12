@@ -160,7 +160,7 @@ import {
 
 definePageMeta({ layout: 'default' });
 
-type PodiumWinner = { userId: number; rank: number; name: string };
+type PodiumWinner = { userId: number; rank: number; name: string; bestMs: number };
 
 type BoardRow = {
   rank: number;
@@ -262,12 +262,13 @@ const podiumWinners = computed<PodiumWinner[]>(() => {
     return finalizedWinners.value.map((w) => ({
       userId: w.userId,
       rank: w.rank,
-      name: w.name
+      name: w.name,
+      bestMs: w.bestMs
     }));
   }
   return board.value.top
     .filter((r) => r.rank >= 1 && r.rank <= 3)
-    .map((r) => ({ userId: r.userId, rank: r.rank, name: r.name }));
+    .map((r) => ({ userId: r.userId, rank: r.rank, name: r.name, bestMs: r.bestMs }));
 });
 const myBestMs = computed(() => board.value.myLiveBestMs);
 const pendingBest = computed(() => {
