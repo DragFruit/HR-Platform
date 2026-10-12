@@ -202,10 +202,12 @@ export async function submitLap(input: {
   color: unknown;
   /** Если задан — обновить флаг (не затирает status=confirmed). */
   cheatFlag?: { score: number; reasons: string[] } | null;
+  /** Только для QA-сида: подставить лог круга до стопа ивента, а не момент вызова. */
+  at?: Date;
 }): Promise<{ record: PitStopRaceRecord; improved: boolean }> {
   return enqueue(async () => {
     const state = await readState();
-    const now = new Date().toISOString();
+    const now = (input.at ?? new Date()).toISOString();
     const ms = Math.round(input.ms);
     const color: CarColorId = isCarColorId(input.color) ? input.color : 'violet';
     let rec = state.records.find((r) => r.userId === input.userId);
