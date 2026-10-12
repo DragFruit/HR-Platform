@@ -9,10 +9,26 @@
       draggable="false"
     />
     <div class="ps-podium__flag ps-podium__flag--left" aria-hidden="true">
-      <img class="ps-podium__flag-img" :src="FLAG_IMG" alt="" draggable="false" />
+      <video
+        ref="flagVideoLeft"
+        class="ps-podium__flag-video"
+        :src="FLAG_VIDEO"
+        autoplay
+        loop
+        muted
+        playsinline
+      />
     </div>
     <div class="ps-podium__flag ps-podium__flag--right" aria-hidden="true">
-      <img class="ps-podium__flag-img" :src="FLAG_IMG" alt="" draggable="false" />
+      <video
+        ref="flagVideoRight"
+        class="ps-podium__flag-video"
+        :src="FLAG_VIDEO"
+        autoplay
+        loop
+        muted
+        playsinline
+      />
     </div>
     <div
       v-for="slot in slots"
@@ -52,7 +68,19 @@ const props = defineProps<{
 }>();
 
 const PODIUM_IMG = '/events/pit-stop-14/winners-podium.jpg?v=2';
-const FLAG_IMG = '/events/pit-stop-14/flag-cloth.png?v=1';
+const FLAG_VIDEO = '/events/pit-stop-14/flag-anim.webm?v=1';
+
+const flagVideoLeft = ref<HTMLVideoElement | null>(null);
+const flagVideoRight = ref<HTMLVideoElement | null>(null);
+
+onMounted(() => {
+  if (typeof window === 'undefined') return;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    flagVideoLeft.value?.pause();
+    flagVideoRight.value?.pause();
+  }
+});
 
 const byRank = computed(() => {
   const map = new Map<number, PodiumWinner>();
@@ -109,65 +137,21 @@ const ariaLabel = computed(() => {
   width: 13.5%;
   z-index: 2;
   pointer-events: none;
-  will-change: transform;
 }
 .ps-podium__flag--left {
   left: 0.6%;
-  transform-origin: 8% 12%;
-  animation: ps-flag-wave-l 2.6s ease-in-out infinite;
 }
 .ps-podium__flag--right {
   right: 0.6%;
-  transform-origin: 92% 12%;
-  animation: ps-flag-wave-r 2.6s ease-in-out infinite;
-  animation-delay: -1.2s;
 }
-.ps-podium__flag-img {
+.ps-podium__flag-video {
   display: block;
   width: 100%;
   height: auto;
   filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.55));
 }
-.ps-podium__flag--right .ps-podium__flag-img {
+.ps-podium__flag--right .ps-podium__flag-video {
   transform: scaleX(-1);
-}
-
-@keyframes ps-flag-wave-l {
-  0%,
-  100% {
-    transform: rotate(-7deg) skewX(-4deg) skewY(1.5deg);
-  }
-  25% {
-    transform: rotate(-1deg) skewX(3deg) skewY(-2deg);
-  }
-  50% {
-    transform: rotate(8deg) skewX(-2deg) skewY(2deg);
-  }
-  75% {
-    transform: rotate(2deg) skewX(4deg) skewY(-1deg);
-  }
-}
-@keyframes ps-flag-wave-r {
-  0%,
-  100% {
-    transform: rotate(7deg) skewX(4deg) skewY(-1.5deg);
-  }
-  25% {
-    transform: rotate(1deg) skewX(-3deg) skewY(2deg);
-  }
-  50% {
-    transform: rotate(-8deg) skewX(2deg) skewY(-2deg);
-  }
-  75% {
-    transform: rotate(-2deg) skewX(-4deg) skewY(1deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ps-podium__flag--left,
-  .ps-podium__flag--right {
-    animation: none;
-  }
 }
 
 .ps-podium__face {

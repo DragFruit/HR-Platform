@@ -2,6 +2,15 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-10-12
+
+### Pit Stop — подиум: флаги видео вместо CSS-палок
+
+- Флаги на подиуме (`PitStopWinnersPodium.vue`) — теперь `<video>` с альфа-каналом (`flag-anim.webm`, waving checkered flag) вместо статичного `flag-cloth.png` + CSS keyframes-волна; правый флаг по-прежнему зеркалится (`scaleX(-1)`), `drop-shadow` сохранён, `prefers-reduced-motion: reduce` ставит видео на паузу через JS (у `<video>` нет CSS-only паузы).
+- Файлы: `frontend/app/components/pit-stop/PitStopWinnersPodium.vue`, новый ассет `frontend/public/events/pit-stop-14/flag-anim.webm`.
+- **Не сделано в этом заходе:** фон `winners-podium.jpg` (уборка диагональных флагштоков в углах + силуэт трассы на фоне) — задача требовала правку через AI-генерацию изображений (`creative-images-via-ai.mdc`), а в этой сессии инструмент генерации/редактирования изображений недоступен. `PODIUM_IMG` и `?v=2` не трогали; фон остаётся как был (с палками).
+- Проверка: localhost → `/event/pit-stop` (демо-вход без роли admin, иначе редирект на `/admin/quest-dashboard`) — оба флага колышутся видео с прозрачным фоном, старого `flag-cloth.png` не осталось.
+
 ## 2026-10-08
 
 ### Pit Stop — страница итогов (подиум топ‑3)
