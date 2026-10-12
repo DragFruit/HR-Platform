@@ -139,10 +139,10 @@ const ariaLabel = computed(() => {
   pointer-events: none;
 }
 .ps-podium__flag--left {
-  left: -10%;
+  left: -18%;
 }
 .ps-podium__flag--right {
-  right: -10%;
+  right: -18%;
 }
 .ps-podium__flag-video {
   display: block;
