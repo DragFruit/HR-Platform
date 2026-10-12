@@ -8,13 +8,13 @@
       height="720"
       draggable="false"
     />
+    <div class="ps-podium__title-patch" aria-hidden="true" />
     <div class="ps-podium__flag ps-podium__flag--left" aria-hidden="true">
       <video
         ref="flagVideoLeft"
         class="ps-podium__flag-video"
         :src="FLAG_VIDEO"
         autoplay
-        loop
         muted
         playsinline
       />
@@ -25,7 +25,6 @@
         class="ps-podium__flag-video"
         :src="FLAG_VIDEO"
         autoplay
-        loop
         muted
         playsinline
       />
@@ -63,13 +62,19 @@
 </template>
 
 <script setup lang="ts">
+import type { Ref } from 'vue';
 import { formatLapMs } from '~/events/pit-stop-14/trackDrive';
 
-/** Геометрия кругов под маску — % от кадра 1280×720 (c4 clean). */
+/**
+ * Геометрия кругов под маску — % от кадра 1280×720.
+ * Перемерено по пикселям самого winners-podium.jpg (поиск внутренней тёмной
+ * области каждой рамки): прежние d были занижены, из-за чего между фото и
+ * рамкой оставался зазор фона.
+ */
 const FACE_LAYOUT: Record<1 | 2 | 3, { cx: number; cy: number; d: number }> = {
-  1: { cx: 49.92, cy: 33.89, d: 16.0 },
-  2: { cx: 27.5, cy: 58.47, d: 15.2 },
-  3: { cx: 71.8, cy: 58.33, d: 15.6 }
+  1: { cx: 49.96, cy: 33.82, d: 17.2 },
+  2: { cx: 27.54, cy: 59.03, d: 16.9 },
+  3: { cx: 71.84, cy: 58.82, d: 17.4 }
 };
 
 export type PodiumWinner = {
@@ -96,13 +101,74 @@ const FLAG_VIDEO = '/events/pit-stop-14/flag-anim.webm?v=1';
 const flagVideoLeft = ref<HTMLVideoElement | null>(null);
 const flagVideoRight = ref<HTMLVideoElement | null>(null);
 
+/**
+ * flag-anim.webm не зациклен бесшовно (последний кадр ≠ первому), поэтому
+ * нативный `loop` даёт заметный рывок. Вместо этого — пинг-понг: доиграли
+ * вперёд до конца → вручную отматываем currentTime назад кадр за кадром
+ * через rAF → дошли до 0 → снова .play() вперёд. Для каждого флага —
+ * независимый контроллер (левый/правый могут разойтись по фазе, это ок).
+ */
+function createPingPong(videoRef: Ref<HTMLVideoElement | null>) {
+  let rafId: number | null = null;
+  let lastTs: number | null = null;
+
+  const stepReverse = (ts: number) => {
+    const video = videoRef.value;
+    if (!video) return;
+    if (lastTs === null) lastTs = ts;
+    const deltaSec = Math.max(0, (ts - lastTs) / 1000);
+    lastTs = ts;
+    const next = video.currentTime - deltaSec;
+    if (next <= 0) {
+      video.currentTime = 0;
+      lastTs = null;
+      rafId = null;
+      void video.play().catch(() => {});
+      return;
+    }
+    video.currentTime = next;
+    rafId = requestAnimationFrame(stepReverse);
+  };
+
+  const onEnded = () => {
+    const video = videoRef.value;
+    if (!video) return;
+    video.pause();
+    lastTs = null;
+    rafId = requestAnimationFrame(stepReverse);
+  };
+
+  const stop = () => {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    lastTs = null;
+  };
+
+  return { onEnded, stop };
+}
+
+const pingPongLeft = createPingPong(flagVideoLeft);
+const pingPongRight = createPingPong(flagVideoRight);
+
 onMounted(() => {
   if (typeof window === 'undefined') return;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduceMotion) {
     flagVideoLeft.value?.pause();
     flagVideoRight.value?.pause();
+    return;
   }
+  flagVideoLeft.value?.addEventListener('ended', pingPongLeft.onEnded);
+  flagVideoRight.value?.addEventListener('ended', pingPongRight.onEnded);
+});
+
+onBeforeUnmount(() => {
+  pingPongLeft.stop();
+  pingPongRight.stop();
+  flagVideoLeft.value?.removeEventListener('ended', pingPongLeft.onEnded);
+  flagVideoRight.value?.removeEventListener('ended', pingPongRight.onEnded);
 });
 
 const byRank = computed(() => {
@@ -152,6 +218,32 @@ const ariaLabel = computed(() => {
   object-fit: cover;
   user-select: none;
   pointer-events: none;
+}
+
+/*
+ * Надпись "WINNERS" впечатана в саму фотографию (top-center, ~x45-54%,
+ * y3-5.5% кадра 1280×720). AI-инструмента для чистого inpaint в этом
+ * окружении нет (см. creative-images-via-ai.mdc) — это временная CSS-
+ * заплатка поверх почти-чёрного фона вокруг надписи, не настоящий ретушь
+ * картинки. Полноценная переделка фона — отдельная задача на будущее.
+ */
+.ps-podium__title-patch {
+  position: absolute;
+  left: 50%;
+  top: 1.5%;
+  width: 14%;
+  height: 6%;
+  transform: translateX(-50%);
+  z-index: 1;
+  pointer-events: none;
+  background: rgb(9, 9, 12);
+  border-radius: 45%;
+  /* Мягкая растушёванная кромка тем же тоном, что фон вокруг — глаз не ловит
+     прямоугольник, а само пятно полностью непрозрачно в центре. */
+  box-shadow:
+    0 0 10px 10px rgb(9, 9, 12),
+    0 0 26px 22px rgba(9, 9, 12, 0.75),
+    0 0 46px 34px rgba(9, 9, 12, 0.35);
 }
 
 .ps-podium__flag {
@@ -234,20 +326,23 @@ const ariaLabel = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1em;
-  max-width: 11em;
+  gap: 0.15em;
+  width: max-content;
+  max-width: 9.5em;
+  padding: 0.22em 0.5em 0.28em;
+  border-radius: 0.5em;
+  background: rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }
 .ps-podium__name {
   font-weight: 800;
   font-size: clamp(0.62rem, 1.6vw, 0.86rem);
-  line-height: 1.15;
+  line-height: 1.2;
   color: #fff;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
   max-width: 100%;
 }
 .ps-podium__time {
