@@ -191,7 +191,7 @@
 import { PLATFORM_NAME } from '~/data/platformBrand';
 import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 import { formatEmployeeShortName } from '~/utils/employeeName';
-import { isPitStopGameStopped } from '~/events/pit-stop-14/timeline';
+import { isPitStopGameStopped, isPitStopResultsPageVisible } from '~/events/pit-stop-14/timeline';
 import type { ManagerVacationUiMode } from '~/composables/useManagerVacationMode';
 
 const { balance } = useWallet();
@@ -203,9 +203,13 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath, isPathAllowed } = useLaunchScope();
-/** Режим UI: админ → статистика; сотрудник (в т.ч. admin, переключившийся) → игра. */
+/**
+ * Режим UI: админ → статистика; сотрудник (в т.ч. admin, переключившийся) → игра.
+ * После стопа гонки (`isPitStopGameStopped`) флаг не прятать совсем — хаб переключается
+ * на статику с подиумом топ-3 (`isPitStopResultsPageVisible`), и вход к ней нужен как раньше.
+ */
 const showPitStopFlag = computed(
-  () => isPathAllowed('/event/pit-stop') && !isPitStopGameStopped()
+  () => isPathAllowed('/event/pit-stop') && (!isPitStopGameStopped() || isPitStopResultsPageVisible())
 );
 const pitStopFlagTo = computed(() =>
   isAdmin.value ? '/admin/quest-dashboard' : '/event/pit-stop'

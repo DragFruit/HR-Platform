@@ -4,6 +4,13 @@
 
 ## 2026-10-12
 
+### Pit Stop — вернули вход в ивент после стопа гонки
+
+- Баг: после стопа гонки (`isPitStopGameStopped`, 10.10 03:00 МСК) клетчатый флаг-вход к `/event/pit-stop` (в сайдбаре у «Профиль» и в мобильной шапке) полностью прятался — `showPitStopFlag` в `app.vue` проверял только `!isPitStopGameStopped()`. Сам хаб `/event/pit-stop` оставался в whitelist `isPathAllowed` и показывал страницу итогов (подиум топ-3) корректно, но сотрудник не мог на неё попасть кликом — только прямым вводом URL.
+- Фикс: `showPitStopFlag = isPathAllowed('/event/pit-stop') && (!isPitStopGameStopped() || isPitStopResultsPageVisible())` — флаг виден и после стопа, пока доступна страница итогов (на стейдже всегда, на бою с 10.10 10:00 МСК).
+- Файл: `frontend/app/app.vue`.
+- Проверка: стейдж → вход сотрудником (не админ) → клетчатый флаг у «Профиль» в сайдбаре → `/event/pit-stop` → подиум топ-3 с видео-флагами.
+
 ### Pit Stop — подиум: флаги видео вместо CSS-палок
 
 - Флаги на подиуме (`PitStopWinnersPodium.vue`) — теперь `<video>` с альфа-каналом (`flag-anim.webm`, waving checkered flag) вместо статичного `flag-cloth.png` + CSS keyframes-волна; правый флаг по-прежнему зеркалится (`scaleX(-1)`), `drop-shadow` сохранён, `prefers-reduced-motion: reduce` ставит видео на паузу через JS (у `<video>` нет CSS-only паузы).
