@@ -173,7 +173,11 @@ const computeTop3Winners = (records: PitStopRaceRecord[]): PitStopRaceWinner[] =
  * После стопа ивента один раз фиксирует топ-3 для ачивки `pit-stop-14`.
  * Вызывается лениво с API — без отдельного крона.
  */
-export async function ensureRaceFinalized(now: Date = new Date()): Promise<{
+export async function ensureRaceFinalized(
+  now: Date = new Date(),
+  /** Только для QA-сида: пересчитать топ-3, даже если уже финализировано (например, пустыми). */
+  force = false
+): Promise<{
   winners: PitStopRaceWinner[];
   finalizedAt: string | null;
 }> {
@@ -182,7 +186,7 @@ export async function ensureRaceFinalized(now: Date = new Date()): Promise<{
   }
   return enqueue(async () => {
     const state = await readState();
-    if (state.finalizedAt && Array.isArray(state.winners)) {
+    if (!force && state.finalizedAt && Array.isArray(state.winners)) {
       return { winners: state.winners, finalizedAt: state.finalizedAt };
     }
     const winners = computeTop3Winners(state.records);

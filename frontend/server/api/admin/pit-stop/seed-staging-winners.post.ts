@@ -54,7 +54,9 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const { winners, finalizedAt } = await ensureRaceFinalized();
+  // force: true — на стейдже гонка уже могла финализироваться пустой (до сида), а
+  // ensureRaceFinalized кеширует первый результат и без force не пересчитает.
+  const { winners, finalizedAt } = await ensureRaceFinalized(new Date(), true);
 
   return { ok: true, winners, finalizedAt };
 });
