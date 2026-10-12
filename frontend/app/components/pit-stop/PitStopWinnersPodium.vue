@@ -133,16 +133,16 @@ const ariaLabel = computed(() => {
 
 .ps-podium__flag {
   position: absolute;
-  top: 0%;
-  width: 60%;
+  top: -4%;
+  width: 52%;
   z-index: 2;
   pointer-events: none;
 }
 .ps-podium__flag--left {
-  left: -27%;
+  left: -23%;
 }
 .ps-podium__flag--right {
-  right: -27%;
+  right: -23%;
 }
 .ps-podium__flag-video {
   display: block;
