@@ -109,17 +109,23 @@ export type PodiumWinner = {
   bestMs: number;
 };
 
-/** Реальные фото финализированных победителей Pit Stop (перекрывают generic-аватар). */
+/**
+ * Реальные фото финализированных победителей Pit Stop (перекрывают generic-аватар).
+ * `?v=N` — кеш-версия: URL без неё браузер кеширует навсегда, и замена файла на
+ * сервере (тот же путь) не подхватится у заказчика без хард-рефреша. Бампать N
+ * при каждой замене содержимого конкретного фото.
+ */
 const WINNER_PHOTOS: Record<number, string> = {
-  2533: '/events/pit-stop-14/winners/rank-1.jpg',
-  2680: '/events/pit-stop-14/winners/rank-2.jpg',
-  2697: '/events/pit-stop-14/winners/rank-3.jpg'
+  2533: '/events/pit-stop-14/winners/rank-1.jpg?v=1',
+  2680: '/events/pit-stop-14/winners/rank-2.jpg?v=2',
+  2697: '/events/pit-stop-14/winners/rank-3.jpg?v=1'
 };
 
 const props = defineProps<{
   winners: PodiumWinner[];
 }>();
 
+// `?v=N` — кеш-версия, см. комментарий у WINNER_PHOTOS; бампать при замене файла.
 const PODIUM_IMG = '/events/pit-stop-14/winners-podium.jpg?v=2';
 /**
  * Предпосчитанный бумеранг (вперёд + развёрнутый назад, склеены в одном файле)
