@@ -117,8 +117,8 @@ export type PodiumWinner = {
  */
 const WINNER_PHOTOS: Record<number, string> = {
   2533: '/events/pit-stop-14/winners/rank-1.jpg?v=1',
-  2680: '/events/pit-stop-14/winners/rank-2.jpg?v=2',
-  2697: '/events/pit-stop-14/winners/rank-3.jpg?v=1'
+  2680: '/events/pit-stop-14/winners/rank-2.jpg?v=3',
+  2697: '/events/pit-stop-14/winners/rank-3.jpg?v=2'
 };
 
 const props = defineProps<{
