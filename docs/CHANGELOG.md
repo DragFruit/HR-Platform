@@ -4,6 +4,11 @@
 
 ## 2026-10-13
 
+### Pit Stop — другое фото Шашина Данилы на подиуме
+
+- Заменено фото 2 места: сольный портрет вместо кадра из группового селфи, тот же кроп/ч-б конвертер.
+- `frontend/public/events/pit-stop-14/winners/rank-2.jpg`.
+
 ### Pit Stop — подиум: фото в рамке и флаг без подвисаний (boomerang-видео)
 
 - `frontend/app/components/pit-stop/PitStopWinnersPodium.vue`:
