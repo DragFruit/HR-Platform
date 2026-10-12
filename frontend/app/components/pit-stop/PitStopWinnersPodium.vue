@@ -15,6 +15,7 @@
         class="ps-podium__flag-video"
         :src="FLAG_VIDEO"
         autoplay
+        loop
         muted
         playsinline
       />
@@ -25,6 +26,7 @@
         class="ps-podium__flag-video"
         :src="FLAG_VIDEO"
         autoplay
+        loop
         muted
         playsinline
       />
@@ -34,7 +36,7 @@
       :key="slot.rank"
       class="ps-podium__slot"
       :class="`is-r${slot.rank}`"
-      :style="slot.style"
+      :style="slot.faceStyle"
     >
       <div class="ps-podium__face">
         <img
@@ -53,29 +55,52 @@
         />
         <span v-else class="ps-podium__empty" aria-hidden="true" />
       </div>
-      <div v-if="slot.winner" class="ps-podium__label">
+    </div>
+    <template v-for="slot in slots" :key="`label-${slot.rank}`">
+      <div
+        v-if="slot.winner"
+        class="ps-podium__label"
+        :class="`is-r${slot.rank}`"
+        :style="slot.labelStyle"
+      >
         <span class="ps-podium__name">{{ slot.winner.name }}</span>
         <span class="ps-podium__time">{{ formatLapMs(slot.winner.bestMs) }}</span>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Ref } from 'vue';
 import { formatLapMs } from '~/events/pit-stop-14/trackDrive';
+
+/** Кадр фона фиксирован 1280×720 (см. TRACK_AR в pages/event/pit-stop/index.vue). */
+const FRAME_W = 1280;
+const FRAME_H = 720;
 
 /**
  * Геометрия кругов под маску — % от кадра 1280×720.
- * Перемерено по пикселям самого winners-podium.jpg (поиск внутренней тёмной
- * области каждой рамки): прежние d были занижены, из-за чего между фото и
- * рамкой оставался зазор фона.
+ * Перемерено по пикселям самого winners-podium.jpg: для каждой рамки отсканирована
+ * яркость/насыщенность по ~30 парам противоположных углов (декоративные камни на
+ * 12/6 часах намеренно исключены — там кольцо нарочно "подрезано" камнем, это не
+ * граница маски), получены центр и радиус внутренней границы кольца (где тёмная
+ * область переходит в золото/серебро/бронзу).
+ *
+ * cy — это центр САМОГО КРУГА, не центр блока «круг + подпись»: раньше `top: cy%`
+ * вместе с `transform: translate(-50%, -50%)` навешивались на весь `.ps-podium__slot`
+ * (круг + подпись друг под другом), поэтому центрировалась вся колонка, а не круг —
+ * из-за высоты подписи фактический центр фото уезжал вверх от cy на ~половину высоты
+ * подписи (у 3 места с двухстрочным именем это давало заметный уход и перекрытие
+ * верхней части рамки). Теперь подпись позиционируется отдельным элементом
+ * (computeLabelStyle), круг центрируется сам по себе — cy=истинный центр фото.
  */
 const FACE_LAYOUT: Record<1 | 2 | 3, { cx: number; cy: number; d: number }> = {
-  1: { cx: 49.96, cy: 33.82, d: 17.2 },
-  2: { cx: 27.54, cy: 59.03, d: 16.9 },
-  3: { cx: 71.84, cy: 58.82, d: 17.4 }
+  1: { cx: 49.95, cy: 33.82, d: 17.47 },
+  2: { cx: 27.56, cy: 58.97, d: 17.19 },
+  3: { cx: 71.84, cy: 58.81, d: 17.64 }
 };
+
+/** Зазор между нижним краем круга и подписью, % высоты кадра (было ~0.35em). */
+const LABEL_GAP_PCT = 1.6;
 
 export type PodiumWinner = {
   userId: number;
@@ -96,61 +121,23 @@ const props = defineProps<{
 }>();
 
 const PODIUM_IMG = '/events/pit-stop-14/winners-podium.jpg?v=2';
-const FLAG_VIDEO = '/events/pit-stop-14/flag-anim.webm?v=1';
+/**
+ * Предпосчитанный бумеранг (вперёд + развёрнутый назад, склеены в одном файле)
+ * вместо JS пинг-понга: тот вручную отматывал currentTime через rAF после `ended`,
+ * что на коротком alpha-webm давало заметный рывок/подвисание каждые ~5с (каждая
+ * ручная перестановка currentTime форсирует seek к ключевому кадру). Теперь —
+ * обычный нативный `loop`, ноль JS поверх видео. Файл собран из исходного
+ * flag-anim.webm: `ffmpeg -c:v libvpx-vp9 -i flag-anim.webm -filter_complex
+ * "[0:v]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[outv]" -map "[outv]"
+ * -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0 flag-anim-boomerang.webm`
+ * (декодер обязательно `libvpx-vp9`, не нативный `vp9` — иначе альфа теряется).
+ * Последний кадр форварда = первый кадр реверса (нет скачка на стыке), и первый
+ * кадр форварда = последний кадр реверса (нет скачка на нативном loop-wrap).
+ */
+const FLAG_VIDEO = '/events/pit-stop-14/flag-anim-boomerang.webm?v=1';
 
 const flagVideoLeft = ref<HTMLVideoElement | null>(null);
 const flagVideoRight = ref<HTMLVideoElement | null>(null);
-
-/**
- * flag-anim.webm не зациклен бесшовно (последний кадр ≠ первому), поэтому
- * нативный `loop` даёт заметный рывок. Вместо этого — пинг-понг: доиграли
- * вперёд до конца → вручную отматываем currentTime назад кадр за кадром
- * через rAF → дошли до 0 → снова .play() вперёд. Для каждого флага —
- * независимый контроллер (левый/правый могут разойтись по фазе, это ок).
- */
-function createPingPong(videoRef: Ref<HTMLVideoElement | null>) {
-  let rafId: number | null = null;
-  let lastTs: number | null = null;
-
-  const stepReverse = (ts: number) => {
-    const video = videoRef.value;
-    if (!video) return;
-    if (lastTs === null) lastTs = ts;
-    const deltaSec = Math.max(0, (ts - lastTs) / 1000);
-    lastTs = ts;
-    const next = video.currentTime - deltaSec;
-    if (next <= 0) {
-      video.currentTime = 0;
-      lastTs = null;
-      rafId = null;
-      void video.play().catch(() => {});
-      return;
-    }
-    video.currentTime = next;
-    rafId = requestAnimationFrame(stepReverse);
-  };
-
-  const onEnded = () => {
-    const video = videoRef.value;
-    if (!video) return;
-    video.pause();
-    lastTs = null;
-    rafId = requestAnimationFrame(stepReverse);
-  };
-
-  const stop = () => {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-    lastTs = null;
-  };
-
-  return { onEnded, stop };
-}
-
-const pingPongLeft = createPingPong(flagVideoLeft);
-const pingPongRight = createPingPong(flagVideoRight);
 
 onMounted(() => {
   if (typeof window === 'undefined') return;
@@ -158,17 +145,7 @@ onMounted(() => {
   if (reduceMotion) {
     flagVideoLeft.value?.pause();
     flagVideoRight.value?.pause();
-    return;
   }
-  flagVideoLeft.value?.addEventListener('ended', pingPongLeft.onEnded);
-  flagVideoRight.value?.addEventListener('ended', pingPongRight.onEnded);
-});
-
-onBeforeUnmount(() => {
-  pingPongLeft.stop();
-  pingPongRight.stop();
-  flagVideoLeft.value?.removeEventListener('ended', pingPongLeft.onEnded);
-  flagVideoRight.value?.removeEventListener('ended', pingPongRight.onEnded);
 });
 
 const byRank = computed(() => {
@@ -181,13 +158,20 @@ const slots = computed(() =>
   ([1, 2, 3] as const).map((rank) => {
     const layout = FACE_LAYOUT[rank];
     const winner = byRank.value.get(rank) ?? null;
+    // Радиус круга (в % ширины) переведён в % высоты через AR кадра, чтобы подпись
+    // легла сразу под кругом независимо от его диаметра.
+    const radiusPctH = (layout.d / 2) * (FRAME_W / FRAME_H);
     return {
       rank,
       winner,
-      style: {
+      faceStyle: {
         left: `${layout.cx}%`,
         top: `${layout.cy}%`,
         width: `${layout.d}%`
+      },
+      labelStyle: {
+        left: `${layout.cx}%`,
+        top: `${layout.cy + radiusPctH + LABEL_GAP_PCT}%`
       }
     };
   })
@@ -322,7 +306,9 @@ const ariaLabel = computed(() => {
 }
 
 .ps-podium__label {
-  margin-top: 0.35em;
+  position: absolute;
+  z-index: 3;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -353,10 +339,10 @@ const ariaLabel = computed(() => {
   color: var(--ps-lime, #ddf365);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
-.ps-podium__slot.is-r1 .ps-podium__name {
+.ps-podium__label.is-r1 .ps-podium__name {
   font-size: clamp(0.72rem, 1.9vw, 1rem);
 }
-.ps-podium__slot.is-r1 .ps-podium__time {
+.ps-podium__label.is-r1 .ps-podium__time {
   font-size: clamp(0.62rem, 1.5vw, 0.82rem);
 }
 </style>
