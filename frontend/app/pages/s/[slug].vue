@@ -160,11 +160,38 @@ const slug = String(route.params.slug || '');
 
 useHead({ title: 'Опрос' });
 
-const { result, load, submit, submitting, submitted, submitError } = useSurveyRespond(slug);
+const { result, load, recordVisit, recordStart, submit, submitting, submitted, submitError } =
+  useSurveyRespond(slug);
 const answers = reactive<Record<string, SurveyAnswerValue>>({});
 const formError = ref('');
 
 await load();
+
+// Визит фиксируем один раз на клиенте после загрузки опроса — не на SSR-рендере
+// и не повторно при hydration. Если опрос недоступен, visit-эндпойнт сам не
+// засчитает его (см. visit.post.ts), но мы и не дёргаем его в этом случае.
+onMounted(() => {
+  if (result.value.state === 'ready') {
+    void recordVisit();
+  }
+});
+
+// "Начал отвечать" — реальное событие первого изменения ответа на любой
+// вопрос (а не просто загрузка страницы). Все способы ответить (v-model на
+// single/yesno/text, toggleMulti, клики smiley/nps/scale) мутируют один и тот
+// же реактивный объект `answers`, поэтому единственный deep-watcher на него
+// надёжно ловит самое первое реальное взаимодействие без правок в каждом
+// обработчике по отдельности.
+const hasStartedAnswering = ref(false);
+watch(
+  answers,
+  () => {
+    if (hasStartedAnswering.value) return;
+    hasStartedAnswering.value = true;
+    void recordStart();
+  },
+  { deep: true }
+);
 
 function isMultiChecked(qid: string, opt: string): boolean {
   const v = answers[qid];

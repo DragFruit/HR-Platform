@@ -11,12 +11,16 @@
 
         <div class="survey-results__funnel">
           <div class="survey-stat-tile">
-            <span class="survey-stat-tile__value">{{ data.results.started }}</span>
-            <span class="survey-stat-tile__label">Начали</span>
+            <span class="survey-stat-tile__value">{{ data.results.visited }}</span>
+            <span class="survey-stat-tile__label">Посещения</span>
           </div>
           <div class="survey-stat-tile survey-stat-tile--accent">
             <span class="survey-stat-tile__value">{{ data.results.completed }}</span>
             <span class="survey-stat-tile__label">Завершили</span>
+          </div>
+          <div class="survey-stat-tile">
+            <span class="survey-stat-tile__value">{{ data.results.startedButNotCompleted }}</span>
+            <span class="survey-stat-tile__label">Не закончили</span>
           </div>
           <div class="survey-stat-tile">
             <span class="survey-stat-tile__value">{{ data.results.completionRate }}%</span>

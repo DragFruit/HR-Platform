@@ -4,6 +4,24 @@
 
 ## 2026-10-13
 
+### Опросы — честная воронка (Посещения → Начали отвечать → Завершили), учёт отвалившихся респондентов
+
+Баг от заказчика (подтверждён чтением кода): `buildSurveyResults()` считал «начал» как количество записей `survey-responses.json` — а они создаются только при полном `submit`. Респондент, открывший публичную ссылку `/s/[slug]` и не дошедший до конца, нигде не оставлял следа и был невидим воронке целиком. Референс (webask.io) честно разделяет Посещения / Начали отвечать / Завершили / Не закончили — заказчик хочет то же самое, и явно попросил **без фикций**: не выдумывать «не закончили» как производную от одного реального и одного придуманного числа.
+
+- **3 реально отслеживаемых сигнала**, каждый — свой identity-free счётчик `{surveyId → count}` без IP/session/fingerprint/таймстампа, независимо от `survey.anonymous`:
+  - **Посещения** — `frontend/server/data/survey-visits.json`, пишет `POST /api/public/surveys/:slug/visit`, вызывается один раз из `onMounted` на `/s/[slug]`.
+  - **Начали отвечать** — `frontend/server/data/survey-starts.json`, пишет `POST /api/public/surveys/:slug/start`, вызывается один раз при ПЕРВОМ реальном изменении любого ответа (`watch(answers, …, { deep: true })` на `/s/[slug]` — ловит v-model, toggleMulti, клики смайл/NPS/шкала одним общим вотчером, т.к. все они мутируют один и тот же `reactive` объект). Это реальное событие взаимодействия, не инференс.
+  - **Завершили** — как и раньше, запись в `survey-responses.json` с заполненными required-вопросами.
+  - «Не закончили» = `Начали отвечать − Завершили` — обе величины реально отслеживаются, это честная разность, а не выдуманное число.
+- **Общая фабрика** `frontend/server/utils/surveyCounterStore.ts` (flat-JSON, атомарная запись, сериализация мутаций — тот же паттерн, что `surveyResponsesStore.ts`) переиспользована в `surveyVisitsStore.ts` и `surveyStartsStore.ts`.
+- `buildSurveyResults()` (`frontend/server/utils/surveyResults.ts`) теперь принимает `visited`/`started` и возвращает `{ visited, started, completed, startedButNotCompleted, completionRate }`; `completionRate = completed / visited` (было `completed / responses.length`). Защита от гонок (если `/visit` или `/start` не долетел из-за сети, а submit прошёл) — клампинг снизу (`Math.max`), сами счётчики при этом не подменяются.
+- `GET /api/surveys/:id/results` читает оба новых стора и передаёт их в `buildSurveyResults`.
+- **UI** (`frontend/app/pages/admin/surveys/[id]/results.vue`): карточки воронки — Посещения / Завершили / Не закончили / Конверсия (без выдуманной «Дисквалифицированы» — такой функции в продукте нет).
+- **Проверены другие места**, использовавшие старую семантику: `app/pages/admin/surveys/index.vue` (`responseCount`) считает реальные ответы и не связан с `started` — не трогался; `res.started` в `app/pages/event/pit-stop/[id].vue` — не относится к опросам (другой домен, pit-stop движок), не трогался.
+- **Пути**: `frontend/server/utils/surveyCounterStore.ts` (новый), `surveyVisitsStore.ts` (новый), `surveyStartsStore.ts` (новый), `surveyResults.ts`, `server/api/public/surveys/[slug]/visit.post.ts` (новый), `server/api/public/surveys/[slug]/start.post.ts` (новый), `server/api/surveys/[id]/results.get.ts`, `app/composables/useSurveyRespond.ts`, `app/pages/s/[slug].vue`, `app/pages/admin/surveys/[id]/results.vue`. Новые data-файлы: `server/data/survey-visits.json`, `server/data/survey-starts.json`.
+- **Как проверить**: `npm run dev` → создать и опубликовать тестовый опрос → открыть `/s/[slug]` 3 раза, не отправляя → на одном из визитов выбрать ответ, но не отправить (имитация отвала) → ещё раз открыть и отправить реально → `/admin/surveys/[id]/results`: при 5 визитах, 2 стартах, 1 завершении — «Посещения 5 / Завершили 1 / Не закончили 1 / Конверсия 20%» — проверено end-to-end вручную. `survey-visits.json`/`survey-starts.json` после теста содержат только числовые счётчики, без id/имён/IP. Тестовый опрос/ответ/счётчики откачены к исходному пустому состоянию перед коммитом.
+- **Не тронуто**: анонимность submit-ответа (`survey.anonymous` → `respondent` в `survey-responses.json`) — логика не менялась, только добавлены два независимых identity-free счётчика рядом.
+
 ### Опросы (админка) — выпадающие меню действий, ближе к референсу по всем страницам
 
 По прямой просьбе заказчика (приложен скриншот списка опросов webask.io с кнопкой «…», открывающей меню действий на карточке): собрать однотипные кнопки действий в выпадающее меню там, где их больше трёх, и подтянуть визуал всех трёх страниц админки опросов ближе к референсу (не только список).

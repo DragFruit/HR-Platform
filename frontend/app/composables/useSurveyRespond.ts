@@ -28,6 +28,24 @@ export function useSurveyRespond(slug: string) {
     }
   };
 
+  /** Фиксирует визит публичной страницы — вызывать один раз из onMounted. */
+  const recordVisit = async (): Promise<void> => {
+    try {
+      await $fetch(`/api/public/surveys/${encodeURIComponent(slug)}/visit`, { method: 'POST' });
+    } catch {
+      // Не критично — страница продолжает работать без отметки визита.
+    }
+  };
+
+  /** Фиксирует "начал отвечать" — вызывать один раз при первом реальном ответе. */
+  const recordStart = async (): Promise<void> => {
+    try {
+      await $fetch(`/api/public/surveys/${encodeURIComponent(slug)}/start`, { method: 'POST' });
+    } catch {
+      // Не критично — страница продолжает работать без отметки старта.
+    }
+  };
+
   const submit = async (answers: Record<string, SurveyAnswerValue>): Promise<boolean> => {
     submitting.value = true;
     submitError.value = '';
@@ -50,5 +68,5 @@ export function useSurveyRespond(slug: string) {
     }
   };
 
-  return { result, load, submit, submitting, submitted, submitError };
+  return { result, load, recordVisit, recordStart, submit, submitting, submitted, submitError };
 }

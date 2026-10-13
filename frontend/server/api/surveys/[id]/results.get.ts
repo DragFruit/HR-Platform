@@ -1,6 +1,8 @@
 import { requireRole } from '../../../utils/requireRole';
 import { readSurveys } from '../../../utils/surveysStore';
 import { readSurveyResponses, responsesForSurvey } from '../../../utils/surveyResponsesStore';
+import { readSurveyVisits, visitsForSurvey } from '../../../utils/surveyVisitsStore';
+import { readSurveyStarts, startsForSurvey } from '../../../utils/surveyStartsStore';
 import { buildSurveyResults } from '../../../utils/surveyResults';
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +17,11 @@ export default defineEventHandler(async (event) => {
 
   const responsesState = await readSurveyResponses();
   const responses = responsesForSurvey(responsesState, id);
-  const results = buildSurveyResults(survey, responses);
+  const visitsState = await readSurveyVisits();
+  const visited = visitsForSurvey(visitsState, id);
+  const startsState = await readSurveyStarts();
+  const started = startsForSurvey(startsState, id);
+  const results = buildSurveyResults(survey, responses, visited, started);
 
   return { survey, results };
 });

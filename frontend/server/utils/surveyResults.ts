@@ -29,15 +29,36 @@ export type QuestionReport =
     };
 
 export type SurveyResultsSummary = {
+  /** Посещения публичной страницы опроса (/s/[slug]) — survey-visits.json. */
+  visited: number;
+  /** Реально зафиксированное первое взаимодействие с вопросом — survey-starts.json. */
   started: number;
   completed: number;
+  /** started - completed (обе величины реально отслеживаются, не инференс). */
+  startedButNotCompleted: number;
   completionRate: number;
   questions: QuestionReport[];
 };
 
-/** "Начал" = есть запись ответа; "завершил" = ответил на все required-вопросы. */
-export function buildSurveyResults(survey: Survey, responses: SurveyResponse[]): SurveyResultsSummary {
-  const started = responses.length;
+/**
+ * Честная 3-стадийная воронка — Посещения → Начали отвечать → Завершили:
+ * - visited — счётчик загрузок публичной страницы (survey-visits.json,
+ *   пишет /api/public/surveys/:slug/visit при onMounted).
+ * - started — счётчик РЕАЛЬНОГО первого взаимодействия с вопросом
+ *   (survey-starts.json, пишет /api/public/surveys/:slug/start при первом
+ *   изменении любого ответа на публичной странице — см. watch(answers) в
+ *   app/pages/s/[slug].vue). Это не инференс и не производная величина.
+ * - completed — "завершил" = ответил на все required-вопросы (есть submit).
+ *
+ * "Не закончили" = started - completed — оба слагаемых реально отслеживаются,
+ * поэтому это не фикция, а честная разность двух настоящих счётчиков.
+ */
+export function buildSurveyResults(
+  survey: Survey,
+  responses: SurveyResponse[],
+  visited: number,
+  started: number
+): SurveyResultsSummary {
   const requiredIds = survey.questions.filter((q) => q.required).map((q) => q.id);
   const completed = responses.filter((r) =>
     requiredIds.every((id) => {
@@ -143,10 +164,21 @@ export function buildSurveyResults(survey: Survey, responses: SurveyResponse[]):
     return report;
   });
 
+  // Логически visited >= started >= completed (нельзя завершить без старта,
+  // нельзя начать без загрузки страницы), но если /visit или /start не
+  // долетел из-за сетевой ошибки на клиенте, а submit всё равно прошёл —
+  // реальные счётчики могут временно разойтись. Подстраховываемся снизу,
+  // чтобы не показывать отрицательные "не закончили" или >100% конверсию;
+  // сами счётчики (visited/started) при этом не подделываются и не инферятся.
+  const effectiveStarted = Math.max(started, completed);
+  const effectiveVisited = Math.max(visited, effectiveStarted);
+
   return {
-    started,
+    visited: effectiveVisited,
+    started: effectiveStarted,
     completed,
-    completionRate: started > 0 ? Math.round((completed / started) * 1000) / 10 : 0,
+    startedButNotCompleted: Math.max(0, effectiveStarted - completed),
+    completionRate: effectiveVisited > 0 ? Math.round((completed / effectiveVisited) * 1000) / 10 : 0,
     questions
   };
 }
