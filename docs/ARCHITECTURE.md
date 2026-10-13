@@ -41,6 +41,7 @@ flowchart TB
 
 Порядок рендера:
 
+0. Путь начинается с `/s/` (публичная страница опроса, `isBareRoute`) → **только** `<NuxtPage />`, без логина/sidebar/topbar/футера/оверлеев — respondent не обязан иметь Vibe-сессию и не должен увидеть ничего, что выдаёт платформу
 1. `authReady === false` → «Загрузка...»
 2. Не авторизован → `AuthLogin.vue`
 3. Авторизован → `app-shell` (sidebar + topbar + `<NuxtPage />`) + опционально `FirstLoginOnboarding` (приветствие → аватар → конфетти)
@@ -110,6 +111,8 @@ flowchart TB
 | `useAdminData` | `useAdminData.ts` | Справочники админки (пользователи, отделы legacy) |
 | `useIdeasBank` | `useIdeasBank.ts` | Банк идей: список, голоса, создание, этапы, удаление |
 | `useAdminNotifications` | `useAdminNotifications.ts` | Колокольчик admin/HR (в т.ч. `idea_submitted`, юбилеи) |
+| `useAdminSurveys` | `useAdminSurveys.ts` | Опросы (админ): список, создание, конструктор, публикация, результаты |
+| `useSurveyRespond` | `useSurveyRespond.ts` | Публичная страница `/s/:slug`: загрузка опроса, отправка ответа — без auth-состояния |
 
 **Правило:** `useState()` только **внутри** функций composable / setup — не на уровне модуля (иначе SSR 500 и вечная «Загрузка...»).
 
@@ -141,6 +144,7 @@ flowchart TB
 - `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json`
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
+- `admin/surveys/index.vue`, `admin/surveys/[id]/index.vue`, `admin/surveys/[id]/results.vue` — опросы: список / конструктор / результаты. Подробно — раздел «Опросы» ниже
 - `admin/quest-dashboard.vue` — статистика разогревочной гонки Pit Stop (ФИО / заходил / кругов); админ в игру не заходит
 - `profile` — личный профиль (пункт «Профиль» в меню и в режиме сотрудника, и в режиме админа)
 
@@ -170,6 +174,21 @@ review (На рассмотрении)
 Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), вложения `server/data/idea-attachments/{ideaId}/`, очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `GET/POST /api/ideas/:id/file`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json` (идемпотентность по ключу события, `admin_seen` не сбрасывается при повторном синке). На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
 
 Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` остаются, но создание/статус шлют уведомления из server mutations.
+
+---
+
+## Опросы
+
+Продуктовые правила: **[PRODUCT.md](./PRODUCT.md)** §10b. Phase 1 — MVP.
+
+- **Типы данных**: `frontend/app/composables/useSurveys.ts` (`Survey`, `SurveyQuestion`, `SurveyResponse`, 9 `SurveyQuestionType`) — общий файл, используется и на клиенте, и на сервере (как `useIdeasBank.ts` для идей).
+- **Данные**: `server/data/surveys.json` (`surveys[]`, `nextSurveyId`), `server/data/survey-responses.json` (`responses: Record<surveyId, SurveyResponse[]>`). Чтение/запись/мутации — `server/utils/surveysStore.ts`, `surveyResponsesStore.ts` (atomic JSON + очередь мутаций, тот же паттерн, что `ideasStore.ts`). Валидация ответа на сервере — `surveyValidation.ts` (обязательные поля, допустимые опции/диапазоны — клиенту не доверяем). Агрегация результатов — `surveyResults.ts` (воронка + распределения по вопросу). Rate-limit публичной отправки — `simpleRateLimit.ts` (in-memory по IP, 20/мин).
+- **Admin API** (`requireRole(['admin','hr'])`): `GET/POST /api/surveys`, `GET/PATCH/DELETE /api/surveys/:id`, `POST /api/surveys/:id/publish`, `POST /api/surveys/:id/unpublish` (→ `closed`, не `draft` — опрос мог уже собирать ответы), `GET /api/surveys/:id/results`.
+- **Публичные API** (без `requireVbiSession`): `GET /api/public/surveys/:slug` (только для `status: published`, отдаёт только `PublicSurvey` — без `id`/`createdBy`/статуса), `POST /api/public/surveys/:slug/submit`.
+- **Анонимность**: если `survey.anonymous === true`, `submit.post.ts` вообще не вызывает `getVbiSession` для привязки — поле `respondent` не попадает в объект ответа ни при каких условиях. Для неанонимных опросов `respondent` подставляется только если у отправителя была валидная Vibe-сессия (анонимный посетитель с улицы в неанонимном опросе просто не имеет `respondent`).
+- **Публичная страница** `/s/[slug]` (`app/pages/s/[slug].vue`) рендерится в обход app-shell — см. «Точка входа и оболочка» (`isBareRoute` в `app.vue`). Собственная нейтральная вёрстка (не брендированная), composable `useSurveyRespond.ts`.
+- **Админ-страницы**: `admin/surveys/index.vue` (список), `admin/surveys/[id]/index.vue` (конструктор — редактирование вопросов, reorder, анонимность, публикация), `admin/surveys/[id]/results.vue` (воронка + графики/список ответов, по конвенциям skill `dataviz`). Пункт меню «Опросы» — `usePlatformContext.ts` (`adminNav`).
+  - **Важно про роутинг**: `[id]/index.vue` + `[id]/results.vue` как папка — не `[id].vue` файл рядом с папкой `[id]/`. Nuxt не рендерит вложенные маршруты под файлом с тем же динамическим именем без `<NuxtPage />` в родителе — тестировано вживую, при коллизии `/admin/surveys/:id/results` молча рендерил контент `[id].vue`.
 
 ---
 

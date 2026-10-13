@@ -37,6 +37,7 @@ const adminNav: NavItem[] = [
   { to: '/admin/sales-best', label: 'Лучший ОП' },
   { to: '/admin/ideas', label: 'Банк идей' },
   { to: '/admin/knowledge', label: 'База знаний' },
+  { to: '/admin/surveys', label: 'Опросы' },
   profileNavItem
 ];
 
@@ -134,6 +135,9 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/knowledge')) {
       return 'База знаний';
+    }
+    if (route.path.startsWith('/admin/surveys')) {
+      return 'Опросы';
     }
     if (route.path.startsWith('/event/pit-stop')) {
       return 'Pit Stop 14';

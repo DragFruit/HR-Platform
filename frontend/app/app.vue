@@ -1,7 +1,14 @@
 <template>
   <NuxtRouteAnnouncer />
 
-  <div v-if="!authReady || finishingBitrixLogin" class="auth-loading">
+  <!--
+    Публичная страница опроса (/s/:slug) — рендерится ПОЛНОСТЬЮ отдельно:
+    без экрана авторизации, без app-shell/сайдбара/топбара/футера. Респондент
+    не обязан быть в Vibe и не должен увидеть ничего, что выдаёт платформу.
+  -->
+  <NuxtPage v-if="isBareRoute" />
+
+  <div v-else-if="!authReady || finishingBitrixLogin" class="auth-loading">
     {{ finishingBitrixLogin ? 'Завершаем вход через Битрикс24...' : 'Загрузка...' }}
   </div>
 
@@ -240,6 +247,7 @@ const switchManagerMode = (mode: ManagerVacationUiMode) => {
 
 const route = useRoute();
 const router = useRouter();
+const isBareRoute = computed(() => route.path.startsWith('/s/'));
 const finishingBitrixLogin = ref(route.query.auth === 'bitrix');
 const pvmPreview = computed(() => {
   void route.fullPath;
@@ -346,6 +354,9 @@ const handleBitrixReturn = async () => {
 };
 
 onMounted(async () => {
+  // Публичная страница опроса не требует и не трогает Vibe-сессию.
+  if (isBareRoute.value) return;
+
   // Всегда заново — ранняя сессия из plugin может быть перетёрта SSR payload.
   await restoreSession();
 
