@@ -81,9 +81,58 @@ loaded.value = true;
 </script>
 
 <style scoped>
+/*
+ * Опросы (админка) — осознанное исключение из общего necroбрутализма платформы,
+ * ближе к референсу webask.io. См. комментарий в admin/surveys/index.vue и CHANGELOG.
+ */
 .survey-results {
+  --sv-accent: #4f6ef7;
+  --sv-accent-soft: rgba(79, 110, 247, 0.12);
+  --sv-border: #e5e5e8;
+  --sv-muted: #6b7280;
+  --sv-radius: 14px;
   display: grid;
   gap: 16px;
+}
+
+.survey-results .card {
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius);
+  box-shadow: none;
+  background: #fff;
+}
+
+.survey-results .card::before {
+  display: none;
+}
+
+.survey-results .section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.survey-results .muted {
+  font-size: 0.92rem;
+  color: var(--sv-muted);
+}
+
+.survey-results .button.ghost {
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 9px 20px;
+  border: 1px solid var(--sv-border);
+  color: var(--text);
+}
+
+.survey-results .button.ghost:hover {
+  background: #f7f7f8;
+  border-color: var(--sv-border);
+  color: var(--text);
+  transform: none;
 }
 
 .survey-results__head {
@@ -105,8 +154,8 @@ loaded.value = true;
 }
 
 .survey-stat-tile {
-  border: 1px solid var(--border-brutal);
-  border-radius: 10px;
+  border: 1px solid var(--sv-border);
+  border-radius: 12px;
   padding: 14px 20px;
   display: flex;
   flex-direction: column;
@@ -115,29 +164,32 @@ loaded.value = true;
 }
 
 .survey-stat-tile--accent {
-  background: var(--accent-lime);
+  background: var(--sv-accent-soft);
+  border-color: transparent;
 }
 
 .survey-stat-tile__value {
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .survey-stat-tile__label {
   font-size: 0.78rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--sv-muted);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .survey-results__q-title {
   margin: 0 0 4px;
-  font-size: 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .survey-results__answered {
   margin: 0 0 10px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+  color: var(--sv-muted);
 }
 
 .survey-bars {
@@ -153,30 +205,30 @@ loaded.value = true;
 }
 
 .survey-bar-row__label {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .survey-bar-row__track {
-  height: 10px;
-  background: var(--bg-elevated);
+  height: 8px;
+  background: #eceef2;
   border-radius: 4px;
   overflow: hidden;
 }
 
 .survey-bar-row__fill {
   height: 100%;
-  background: var(--hero-purple, #7451f4);
+  background: var(--sv-accent);
   border-radius: 4px;
   transition: width 0.3s ease;
 }
 
 .survey-bar-row__value {
-  font-size: 0.78rem;
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  color: var(--sv-muted);
   text-align: right;
 }
 
@@ -185,6 +237,6 @@ loaded.value = true;
   gap: 8px;
   margin: 0;
   padding-left: 18px;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 </style>

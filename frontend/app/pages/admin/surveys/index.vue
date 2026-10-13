@@ -107,6 +107,103 @@ const onDelete = async (s: AdminSurveyListItem) => {
 </script>
 
 <style scoped>
+/*
+ * Опросы (админка) — осознанное исключение из общего necroбрутализма платформы.
+ * По просьбе заказчика визуал этого раздела ближе к референсу webask.io:
+ * меньше рамок/теней, спокойная типографика, синий акцент вместо лайм/фиолета.
+ * Правки локальные (Vue scoped) — не трогают .card/.button/.pill/.table
+ * в остальной платформе. См. docs/CHANGELOG.md.
+ */
+.surveys-admin {
+  --sv-accent: #4f6ef7;
+  --sv-accent-hover: #3b5ce0;
+  --sv-accent-soft: rgba(79, 110, 247, 0.12);
+  --sv-border: #e5e5e8;
+  --sv-muted: #6b7280;
+  --sv-radius: 14px;
+}
+
+.surveys-admin .card {
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius);
+  box-shadow: none;
+  background: #fff;
+}
+
+.surveys-admin .card::before {
+  display: none;
+}
+
+.surveys-admin .section-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.surveys-admin .muted {
+  font-size: 0.92rem;
+  color: var(--sv-muted);
+}
+
+.surveys-admin .button {
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 9px 20px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.surveys-admin .button.primary {
+  background: var(--sv-accent);
+  border-color: var(--sv-accent);
+}
+
+.surveys-admin .button.primary:hover {
+  background: var(--sv-accent-hover);
+  border-color: var(--sv-accent-hover);
+  transform: none;
+}
+
+.surveys-admin .button.ghost {
+  border: 1px solid var(--sv-border);
+  color: var(--text);
+}
+
+.surveys-admin .button.ghost:hover {
+  background: #f7f7f8;
+  border-color: var(--sv-border);
+  color: var(--text);
+  transform: none;
+}
+
+.surveys-admin .pill {
+  border: none;
+  font-weight: 600;
+  font-size: 0.76rem;
+  text-transform: none;
+  background: #eceef2;
+  color: var(--sv-muted);
+}
+
+.surveys-admin .table th,
+.surveys-admin .table td {
+  border-bottom: 1px solid var(--sv-border);
+  font-size: 0.9rem;
+}
+
+.surveys-admin .table th {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.surveys-admin .table tbody tr:hover td {
+  background: #f7f7f8;
+}
+
 .surveys-admin__head {
   display: flex;
   align-items: flex-start;
@@ -120,7 +217,8 @@ const onDelete = async (s: AdminSurveyListItem) => {
 }
 
 .surveys-admin__title-link {
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 0.98rem;
   color: var(--text);
 }
 
@@ -131,15 +229,16 @@ const onDelete = async (s: AdminSurveyListItem) => {
 }
 
 .surveys-admin__status--draft {
-  background: var(--bg-elevated);
+  background: #eceef2;
 }
 
 .surveys-admin__status--published {
-  background: var(--accent-lime);
+  background: var(--sv-accent-soft);
+  color: var(--sv-accent);
 }
 
 .surveys-admin__status--closed {
-  background: var(--bg-elevated);
+  background: #eceef2;
   opacity: 0.7;
 }
 
@@ -150,6 +249,8 @@ const onDelete = async (s: AdminSurveyListItem) => {
 }
 
 .surveys-admin__delete:hover {
-  background: #fd81ff;
+  background: #fdecea;
+  border-color: #f1b4ac;
+  color: #c2402f;
 }
 </style>

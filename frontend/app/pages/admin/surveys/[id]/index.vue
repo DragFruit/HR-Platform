@@ -268,9 +268,83 @@ const copyLink = async () => {
 </script>
 
 <style scoped>
+/*
+ * Опросы (админка) — осознанное исключение из общего necroбрутализма платформы,
+ * ближе к референсу webask.io. См. комментарий в admin/surveys/index.vue и CHANGELOG.
+ */
 .survey-builder {
+  --sv-accent: #4f6ef7;
+  --sv-accent-hover: #3b5ce0;
+  --sv-accent-soft: rgba(79, 110, 247, 0.12);
+  --sv-border: #e5e5e8;
+  --sv-muted: #6b7280;
+  --sv-radius: 14px;
   display: grid;
   gap: 16px;
+}
+
+.survey-builder .card {
+  border: 1px solid var(--sv-border);
+  border-radius: var(--sv-radius);
+  box-shadow: none;
+  background: #fff;
+}
+
+.survey-builder .card::before {
+  display: none;
+}
+
+.survey-builder .section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.survey-builder .muted {
+  font-size: 0.92rem;
+  color: var(--sv-muted);
+}
+
+.survey-builder .button {
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 9px 20px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.survey-builder .button.primary {
+  background: var(--sv-accent);
+  border-color: var(--sv-accent);
+}
+
+.survey-builder .button.primary:hover {
+  background: var(--sv-accent-hover);
+  border-color: var(--sv-accent-hover);
+  transform: none;
+}
+
+.survey-builder .button.ghost {
+  border: 1px solid var(--sv-border);
+  color: var(--text);
+}
+
+.survey-builder .button.ghost:hover {
+  background: #f7f7f8;
+  border-color: var(--sv-border);
+  color: var(--text);
+  transform: none;
+}
+
+.survey-builder .pill {
+  border: none;
+  font-weight: 600;
+  font-size: 0.76rem;
+  text-transform: none;
+  background: #eceef2;
+  color: var(--sv-muted);
 }
 
 .survey-builder__head {
@@ -299,22 +373,29 @@ const copyLink = async () => {
 }
 
 .survey-builder__field-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--sv-muted);
 }
 
 .survey-builder__input,
 .survey-builder__textarea {
-  border: 1px solid var(--border-brutal);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.92rem;
+  border: 1px solid var(--sv-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
   font-family: var(--font-body);
   background: var(--bg-surface);
   color: var(--text);
   width: 100%;
   box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.survey-builder__input:focus,
+.survey-builder__textarea:focus {
+  outline: none;
+  border-color: var(--sv-accent);
 }
 
 .survey-builder__anon {
@@ -344,22 +425,23 @@ const copyLink = async () => {
 }
 
 .survey-builder__status--draft {
-  background: var(--bg-elevated);
+  background: #eceef2;
 }
 
 .survey-builder__status--published {
-  background: var(--accent-lime);
+  background: var(--sv-accent-soft);
+  color: var(--sv-accent);
 }
 
 .survey-builder__status--closed {
-  background: var(--bg-elevated);
+  background: #eceef2;
   opacity: 0.7;
 }
 
 .survey-q {
-  border: 1px solid var(--border-brutal);
-  border-radius: 10px;
-  padding: 14px;
+  border: 1px solid var(--sv-border);
+  border-radius: 12px;
+  padding: 16px;
   margin-bottom: 12px;
   display: grid;
   gap: 10px;
@@ -377,8 +459,8 @@ const copyLink = async () => {
 }
 
 .survey-q__type-select {
-  border: 1px solid var(--border-brutal);
-  border-radius: 8px;
+  border: 1px solid var(--sv-border);
+  border-radius: 10px;
   padding: 7px 10px;
   font-size: 0.85rem;
   background: var(--bg-surface);
