@@ -24,6 +24,12 @@ cache:
 
 .build:
   stage: build
+  variables:
+    # Nitro-сборка (минификация/бандлинг сервера) на shared-раннере падает в OOM (SIGKILL,
+    # "Killed" без кода ошибки) уже после успешных "Client built"/"Server built" — куча
+    # V8 разрастается без границ. Явный потолок заставляет V8 чаще собирать мусор
+    # вместо попытки выделить больше памяти, чем есть у раннера.
+    NODE_OPTIONS: "--max-old-space-size=2048"
   before_script:
     - cd frontend
     - npm ci
