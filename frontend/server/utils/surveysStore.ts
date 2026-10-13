@@ -2,7 +2,14 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { writeJsonAtomic } from './atomicJson';
 import type { Survey, SurveyQuestion, SurveyQuestionType, SurveyStatus } from '../../app/composables/useSurveys';
-import { SURVEY_QUESTION_TYPES, slugify } from '../../app/composables/useSurveys';
+import {
+  SURVEY_QUESTION_TYPES,
+  SMILEY_LABELS,
+  SMILEY_POINT_COUNTS,
+  NPS_DEFAULT_LOW_LABEL,
+  NPS_DEFAULT_HIGH_LABEL,
+  slugify
+} from '../../app/composables/useSurveys';
 
 export type SurveysStoreState = {
   surveys: Survey[];
@@ -41,6 +48,17 @@ function normalizeQuestion(raw: unknown): SurveyQuestion | null {
     const max = Number(r.scaleMax);
     q.scaleMin = Number.isFinite(min) ? min : 1;
     q.scaleMax = Number.isFinite(max) && max > (q.scaleMin ?? 1) ? max : 10;
+  }
+  if (type === 'smiley') {
+    const labels = Array.isArray(r.smileyLabels)
+      ? r.smileyLabels.map((l) => String(l || '').trim()).filter(Boolean)
+      : [];
+    const count = SMILEY_POINT_COUNTS.includes(labels.length as 3 | 5) ? labels.length : SMILEY_LABELS.length;
+    q.smileyLabels = labels.length === count ? labels : [...SMILEY_LABELS];
+  }
+  if (type === 'nps') {
+    q.npsLowLabel = String(r.npsLowLabel || '').trim() || NPS_DEFAULT_LOW_LABEL;
+    q.npsHighLabel = String(r.npsHighLabel || '').trim() || NPS_DEFAULT_HIGH_LABEL;
   }
   return q;
 }

@@ -61,7 +61,8 @@ function validateOne(question: SurveyQuestion, value: unknown): SurveyAnswerValu
     }
     case 'smiley': {
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 1 || n > 5) return undefined;
+      const max = question.smileyLabels?.length || 5;
+      if (!Number.isInteger(n) || n < 1 || n > max) return undefined;
       return n;
     }
     case 'nps': {

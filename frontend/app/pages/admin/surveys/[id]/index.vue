@@ -63,7 +63,7 @@
         <div v-for="(q, idx) in questions" :key="q.id" class="survey-q">
           <div class="survey-q__head">
             <span class="survey-q__index">{{ idx + 1 }}</span>
-            <select v-model="q.type" class="survey-q__type-select">
+            <select v-model="q.type" class="survey-q__type-select" @change="onTypeChange(q)">
               <option v-for="t in SURVEY_QUESTION_TYPES" :key="t" :value="t">
                 {{ SURVEY_QUESTION_TYPE_LABELS[t] }}
               </option>
@@ -93,8 +93,14 @@
             :placeholder="q.type === 'info' ? 'Текст блока' : 'Текст вопроса'"
           />
 
+          <!-- single/multi: редактируемые варианты + визуальный radio/checkbox -->
           <div v-if="q.type === 'single' || q.type === 'multi'" class="survey-q__options">
             <div v-for="(opt, oIdx) in q.options" :key="oIdx" class="survey-q__option-row">
+              <span
+                class="survey-q__option-icon"
+                :class="q.type === 'single' ? 'is-radio' : 'is-checkbox'"
+                aria-hidden="true"
+              />
               <input
                 v-model="q.options![oIdx]"
                 type="text"
@@ -113,16 +119,85 @@
             <button type="button" class="button ghost" @click="addOption(q)">+ Вариант</button>
           </div>
 
-          <div v-else-if="q.type === 'scale'" class="survey-q__scale-config">
-            <label>
-              От
-              <input v-model.number="q.scaleMin" type="number" class="survey-builder__input survey-q__scale-input" />
-            </label>
-            <label>
-              До
-              <input v-model.number="q.scaleMax" type="number" class="survey-builder__input survey-q__scale-input" />
-            </label>
+          <!-- yes/no: превью как на публичной странице, вариантов фиксировано -->
+          <div v-else-if="q.type === 'yesno'" class="survey-q__pills">
+            <span class="survey-q__pill">Да</span>
+            <span class="survey-q__pill">Нет</span>
           </div>
+
+          <!-- smiley: живое превью смайлов + редактируемые подписи + число точек -->
+          <div v-else-if="q.type === 'smiley'" class="survey-q__smiley">
+            <div class="survey-q__smiley-count">
+              <span class="survey-q__field-label-inline">Точек:</span>
+              <button
+                v-for="c in SMILEY_POINT_COUNTS"
+                :key="c"
+                type="button"
+                class="button ghost survey-q__count-btn"
+                :class="{ 'is-active': (q.smileyLabels?.length ?? 5) === c }"
+                @click="setSmileyCount(q, c)"
+              >
+                {{ c }}
+              </button>
+            </div>
+            <div class="survey-q__smiley-row">
+              <div v-for="(label, sIdx) in q.smileyLabels" :key="sIdx" class="survey-q__smiley-item">
+                <span class="survey-q__smiley-face">{{ smileyEmojiAt(sIdx, q.smileyLabels!.length) }}</span>
+                <input
+                  v-model="q.smileyLabels![sIdx]"
+                  type="text"
+                  class="survey-builder__input survey-q__smiley-label-input"
+                  placeholder="Подпись"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- nps: превью шкалы 0..10 + редактируемые подписи краёв -->
+          <div v-else-if="q.type === 'nps'" class="survey-q__scale-preview">
+            <div class="survey-q__scale-row">
+              <span v-for="n in 11" :key="n - 1" class="survey-q__scale-chip">{{ n - 1 }}</span>
+            </div>
+            <div class="survey-q__nps-labels">
+              <input v-model="q.npsLowLabel" type="text" class="survey-builder__input" placeholder="Подпись для 0" />
+              <input v-model="q.npsHighLabel" type="text" class="survey-builder__input" placeholder="Подпись для 10" />
+            </div>
+          </div>
+
+          <!-- scale: настройка границ + превью ряда значений -->
+          <div v-else-if="q.type === 'scale'" class="survey-q__scale-preview">
+            <div class="survey-q__scale-config">
+              <label>
+                От
+                <input v-model.number="q.scaleMin" type="number" class="survey-builder__input survey-q__scale-input" />
+              </label>
+              <label>
+                До
+                <input v-model.number="q.scaleMax" type="number" class="survey-builder__input survey-q__scale-input" />
+              </label>
+            </div>
+            <div v-if="scaleNumbers(q).length <= 25" class="survey-q__scale-row">
+              <span v-for="n in scaleNumbers(q)" :key="n" class="survey-q__scale-chip">{{ n }}</span>
+            </div>
+          </div>
+
+          <!-- короткий текст: превью однострочного поля -->
+          <input
+            v-else-if="q.type === 'text_short'"
+            type="text"
+            class="survey-builder__input survey-q__preview-disabled"
+            placeholder="Короткий текстовый ответ"
+            disabled
+          />
+
+          <!-- длинный текст: превью textarea -->
+          <textarea
+            v-else-if="q.type === 'text_long'"
+            class="survey-builder__textarea survey-q__preview-disabled"
+            rows="3"
+            placeholder="Длинный текстовый ответ"
+            disabled
+          />
 
           <label v-if="q.type !== 'info'" class="survey-q__required">
             <input v-model="q.required" type="checkbox" /> Обязательный вопрос
@@ -156,6 +231,12 @@
 import {
   SURVEY_QUESTION_TYPES,
   SURVEY_QUESTION_TYPE_LABELS,
+  SMILEY_LABELS,
+  SMILEY_POINT_COUNTS,
+  NPS_DEFAULT_LOW_LABEL,
+  NPS_DEFAULT_HIGH_LABEL,
+  smileyEmojiAt,
+  resizeSmileyLabels,
   statusLabel,
   defaultQuestionForType,
   type Survey,
@@ -182,7 +263,14 @@ const applySurvey = (s: Survey) => {
   title.value = s.title;
   description.value = s.description || '';
   anonymous.value = s.anonymous;
-  questions.value = s.questions.map((q) => ({ ...q, options: q.options ? [...q.options] : undefined }));
+  questions.value = s.questions.map((q) => ({
+    ...q,
+    options: q.options ? [...q.options] : undefined,
+    // Бэкфилл для опросов, созданных до появления этих полей.
+    smileyLabels: q.type === 'smiley' ? (q.smileyLabels?.length ? [...q.smileyLabels] : [...SMILEY_LABELS]) : undefined,
+    npsLowLabel: q.type === 'nps' ? q.npsLowLabel || NPS_DEFAULT_LOW_LABEL : undefined,
+    npsHighLabel: q.type === 'nps' ? q.npsHighLabel || NPS_DEFAULT_HIGH_LABEL : undefined
+  }));
 };
 
 const result = await fetchOne(id);
@@ -222,6 +310,39 @@ const addOption = (q: SurveyQuestion) => {
 const removeOption = (q: SurveyQuestion, oIdx: number) => {
   if (!q.options || q.options.length <= 2) return;
   q.options.splice(oIdx, 1);
+};
+
+// При смене типа существующего вопроса — заполняем недостающие поля под новый тип
+// (текст/required сохраняем, остальное из defaultQuestionForType, где не задано).
+const onTypeChange = (q: SurveyQuestion) => {
+  const defaults = defaultQuestionForType(q.type);
+  if ((q.type === 'single' || q.type === 'multi') && !q.options?.length) {
+    q.options = [...(defaults.options || ['Вариант 1', 'Вариант 2'])];
+  }
+  if (q.type === 'scale' && (q.scaleMin === undefined || q.scaleMax === undefined)) {
+    q.scaleMin = defaults.scaleMin ?? 1;
+    q.scaleMax = defaults.scaleMax ?? 10;
+  }
+  if (q.type === 'smiley' && !q.smileyLabels?.length) {
+    q.smileyLabels = [...SMILEY_LABELS];
+  }
+  if (q.type === 'nps') {
+    if (!q.npsLowLabel) q.npsLowLabel = NPS_DEFAULT_LOW_LABEL;
+    if (!q.npsHighLabel) q.npsHighLabel = NPS_DEFAULT_HIGH_LABEL;
+  }
+};
+
+const setSmileyCount = (q: SurveyQuestion, count: number) => {
+  q.smileyLabels = resizeSmileyLabels(q.smileyLabels || [...SMILEY_LABELS], count);
+};
+
+const scaleNumbers = (q: SurveyQuestion): number[] => {
+  const min = q.scaleMin ?? 1;
+  const max = q.scaleMax ?? 10;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) return [];
+  const out: number[] = [];
+  for (let i = min; i <= max; i += 1) out.push(i);
+  return out;
 };
 
 const onSave = async () => {
@@ -491,6 +612,96 @@ const copyLink = async () => {
   flex: 1;
 }
 
+.survey-q__option-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--sv-muted);
+  box-sizing: border-box;
+}
+
+.survey-q__option-icon.is-radio {
+  border-radius: 50%;
+}
+
+.survey-q__option-icon.is-checkbox {
+  border-radius: 4px;
+}
+
+.survey-q__pills {
+  display: flex;
+  gap: 10px;
+}
+
+.survey-q__pill {
+  border: 1px solid var(--sv-border);
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--sv-muted);
+  background: #f7f7f8;
+}
+
+.survey-q__field-label-inline {
+  font-size: 0.82rem;
+  color: var(--sv-muted);
+  margin-right: 4px;
+}
+
+.survey-q__smiley {
+  display: grid;
+  gap: 10px;
+}
+
+.survey-q__smiley-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.survey-q__count-btn {
+  padding: 5px 12px !important;
+  font-size: 0.82rem !important;
+}
+
+.survey-q__count-btn.is-active {
+  background: var(--sv-accent-soft);
+  border-color: var(--sv-accent);
+  color: var(--sv-accent);
+}
+
+.survey-q__smiley-row {
+  display: flex;
+  gap: 8px;
+}
+
+.survey-q__smiley-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.survey-q__smiley-face {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.survey-q__smiley-label-input {
+  width: 100%;
+  padding: 6px 8px !important;
+  font-size: 0.78rem !important;
+  text-align: center;
+}
+
+.survey-q__scale-preview {
+  display: grid;
+  gap: 10px;
+}
+
 .survey-q__scale-config {
   display: flex;
   gap: 16px;
@@ -500,6 +711,40 @@ const copyLink = async () => {
 .survey-q__scale-input {
   width: 70px;
   margin-left: 6px;
+}
+
+.survey-q__scale-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.survey-q__scale-chip {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sv-border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--sv-muted);
+  background: #f7f7f8;
+}
+
+.survey-q__nps-labels {
+  display: flex;
+  gap: 10px;
+}
+
+.survey-q__nps-labels .survey-builder__input {
+  flex: 1;
+}
+
+.survey-q__preview-disabled {
+  background: #f7f7f8;
+  color: var(--sv-muted);
+  cursor: default;
 }
 
 .survey-q__required {

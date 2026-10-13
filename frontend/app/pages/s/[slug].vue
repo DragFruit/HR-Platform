@@ -67,15 +67,15 @@
             <!-- smiley -->
             <div v-else-if="q.type === 'smiley'" class="pub-q__smiley">
               <button
-                v-for="(label, idx) in SMILEY_LABELS"
-                :key="label"
+                v-for="(label, idx) in smileyLabelsFor(q)"
+                :key="idx"
                 type="button"
                 class="pub-q__smiley-btn"
                 :class="{ 'is-active': answers[q.id] === idx + 1 }"
                 :aria-label="label"
                 @click="answers[q.id] = idx + 1"
               >
-                <span class="pub-q__smiley-face">{{ SMILEY_EMOJI[idx] }}</span>
+                <span class="pub-q__smiley-face">{{ smileyEmojiAt(idx, smileyLabelsFor(q).length) }}</span>
                 <span class="pub-q__smiley-label">{{ label }}</span>
               </button>
             </div>
@@ -93,8 +93,8 @@
                 {{ n - 1 }}
               </button>
               <div class="pub-q__scale-hints">
-                <span>Точно не порекомендую</span>
-                <span>Точно порекомендую</span>
+                <span>{{ q.npsLowLabel || NPS_DEFAULT_LOW_LABEL }}</span>
+                <span>{{ q.npsHighLabel || NPS_DEFAULT_HIGH_LABEL }}</span>
               </div>
             </div>
 
@@ -144,9 +144,16 @@
 
 <script setup lang="ts">
 import type { SurveyAnswerValue, SurveyQuestion } from '~/composables/useSurveys';
-import { SMILEY_LABELS } from '~/composables/useSurveys';
+import {
+  SMILEY_LABELS,
+  smileyEmojiAt,
+  NPS_DEFAULT_LOW_LABEL,
+  NPS_DEFAULT_HIGH_LABEL
+} from '~/composables/useSurveys';
 
-const SMILEY_EMOJI = ['😞', '🙁', '😐', '🙂', '😄'];
+function smileyLabelsFor(q: SurveyQuestion): string[] {
+  return q.smileyLabels?.length ? q.smileyLabels : [...SMILEY_LABELS];
+}
 
 const route = useRoute();
 const slug = String(route.params.slug || '');

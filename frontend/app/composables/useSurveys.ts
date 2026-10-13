@@ -56,6 +56,38 @@ export const DISTRIBUTION_TYPES: SurveyQuestionType[] = [
 
 export const SMILEY_LABELS = ['Очень плохо', 'Плохо', 'Нормально', 'Хорошо', 'Отлично'] as const;
 
+/** Базовая палитра эмодзи для смайл-рейтинга (от 5 точек); для меньшего числа точек берём подмножество. */
+export const SMILEY_EMOJI_BASE = ['😞', '🙁', '😐', '🙂', '😄'];
+
+/** Эмодзи для точки idx (0-based) при общем количестве точек count. */
+export function smileyEmojiAt(idx: number, count: number): string {
+  if (count <= 1) return SMILEY_EMOJI_BASE[2];
+  if (count === SMILEY_EMOJI_BASE.length) return SMILEY_EMOJI_BASE[idx] ?? SMILEY_EMOJI_BASE[0];
+  const pos = Math.round((idx * (SMILEY_EMOJI_BASE.length - 1)) / (count - 1));
+  return SMILEY_EMOJI_BASE[pos] ?? SMILEY_EMOJI_BASE[0];
+}
+
+/** Разрешённое число точек смайл-рейтинга (MVP: 3 или 5). */
+export const SMILEY_POINT_COUNTS = [3, 5] as const;
+
+/**
+ * Пересчитать подписи смайлов при смене количества точек — не теряем текст там, где
+ * позиции логически совпадают (например, 5→3 берёт крайние и середину).
+ */
+export function resizeSmileyLabels(current: string[], newCount: number): string[] {
+  const defaults = [...SMILEY_LABELS];
+  const src = current.length ? current : defaults;
+  const result: string[] = [];
+  for (let i = 0; i < newCount; i += 1) {
+    const oldIdx = src.length > 1 ? Math.round((i * (src.length - 1)) / (newCount - 1)) : 0;
+    result.push(src[oldIdx] || defaults[Math.min(i, defaults.length - 1)] || `Отметка ${i + 1}`);
+  }
+  return result;
+}
+
+export const NPS_DEFAULT_LOW_LABEL = 'Точно не порекомендую';
+export const NPS_DEFAULT_HIGH_LABEL = 'Точно порекомендую';
+
 export type SurveyQuestion = {
   id: string;
   type: SurveyQuestionType;
@@ -66,6 +98,11 @@ export type SurveyQuestion = {
   /** Для scale — нижняя/верхняя граница (по умолчанию 1..10). */
   scaleMin?: number;
   scaleMax?: number;
+  /** Для smiley — подписи под точками, длина = число точек (3 или 5). */
+  smileyLabels?: string[];
+  /** Для nps — подписи крайних значений шкалы 0 и 10. */
+  npsLowLabel?: string;
+  npsHighLabel?: string;
 };
 
 export type Survey = {
@@ -121,6 +158,16 @@ export function defaultQuestionForType(type: SurveyQuestionType): Omit<SurveyQue
       return { type, text: '', required: true, options: ['Вариант 1', 'Вариант 2'] };
     case 'scale':
       return { type, text: '', required: true, scaleMin: 1, scaleMax: 10 };
+    case 'smiley':
+      return { type, text: '', required: true, smileyLabels: [...SMILEY_LABELS] };
+    case 'nps':
+      return {
+        type,
+        text: '',
+        required: true,
+        npsLowLabel: NPS_DEFAULT_LOW_LABEL,
+        npsHighLabel: NPS_DEFAULT_HIGH_LABEL
+      };
     default:
       return { type, text: '', required: type !== 'info' };
   }

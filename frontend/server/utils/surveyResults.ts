@@ -87,7 +87,8 @@ export function buildSurveyResults(survey: Survey, responses: SurveyResponse[]):
       }
       if (question.type === 'smiley') {
         const n = Number(value);
-        bump(SMILEY_LABELS[n - 1] || String(n));
+        const labels = question.smileyLabels?.length ? question.smileyLabels : [...SMILEY_LABELS];
+        bump(labels[n - 1] || String(n));
         sum += n;
         numericCount += 1;
         continue;
@@ -111,7 +112,7 @@ export function buildSurveyResults(survey: Survey, responses: SurveyResponse[]):
     } else if (question.type === 'yesno') {
       labelOrder = ['Да', 'Нет'];
     } else if (question.type === 'smiley') {
-      labelOrder = [...SMILEY_LABELS];
+      labelOrder = question.smileyLabels?.length ? [...question.smileyLabels] : [...SMILEY_LABELS];
     } else {
       const min = question.type === 'scale' ? question.scaleMin ?? 1 : 0;
       const max = question.type === 'scale' ? question.scaleMax ?? 10 : 10;
