@@ -44,22 +44,7 @@
             <td>{{ s.responseCount }}</td>
             <td>{{ s.createdAt }}</td>
             <td class="surveys-admin__actions">
-              <NuxtLink class="button ghost" :to="`/admin/surveys/${s.id}`">Редактировать</NuxtLink>
-              <NuxtLink class="button ghost" :to="`/admin/surveys/${s.id}/results`">Результаты</NuxtLink>
-              <button
-                v-if="s.status !== 'published'"
-                class="button ghost"
-                type="button"
-                @click="onPublish(s)"
-              >
-                Опубликовать
-              </button>
-              <button v-else class="button ghost" type="button" @click="onUnpublish(s)">
-                Остановить
-              </button>
-              <button class="button ghost surveys-admin__delete" type="button" @click="onDelete(s)">
-                Удалить
-              </button>
+              <SurveysActionsMenu :items="actionItems(s)" trigger-label="Действия с опросом" @select="(key) => onAction(key, s)" />
             </td>
           </tr>
         </tbody>
@@ -103,6 +88,21 @@ const onUnpublish = async (s: AdminSurveyListItem) => {
 const onDelete = async (s: AdminSurveyListItem) => {
   if (!window.confirm(`Удалить опрос «${s.title}»? Ответы тоже будут удалены.`)) return;
   await deleteSurvey(s.id);
+};
+
+const actionItems = (s: AdminSurveyListItem) => [
+  { key: 'edit', label: 'Редактировать' },
+  { key: 'results', label: 'Результаты' },
+  { key: s.status !== 'published' ? 'publish' : 'unpublish', label: s.status !== 'published' ? 'Опубликовать' : 'Остановить' },
+  { key: 'delete', label: 'Удалить', danger: true, dividerBefore: true }
+];
+
+const onAction = async (key: string, s: AdminSurveyListItem) => {
+  if (key === 'edit') return router.push(`/admin/surveys/${s.id}`);
+  if (key === 'results') return router.push(`/admin/surveys/${s.id}/results`);
+  if (key === 'publish') return onPublish(s);
+  if (key === 'unpublish') return onUnpublish(s);
+  if (key === 'delete') return onDelete(s);
 };
 </script>
 
@@ -242,15 +242,13 @@ const onDelete = async (s: AdminSurveyListItem) => {
   opacity: 0.7;
 }
 
-.surveys-admin__actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+.surveys-admin .table th:last-child,
+.surveys-admin .table td:last-child {
+  width: 44px;
 }
 
-.surveys-admin__delete:hover {
-  background: #fdecea;
-  border-color: #f1b4ac;
-  color: #c2402f;
+.surveys-admin__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

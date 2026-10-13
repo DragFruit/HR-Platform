@@ -69,20 +69,32 @@
               </option>
             </select>
             <div class="survey-q__reorder">
-              <button type="button" class="button ghost" :disabled="idx === 0" @click="moveUp(idx)">
+              <button
+                type="button"
+                class="button ghost survey-q__icon-btn"
+                :disabled="idx === 0"
+                aria-label="Поднять вопрос"
+                @click="moveUp(idx)"
+              >
                 ↑
               </button>
               <button
                 type="button"
-                class="button ghost"
+                class="button ghost survey-q__icon-btn"
                 :disabled="idx === questions.length - 1"
+                aria-label="Опустить вопрос"
                 @click="moveDown(idx)"
               >
                 ↓
               </button>
             </div>
-            <button type="button" class="button ghost survey-q__remove" @click="removeQuestion(idx)">
-              Удалить
+            <button
+              type="button"
+              class="button ghost survey-q__icon-btn survey-q__remove"
+              aria-label="Удалить вопрос"
+              @click="removeQuestion(idx)"
+            >
+              ×
             </button>
           </div>
 
@@ -593,8 +605,26 @@ const copyLink = async () => {
   gap: 4px;
 }
 
+.survey-q__icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .survey-q__remove {
   margin-left: auto;
+  color: #c2402f;
+}
+
+.survey-q__remove:hover {
+  background: #fdecea;
+  border-color: #f1b4ac;
+  color: #c2402f;
 }
 
 .survey-q__options {
