@@ -318,7 +318,7 @@ const ariaLabel = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15em;
+  gap: 0.4em;
   width: max-content;
   max-width: 9.5em;
   padding: 0.22em 0.5em 0.28em;
