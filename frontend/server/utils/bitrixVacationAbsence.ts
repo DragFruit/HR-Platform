@@ -129,7 +129,14 @@ const isElementAlreadyExistsError = (message: string): boolean =>
 const isCodeFilterNotAllowed = (message: string): boolean =>
   /filter field not allowed:\s*code/i.test(message);
 
-let cachedAbsenceIblockId: number | null | undefined;
+/**
+ * Кешируем только УСПЕШНЫЙ результат (реальный positive ID), на весь процесс.
+ * Неудачу (сетевой сбой/ошибка lists.get/инфоблок не найден) НЕ кешируем —
+ * иначе один транзиентный сбой навсегда «залипает» в cachedAbsenceIblockId = null,
+ * и весь синк отпусков→Bitrix для ВСЕХ сотрудников ломается до перезапуска процесса.
+ * При неудаче возвращаем null на этот вызов, следующий вызов пробует снова (env + lists.get).
+ */
+let cachedAbsenceIblockId: number | undefined;
 
 export async function resolveAbsenceIblockId(): Promise<number | null> {
   if (cachedAbsenceIblockId !== undefined) return cachedAbsenceIblockId;
@@ -146,12 +153,14 @@ export async function resolveAbsenceIblockId(): Promise<number | null> {
     });
     const found = lists.find((row) => /график.*отсутств/i.test(String(row.NAME || '')));
     const id = Number(found?.ID);
-    cachedAbsenceIblockId = Number.isFinite(id) && id > 0 ? id : null;
+    if (Number.isFinite(id) && id > 0) {
+      cachedAbsenceIblockId = id;
+      return id;
+    }
+    return null;
   } catch {
-    cachedAbsenceIblockId = null;
+    return null;
   }
-
-  return cachedAbsenceIblockId;
 }
 
 type AbsenceListElement = {
