@@ -57,6 +57,11 @@ const close = () => {
   open.value = false;
 };
 
+const PANEL_WIDTH = 240;
+const PANEL_MAX_HEIGHT = 320;
+const GAP = 6;
+const MARGIN = 8;
+
 const toggle = (evt: MouseEvent) => {
   if (open.value) {
     close();
@@ -64,16 +69,38 @@ const toggle = (evt: MouseEvent) => {
   }
   const btn = evt.currentTarget as HTMLElement;
   const rect = btn.getBoundingClientRect();
-  const panelWidth = 240;
-  let left = rect.left + rect.width / 2 - panelWidth / 2;
-  if (left < 8) left = 8;
-  const viewportRight = window.innerWidth - 8;
-  if (left + panelWidth > viewportRight) left = viewportRight - panelWidth;
+
+  let left = rect.left + rect.width / 2 - PANEL_WIDTH / 2;
+  if (left < MARGIN) left = MARGIN;
+  const viewportRight = window.innerWidth - MARGIN;
+  if (left + PANEL_WIDTH > viewportRight) left = viewportRight - PANEL_WIDTH;
+
+  // Коллизия с нижним краем вьюпорта: если снизу не хватает места под полный
+  // список типов, но сверху его больше — открываем панель вверх от кнопки.
+  // В любом случае высота панели клэмпится под доступное пространство,
+  // внутренний скролл (overflow-y: auto в CSS) добирает остаток.
+  const spaceBelow = window.innerHeight - rect.bottom - GAP - MARGIN;
+  const spaceAbove = rect.top - GAP - MARGIN;
+
+  let top: number;
+  let maxHeight: number;
+  if (spaceBelow >= PANEL_MAX_HEIGHT || spaceBelow >= spaceAbove) {
+    maxHeight = Math.max(160, Math.min(PANEL_MAX_HEIGHT, spaceBelow));
+    top = rect.bottom + GAP;
+    const maxTop = window.innerHeight - MARGIN - maxHeight;
+    if (top > maxTop) top = Math.max(MARGIN, maxTop);
+  } else {
+    maxHeight = Math.max(160, Math.min(PANEL_MAX_HEIGHT, spaceAbove));
+    top = rect.top - GAP - maxHeight;
+    if (top < MARGIN) top = MARGIN;
+  }
+
   panelStyle.value = {
     position: 'fixed',
-    top: `${rect.bottom + 6}px`,
+    top: `${top}px`,
     left: `${left}px`,
-    width: `${panelWidth}px`
+    width: `${PANEL_WIDTH}px`,
+    maxHeight: `${maxHeight}px`
   };
   open.value = true;
 };

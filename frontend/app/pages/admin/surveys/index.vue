@@ -121,6 +121,8 @@ const onAction = async (key: string, s: AdminSurveyListItem) => {
   --sv-border: #e5e5e8;
   --sv-muted: #6b7280;
   --sv-radius: 14px;
+  display: grid;
+  gap: 12px;
 }
 
 .surveys-admin .card {
@@ -128,6 +130,10 @@ const onAction = async (key: string, s: AdminSurveyListItem) => {
   border-radius: var(--sv-radius);
   box-shadow: none;
   background: #fff;
+}
+
+.surveys-admin .card.section-card {
+  padding: 16px 20px;
 }
 
 .surveys-admin .card::before {

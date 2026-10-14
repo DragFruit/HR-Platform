@@ -96,7 +96,7 @@ loaded.value = true;
   --sv-muted: #6b7280;
   --sv-radius: 14px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .survey-results .card {
@@ -104,6 +104,10 @@ loaded.value = true;
   border-radius: var(--sv-radius);
   box-shadow: none;
   background: #fff;
+}
+
+.survey-results .card.section-card {
+  padding: 16px 20px;
 }
 
 .survey-results .card::before {
@@ -143,7 +147,7 @@ loaded.value = true;
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
@@ -160,7 +164,7 @@ loaded.value = true;
 .survey-stat-tile {
   border: 1px solid var(--sv-border);
   border-radius: 12px;
-  padding: 14px 20px;
+  padding: 10px 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;

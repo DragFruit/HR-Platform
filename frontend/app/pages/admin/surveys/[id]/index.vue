@@ -465,7 +465,7 @@ const copyLink = async () => {
   --sv-muted: #6b7280;
   --sv-radius: 14px;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .survey-builder .card {
@@ -473,6 +473,10 @@ const copyLink = async () => {
   border-radius: var(--sv-radius);
   box-shadow: none;
   background: #fff;
+}
+
+.survey-builder .card.section-card {
+  padding: 16px 20px;
 }
 
 .survey-builder .card::before {
@@ -553,8 +557,8 @@ const copyLink = async () => {
 
 .survey-builder__field {
   display: grid;
-  gap: 6px;
-  margin-top: 14px;
+  gap: 4px;
+  margin-top: 10px;
 }
 
 .survey-builder__field-label {
@@ -567,7 +571,7 @@ const copyLink = async () => {
 .survey-builder__textarea {
   border: 1px solid var(--sv-border);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-size: 0.95rem;
   font-family: var(--font-body);
   background: var(--bg-surface);
@@ -575,6 +579,12 @@ const copyLink = async () => {
   width: 100%;
   box-sizing: border-box;
   transition: border-color 0.15s ease;
+}
+
+.survey-builder__textarea {
+  min-height: 0;
+  line-height: 1.4;
+  resize: vertical;
 }
 
 .survey-builder__input:focus,
@@ -587,13 +597,13 @@ const copyLink = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 10px;
   font-size: 0.88rem;
   font-weight: 600;
 }
 
 .survey-builder__link {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .survey-builder__link-row {
@@ -626,10 +636,10 @@ const copyLink = async () => {
 .survey-q {
   border: 1px solid var(--sv-border);
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .survey-q__head {
@@ -863,7 +873,7 @@ const copyLink = async () => {
 .survey-builder__add-trigger-row {
   display: flex;
   justify-content: center;
-  padding: 2px 0 12px;
+  padding: 0 0 8px;
 }
 
 .survey-builder__save-bar {
