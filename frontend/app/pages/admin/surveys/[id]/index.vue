@@ -15,6 +15,9 @@
             <NuxtLink class="button ghost" :to="`/admin/surveys/${survey.id}/results`">
               Результаты
             </NuxtLink>
+            <a class="button ghost" :href="`/admin/surveys/${survey.id}/preview`" target="_blank" rel="noopener">
+              Просмотр
+            </a>
             <button
               v-if="survey.status !== 'published'"
               class="button primary"
@@ -60,7 +63,8 @@
           Добавьте первый вопрос ниже.
         </div>
 
-        <div v-for="(q, idx) in questions" :key="q.id" class="survey-q">
+        <template v-for="(q, idx) in questions" :key="q.id">
+        <div class="survey-q">
           <div class="survey-q__head">
             <span class="survey-q__index">{{ idx + 1 }}</span>
             <select v-model="q.type" class="survey-q__type-select" @change="onTypeChange(q)">
@@ -74,27 +78,48 @@
                 class="button ghost survey-q__icon-btn"
                 :disabled="idx === 0"
                 aria-label="Поднять вопрос"
+                title="Поднять вопрос"
                 @click="moveUp(idx)"
               >
-                ↑
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true">
+                  <path d="M10 15V5M5.5 9.5 10 5l4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
               </button>
               <button
                 type="button"
                 class="button ghost survey-q__icon-btn"
                 :disabled="idx === questions.length - 1"
                 aria-label="Опустить вопрос"
+                title="Опустить вопрос"
                 @click="moveDown(idx)"
               >
-                ↓
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true">
+                  <path d="M10 5v10M5.5 10.5 10 15l4.5-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
               </button>
             </div>
             <button
               type="button"
+              class="button ghost survey-q__icon-btn"
+              aria-label="Дублировать вопрос"
+              title="Дублировать вопрос"
+              @click="duplicateQuestion(idx)"
+            >
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true">
+                <rect x="3.5" y="5.5" width="10" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
+                <path d="M7 5.5V4.5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+            </button>
+            <button
+              type="button"
               class="button ghost survey-q__icon-btn survey-q__remove"
               aria-label="Удалить вопрос"
+              title="Удалить вопрос"
               @click="removeQuestion(idx)"
             >
-              ×
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" aria-hidden="true">
+                <path d="M4.5 6h11M8.25 6V4.75a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1V6M6 6l.6 9.2a1.5 1.5 0 0 0 1.5 1.4h3.8a1.5 1.5 0 0 0 1.5-1.4L14 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </button>
           </div>
 
@@ -121,14 +146,29 @@
               />
               <button
                 type="button"
-                class="button ghost"
+                class="button ghost survey-q__option-remove"
                 :disabled="(q.options?.length ?? 0) <= 2"
+                aria-label="Удалить вариант"
+                title="Удалить вариант"
                 @click="removeOption(q, oIdx)"
               >
-                ×
+                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" aria-hidden="true">
+                  <path d="M5 5l10 10M15 5 5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                </svg>
               </button>
             </div>
-            <button type="button" class="button ghost" @click="addOption(q)">+ Вариант</button>
+            <button
+              type="button"
+              class="button ghost survey-q__option-add"
+              aria-label="Добавить вариант"
+              title="Добавить вариант"
+              @click="addOption(q)"
+            >
+              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" aria-hidden="true">
+                <path d="M10 4.5v11M4.5 10h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              </svg>
+              <span>Вариант</span>
+            </button>
           </div>
 
           <!-- yes/no: превью как на публичной странице, вариантов фиксировано -->
@@ -216,13 +256,13 @@
           </label>
         </div>
 
-        <div class="survey-builder__add-row">
-          <select v-model="newQuestionType" class="survey-q__type-select">
-            <option v-for="t in SURVEY_QUESTION_TYPES" :key="t" :value="t">
-              {{ SURVEY_QUESTION_TYPE_LABELS[t] }}
-            </option>
-          </select>
-          <button type="button" class="button primary" @click="addQuestion">+ Добавить вопрос</button>
+        <div class="survey-builder__add-trigger-row">
+          <SurveysTypePicker @select="(t) => insertQuestionAfter(idx, t)" />
+        </div>
+        </template>
+
+        <div v-if="!questions.length" class="survey-builder__add-trigger-row">
+          <SurveysTypePicker @select="(t) => insertQuestionAfter(-1, t)" />
         </div>
       </section>
 
@@ -267,7 +307,6 @@ const title = ref('');
 const description = ref('');
 const anonymous = ref(false);
 const questions = ref<SurveyQuestion[]>([]);
-const newQuestionType = ref<SurveyQuestionType>('single');
 const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
 const applySurvey = (s: Survey) => {
@@ -294,8 +333,21 @@ const genId = () => {
   return `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const addQuestion = () => {
-  questions.value.push({ id: genId(), ...defaultQuestionForType(newQuestionType.value) });
+// idx = -1 вставляет в начало списка (пустой опрос или «+» над первым вопросом).
+const insertQuestionAfter = (idx: number, type: SurveyQuestionType) => {
+  questions.value.splice(idx + 1, 0, { id: genId(), ...defaultQuestionForType(type) });
+};
+
+const duplicateQuestion = (idx: number) => {
+  const q = questions.value[idx];
+  if (!q) return;
+  const clone: SurveyQuestion = {
+    ...q,
+    id: genId(),
+    options: q.options ? [...q.options] : undefined,
+    smileyLabels: q.smileyLabels ? [...q.smileyLabels] : undefined
+  };
+  questions.value.splice(idx + 1, 0, clone);
 };
 
 const removeQuestion = (idx: number) => {
@@ -632,6 +684,26 @@ const copyLink = async () => {
   gap: 6px;
 }
 
+.survey-q__option-remove {
+  width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--sv-muted);
+}
+
+.survey-q__option-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 6px 12px !important;
+  font-size: 0.82rem !important;
+}
+
 .survey-q__option-row {
   display: flex;
   gap: 8px;
@@ -788,10 +860,10 @@ const copyLink = async () => {
   margin-bottom: 12px;
 }
 
-.survey-builder__add-row {
+.survey-builder__add-trigger-row {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  justify-content: center;
+  padding: 2px 0 12px;
 }
 
 .survey-builder__save-bar {
