@@ -138,13 +138,18 @@ const isCodeFilterNotAllowed = (message: string): boolean =>
  */
 let cachedAbsenceIblockId: number | undefined;
 
-export async function resolveAbsenceIblockId(): Promise<number | null> {
-  if (cachedAbsenceIblockId !== undefined) return cachedAbsenceIblockId;
+/**
+ * Возвращает ID инфоблока + (при неудаче) НАСТОЯЩУЮ причину — реальный ответ Bitrix
+ * (lists.get вернул ошибку/пустой список/нет совпадения по имени), а не шаблонную
+ * фразу. Вызывающий код вплетает `error` в итоговое сообщение, показанное админу.
+ */
+export async function resolveAbsenceIblockId(): Promise<{ id: number | null; error?: string }> {
+  if (cachedAbsenceIblockId !== undefined) return { id: cachedAbsenceIblockId };
 
   const fromEnv = Number(process.env.BITRIX_ABSENCE_IBLOCK_ID);
   if (Number.isFinite(fromEnv) && fromEnv > 0) {
     cachedAbsenceIblockId = fromEnv;
-    return fromEnv;
+    return { id: fromEnv };
   }
 
   try {
@@ -155,11 +160,20 @@ export async function resolveAbsenceIblockId(): Promise<number | null> {
     const id = Number(found?.ID);
     if (Number.isFinite(id) && id > 0) {
       cachedAbsenceIblockId = id;
-      return id;
+      return { id };
     }
-    return null;
-  } catch {
-    return null;
+    const names = (lists || [])
+      .map((row) => String(row.NAME || '').trim())
+      .filter(Boolean)
+      .join(', ');
+    const error = names
+      ? `lists.get (IBLOCK_TYPE_ID=${absenceIblockTypeId()}) вернул ${lists.length} список(ов), ` +
+        `но ни один не похож на «График отсутствий» (имена: ${names})`
+      : `lists.get (IBLOCK_TYPE_ID=${absenceIblockTypeId()}) вернул пустой список`;
+    return { id: null, error };
+  } catch (err) {
+    const error = errorMessage(err) || 'lists.get завершился с ошибкой без текста';
+    return { id: null, error };
   }
 }
 
@@ -232,8 +246,13 @@ const findExistingAbsenceElement = async (params: {
   requestId: number;
   knownAbsenceId?: number | null;
 }): Promise<{ absenceId: number; auth: AuthMode; upToDate: boolean } | null> => {
-  const iblockId = await resolveAbsenceIblockId();
-  if (!iblockId) return null;
+  const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
+  if (!iblockId) {
+    if (iblockError) {
+      console.warn('[bitrix-vacation] resolveAbsenceIblockId failed (findExistingAbsenceElement):', iblockError);
+    }
+    return null;
+  }
 
   const code = `vbi-hr-vac-${params.requestId}`;
 
@@ -345,9 +364,12 @@ const createViaAbsenceIblock = async (params: {
   requestId: number;
   employeeName: string;
 }): Promise<{ absenceId: number; auth: AuthMode }> => {
-  const iblockId = await resolveAbsenceIblockId();
+  const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
   if (!iblockId) {
-    throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
+    throw new Error(
+      `Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)` +
+        (iblockError ? `: ${iblockError}` : '')
+    );
   }
 
   const { result, auth } = await bitrixVacationRest<number>('lists.element.add', {
@@ -369,9 +391,12 @@ const updateViaAbsenceIblock = async (params: {
   requestId: number;
   employeeName: string;
 }): Promise<{ absenceId: number; auth: AuthMode }> => {
-  const iblockId = await resolveAbsenceIblockId();
+  const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
   if (!iblockId) {
-    throw new Error('Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)');
+    throw new Error(
+      `Не найден инфоблок графика отсутствий (BITRIX_ABSENCE_IBLOCK_ID)` +
+        (iblockError ? `: ${iblockError}` : '')
+    );
   }
 
   const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
@@ -499,10 +524,11 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
 };
 
 const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
-  const iblockId = await resolveAbsenceIblockId();
+  const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
   if (!iblockId) {
     throw new Error(
-      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.'
+      'Не найден инфоблок графика отсутствий. Задайте BITRIX_ABSENCE_IBLOCK_ID и право lists у OAuth/вебхука.' +
+        (iblockError ? ` Причина: ${iblockError}` : '')
     );
   }
 
