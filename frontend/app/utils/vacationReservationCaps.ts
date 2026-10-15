@@ -214,6 +214,97 @@ export function isReservationMonthAtSubgroupCap(params: {
   return count >= cap;
 }
 
+/**
+ * Перечисляет дни диапазона [start; end] включительно как метки времени (локальная полночь).
+ * Диапазоны заявок короткие (отпуск), поэтому дневной перебор дешёвый и самый понятный способ
+ * проверить настоящее пересечение дат.
+ */
+function enumerateDayTimestamps(start: Date, end: Date): number[] {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+  const out: number[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (cursor.getTime() <= last.getTime()) {
+    out.push(cursor.getTime());
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+/**
+ * Лимит подгруппы для ЗАЯВКИ с настоящими датами (start/end): считаем реальное пересечение
+ * дней, а не «касание месяца».
+ *
+ * Пример: у Маши отпуск 26 окт – 1 ноя (касается ноября только 1 днём). Коля хочет 9–22 ноя.
+ * Их диапазоны не пересекаются ни одним днём → Коля не должен блокироваться, хотя оба «в ноябре».
+ * Старая логика (countGroupVacationSlotsForMonth) считала только «месяц одинаковый» и блокировала
+ * это зря — отсюда и фикс.
+ *
+ * Важно про брони (VacationReservation): у них нет точных дат, только {year, month, durationDays}
+ * («где-то в этом месяце, ~N дней»). Посчитать для них настоящее пересечение по дням нельзя —
+ * данных недостаточно. Поэтому бронь другого человека здесь СОЗНАТЕЛЬНО считается занимающей
+ * весь месяц целиком (консервативно, как и раньше) — это не упущение, а намеренное решение:
+ * лучше изредка перестраховаться для брони без дат, чем выдумать несуществующую точность.
+ */
+export function isRequestRangeAtSubgroupCap(params: {
+  subgroupId: string;
+  memberNames: string[];
+  start: string;
+  end: string;
+  reservations: VacationReservation[];
+  requests: VacationRequest[];
+  caps?: ReservationMonthlyCapsByGroup;
+  excludeEmployee?: string;
+}): boolean {
+  const cap = getSubgroupReservationMonthlyCap(params.subgroupId, params.caps);
+  const names = new Set(params.memberNames);
+  const exclude = params.excludeEmployee?.trim().toLowerCase();
+
+  const ownDays = enumerateDayTimestamps(parseIsoToDate(params.start), parseIsoToDate(params.end));
+  if (!ownDays.length) return false;
+
+  type Occupancy = { employee: string; start: Date; end: Date };
+  const occupancies: Occupancy[] = [];
+
+  // Брони других членов подгруппы — без точных дат, занимают месяц целиком (консервативно).
+  for (const row of params.reservations) {
+    const employee = row.employee.trim();
+    if (!names.has(employee)) continue;
+    if (exclude && employee.toLowerCase() === exclude) continue;
+    occupancies.push({
+      employee: employee.toLowerCase(),
+      start: new Date(row.year, row.month - 1, 1),
+      end: new Date(row.year, row.month, 0)
+    });
+  }
+
+  // Заявки других членов подгруппы — настоящие даты start/end.
+  for (const row of params.requests) {
+    if (row.status !== 'approved' && row.status !== 'pending') continue;
+    const employee = row.employee.trim();
+    if (!names.has(employee)) continue;
+    if (exclude && employee.toLowerCase() === exclude) continue;
+    occupancies.push({
+      employee: employee.toLowerCase(),
+      start: parseIsoToDate(row.start),
+      end: parseIsoToDate(row.end)
+    });
+  }
+
+  if (!occupancies.length) return false;
+
+  for (const dayTs of ownDays) {
+    const occupantsToday = new Set<string>();
+    for (const occ of occupancies) {
+      if (dayTs >= occ.start.getTime() && dayTs <= occ.end.getTime()) {
+        occupantsToday.add(occ.employee);
+      }
+    }
+    if (occupantsToday.size >= cap) return true;
+  }
+  return false;
+}
+
 export function getReservationMonthBlockReason(params: {
   context: EmployeeReservationCapContext;
   year: number;
@@ -262,7 +353,14 @@ export function getReservationMonthBlockReason(params: {
   return null;
 }
 
-/** Блок лимита для заявки с датами: любой пересечённый месяц на капе. */
+/**
+ * Блок лимита для заявки с датами (start/end).
+ *
+ * Подгруппа: настоящее пересечение дней (isRequestRangeAtSubgroupCap) — см. комментарий там.
+ * Отдел (пул «5 на отдел»): поведение НЕ менялось — как раньше, по месяцам, «коснулся месяца
+ * хоть одним днём» считается занятым слотом (countGroupVacationSlotsForMonth). Это осознанно:
+ * задача заказчика — только про лимит подгруппы, пул отдела трогать не просили.
+ */
 export function getReservationRangeBlockReason(params: {
   context: EmployeeReservationCapContext;
   start: string;
@@ -272,18 +370,41 @@ export function getReservationRangeBlockReason(params: {
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): ReservationCapBlockReason | null {
-  for (const { year, month } of monthsOverlappingIsoRange(params.start, params.end)) {
-    const reason = getReservationMonthBlockReason({
-      context: params.context,
-      year,
-      month,
+  const skipSubgroup = isReservationCapExemptSubgroupId(params.context.subgroup.id);
+
+  if (
+    !skipSubgroup &&
+    isRequestRangeAtSubgroupCap({
+      subgroupId: params.context.subgroup.id,
+      memberNames: params.context.subgroup.memberNames,
+      start: params.start,
+      end: params.end,
       reservations: params.reservations,
-      requests: params.requests,
+      requests: params.requests ?? [],
       caps: params.caps,
       excludeEmployee: params.excludeEmployee
-    });
-    if (reason) return reason;
+    })
+  ) {
+    return 'subgroup';
   }
+
+  for (const { year, month } of monthsOverlappingIsoRange(params.start, params.end)) {
+    if (
+      isReservationMonthAtDepartmentCap({
+        poolId: params.context.department.id,
+        memberNames: params.context.department.memberNames,
+        year,
+        month,
+        reservations: params.reservations,
+        requests: params.requests,
+        caps: params.caps,
+        excludeEmployee: params.excludeEmployee
+      })
+    ) {
+      return 'department';
+    }
+  }
+
   return null;
 }
 
