@@ -456,17 +456,18 @@ watch(isHistoricalYear, (historical) => {
   if (!historical) createBtnTipVisible.value = false;
 });
 
-/** Только текущий учётный год и прошлый (без «будущего» 2027+). */
+/** Прошлый, текущий учётный и следующий год (бронь/заявки на будущий год разрешены). */
 const yearOptions = computed(() => {
   const primary = state.value.primaryYear;
-  return [primary, primary - 1].filter((year) => year > 0);
+  return [primary - 1, primary, primary + 1].filter((year) => year > 0);
 });
 
 watch(
   yearOptions,
   (years) => {
     if (!years.length || years.includes(props.viewYear)) return;
-    emit('update:viewYear', years[0]!);
+    const fallback = years.includes(state.value.primaryYear) ? state.value.primaryYear : years[0]!;
+    emit('update:viewYear', fallback);
   },
   { immediate: true }
 );
