@@ -116,6 +116,10 @@ const absenceUserProperty = () =>
 const absenceTypeProperty = () =>
   String(process.env.BITRIX_ABSENCE_PROPERTY_TYPE || 'PROPERTY_7').trim();
 
+/** «Информация» (ID 1551, CODE INFORMATSIYA) — Обязательное: Да, без него lists.element.add падает. */
+const absenceInfoProperty = () =>
+  String(process.env.BITRIX_ABSENCE_PROPERTY_INFO || 'PROPERTY_1551').trim();
+
 /** ДД.ММ.ГГГГ для FILTER ACTIVE_FROM (без времени — иначе lists может не найти). */
 const toBitrixDate = (isoDate: string): string => {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -353,7 +357,10 @@ const absenceFields = (params: {
   ACTIVE_FROM: toBitrixDateTime(params.start, false),
   ACTIVE_TO: toBitrixDateTime(params.end, true),
   [absenceUserProperty()]: params.bitrixUserId,
-  [absenceTypeProperty()]: absenceTypeEnum()
+  [absenceTypeProperty()]: absenceTypeEnum(),
+  [absenceInfoProperty()]:
+    `Отпуск с ${params.start} по ${params.end}` +
+    (params.comment?.trim() ? ` — ${params.comment.trim()}` : '')
 });
 
 const createViaAbsenceIblock = async (params: {

@@ -4,6 +4,16 @@
 
 ## 2026-10-15
 
+### Fix: Bitrix lists.element.add падал — не отправляли обязательное поле «Информация»
+
+Продолжение расследования синка отпусков в Bitrix (Плетнёва). После того как в проде нашли и исправили потерянные `.env`-переменные (`BITRIX_ABSENCE_IBLOCK_ID`/`_TYPE_ID`/`_PROPERTY_USER`/`_PROPERTY_TYPE`/`_TYPE_ENUM`) и повторный синк упёрся в НОВУЮ, более конкретную ошибку Bitrix: `The field "Информация" is required`. В отличие от двух предыдущих фиксов в этой цепочке (конфигурация/`.env`), это оказался настоящий пробел в коде — на списке «График отсутствий» (IBLOCK_ID 313, тип `lists_socnet`) есть обязательное поле `INFORMATSIYA` (ID 1551, «Информация», HTML/текст, Обязательное: Да), которое `absenceFields()` никогда не заполняла.
+
+- **Фикс**: `frontend/server/utils/bitrixVacationAbsence.ts` — добавлена `absenceInfoProperty()` (тот же паттерн, что `absenceUserProperty`/`absenceTypeProperty`: читает `process.env.BITRIX_ABSENCE_PROPERTY_INFO`, по умолчанию `PROPERTY_1551`) и в `absenceFields()` добавлен ключ `[absenceInfoProperty()]` с содержимым `` `Отпуск с ${start} по ${end}` `` (+ комментарий заявки, если есть) — по аналогии с существующим фолбэком `NAME`. `absenceFields()` используется и в `createViaAbsenceIblock` (`lists.element.add`), и в `updateViaAbsenceIblock` (`lists.element.update`) — оба пути закрыты одним изменением.
+- **Остальные обязательные поля списка перепроверены по списку свойств из Bitrix24** (дал заказчик): `MANAGER_ID`/«Сотрудник», `TIP_OTSTUTVIYA`/«Тип отсутствия», `VACATION_DATE_FROM`/«Начало», `VACATION_DATE_TO`/«Конец» — все уже покрыты (`PROPERTY_1`/`PROPERTY_7`/`ACTIVE_FROM`/`ACTIVE_TO`); `PRICHINA`, `KAKIE_ZADACHI...`, `KLIENTY...`, `KTO_BUDET_PODMENYAT` — не обязательные, не трогались.
+- **Новый env**: `BITRIX_ABSENCE_PROPERTY_INFO` (по умолчанию `PROPERTY_1551`) — задокументирован в `docs/BITRIX.md`.
+- **Путь**: `frontend/server/utils/bitrixVacationAbsence.ts`, `docs/BITRIX.md`.
+- **Как проверить**: нет доступа к реальному Bitrix в этой сессии (нет актуальных креденшлов локально) — проверено статической типизацией (`tsc --noEmit`) и чтением кода: оба пути (`lists.element.add`/`lists.element.update`) идут через общую `absenceFields()`, новое поле попадает в оба `FIELDS`-пейлоада. Живую проверку (повторный `POST /api/bitrix/sync-vacations`) делает оркестрирующая сессия после переноса на прод.
+
 ### Feature: можно планировать отпуск на следующий год
 
 Заказчик подтвердил: сотрудники должны видеть и бронировать/подавать заявки на отпуск за следующий учётный год (`primaryYear + 1`, например 2027 при учётном годе 2026), а не только за текущий/прошлый. Раньше это было явно заблокировано комментарием в коде («без «будущего» 2027+») — единственное место блокировки.

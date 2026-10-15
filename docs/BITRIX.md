@@ -258,6 +258,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 | `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «отпуск ежегодный», по умолчанию `1` |
 | `BITRIX_ABSENCE_PROPERTY_USER` | Поле сотрудника в `FIELDS`/`FILTER`, по умолчанию **`PROPERTY_1`** (на crm.vbi.ru) |
 | `BITRIX_ABSENCE_PROPERTY_TYPE` | Поле типа отсутствия, по умолчанию **`PROPERTY_7`** |
+| `BITRIX_ABSENCE_PROPERTY_INFO` | Поле «Информация» (обязательное на crm.vbi.ru), по умолчанию **`PROPERTY_1551`** |
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
 
