@@ -1,5 +1,6 @@
 import { getBitrixConfig, getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { redactSensitiveText } from './redactSensitive';
+import { assertBitrixWriteAllowed } from './bitrixWriteGuard';
 
 /** Таймаут внешних вызовов Bitrix — без него зависший портал держит mutateVacations. */
 const BITRIX_FETCH_TIMEOUT_MS = 20_000;
@@ -200,6 +201,8 @@ export async function bitrixOAuthRequest<T>(
   params: Record<string, unknown>,
   accessToken: string
 ): Promise<BitrixRestResponse<T>> {
+  // Стейдж/локалка: запись в реальный портал не отправляем (см. bitrixWriteGuard.ts)
+  assertBitrixWriteAllowed(method);
   const { bitrixPortalUrl } = getBitrixConfig();
   const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
@@ -214,6 +217,8 @@ export async function bitrixRest<T>(
   params: Record<string, unknown>,
   accessToken: string
 ): Promise<T> {
+  // Стейдж/локалка: запись в реальный портал не отправляем (см. bitrixWriteGuard.ts)
+  assertBitrixWriteAllowed(method);
   const { bitrixPortalUrl } = getBitrixConfig();
   const response = await bitrixFetch(`${bitrixPortalUrl}/rest/${method}.json`, {
     method: 'POST',
@@ -237,6 +242,8 @@ export async function bitrixRestAll<T extends Record<string, unknown>>(
   params: Record<string, unknown>,
   accessToken: string
 ): Promise<T[]> {
+  // Стейдж/локалка: запись в реальный портал не отправляем (см. bitrixWriteGuard.ts)
+  assertBitrixWriteAllowed(method);
   const items: T[] = [];
   let start = 0;
 
@@ -284,6 +291,7 @@ export async function bitrixWebhookRest<T>(
 }
 
 async function bitrixWebhookRequest<T>(method: string, params: Record<string, unknown>): Promise<BitrixRestResponse<T>> {
+  assertBitrixWriteAllowed(method);
   const base = getBitrixWebhookUrl();
   const response = await bitrixFetch(`${base}/${method}.json`, {
     method: 'POST',

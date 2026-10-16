@@ -1,6 +1,7 @@
 import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
 import { getBitrixServiceAccessToken } from './bitrixOAuthServiceToken';
 import { isBitrixWebhookConfigured } from './bitrixConfig';
+import { assertBitrixWriteAllowed } from './bitrixWriteGuard';
 
 /**
  * Отправка личного сообщения от чат-бота Bitrix.
@@ -32,6 +33,8 @@ export async function sendBitrixImbotMessage(params: {
   bitrixUserId: number;
   message: string;
 }): Promise<{ messageId: number | string; channel: string }> {
+  // Стейдж/локалка: одна строка в лог и BitrixWriteBlockedError (без OAuth→webhook фолбэка).
+  assertBitrixWriteAllowed('imbot.message.add');
   const botId = botIdFromEnv();
   if (!botId) {
     throw new Error(

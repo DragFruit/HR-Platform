@@ -14,6 +14,7 @@ import {
 import { recordQaDemoVacationDeletion } from '../../app/data/qaTestVacationSeed';
 import { syncApprovedVacationsToBitrix, removeVacationAbsenceFromBitrix } from './bitrixVacationAbsence';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
+import { isBitrixWriteBlockedError } from './bitrixWriteGuard';
 import type { SessionUser } from './credentials';
 import { findEmployeeByName, findEmployeeForSession, readEmployees } from './employeesStore';
 import {
@@ -457,26 +458,29 @@ export async function patchVacationRequest(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[bitrix-vacation] remove on unapprove failed for request #${id}:`,
-        message
-      );
-      try {
-        const employee = await findEmployeeByName(previousRequest.employee);
-        await createBitrixVacationSyncFailedNotification({
-          employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
-          employee_name: previousRequest.employee,
-          bitrix_user_id: employee?.bitrix_user_id ?? undefined,
-          request_id: previousRequest.id,
-          start: previousRequest.start,
-          end: previousRequest.end,
-          error: `Не удалось снять отметку об отпуске в Bitrix при снятии согласования: ${message}`
-        });
-      } catch (notifyError) {
+      // Стейдж/локалка: запись в Bitrix выключена — уже залогировано гвардом, алерт админу не нужен.
+      if (!isBitrixWriteBlockedError(error)) {
         console.error(
-          '[bitrix-vacation] admin notify on unapprove failed:',
-          notifyError instanceof Error ? notifyError.message : String(notifyError)
+          `[bitrix-vacation] remove on unapprove failed for request #${id}:`,
+          message
         );
+        try {
+          const employee = await findEmployeeByName(previousRequest.employee);
+          await createBitrixVacationSyncFailedNotification({
+            employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
+            employee_name: previousRequest.employee,
+            bitrix_user_id: employee?.bitrix_user_id ?? undefined,
+            request_id: previousRequest.id,
+            start: previousRequest.start,
+            end: previousRequest.end,
+            error: `Не удалось снять отметку об отпуске в Bitrix при снятии согласования: ${message}`
+          });
+        } catch (notifyError) {
+          console.error(
+            '[bitrix-vacation] admin notify on unapprove failed:',
+            notifyError instanceof Error ? notifyError.message : String(notifyError)
+          );
+        }
       }
     }
   }
@@ -525,23 +529,26 @@ export async function deleteVacationRequest(
         await removeVacationAbsenceFromBitrix(removed);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error(`[bitrix-vacation] remove on delete failed for request #${id}:`, message);
-        try {
-          const employee = await findEmployeeByName(removed.employee);
-          await createBitrixVacationSyncFailedNotification({
-            employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
-            employee_name: removed.employee,
-            bitrix_user_id: employee?.bitrix_user_id ?? undefined,
-            request_id: removed.id,
-            start: removed.start,
-            end: removed.end,
-            error: `Не удалось снять отметку об отпуске в Bitrix при удалении заявки: ${message}`
-          });
-        } catch (notifyError) {
-          console.error(
-            '[bitrix-vacation] admin notify on delete failed:',
-            notifyError instanceof Error ? notifyError.message : String(notifyError)
-          );
+        // Стейдж/локалка: запись в Bitrix выключена — гвард уже залогировал, алерт админу не шлём.
+        if (!isBitrixWriteBlockedError(error)) {
+          console.error(`[bitrix-vacation] remove on delete failed for request #${id}:`, message);
+          try {
+            const employee = await findEmployeeByName(removed.employee);
+            await createBitrixVacationSyncFailedNotification({
+              employee_id: employee?.id ?? employee?.bitrix_user_id ?? employee?.platform_user_id ?? 0,
+              employee_name: removed.employee,
+              bitrix_user_id: employee?.bitrix_user_id ?? undefined,
+              request_id: removed.id,
+              start: removed.start,
+              end: removed.end,
+              error: `Не удалось снять отметку об отпуске в Bitrix при удалении заявки: ${message}`
+            });
+          } catch (notifyError) {
+            console.error(
+              '[bitrix-vacation] admin notify on delete failed:',
+              notifyError instanceof Error ? notifyError.message : String(notifyError)
+            );
+          }
         }
       }
     }

@@ -1,5 +1,6 @@
 import { retryFailedBitrixVacationSyncs } from '../../utils/bitrixVacationAbsence';
 import { requireRole } from '../../utils/requireRole';
+import { isBitrixWritesBlockedMessage } from '../../utils/bitrixWriteGuard';
 import { mutateVacations } from '../../utils/vacationsStore';
 
 export default defineEventHandler(async (event) => {
@@ -7,6 +8,8 @@ export default defineEventHandler(async (event) => {
 
   let synced = 0;
   let failed = 0;
+  /** Стейдж/локалка: запись в Bitrix выключена — не ошибка, а skipped. */
+  let blocked = 0;
 
   const state = await mutateVacations(async (current) => {
     const before = new Map(
@@ -19,6 +22,7 @@ export default defineEventHandler(async (event) => {
       const prev = before.get(r.id);
       if (prev !== 'failed' && prev !== 'skipped') continue;
       if (r.bitrix_sync_status === 'synced') synced += 1;
+      else if (isBitrixWritesBlockedMessage(r.bitrix_sync_error)) blocked += 1;
       else if (r.bitrix_sync_status === 'failed' || r.bitrix_sync_status === 'skipped') failed += 1;
     }
     return next;
@@ -28,6 +32,7 @@ export default defineEventHandler(async (event) => {
     ok: true,
     synced,
     failed,
+    blocked,
     primaryYear: state.primaryYear
   };
 });

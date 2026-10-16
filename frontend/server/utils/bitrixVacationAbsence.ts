@@ -4,6 +4,13 @@ import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
 import { getBitrixServiceAccessToken, hasBitrixOAuthServiceToken } from './bitrixOAuthServiceToken';
 import { createBitrixVacationSyncFailedNotification } from './adminNotificationsStore';
+import {
+  BitrixWriteBlockedError,
+  bitrixWritesBlockedMessage,
+  bitrixWritesBlockedNow,
+  currentBitrixStand,
+  isBitrixWritesBlockedMessage
+} from './bitrixWriteGuard';
 
 export type BitrixVacationSyncStatus = 'synced' | 'failed' | 'skipped';
 
@@ -583,6 +590,13 @@ export const removeVacationAbsenceFromBitrix = async (request: VacationRequest):
   const absenceId = Number(request.bitrix_absence_id);
   if (!Number.isFinite(absenceId) || absenceId <= 0) return;
 
+  // Стейдж/локалка: не удаляем в реальном портале. Бросаем, чтобы вызывающий НЕ стёр bitrix_absence_id
+  // (отметка в Bitrix осталась) и не создавал админу алерт — см. isBitrixWriteBlockedError.
+  if (bitrixWritesBlockedNow()) {
+    console.warn(`[bitrix] ${currentBitrixStand() ?? 'unknown'}: write blocked lists.element.delete`);
+    throw new BitrixWriteBlockedError('lists.element.delete', currentBitrixStand());
+  }
+
   if (String(request.bitrix_sync_method || '').startsWith('calendar.event.add')) {
     await deleteViaCalendarEvent(absenceId);
     return;
@@ -611,6 +625,39 @@ const needsBitrixSync = (request: VacationRequest, previous?: VacationRequest): 
   return false;
 };
 
+/** Заявка уже помечена «стенд не пишет в Bitrix» — повторно не трогаем. */
+const isMarkedWritesBlocked = (request: VacationRequest): boolean =>
+  request.bitrix_sync_status === 'skipped' && isBitrixWritesBlockedMessage(request.bitrix_sync_error);
+
+/**
+ * Стейдж/локалка: вместо записи в Bitrix честно помечаем skipped + «<стенд>: запись в Bitrix отключена».
+ * Без сетевых вызовов, без алертов админу, без фейковых absence id. Уже помеченные не переписываем,
+ * поэтому mutateVacations не гоняет синк по всей базе на каждой правке.
+ */
+export const markBitrixVacationSyncsBlocked = (
+  state: VacationStoreState,
+  requests: VacationRequest[]
+): { state: VacationStoreState; marked: number } => {
+  const message = bitrixWritesBlockedMessage();
+  let next = state;
+  let marked = 0;
+  for (const request of requests) {
+    if (isMarkedWritesBlocked(request)) continue;
+    next = updateRequestInState(next, request.id, {
+      bitrix_sync_status: 'skipped',
+      bitrix_sync_error: message,
+      bitrix_synced_at: new Date().toISOString()
+    });
+    marked += 1;
+  }
+  if (marked > 0) {
+    console.warn(
+      `[bitrix] ${currentBitrixStand() ?? 'unknown'}: write blocked lists.element.add (заявок → skipped: ${marked})`
+    );
+  }
+  return { state: next, marked };
+};
+
 /** Повторный синк заявок со статусом failed/skipped — без дублей, если отсутствие уже в Bitrix. */
 export const retryFailedBitrixVacationSyncs = async (
   state: VacationStoreState
@@ -618,6 +665,15 @@ export const retryFailedBitrixVacationSyncs = async (
   const hasWebhook = isBitrixWebhookConfigured();
   const hasOAuth = await hasBitrixOAuthServiceToken();
   if (!hasWebhook && !hasOAuth) return state;
+
+  if (bitrixWritesBlockedNow()) {
+    const pending = flattenRequests(state).filter(
+      (r) =>
+        r.status === 'approved' &&
+        (r.bitrix_sync_status === 'failed' || r.bitrix_sync_status === 'skipped')
+    );
+    return markBitrixVacationSyncsBlocked(state, pending).state;
+  }
 
   await readEmployees();
   let next = state;
@@ -642,7 +698,8 @@ export const retryFailedBitrixVacationSyncs = async (
       const message = errorMessage(error);
       console.error(`[bitrix-vacation] retry failed for request #${request.id}:`, message);
       next = updateRequestInState(next, request.id, {
-        bitrix_sync_status: message.includes('не настроен') ? 'skipped' : 'failed',
+        bitrix_sync_status:
+          message.includes('не настроен') || isBitrixWritesBlockedMessage(message) ? 'skipped' : 'failed',
         bitrix_sync_error: message,
         bitrix_synced_at: new Date().toISOString()
       });
@@ -660,9 +717,15 @@ export const syncApprovedVacationsToBitrix = async (
   const hasOAuth = await hasBitrixOAuthServiceToken();
   if (!hasWebhook && !hasOAuth) return next;
 
+  const prevMap = new Map(flattenRequests(previous).map((item) => [item.id, item]));
+
+  if (bitrixWritesBlockedNow()) {
+    const due = flattenRequests(next).filter((r) => needsBitrixSync(r, prevMap.get(r.id)));
+    return markBitrixVacationSyncsBlocked(next, due).state;
+  }
+
   await readEmployees();
 
-  const prevMap = new Map(flattenRequests(previous).map((item) => [item.id, item]));
   let state = next;
 
   for (const request of flattenRequests(next)) {
@@ -684,12 +747,13 @@ export const syncApprovedVacationsToBitrix = async (
       const message = errorMessage(error);
       console.error(`[bitrix-vacation] sync failed for request #${request.id}:`, message);
       state = updateRequestInState(state, request.id, {
-        bitrix_sync_status: message.includes('не настроен') ? 'skipped' : 'failed',
+        bitrix_sync_status:
+          message.includes('не настроен') || isBitrixWritesBlockedMessage(message) ? 'skipped' : 'failed',
         bitrix_sync_error: message,
         bitrix_synced_at: new Date().toISOString()
       });
 
-      if (!message.includes('не настроен')) {
+      if (!message.includes('не настроен') && !isBitrixWritesBlockedMessage(message)) {
         try {
           await createBitrixVacationSyncFailedNotification({
             employee_id: employee?.id ?? 0,

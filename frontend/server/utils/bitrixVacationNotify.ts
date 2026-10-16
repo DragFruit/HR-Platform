@@ -8,6 +8,7 @@ import {
   hasBitrixOAuthServiceToken
 } from './bitrixOAuthServiceToken';
 import { findEmployeeByName } from './employeesStore';
+import { BITRIX_NOTIFY_BRIDGE_METHOD, blockBitrixWriteIfNeeded } from './bitrixWriteGuard';
 
 export type BitrixVacationNotifyStage = 'new' | 'director';
 
@@ -185,6 +186,9 @@ const sendViaNotifyBridge = async (
   const url = String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_URL || '').trim();
   const secret = String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_SECRET || '').trim();
   if (!url || !secret) return null;
+  if (blockBitrixWriteIfNeeded(BITRIX_NOTIFY_BRIDGE_METHOD)) {
+    return { ok: false, error: 'bridge: запись в Bitrix отключена на этом стенде' };
+  }
 
   try {
     const res = await fetch(url, {
@@ -297,6 +301,8 @@ export async function notifyBitrixSystemUser(input: {
 }): Promise<void> {
   const { bitrixUserId, message, tag, subTag, logLabel } = input;
   if (!bitrixUserId || bitrixUserId <= 0 || !message.trim()) return;
+  // Стейдж/локалка: колокольчик в реальный портал не шлём (без ошибок и алертов админу).
+  if (blockBitrixWriteIfNeeded('im.notify.system.add')) return;
 
   const bridgeConfigured = Boolean(
     String(process.env.BITRIX_VACATION_NOTIFY_BRIDGE_URL || '').trim() &&
@@ -332,6 +338,8 @@ export async function notifyBitrixVacationApprover(
   stage: BitrixVacationNotifyStage = 'new'
 ): Promise<void> {
   if (request.status !== 'pending') return;
+  // Стейдж/локалка: не шлём и не создаём админу «уведомление не ушло».
+  if (blockBitrixWriteIfNeeded('im.notify.system.add')) return;
 
   const approvalUrl = vacationApprovalUrl();
   if (!approvalUrl) {

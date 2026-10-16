@@ -4,6 +4,18 @@
 
 ## 2026-10-16
 
+### Fix: стейдж и локалка не пишут в Bitrix — только чтение
+
+У стейджа тот же `BITRIX_WEBHOOK_URL`, что у боя, и своё OAuth-приложение на том же `crm.vbi.ru`; в локальном `.env` тоже боевой вебхук. Любое согласование/удаление отпуска или напоминание со стейджа/локалки создавало реальные записи в графике отсутствий, колокольчики и сообщения чат-бота.
+
+- `frontend/server/utils/bitrixWriteGuard.ts` — гвард: стенд как в `load-bitrix-env` (запечённый `runtimeConfig.public.appEnv` → `NUXT_PUBLIC_APP_ENV`); запрет по умолчанию, пропускаются только методы из allowlist чтений (`user.current`, `user.get`, `user.admin`, `department.get`, `lists.get`, `lists.element.get` + безопасные `user.search`, `lists.field.get`, `calendar.event.get`, `profile`, `app.info`, `server.time`, `scope`, `methods`, `method.get`). production пишет как раньше; staging не пишет никогда; development не пишет без `BITRIX_ALLOW_WRITES=1`; стенд не определён — не пишет. Лог: `[bitrix] staging: write blocked <method>`.
+- `bitrixClient.ts` — гвард во всех REST-точках (`bitrixRest`, `bitrixRestAll`, `bitrixOAuthRequest`, вебхук). `/oauth/token/` (вход, refresh) не трогается.
+- `bitrixVacationNotify.ts` — колокольчики (`im.notify.system.add`, PHP-мост) на стейдже/локалке не шлются, алерт админу «не ушло» не создаётся. `bitrixImbot.ts` — `imbot.message.add` блокируется до OAuth/вебхука.
+- `bitrixVacationAbsence.ts` — синк отпусков на стейдже/локалке без сети: заявки → `bitrix_sync_status: 'skipped'`, `bitrix_sync_error: 'staging: запись в Bitrix отключена'` (локально `development: …`); уже помеченные не переписываются и не ретраятся на каждой мутации; без алертов админу и без фейковых absence id. Снятие отметки (`removeVacationAbsenceFromBitrix`) бросает `BitrixWriteBlockedError` — `bitrix_absence_id` не затирается, алерта нет (`vacationRequestMutations.ts`). `POST /api/bitrix/sync-vacations` отдаёт ещё `blocked`.
+- Тесты: `frontend/tests/unit/bitrixWriteGuard.test.ts`, `frontend/tests/unit/bitrixVacationSyncStaging.test.ts`.
+- **Новый env**: `BITRIX_ALLOW_WRITES=1` — только для локалки, осознанный тест записи в Bitrix. На стейдже игнорируется.
+- **Как проверить**: на `:8080` согласовать тестовую заявку → в `journalctl -u vbi-hr-staging` строка `[bitrix] staging: write blocked …`, у заявки `skipped`; вход через Битрикс работает. Бой не меняется (на прод — только после «ок на прод»).
+
 ### Fix: стейдж не читает боевой env (Bitrix/DB) — только свой файл
 
 Плагин `load-bitrix-env` на каждом стенде читал и `/etc/vbi-hr/bitrix.env`, и `/etc/vbi-hr/bitrix-production.env` (боевой побеждал). Пользователь `deploy` читает оба, поэтому процесс стейджа получал боевые ключи: мост уведомлений (`BITRIX_VACATION_NOTIFY_BRIDGE_*`), `BITRIX_IMBOT_ID`, `BITRIX_ABSENCE_*`, `VACATION_PRE_REMINDER_CRON_SECRET`, а до первого `getBitrixConfig()` — ещё и боевые `BITRIX_CLIENT_*`/`BITRIX_REDIRECT_URI`/`APP_PUBLIC_URL`/`DATABASE_URL`. systemd-юниты и `run-*.sh` чужой файл не подключают — путь был только через плагин.
