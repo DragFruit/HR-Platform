@@ -4,6 +4,18 @@
 
 ## 2026-10-16
 
+### Fix: стейдж не читает боевой env (Bitrix/DB) — только свой файл
+
+Плагин `load-bitrix-env` на каждом стенде читал и `/etc/vbi-hr/bitrix.env`, и `/etc/vbi-hr/bitrix-production.env` (боевой побеждал). Пользователь `deploy` читает оба, поэтому процесс стейджа получал боевые ключи: мост уведомлений (`BITRIX_VACATION_NOTIFY_BRIDGE_*`), `BITRIX_IMBOT_ID`, `BITRIX_ABSENCE_*`, `VACATION_PRE_REMINDER_CRON_SECRET`, а до первого `getBitrixConfig()` — ещё и боевые `BITRIX_CLIENT_*`/`BITRIX_REDIRECT_URI`/`APP_PUBLIC_URL`/`DATABASE_URL`. systemd-юниты и `run-*.sh` чужой файл не подключают — путь был только через плагин.
+
+- `frontend/server/utils/standEnvFiles.ts` — чистая функция выбора файлов: стенд строго из `NUXT_PUBLIC_APP_ENV` (запечён в сборку); staging → `.env`, `bitrix.env` своего каталога + `/etc/vbi-hr/bitrix.env`; production → то же + `/etc/vbi-hr/bitrix-production.env`; development → только локальные `.env`/`bitrix.env` (как раньше); стенд не определён → ничего, warning в лог.
+- `frontend/server/plugins/load-bitrix-env.ts` — грузит только свой набор и пишет `[env] stand=<стенд> loaded: <файл> (<N> keys)` (без значений).
+- `frontend/server/utils/loadEnvFile.ts` — кэш по пути файла (раньше один кэш на все файлы: при совпадении mtime подставлялись ключи чужого файла); `applyEnvFile` возвращает число ключей.
+- Страховка `DATABASE_URL` в `server/db/client.ts` оставлена.
+- Тест: `frontend/tests/unit/standEnvFiles.test.ts`.
+- Новых env нет.
+- **Как проверить**: `journalctl -u vbi-hr-staging | grep "\[env\]"` → `stand=staging loaded: …/etc/vbi-hr/bitrix.env…`, без `bitrix-production.env`. Вход на `:8080` (Битрикс и Vibe) работает. На бой фикс попадёт только после «ок на прод».
+
 ### Feat: фундамент PostgreSQL (фаза 1 миграции с JSON) — Drizzle, миграции, тесты в CI, бэкапы
 
 Без `DATABASE_URL` поведение стендов не меняется: всё на JSON, DB-код не запускается. Ни один домен в базу не переносился.

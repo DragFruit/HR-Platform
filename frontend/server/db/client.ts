@@ -15,9 +15,8 @@ let disabledReason: string | null = null;
 
 /**
  * DATABASE_URL на момент старта процесса (systemd EnvironmentFile + run.sh → .env своего стенда).
- * Фиксируем при загрузке модуля — ДО плагина load-bitrix-env: тот подмешивает и
- * /etc/vbi-hr/bitrix.env, и /etc/vbi-hr/bitrix-production.env (последний побеждает),
- * и без этого стейдж получил бы боевой URL.
+ * Фиксируем при загрузке модуля — ДО плагина load-bitrix-env. Плагин теперь грузит только файл
+ * своего стенда (standEnvFiles.ts), но страховку оставляем: раньше он подмешивал и боевой файл.
  */
 const BOOT_DATABASE_URL = String(process.env.DATABASE_URL || '').trim();
 

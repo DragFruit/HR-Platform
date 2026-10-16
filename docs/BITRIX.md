@@ -360,6 +360,9 @@ PROPERTIES[WORK_POSITION]=Напоминания об отпусках
 
 Файл `/etc/vbi-hr/bitrix.env` (systemd уже подключает его):
 
+> Стейдж читает **только** этот файл (и `.env` своего каталога). Боевой `/etc/vbi-hr/bitrix-production.env` в процесс стейджа не попадает (с 2026-10-16, `server/utils/standEnvFiles.ts`). Внимание: `BITRIX_WEBHOOK_URL` стейджа сейчас тот же, что на бою, — он пишет в настоящий crm.vbi.ru.
+
+
 ```bash
 # OAuth — вход
 BITRIX_PORTAL_URL=https://crm.vbi.ru

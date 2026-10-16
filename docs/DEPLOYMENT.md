@@ -127,7 +127,8 @@ sudo journalctl -u vbi-hr-staging -n 50 | grep '\[db\]'   # ожидаем: [db]
 
 - Миграции применяются **при старте** сервиса (`server/plugins/db-migrate.ts`, под `pg_advisory_lock`). SQL лежит в артефакте: `.output/server/db/migrations` (копирует хук `nitro:init → compiled` в `frontend/nuxt.config.ts`, rsync деплоя переносит вместе с `.output`).
 - Если миграция упала — в журнале `[db] миграции упали — DB выключена до рестарта, JSON работает`; сайт продолжает работать на JSON.
-- Страховка стендов: `DATABASE_URL` берётся из окружения процесса при старте (до `load-bitrix-env`, который подмешивает оба `/etc/vbi-hr/*.env`), плюс staging-сборка отказывается работать с базой `vbi_prod`, а production — с `vbi_staging`.
+- Страховка стендов: `DATABASE_URL` берётся из окружения процесса при старте (до плагина `load-bitrix-env`), плюс staging-сборка отказывается работать с базой `vbi_prod`, а production — с `vbi_staging`.
+- Env-файлы по стендам (`server/utils/standEnvFiles.ts`): плагин `load-bitrix-env` грузит **только файл своего стенда** — staging `/etc/vbi-hr/bitrix.env`, production `/etc/vbi-hr/bitrix-production.env` (плюс `.env`/`bitrix.env` из каталога приложения). Стенд — из запечённого `NUXT_PUBLIC_APP_ENV`; не определён → ничего не грузится. В логе старта: `[env] stand=… loaded: …` (только пути и число ключей). Ключ, нужный стейджу, кладите в `bitrix.env` — из боевого файла он больше не подтянется.
 
 ### Ежедневный бэкап данных и базы
 

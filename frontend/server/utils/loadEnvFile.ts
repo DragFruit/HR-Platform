@@ -1,25 +1,32 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-let cachedMtime = 0;
-let cachedVars: Record<string, string> = {};
+/** Кэш по пути файла: раньше был один на все файлы, и при совпадении mtime подставлялись ключи ЧУЖОГО файла. */
+const cache = new Map<string, { mtime: number; vars: Record<string, string> }>();
 
-export function applyEnvFile(path: string, force = false) {
-  if (!existsSync(path)) return;
+/** Применить KEY=VALUE из файла к process.env. Возвращает число ключей или null, если файл не прочитан. */
+export function applyEnvFile(path: string, force = false): number | null {
+  if (!existsSync(path)) return null;
 
-  const mtime = statSync(path).mtimeMs;
-  if (!force && mtime === cachedMtime) {
-    for (const [key, value] of Object.entries(cachedVars)) {
+  let mtime: number;
+  try {
+    mtime = statSync(path).mtimeMs;
+  } catch {
+    return null;
+  }
+  const cached = cache.get(path);
+  if (!force && cached && cached.mtime === mtime) {
+    for (const [key, value] of Object.entries(cached.vars)) {
       process.env[key] = value;
     }
-    return;
+    return Object.keys(cached.vars).length;
   }
 
   let text: string;
   try {
     text = readFileSync(path, 'utf8');
   } catch {
-    return;
+    return null;
   }
 
   const vars: Record<string, string> = {};
@@ -42,8 +49,8 @@ export function applyEnvFile(path: string, force = false) {
     }
   }
 
-  cachedMtime = mtime;
-  cachedVars = vars;
+  cache.set(path, { mtime, vars });
+  return Object.keys(vars).length;
 }
 
 export function refreshLocalEnv() {

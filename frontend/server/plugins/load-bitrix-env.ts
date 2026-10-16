@@ -1,15 +1,27 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { applyEnvFile } from '../utils/loadEnvFile';
+import { resolveStand, standEnvFiles } from '../utils/standEnvFiles';
 
+/** Подмешать env ТОЛЬКО своего стенда (см. standEnvFiles.ts). В лог — имена файлов и число ключей, без значений. */
 export default defineNitroPlugin(() => {
-  const candidates = [
-    join(process.cwd(), '.env'),
-    join(process.cwd(), 'bitrix.env'),
-    '/etc/vbi-hr/bitrix.env',
-    '/etc/vbi-hr/bitrix-production.env'
-  ];
-  for (const path of candidates) {
-    if (existsSync(path)) applyEnvFile(path);
+  let baked: unknown = '';
+  try {
+    baked = useRuntimeConfig().public.appEnv;
+  } catch {
+    /* вне Nitro-контекста */
   }
+  const stand = resolveStand(baked) ?? resolveStand(process.env.NUXT_PUBLIC_APP_ENV);
+
+  if (!stand) {
+    console.warn('[env] стенд не определён (NUXT_PUBLIC_APP_ENV) — env-файлы не подгружаются');
+    return;
+  }
+
+  const loaded: string[] = [];
+  for (const path of standEnvFiles(stand, process.cwd())) {
+    if (!existsSync(path)) continue;
+    const count = applyEnvFile(path);
+    if (count !== null) loaded.push(`${path} (${count} keys)`);
+  }
+  console.info(`[env] stand=${stand} loaded: ${loaded.length ? loaded.join(', ') : 'none'}`);
 });
