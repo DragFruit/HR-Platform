@@ -230,11 +230,15 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 После **согласования** заявки в VBI HR сервер создаёт отсутствие в Битриксе:
 
 1. `lists.element.add` в инфоблок **График отсутствий** (пальма + предупреждения во встречах) с **`PROPERTY_1`** (поле «Пользователь», CODE=`USER`) = сотрудник.  
+   **Настоящий график отсутствий на crm.vbi.ru — стандартный инфоблок `3`**: `IBLOCK_TYPE_ID=structure`, `IBLOCK_CODE=absence`. Поля (`lists.field.get`, проверено 16.10.2026): `NAME` «Причина отсутствия» (обяз.), `ACTIVE_FROM` «Начало» / `ACTIVE_TO` «Окончание» (обяз.), `PROPERTY_1` «Пользователь» (обяз., просто числовой user id), `PROPERTY_7` «Тип отсутствия» (enum `1` = «Отпуск ежегодный»). Свойств «Информация»/«Начало»/«Конец» там **нет**.  
+   **Список 313 (`lists_socnet`, старое дополнение Free.FIX4) — НЕ график отсутствий.** 15–16.10.2026 бой по ошибке писал туда (env указывал на 313, а код подгоняли под его обязательные поля 1547/1555/1551/1548/1549); элементы 33277, 33278, 33279, 33281 остались в 313 и без отдельного решения не удаляются.  
+   `lists.get` с `IBLOCK_TYPE_ID=structure` отвечает «Неверный тип информационного блока» — автопоиск по имени для structure не работает, поэтому для `structure` без явного `BITRIX_ABSENCE_IBLOCK_ID` код берёт `3`.  
    На `crm.vbi.ru` ключ `PROPERTY_USER` в `FIELDS` **не принимается** → ошибка «Пользователь is required».
 2. **`calendar.event.add` не используем**: входящий вебхук / OAuth всегда пишут `CREATED_BY` = владелец токена (сейчас Драго). Bitrix тогда показывает absence в блоке «Отсутствия» у HR, даже если `ownerId` сотрудника верный.
 3. Вызов идёт через **входящий вебхук**; при `Invalid request credentials` — fallback на **OAuth** для `lists.element.add`.
 4. При полном fail синка — уведомление админу в `/admin/notifications`.
-5. Повтор failed/skipped: `POST /api/bitrix/sync-vacations` (роли admin/hr). Если отсутствие уже есть в графике (тот же сотрудник + даты или уже известный `bitrix_absence_id`) — привязываем без дубля.
+5. Повтор failed/skipped: `POST /api/bitrix/sync-vacations` (роли admin/hr) и автоматически через 30 с после старта боевого процесса (плагин `server/plugins/bitrix-absence-relocate.ts`, только production). Если отсутствие уже есть в графике (тот же сотрудник + даты или уже известный `bitrix_absence_id`) — привязываем без дубля.
+6. У заявки хранится `bitrix_absence_iblock_id` — инфоблок, куда записан `bitrix_absence_id`. При повторе (п. 5) отметки ещё не закончившихся отпусков (`end` ≥ сегодня) из чужого инфоблока переносятся: поле есть и ≠ текущему → новый элемент в текущем графике; поля нет (записи до 16.10.2026) → пачкой `lists.element.get FILTER[ID]=[…]` проверяем, есть ли ID в текущем инфоблоке: есть → только проставляем поле, нет → создаём заново. Прошедшие не воскрешаем (на бою #1014, элемент 32099 за июль, в графике уже нет — видимо, убрали руками). В чужом списке ничего не удаляется. `lists.element.update` с ответом `ERROR_ELEMENT_NOT_FOUND` («Element not found») → создаём элемент заново.
 
 **Ловушки портала (2026-08-04):**
 - `lists.element.get` с `FILTER.CODE` → `Filter field not allowed: CODE` — поиск по символьному коду недоступен.
@@ -253,14 +257,12 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 | Переменная | Назначение |
 |------------|------------|
-| `BITRIX_ABSENCE_IBLOCK_ID` | ID инфоблока графика отсутствий (если не задан — автопоиск по имени) |
+| `BITRIX_ABSENCE_IBLOCK_ID` | ID инфоблока графика отсутствий. Явное значение главнее всего; без него при типе `structure` — `3`, при другом типе — автопоиск по имени через `lists.get`. На бою: `3` |
 | `BITRIX_ABSENCE_IBLOCK_TYPE_ID` | Тип инфоблока, по умолчанию `structure` |
-| `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «отпуск ежегодный», по умолчанию `1` |
-| `BITRIX_ABSENCE_PROPERTY_USER` | Поле сотрудника в `FIELDS`/`FILTER`, по умолчанию **`PROPERTY_1`** (на crm.vbi.ru) |
+| `BITRIX_ABSENCE_TYPE_ENUM` | ENUM_ID типа «Отпуск ежегодный», по умолчанию `1` |
+| `BITRIX_ABSENCE_PROPERTY_USER` | Поле сотрудника в `FIELDS`/`FILTER`, по умолчанию **`PROPERTY_1`** |
 | `BITRIX_ABSENCE_PROPERTY_TYPE` | Поле типа отсутствия, по умолчанию **`PROPERTY_7`** |
-| `BITRIX_ABSENCE_PROPERTY_INFO` | Поле «Информация» (обязательное на crm.vbi.ru), по умолчанию **`PROPERTY_1551`** |
-| `BITRIX_ABSENCE_PROPERTY_START` | Свойство «Начало» (`VACATION_DATE_FROM`, Дата/Время, обязательное), по умолчанию **`PROPERTY_1548`**. Отправляется вместе с `ACTIVE_FROM` (тот не заполняет это свойство) |
-| `BITRIX_ABSENCE_PROPERTY_END` | Свойство «Конец» (`VACATION_DATE_TO`, Дата/Время, обязательное), по умолчанию **`PROPERTY_1549`**. Отправляется вместе с `ACTIVE_TO` |
+| `BITRIX_ABSENCE_PROPERTY_INFO` / `_START` / `_END` | Необязательные доп. свойства. Отправляются **только если ключ задан явно**; по умолчанию не шлются (в инфоблоке 3 их нет). Раньше по умолчанию стояли `PROPERTY_1551/1548/1549` — поля ошибочного списка 313 |
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
 

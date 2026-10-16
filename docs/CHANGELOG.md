@@ -4,6 +4,23 @@
 
 ## 2026-10-16
 
+### Fix: отпуска снова в настоящий график отсутствий (инфоблок 3)
+
+Честно: переключение боя на список **313** (`lists_socnet`, старое дополнение Free.FIX4) было ошибкой. Настоящий «График отсутствий» на crm.vbi.ru — стандартный инфоблок **3** (`structure`, `IBLOCK_CODE=absence`), куда платформа нормально писала до 15.10.2026 (последний верный элемент 33212, `vbi-hr-vac-1202`). Записи выше от 2026-10-15/16 про «обязательные „Информация“/„Начало“/„Конец“» описывают поля списка 313, а не графика отсутствий: мы подгоняли код под не тот список. В 313 ушли 4 отметки: 33277 (#1146), 33278 (#1153), 33279 (#1209), 33281 (#1214); в графике отсутствий их нет.
+
+- `frontend/server/utils/bitrixVacationAbsence.ts`:
+  - `PROPERTY_INFO/START/END` больше не отправляются по умолчанию — только если заданы `BITRIX_ABSENCE_PROPERTY_INFO` / `_START` / `_END`. Умолчания (`structure`, `PROPERTY_1`, `PROPERTY_7`, enum `1`) совпадают с инфоблоком 3.
+  - `resolveAbsenceIblockId`: явный `BITRIX_ABSENCE_IBLOCK_ID` главнее (без кеша); для `structure` без него — `3` без `lists.get` (на портале он отвечает «Неверный тип информационного блока»).
+  - Новое поле заявки `bitrix_absence_iblock_id` — сохраняется при каждом успешном add/update/привязке.
+  - `relocateAbsencesToTargetIblock` (вызывается из `retryFailedBitrixVacationSyncs`), только для ещё не закончившихся отпусков (`end` ≥ сегодня; прошедший #1014 с удалённым из графика элементом 32099 не воскрешаем): отметки с чужим `bitrix_absence_iblock_id` → новый элемент в текущем графике; без поля → пачкой `lists.element.get FILTER[ID]=[…]` по текущему инфоблоку: есть → только проставить поле, нет → создать заново. Ошибку проверки не трактуем как «нет» (без дублей). В 313 ничего не удаляется.
+  - `lists.element.update` с `ERROR_ELEMENT_NOT_FOUND` → создаём элемент заново; слепой update по известному ID — только если он точно в текущем инфоблоке. Проверено на портале: поиск ID 33277 и `ELEMENT_CODE=vbi-hr-vac-1146` в инфоблоке 3 возвращает пустой список; update несуществующего ID → `ERROR_ELEMENT_NOT_FOUND`.
+  - `absenceElementUserId` читает настроенное свойство пользователя. Снятие отметки из чужого инфоблока ничего не удаляет; «Element not found» при delete = снимать нечего.
+- `frontend/server/plugins/bitrix-absence-relocate.ts` — через 30 с после старта боевого процесса (деплой/restart) прогоняет повтор + перенос. Стейдж/локалка — не запускается; гвард записи (`bitrixWriteGuard`) не тронут.
+- `frontend/app/composables/useVacations.ts`, `vacationRequestMutations.ts` — поле `bitrix_absence_iblock_id` (снимается вместе с `bitrix_absence_id`).
+- Тест: `frontend/tests/unit/bitrixVacationAbsenceIblock.test.ts`.
+- **Env боя**: `BITRIX_ABSENCE_IBLOCK_ID=3`, `BITRIX_ABSENCE_IBLOCK_TYPE_ID=structure`, `BITRIX_ABSENCE_PROPERTY_USER=PROPERTY_1`, `BITRIX_ABSENCE_PROPERTY_TYPE=PROPERTY_7`, `BITRIX_ABSENCE_TYPE_ENUM=1` (в `/etc/vbi-hr/bitrix-production.env` и `/var/www/vbi-hr/.env`). Новых ключей нет; `_INFO/_START/_END` теперь необязательные.
+- **Как проверить** (после деплоя на бой): `journalctl -u vbi-hr | grep relocate` → `relocated=4`; у #1146/#1153/#1209/#1214 новый `bitrix_absence_id` и `bitrix_absence_iblock_id: 3`; в «Графике отсутствий» Bitrix видны отпуска Трифонова, Павлова, Плетнёвой, Драго; у остальных будущих/текущих заявок проставлен `bitrix_absence_iblock_id: 3` без новых элементов.
+
 ### Fix: стейдж и локалка не пишут в Bitrix — только чтение
 
 У стейджа тот же `BITRIX_WEBHOOK_URL`, что у боя, и своё OAuth-приложение на том же `crm.vbi.ru`; в локальном `.env` тоже боевой вебхук. Любое согласование/удаление отпуска или напоминание со стейджа/локалки создавало реальные записи в графике отсутствий, колокольчики и сообщения чат-бота.

@@ -35,6 +35,8 @@ export type VacationRequest = {
   comment: string;
   createdAt: string;
   bitrix_absence_id?: number;
+  /** Инфоблок, в который записан bitrix_absence_id (график отсутствий = 3). Нет поля — запись до 16.10.2026. */
+  bitrix_absence_iblock_id?: number;
   bitrix_sync_status?: BitrixVacationSyncStatus;
   bitrix_sync_method?: string;
   bitrix_synced_at?: string;
