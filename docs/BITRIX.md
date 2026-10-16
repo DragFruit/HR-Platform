@@ -259,6 +259,8 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 | `BITRIX_ABSENCE_PROPERTY_USER` | Поле сотрудника в `FIELDS`/`FILTER`, по умолчанию **`PROPERTY_1`** (на crm.vbi.ru) |
 | `BITRIX_ABSENCE_PROPERTY_TYPE` | Поле типа отсутствия, по умолчанию **`PROPERTY_7`** |
 | `BITRIX_ABSENCE_PROPERTY_INFO` | Поле «Информация» (обязательное на crm.vbi.ru), по умолчанию **`PROPERTY_1551`** |
+| `BITRIX_ABSENCE_PROPERTY_START` | Свойство «Начало» (`VACATION_DATE_FROM`, Дата/Время, обязательное), по умолчанию **`PROPERTY_1548`**. Отправляется вместе с `ACTIVE_FROM` (тот не заполняет это свойство) |
+| `BITRIX_ABSENCE_PROPERTY_END` | Свойство «Конец» (`VACATION_DATE_TO`, Дата/Время, обязательное), по умолчанию **`PROPERTY_1549`**. Отправляется вместе с `ACTIVE_TO` |
 
 Код: `server/utils/bitrixVacationAbsence.ts`, вызов из `PUT /api/vacations`.
 

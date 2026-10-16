@@ -120,6 +120,16 @@ const absenceTypeProperty = () =>
 const absenceInfoProperty = () =>
   String(process.env.BITRIX_ABSENCE_PROPERTY_INFO || 'PROPERTY_1551').trim();
 
+/**
+ * «Начало» (ID 1548, VACATION_DATE_FROM) и «Конец» (ID 1549, VACATION_DATE_TO) — Дата/Время,
+ * Обязательное: Да. Это свойства списка, стандартные ACTIVE_FROM/ACTIVE_TO их НЕ заполняют.
+ */
+const absenceStartProperty = () =>
+  String(process.env.BITRIX_ABSENCE_PROPERTY_START || 'PROPERTY_1548').trim();
+
+const absenceEndProperty = () =>
+  String(process.env.BITRIX_ABSENCE_PROPERTY_END || 'PROPERTY_1549').trim();
+
 /** ДД.ММ.ГГГГ для FILTER ACTIVE_FROM (без времени — иначе lists может не найти). */
 const toBitrixDate = (isoDate: string): string => {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -356,6 +366,8 @@ const absenceFields = (params: {
   NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
   ACTIVE_FROM: toBitrixDateTime(params.start, false),
   ACTIVE_TO: toBitrixDateTime(params.end, true),
+  [absenceStartProperty()]: toBitrixDateTime(params.start, false),
+  [absenceEndProperty()]: toBitrixDateTime(params.end, true),
   [absenceUserProperty()]: params.bitrixUserId,
   [absenceTypeProperty()]: absenceTypeEnum(),
   [absenceInfoProperty()]:

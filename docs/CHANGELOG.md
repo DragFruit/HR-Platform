@@ -2,6 +2,17 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-10-16
+
+### Fix: Bitrix lists.element.add падал — не отправляли обязательные «Начало»/«Конец»
+
+Следующий шаг цепочки синка отпусков: после фикса «Информации» (`bf4b7bd`) прод упал с `The field "Конец" is required`. Честно: в брифе прошлого шага (и в записи CHANGELOG от 2026-10-15) было ошибочно указано, что «Начало»/«Конец» покрыты стандартными полями `ACTIVE_FROM`/`ACTIVE_TO` — это не так. На списке «График отсутствий» (IBLOCK_ID 313) это отдельные обязательные свойства: `VACATION_DATE_FROM` (ID 1548, «Начало») и `VACATION_DATE_TO` (ID 1549, «Конец»), тип Дата/Время. Bitrix сообщает по одному недостающему полю за попытку, поэтому закрыты оба сразу.
+
+- **Фикс**: `frontend/server/utils/bitrixVacationAbsence.ts` — добавлены `absenceStartProperty()`/`absenceEndProperty()` (тот же паттерн, что остальные property-хелперы); `absenceFields()` теперь шлёт их с теми же значениями, что `ACTIVE_FROM`/`ACTIVE_TO` (`ДД.ММ.ГГГГ 00:00:00` / `ДД.ММ.ГГГГ 23:59:59`). `ACTIVE_FROM`/`ACTIVE_TO` оставлены — по ним отображение и поиск существующих элементов (`findExistingAbsenceElement`, `elementMatchesDates`), лукапы не менялись. `absenceFields()` общая для `lists.element.add` и `lists.element.update` — оба пути закрыты.
+- **Итог обязательных полей в `FIELDS`**: `NAME`, «Сотрудник» (`BITRIX_ABSENCE_PROPERTY_USER`, на проде `PROPERTY_1547`), «Тип отсутствия» (`BITRIX_ABSENCE_PROPERTY_TYPE`, на проде `PROPERTY_1555`), «Информация» (`PROPERTY_1551`), «Начало» (`PROPERTY_1548`), «Конец» (`PROPERTY_1549`).
+- **Новые env**: `BITRIX_ABSENCE_PROPERTY_START` (по умолчанию `PROPERTY_1548`), `BITRIX_ABSENCE_PROPERTY_END` (по умолчанию `PROPERTY_1549`) — в `docs/BITRIX.md`.
+- **Как проверить**: `tsc --noEmit` в `frontend/`; живая проверка — повторный синк отпуска на проде после выкатки (локально не запускать: локальный webhook боевой).
+
 ## 2026-10-15
 
 ### Fix: CI staging build снова упал в OOM — рецидив, поднят heap до 3072 МБ
