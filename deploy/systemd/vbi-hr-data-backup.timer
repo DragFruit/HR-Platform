@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily VBI HR (prod) data backup
+
+[Timer]
+# Ежедневно 03:30 МСК = 00:30 UTC
+OnCalendar=*-*-* 00:30:00
+Persistent=true
+Unit=vbi-hr-data-backup.service
+
+[Install]
+WantedBy=timers.target

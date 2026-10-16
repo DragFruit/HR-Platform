@@ -8,18 +8,24 @@
     "dev:vacations": "NUXT_PUBLIC_LAUNCH_SCOPE=vacations NUXT_PUBLIC_ORG_LINKS_ENABLED=false NUXT_PUBLIC_QA_TEST_DEPARTMENT=1 nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@hiseb/confetti": "^2.1.0",
+    "drizzle-orm": "^0.45.4",
     "imapflow": "^1.7.6",
     "mailparser": "^3.9.16",
     "nuxt": "^4.4.2",
+    "postgres": "^3.4.9",
     "vue": "^3.5.32",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@types/mailparser": "^3.4.6",
-    "playwright": "^1.49.1"
+    "drizzle-kit": "^0.31.11",
+    "playwright": "^1.49.1",
+    "vitest": "^4.1.12"
   }
 }

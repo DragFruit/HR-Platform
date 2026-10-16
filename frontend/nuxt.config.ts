@@ -1,4 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { cpSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildAppContentSecurityPolicy, buildYandexMetrikaHead, resolveYandexMetrikaId } from './app/utils/yandexMetrika';
 
 const yandexMetrikaId = resolveYandexMetrikaId(process.env.NUXT_PUBLIC_YANDEX_METRIKA_ID);
@@ -19,6 +21,18 @@ export default defineNuxtConfig({
     build: {
       sourcemap: false,
       reportCompressedSize: false
+    }
+  },
+  hooks: {
+    // SQL-миграции Postgres рядом с собранным сервером (.output/server/db/migrations).
+    // Копия файлов, а не serverAssets — не раздуваем бандл Nitro (OOM в CI).
+    'nitro:init'(nitro) {
+      nitro.hooks.hook('compiled', () => {
+        if (nitro.options.dev) return;
+        const src = join(nitro.options.rootDir, 'server/db/migrations');
+        if (!existsSync(src)) return;
+        cpSync(src, join(nitro.options.output.serverDir, 'db/migrations'), { recursive: true });
+      });
     }
   },
   nitro: {

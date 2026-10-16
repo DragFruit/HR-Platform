@@ -1,0 +1,11 @@
+[Unit]
+Description=VBI HR (staging): daily backup of server/data + pg_dump
+After=local-fs.target postgresql.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+# Необязательно: BACKUP_REMOTE / BACKUP_SSH_KEY / BACKUP_KEEP
+EnvironmentFile=-/etc/vbi-hr/backup.env
+ExecStart=/bin/bash /var/www/vbi-hr-staging/deploy-scripts/run-data-backup.sh /var/www/vbi-hr-staging

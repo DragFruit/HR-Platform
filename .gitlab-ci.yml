@@ -3,6 +3,7 @@
 # Variables: SSH_PRIVATE_KEY, DEPLOY_HOST, DEPLOY_USER
 
 stages:
+  - test
   - build
   - deploy
 
@@ -20,10 +21,23 @@ cache:
     - frontend/node_modules/
     - .npm/
 
+# --- Тесты (vitest, чистые функции). Красный тест = нет сборки и деплоя ---
+
+test:
+  stage: test
+  before_script:
+    - cd frontend
+    - npm ci
+  script:
+    - npm test
+
 # --- Сборка (автоматически на push) ---
 
 .build:
   stage: build
+  needs:
+    - job: test
+      artifacts: false
   variables:
     # Nitro-сборка (минификация/бандлинг сервера) на shared-раннере падает в OOM (SIGKILL,
     # "Killed" без кода ошибки) уже после успешных "Client built"/"Server built" — куча

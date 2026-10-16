@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily VBI HR (staging) data backup
+
+[Timer]
+# Ежедневно 03:45 МСК = 00:45 UTC
+OnCalendar=*-*-* 00:45:00
+Persistent=true
+Unit=vbi-hr-staging-data-backup.service
+
+[Install]
+WantedBy=timers.target

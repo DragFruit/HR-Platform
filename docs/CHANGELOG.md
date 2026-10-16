@@ -4,6 +4,21 @@
 
 ## 2026-10-16
 
+### Feat: фундамент PostgreSQL (фаза 1 миграции с JSON) — Drizzle, миграции, тесты в CI, бэкапы
+
+Без `DATABASE_URL` поведение стендов не меняется: всё на JSON, DB-код не запускается. Ни один домен в базу не переносился.
+
+- **DB-слой**: `frontend/server/db/client.ts` (`getDb()`/`isDbEnabled()`), `server/db/schema/` (`audit.audit_log`), `server/db/migrations/0000_init_audit.sql`, `frontend/drizzle.config.ts`, `server/db/migrate.ts` + `server/plugins/db-migrate.ts` (миграции при старте под `pg_advisory_lock`; ошибка → DB выключена, JSON работает), `GET /api/admin/db-health` (admin).
+- **Артефакт**: хук в `frontend/nuxt.config.ts` копирует миграции в `.output/server/db/migrations`.
+- **Зависимости**: `drizzle-orm`, `postgres`; dev — `drizzle-kit`, `vitest` (4.x). Скрипты `npm test`, `npm run db:generate`.
+- **Тесты**: `frontend/vitest.config.ts`; `tests/unit/employeeManagerId.test.ts` (уже был, теперь запускается), новые `tests/unit/vacationReservationCaps.test.ts` (Маша/Коля: пересечение дат подгруппы, бронь на месяц, Цхай, пул отдела) и `tests/unit/dbClient.test.ts`.
+- **CI**: `.gitlab-ci.yml` — стадия `test` (`npm ci` + `npm test`), `build:*` `needs: test`.
+- **Бэкапы**: `deploy/scripts/run-data-backup.sh` (tar.gz `server/data` + `pg_dump -Fc`, ротация 14, опц. `BACKUP_REMOTE`), units `deploy/systemd/vbi-hr-data-backup.*`, `vbi-hr-staging-data-backup.*`; `deploy-remote.sh` кладёт скрипт в `deploy-scripts/`.
+- **Сервер**: `deploy/scripts/install-postgres.sh` (запускает владелец продукта по sudo).
+- **Новые env**: `DATABASE_URL` (runtime), опц. `DATABASE_POOL_MAX`, `DB_MIGRATIONS_DIR`; для бэкапа `BACKUP_REMOTE`, `BACKUP_SSH_KEY`, `BACKUP_KEEP`, `BACKUP_DIR`, `BACKUP_ENV_FILE` (`/etc/vbi-hr/backup.env`).
+- **Доки**: `docs/ARCHITECTURE.md` «База данных (миграция с JSON)», `docs/DEPLOYMENT.md` «PostgreSQL на сервере», «Ежедневный бэкап данных и базы», «Локальная база».
+- **Как проверить**: `cd frontend && npm test`; локально с `DATABASE_URL` → в логе `[db] migrations ok applied=1`, `/api/admin/db-health` → `enabled:true`; без него → `enabled:false`. На стейдже после `install-postgres.sh` + рестарта — то же по `:8080`.
+
 ### Fix: Bitrix lists.element.add падал — не отправляли обязательные «Начало»/«Конец»
 
 Следующий шаг цепочки синка отпусков: после фикса «Информации» (`bf4b7bd`) прод упал с `The field "Конец" is required`. Честно: в брифе прошлого шага (и в записи CHANGELOG от 2026-10-15) было ошибочно указано, что «Начало»/«Конец» покрыты стандартными полями `ACTIVE_FROM`/`ACTIVE_TO` — это не так. На списке «График отсутствий» (IBLOCK_ID 313) это отдельные обязательные свойства: `VACATION_DATE_FROM` (ID 1548, «Начало») и `VACATION_DATE_TO` (ID 1549, «Конец»), тип Дата/Время. Bitrix сообщает по одному недостающему полю за попытку, поэтому закрыты оба сразу.

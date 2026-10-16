@@ -489,6 +489,49 @@ NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 
 ---
 
+## База данных (миграция с JSON)
+
+Сегодня все данные — плоские JSON в `frontend/server/data/` (~23 самописных `*Store.ts`). Утверждено: переезд на **PostgreSQL** (тот же VPS, базы `vbi_prod` / `vbi_staging`, локально `vbi_dev`) через **Drizzle ORM** (`drizzle-orm` + драйвер `postgres`), по фазам. Пока стенд без `DATABASE_URL` — всё работает на JSON, DB-код не запускается.
+
+### Что есть сейчас (фаза 1 — фундамент)
+
+| Файл | Назначение |
+|------|------------|
+| `server/db/client.ts` | `getDb()` — ленивый singleton (postgres.js + drizzle), `null` без `DATABASE_URL`; `isDbEnabled()`, `getSql()`, `disableDb()`. URL фиксируется при загрузке модуля (до `load-bitrix-env`); стенд-гард: staging ≠ `vbi_prod`, production ≠ `vbi_staging`. |
+| `server/db/schema/` | Таблицы Drizzle, `index.ts` реэкспортирует домены. Сейчас одна: `audit.audit_log` (`id bigserial`, `at timestamptz default now()`, `actor_employee_id int null`, `action`, `entity`, `entity_id`, `before jsonb`, `after jsonb`) — пока никто не пишет. |
+| `server/db/migrations/` | SQL от `drizzle-kit generate` (коммитим). `drizzle.config.ts` в `frontend/`. |
+| `server/db/migrate.ts` + `server/plugins/db-migrate.ts` | При старте: отдельное соединение, `pg_advisory_lock`, drizzle `migrate()`, одна строка `[db] migrations ok applied=N`. Ошибка → лог + `disableDb()`, процесс и JSON-функции живут. |
+| `server/api/admin/db-health.get.ts` | `GET /api/admin/db-health` (admin): `{enabled, ok, latencyMs, migrations}`. |
+
+Миграции в артефакте: хук `nitro:init → compiled` в `nuxt.config.ts` копирует `server/db/migrations` → `.output/server/db/migrations` (не `serverAssets` — бандл Nitro не растёт). Поиск папки: `DB_MIGRATIONS_DIR` → `<dirname(index.mjs)>/db/migrations` → `cwd/.output/server/db/migrations` → `cwd/server/db/migrations` (dev).
+
+### Целевая модель
+
+**Postgres-схема на домен** (`pgSchema`):
+
+| Схема | Что переедет |
+|-------|--------------|
+| `core` | сотрудники, оргструктура, руководители, аватары, доступы/denylist |
+| `vacations` | заявки, брони, лимиты, правила групп, учётные годы, напоминания |
+| `integrations` | **outbox** для Bitrix (синк отсутствий, `im.notify`), OAuth-токены сервиса |
+| `notifications` | пользовательские и админские уведомления |
+| `knowledge` | статьи БЗ, оценки, RAG-индекс (+ `pgvector` позже) |
+| `ideas` | банк идей, вложения, мутации |
+| `engagement` | ачивки, пит-стоп/гонка, лучшие продажи, активность профиля |
+| `surveys` | опросы, визиты/старты; **таблица анонимных ответов без колонки `employee_id`** |
+| `vpn` | VPN-ключи и лимиты |
+| `audit` | `audit_log` (уже есть) |
+
+**Принципы**: ссылки на сотрудника — `employee_id`, не ФИО; правила (лимиты, исключения групп вроде Цхай) — данными в таблицах, не константами в коде; история изменений — отдельные history-таблицы; внешние вызовы (Bitrix) — через outbox с ретраями, а не прямо из запроса; все мутации — в `audit.audit_log`.
+
+**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 — остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
+
+### Тесты
+
+`npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
+
+---
+
 ## Известные ограничения
 
 - На **production** вход только через Bitrix OAuth для людей из справочника; демо-логин API отключён. Локально/staging — Bitrix + демо-аккаунты.

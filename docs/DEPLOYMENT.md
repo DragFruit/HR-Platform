@@ -73,6 +73,7 @@ bash deploy/scripts/build-and-deploy.sh production # бой
 |------------|------|-----|----------|
 | `NUXT_PUBLIC_APP_ENV` | `staging` | `production` | `development` |
 | `NUXT_PUBLIC_LAUNCH_SCOPE` | `full` | `vacations` | `full` |
+| `DATABASE_URL` (runtime) | `…/vbi_staging` | `…/vbi_prod` | `…/vbi_dev` или пусто |
 
 `NUXT_PUBLIC_*` задаются **при сборке** (`npm run build`), не в runtime на сервере.
 
@@ -102,12 +103,75 @@ ls /var/www/vbi-hr/server/data/backups/vacations/
 Восстановить: `cp …/vacations-YYYY-MM-DD.json /var/www/vbi-hr/server/data/vacations.json && sudo systemctl restart vbi-hr`.
 
 
+### PostgreSQL на сервере (фаза 1 миграции с JSON)
+
+Один кластер Postgres на VPS, две базы: `vbi_prod` (бой) и `vbi_staging` (стейдж), у каждой своя роль, слушает только `localhost`. Пока **никакие данные в базе не живут** — приложение работает на JSON; база нужна, чтобы проверить фундамент (миграции, health, бэкап). Без `DATABASE_URL` всё DB-шное выключено.
+
+Ставит владелец продукта по SSH (sudo-пользователь), из checkout репозитория на сервере или скопировав скрипт:
+
+```bash
+sudo bash deploy/scripts/install-postgres.sh
+```
+
+Скрипт идемпотентный: ставит `postgresql` из пакетов Ubuntu, `conf.d/vbi-hr.conf` → `listen_addresses = 'localhost'`, создаёт роли/базы `vbi_prod` / `vbi_staging` (случайные пароли, `CONNECT` к чужой базе закрыт) и дописывает `DATABASE_URL=postgres://…@127.0.0.1:5432/<база>` в `/etc/vbi-hr/bitrix-production.env` и `/etc/vbi-hr/bitrix.env` **только если строки ещё нет**. Пароли на экран не выводятся.
+
+Дальше:
+
+```bash
+sudo systemctl restart vbi-hr-staging
+sudo journalctl -u vbi-hr-staging -n 50 | grep '\[db\]'   # ожидаем: [db] migrations ok applied=1
+# под админом в браузере: http://45.12.74.25:8080/api/admin/db-health → {"enabled":true,"ok":true,"migrations":1}
+```
+
+Бой (`sudo systemctl restart vbi-hr`) — когда решите; код с DB-плагином попадёт на бой только с релизом `staging → main`. До этого рестарт ничего не меняет.
+
+- Миграции применяются **при старте** сервиса (`server/plugins/db-migrate.ts`, под `pg_advisory_lock`). SQL лежит в артефакте: `.output/server/db/migrations` (копирует хук `nitro:init → compiled` в `frontend/nuxt.config.ts`, rsync деплоя переносит вместе с `.output`).
+- Если миграция упала — в журнале `[db] миграции упали — DB выключена до рестарта, JSON работает`; сайт продолжает работать на JSON.
+- Страховка стендов: `DATABASE_URL` берётся из окружения процесса при старте (до `load-bitrix-env`, который подмешивает оба `/etc/vbi-hr/*.env`), плюс staging-сборка отказывается работать с базой `vbi_prod`, а production — с `vbi_staging`.
+
+### Ежедневный бэкап данных и базы
+
+`deploy/scripts/run-data-backup.sh <путь стенда>` — `tar.gz` всего `server/data/` (без `backups/`) + `pg_dump -Fc`, если в `<стенд>/.env` есть `DATABASE_URL`. Хранит последние `BACKUP_KEEP` (14) копий каждого вида в `<стенд>/server/data/backups/full/`. Опционально копия вне сервера: `BACKUP_REMOTE=user@host:/path/` (+ `BACKUP_SSH_KEY`) в `/etc/vbi-hr/backup.env`; не задан — шаг пропускается. Скрипт кладёт на сервер обычный деплой (`deploy-remote.sh` → `<стенд>/deploy-scripts/`); `.env` стенда получает `DATABASE_URL` при следующем деплое (копия `/etc/vbi-hr/*.env`).
+
+Установка таймеров (один раз, из checkout репозитория на сервере):
+
+```bash
+sudo install -m 644 deploy/systemd/vbi-hr-data-backup.service deploy/systemd/vbi-hr-data-backup.timer \
+  deploy/systemd/vbi-hr-staging-data-backup.service deploy/systemd/vbi-hr-staging-data-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now vbi-hr-data-backup.timer vbi-hr-staging-data-backup.timer   # 03:30 / 03:45 МСК
+sudo systemctl start vbi-hr-staging-data-backup.service vbi-hr-data-backup.service      # первый снимок сразу
+ls -l /var/www/vbi-hr/server/data/backups/full/ /var/www/vbi-hr-staging/server/data/backups/full/
+```
+
+Восстановление: JSON — `tar -xzf …-data-<дата>.tar.gz -C <стенд>/server/data` + рестарт сервиса; база — `pg_restore --clean --if-exists -d "$DATABASE_URL" …-db-<база>-<дата>.dump`. Недельный `vbi-hr-vacations-backup` остаётся как есть.
+
+
 ### Два стенда на одном VPS
 
 | Стенд | Ветка | Каталог | Порт | Домен (пример) |
 |-------|-------|---------|------|----------------|
 | Тест | `staging` | `/var/www/vbi-hr-staging` | 3301 | `hr-test.vbi.agency` |
 | Бой | `main` | `/var/www/vbi-hr` | 3300 | `vibe.vbi.ru` |
+
+---
+
+## Локальная база (PostgreSQL на Mac)
+
+Docker не нужен — Homebrew:
+
+```bash
+brew install postgresql@17
+brew services start postgresql@17
+/opt/homebrew/opt/postgresql@17/bin/createdb vbi_dev
+```
+
+В `frontend/.env` (в gitignore): `DATABASE_URL=postgres://<ваш логин macOS>@localhost:5432/vbi_dev`. Без этой строки приложение работает на JSON как раньше, `GET /api/admin/db-health` → `enabled:false`.
+
+- Миграции применяются сами при `npm run dev` / старте `.output` — в логе `[db] migrations ok applied=N`.
+- Новая таблица: схема в `frontend/server/db/schema/*.ts` → `npm run db:generate -- --name <имя>` → SQL в `frontend/server/db/migrations/` коммитим вместе с кодом.
+- `psql vbi_dev` (из `/opt/homebrew/opt/postgresql@17/bin`) — посмотреть таблицы.
+- На сервере Ubuntu ставит свою мажорную версию (24.04 → 16); миграции простые SQL, совместимы.
 
 ---
 
