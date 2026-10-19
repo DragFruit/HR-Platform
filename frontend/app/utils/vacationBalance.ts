@@ -18,6 +18,12 @@ export type VacationBalanceAssessment = {
 
 const ANNUAL_NORM = 28;
 
+/**
+ * Округление вниз до 0,1 без потерь на плавающей точке (47.3 не превращается в 47.2
+ * из-за 47.29999…). Используется во всех расчётах остатка.
+ */
+const floorTenth = (value: number) => Math.floor(value * 10 + 1e-6) / 10;
+
 const normalizeCalendarDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
 const calendarDaysInMonth = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
@@ -98,7 +104,7 @@ const zupCountAccrualEvents = (hireIso: string, asOfDate: Date) => {
 
 const accruedVacationZupFromHire = (hireIso: string, asOfDate: Date) => {
   const n = zupCountAccrualEvents(hireIso, asOfDate);
-  return Math.floor(((n * ANNUAL_NORM) / 12) * 10) / 10;
+  return floorTenth((n * ANNUAL_NORM) / 12);
 };
 
 /**
@@ -204,23 +210,14 @@ export const assessVacationBalance = (
   const filtered = excludeRequestId
     ? requests.filter((r) => r.id !== excludeRequestId)
     : requests;
-  // Год впереди учётного: база на 01.01 — переходящий остаток на 31.12 предыдущих лет
-  // (как при rollover), а не opening balance текущего учётного года.
-  const opening = openingBalanceForYear(
-    employeeName,
-    hireIso,
-    accountYear,
-    filtered,
-    primaryYear,
-    openingBalance
-  );
+  // Год впереди учётного считается продолжением того же помесячного остатка (calcAvailableOnDate).
   const available = calcAvailableOnDate(
     employeeName,
     hireIso,
     start,
     filtered,
-    accountYear,
-    opening
+    accountYear > primaryYear ? primaryYear : accountYear,
+    openingBalance
   );
   if (available === null) {
     return { ...empty, status: 'unknown', neededDays, startLabel };
@@ -248,7 +245,7 @@ export const projectedAccruedVacationToDate = (
   if (targetDay < yStart) return accruedVacationZupFromHire(hireIso, targetDay);
   const accY = accruedVacationZupFromHire(hireIso, yStart);
   const accT = accruedVacationZupFromHire(hireIso, targetDay);
-  return Math.floor((accY + (accT - accY)) * 10) / 10;
+  return floorTenth(accY + (accT - accY));
 };
 
 const entitledVacationDays = (
@@ -262,7 +259,7 @@ const entitledVacationDays = (
   const accruedNow = projectedAccruedVacationToDate(hireIso, asOf, primaryYear) ?? 0;
   const base = openingBalance ?? accruedAtJan1;
   const accrualSinceJan1 = Math.max(0, accruedNow - accruedAtJan1);
-  return Math.floor((base + accrualSinceJan1) * 10) / 10;
+  return floorTenth(base + accrualSinceJan1);
 };
 
 export const calcEmployeeBalance = (
@@ -320,12 +317,18 @@ export const calcEmployeeBalance = (
   const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending'], primaryYear);
   const remain = Math.max(
     0,
-    Math.floor((entitled - takenBooked - plannedBooked) * 10) / 10
+    floorTenth(entitled - takenBooked - plannedBooked)
   );
 
   return { remain: String(remain), taken, planned };
 };
 
+/**
+ * Доступно к дате. Дата в году после primaryYear — непрерывное продолжение остатка:
+ * остаток на 01.01 следующего года (всё, что было доступно на 31.12, плюс начисление 1 января,
+ * если оно выпадает на 1-е) плюс стандартные помесячные начисления до даты, минус approved и pending
+ * следующего года по дату. Ровно это значение записывает переход года.
+ */
 export const calcAvailableOnDate = (
   employeeName: string,
   hireIso: string,
@@ -333,7 +336,31 @@ export const calcAvailableOnDate = (
   requests: VacationRequest[],
   primaryYear: number,
   openingBalance?: number | null
-) => {
+): number | null => {
+  const targetYear = Number(String(targetIso).slice(0, 4));
+  if (targetYear > primaryYear) {
+    const opening = openingBalanceForYear(
+      employeeName,
+      hireIso,
+      targetYear,
+      requests,
+      primaryYear,
+      openingBalance
+    );
+    return calcAvailableOnDateInYear(employeeName, hireIso, targetIso, requests, targetYear, opening);
+  }
+  return calcAvailableOnDateInYear(employeeName, hireIso, targetIso, requests, primaryYear, openingBalance);
+};
+
+/** Доступно к дате в рамках одного учётного года (база openingBalance на 01.01 primaryYear). */
+const calcAvailableOnDateInYear = (
+  employeeName: string,
+  hireIso: string,
+  targetIso: string,
+  requests: VacationRequest[],
+  primaryYear: number,
+  openingBalance?: number | null
+): number | null => {
   const target = new Date(`${targetIso}T12:00:00`);
   const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
   const targetDay = normalizeCalendarDate(target);
@@ -356,15 +383,17 @@ export const calcAvailableOnDate = (
     targetDay,
     primaryYear
   );
-  return Math.max(0, Math.floor((accrued - takenThru - pendingThru) * 10) / 10);
+  return Math.max(0, floorTenth(accrued - takenThru - pendingThru));
 };
 
 /**
- * База остатка на 01.01.targetYear.
+ * База остатка на 01.01.targetYear (то, что запишет переход года в vacation_opening_balance).
  * targetYear ≤ primaryYear — как раньше: `vacation_opening_balance` (или null → оценка ЗУП).
- * targetYear > primaryYear — цепочкой по годам: остаток на 31.12 каждого года (начисления минус
- * approved и pending этого года), ровно то же, что запишет переход года (`vacationYearRollover`).
- * `requests` — заявки всех нужных лет (папки primaryYear-1 … targetYear).
+ * targetYear > primaryYear — цепочкой по годам: доступно на 01.01 следующего года по правилам
+ * текущего (база + помесячные начисления по 01.01 включительно − approved и pending года).
+ * 1 января всегда праздник, поэтому дней отпуска на эту дату нет: значение = остаток на 31.12
+ * плюс начисление, если у сотрудника оно приходится на 1-е число.
+ * `requests` — заявки всех нужных лет.
  */
 export const openingBalanceForYear = (
   employeeName: string,
@@ -375,15 +404,18 @@ export const openingBalanceForYear = (
   openingBalance?: number | null
 ): number | null | undefined => {
   if (!(targetYear > primaryYear)) return openingBalance;
-  const hireYear = Number(String(hireIso).slice(0, 4));
   let opening: number | null | undefined = openingBalance;
   for (let year = primaryYear; year < targetYear; year += 1) {
-    if (!Number.isNaN(hireYear) && hireYear > year) {
-      opening = 0;
-      continue;
-    }
-    const closing = calcAvailableOnDate(employeeName, hireIso, `${year}-12-31`, requests, year, opening);
-    opening = closing === null ? 0 : Math.floor(closing * 10) / 10;
+    const jan1Next = calcAvailableOnDateInYear(
+      employeeName,
+      hireIso,
+      `${year + 1}-01-01`,
+      requests,
+      year,
+      opening
+    );
+    // null — принят позже 01.01 следующего года: переносить нечего.
+    opening = jan1Next === null ? 0 : jan1Next;
   }
   return opening;
 };

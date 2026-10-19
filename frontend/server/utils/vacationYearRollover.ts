@@ -72,7 +72,8 @@ export function applyVacationYearRollover(
       return emp;
     }
 
-    const rounded = Math.floor(closing * 10) / 10;
+    // closing уже округлён вниз до 0,1 в calcAvailableOnDate; здесь только убрать хвост плавающей точки.
+    const rounded = Math.round(closing * 10) / 10;
     updates.push({
       id: emp.id,
       name: emp.name,
