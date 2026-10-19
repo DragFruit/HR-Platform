@@ -1200,6 +1200,12 @@ export function buildRagAmbiguousContext(branches: KnowledgeRagBranch[]): string
   return parts.join('\n\n');
 }
 
+const LEXICAL_FALLBACK_SLOW_MS = 2000;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 /** Запасной подбор без эмбеддингов (если Yandex embeddings недоступны). */
 export async function retrieveKnowledgeLexicalFallback(
   question: string,
@@ -1217,24 +1223,34 @@ export async function retrieveKnowledgeLexicalFallback(
     ? published.filter((a) => canUserSeeArticle(a.departments, opts.viewer!))
     : published;
 
-  let scored = visible
-    .map((article) => {
-      const chunkTexts = chunkArticleText(article.title, article.body);
-      const plain = chunkTexts.join('\n');
-      let lex = lexicalScore(article.title, plain, tokens);
-      lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
-      lex = applyCaseEcomScoreAdjust(article.id, lex, q);
-      lex = applyCorpFontsScoreAdjust(article.id, lex, q);
-      const plainSnippet = chunkTexts.join('\n');
-      lex = applyCaseChannelScoreAdjust(article.id, lex, q, plainSnippet);
-      return {
-        articleId: article.id,
-        title: article.title,
-        score: lex,
-        lexicalScore: lex,
-        snippets: pickArticleSnippets(article.title, chunkTexts, distinctive, tokens, 3)
-      } satisfies KnowledgeRagHit;
-    })
+  // Отдаём event loop между статьями: даже медленный скоринг не должен вешать весь сервер
+  // (инцидент стейджа 2026-10-19 — фолбэк держал CPU >60 с, nginx отдавал 504 на все страницы).
+  const startedAt = Date.now();
+  const scoredRaw: KnowledgeRagHit[] = [];
+  for (const article of visible) {
+    await yieldToEventLoop();
+    const chunkTexts = chunkArticleText(article.title, article.body);
+    const plain = chunkTexts.join('\n');
+    let lex = lexicalScore(article.title, plain, tokens);
+    lex = applyAvitoAutoScoreAdjust(article.id, article.title, lex, q);
+    lex = applyCaseEcomScoreAdjust(article.id, lex, q);
+    lex = applyCorpFontsScoreAdjust(article.id, lex, q);
+    const plainSnippet = chunkTexts.join('\n');
+    lex = applyCaseChannelScoreAdjust(article.id, lex, q, plainSnippet);
+    scoredRaw.push({
+      articleId: article.id,
+      title: article.title,
+      score: lex,
+      lexicalScore: lex,
+      snippets: pickArticleSnippets(article.title, chunkTexts, distinctive, tokens, 3)
+    } satisfies KnowledgeRagHit);
+  }
+  const tookMs = Date.now() - startedAt;
+  if (tookMs > LEXICAL_FALLBACK_SLOW_MS) {
+    console.warn(`[knowledge-rag] lexical fallback slow: ${tookMs}ms articles=${visible.length}`);
+  }
+
+  let scored = scoredRaw
     .filter((h) => {
       if (shouldSuppressAvitoForAutoQuestion(q) && isAvitoFocusedArticle(h.articleId, h.title)) {
         return false;

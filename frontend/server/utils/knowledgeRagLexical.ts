@@ -340,8 +340,38 @@ const RU_VOWELS = 'аеиоуыэюя';
 
 const byLonger = (a: string, b: string) => b.length - a.length;
 
+/**
+ * Кэши горячего пути лексического поиска (2026-10-19: фолбэк при сбое Yandex считал стеммер
+ * для каждого слова каждой статьи заново — ~40 с синхронного CPU, event loop стоял, стейдж отдавал 504).
+ * Результаты чистые (зависят только от входа) — кэшируем; при переполнении просто сбрасываем.
+ */
+const STEM_CACHE_MAX = 50_000;
+const stemCache = new Map<string, string>();
+const BLOB_WORDS_CACHE_MAX = 4_000;
+const blobWordsCache = new Map<string, readonly string[]>();
+
+/** Уникальные слова текста (tokenizeForRag без дублей) — для морфологического сравнения. */
+export function uniqueRagWords(blob: string): readonly string[] {
+  const hit = blobWordsCache.get(blob);
+  if (hit) return hit;
+  const words = [...new Set(tokenizeForRag(blob))];
+  if (blobWordsCache.size >= BLOB_WORDS_CACHE_MAX) blobWordsCache.clear();
+  blobWordsCache.set(blob, words);
+  return words;
+}
+
 /** Стеммер по мотивам Snowball Russian — только для матчинга словоформ в RAG. */
 export function stemRu(raw: string): string {
+  const key = String(raw || '');
+  const cached = stemCache.get(key);
+  if (cached !== undefined) return cached;
+  const out = stemRuUncached(key);
+  if (stemCache.size >= STEM_CACHE_MAX) stemCache.clear();
+  stemCache.set(key, out);
+  return out;
+}
+
+function stemRuUncached(raw: string): string {
   let w = String(raw || '')
     .toLowerCase()
     .replace(/ё/g, 'е');
@@ -522,7 +552,20 @@ export function stemRu(raw: string): string {
 }
 
 /** Одна словоформа? Точное вхождение или общая основа (увол / увольн). */
+const MORPH_CACHE_MAX = 200_000;
+const morphCache = new Map<string, boolean>();
+
 export function tokensMatchMorph(a: string, b: string): boolean {
+  const key = `${a}\u0000${b}`;
+  const cached = morphCache.get(key);
+  if (cached !== undefined) return cached;
+  const out = tokensMatchMorphUncached(a, b);
+  if (morphCache.size >= MORPH_CACHE_MAX) morphCache.clear();
+  morphCache.set(key, out);
+  return out;
+}
+
+function tokensMatchMorphUncached(a: string, b: string): boolean {
   const x = a.toLowerCase().replace(/ё/g, 'е');
   const y = b.toLowerCase().replace(/ё/g, 'е');
   if (x === y) return true;
@@ -603,7 +646,7 @@ export function textCoversToken(text: string, token: string): boolean {
   }
 
   if (t.length < 4) return false;
-  if (tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t))) return true;
+  if (uniqueRagWords(blob).some((w) => tokensMatchMorph(w, t))) return true;
   const group = synonymGroupForToken(t);
   if (!group) return false;
   return group.some((term) => {
@@ -611,7 +654,7 @@ export function textCoversToken(text: string, token: string): boolean {
     if (g === t) return false;
     if (hasWholeWordToken(blob, g)) return true;
     if (!PREFIX_AMBIGUOUS_TOKENS.has(g) && g.length >= 5 && blob.includes(g)) return true;
-    return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, g));
+    return uniqueRagWords(blob).some((w) => tokensMatchMorph(w, g));
   });
 }
 
