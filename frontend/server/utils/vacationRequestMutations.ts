@@ -32,6 +32,18 @@ import {
 } from '../../app/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
 import { employeeNamesMatch } from '../../app/utils/employeeName';
+import { vacationBookingYearError } from '../../app/utils/vacationBookingYears';
+
+/** Новые даты — только на текущий учётный год или следующий (прошлые заявки правятся как раньше). */
+const assertBookableVacationYear = (
+  primaryYear: number,
+  start: string,
+  end: string,
+  previousStart?: string
+) => {
+  const message = vacationBookingYearError(start, end, primaryYear, previousStart);
+  if (message) throw createError({ statusCode: 400, statusMessage: message });
+};
 
 const cloneState = (state: VacationStoreState): VacationStoreState =>
   JSON.parse(JSON.stringify(state)) as VacationStoreState;
@@ -210,6 +222,7 @@ export async function createVacationRequest(
     }
     assertYearMatchesStart(body.year, body.start);
     yearFromIsoDate(body.end);
+    assertBookableVacationYear(state.primaryYear, body.start, body.end);
     assertStartNotInPastUnlessAdmin(session, body.start);
     assertSelfVacationOverlap(
       state,
@@ -342,12 +355,17 @@ export async function patchVacationRequest(
       assertStartNotInPastUnlessAdmin(session, nextStart);
     }
 
+    const prevStart = found.item.start;
+    const prevEnd = found.item.end;
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
 
     if (patch.start !== undefined || patch.end !== undefined) {
       yearFromIsoDate(found.item.end);
       const startYear = yearFromIsoDate(found.item.start);
+      if (found.item.start !== prevStart || found.item.end !== prevEnd) {
+        assertBookableVacationYear(state.primaryYear, found.item.start, found.item.end, prevStart);
+      }
       const bucketYear = Number(found.yearKey);
       if (startYear !== bucketYear) {
         // Дата уехала в другой год — переносим заявку в правильную папку.

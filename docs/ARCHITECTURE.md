@@ -427,11 +427,16 @@ OrgLink        // from/to ports + optional mid
 | `viewYear` (UI) | Год календаря и бакета `requestsByYear`. У сотрудника годы раньше `primaryYear` — read-only. **Не** влияет на формулу баланса и таблицу «Отгулял / план» (aside всегда `primaryYear`) |
 | `employee.vacation_opening_balance` | Остаток на 01.01 `primaryYear` (из Excel или после rollover) |
 
-**Переход на новый год:** остаток на 31.12.N (`calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
+**Переход на новый год:** остаток на 31.12.N (`openingBalanceForYear` → `calcAvailableOnDate` с учётом всех заявок до конца года) записывается в `vacation_opening_balance` каждого сотрудника; `primaryYear` → N+1.
 
-- Код: `server/utils/vacationYearRollover.ts`
-- CLI (из корня репозитория): `node scripts/rollover-vacation-year.mjs 2026 2027`
-- API: `POST /api/admin/vacations/rollover` `{ fromYear, toYear }` (admin/hr)
+- Код: `server/utils/vacationYearRollover.ts` (`runVacationYearRollover`, `runScheduledVacationRollover`), боевые зависимости `server/utils/vacationYearRolloverRun.ts`.
+- **Автоматически:** плагин `server/plugins/vacation-year-rollover.ts`: таймер на каждую полночь по Москве (00:00:30 МСК) и догон через 45 с после старта процесса. Если год по Москве больше `primaryYear`, делается переход. Работает на всех стендах (Bitrix не трогает). Выключить: `VACATION_AUTO_ROLLOVER=0`. В журнале одна строка `[vacation-rollover] …: учётный год N → N+1, …`.
+- **Атомарно:** смена `primaryYear` и снимок остатков (`vacations.yearRollover`: `openingBalances` id → дни, `employeesAppliedAt`) пишутся одной правкой `mutateVacations` (JSON: очередь; Postgres: транзакция под `pg_advisory_xact_lock`). Заявка, созданная в этот момент, не теряется. Потом снимок применяется к карточкам сотрудников (`writeEmployees`, повтор безопасен); если запись карточек упала, её доделает следующий запуск. Повторный запуск при `primaryYear ≥ toYear` ничего не меняет.
+- `yearRollover` служебное поле: `readVacations` / ответ `mutateVacations` его не отдают (в API клиенту не уходит), полное состояние читает только `readVacationsWithServiceFields`.
+- API (ручной запуск, обычно не нужен): `POST /api/admin/vacations/rollover` `{ fromYear, toYear }` (admin/hr), та же атомарная функция; повтор отвечает `alreadyDone: true`.
+- CLI `scripts/rollover-vacation-year.mjs` **устарел**: только JSON-файлы (локально). При `DATABASE_URL` + `DB_VACATIONS=1` отказывается работать.
+
+**Бронь и заявки на следующий год** (`app/utils/vacationBookingYears.ts`): новые заявки, новые даты и брони только на `primaryYear` и `primaryYear + 1` (`vacationBookingYearError`, `isBookableVacationYear`; сервер `vacationRequestMutations.ts`, `vacationReservationMutations.ts`, плюс проверка в форме). Остаток для года впереди: `openingBalanceForYear` в `vacationBalance.ts` (база на 01.01 = остаток на 31.12 предыдущего года, как при rollover), вызывается из `assessVacationBalance`. Календарь сотрудника и проверка своих пересечений берут папки `year−1, year, year+1` (`requestsAroundYear`), пересечение групхедов в форме смотрит все годы, как сервер.
 
 ---
 
@@ -608,7 +613,7 @@ Bitrix: стейдж по-прежнему в Bitrix не пишет (гвард
 
 Остались на JSON (осознанно): правила групп и лимиты броней в коде (`vacationDepartmentGroups.ts`, `vacationReservationCaps.ts`). Outbox для Bitrix не делали: синк по-прежнему внутри `mutateVacations`.
 
-JSON-файл не удаляется (бэкап на момент переезда), после переезда в него не пишут: снять флаг = откат к состоянию момента импорта. Скрипты `scripts/audit-vacations-block.mjs`, `scripts/import-vacation*.py`, `scripts/rollover-vacation-year.mjs`, `scripts/backfill-vacation-employee-ids.mjs` и еженедельный бэкап `vbi-hr-vacations-backup` работают с файлом (бой на JSON); на стейдже с `DB_VACATIONS=1` они видят только бэкап.
+JSON-файл не удаляется (бэкап на момент переезда), после переезда в него не пишут: снять флаг = откат к состоянию момента импорта. Скрипты `scripts/audit-vacations-block.mjs`, `scripts/import-vacation*.py`, `scripts/rollover-vacation-year.mjs` (устарел, с Postgres отказывается работать), `scripts/backfill-vacation-employee-ids.mjs` и еженедельный бэкап `vbi-hr-vacations-backup` работают с файлом (бой на JSON); на стейдже с `DB_VACATIONS=1` они видят только бэкап.
 
 ### Этап 5. Уведомления админки, журналы напоминаний, стоп-лист доступа (только стейдж)
 

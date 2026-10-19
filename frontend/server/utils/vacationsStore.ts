@@ -23,6 +23,20 @@ export type VacationStoreState = {
   qaDemoSuppressed?: QaDemoVacationSuppressed;
   /** Лимит броней на месяц по группам Digital (groupId → max). */
   reservationMonthlyCapsByGroup?: Record<string, number>;
+  /** Последний переход учётного года (снимок остатков на 01.01 для карточек сотрудников). */
+  yearRollover?: VacationYearRolloverRecord;
+};
+
+export type VacationYearRolloverRecord = {
+  fromYear: number;
+  toYear: number;
+  /** ISO-время перехода. */
+  at: string;
+  reason: string;
+  /** id сотрудника → остаток на 01.01.toYear (vacation_opening_balance). */
+  openingBalances: Record<string, number>;
+  /** Когда остатки записаны в карточки; null — ещё нет (доделает следующий запуск). */
+  employeesAppliedAt: string | null;
 };
 
 export const defaultVacationState = (): VacationStoreState => ({
@@ -43,7 +57,8 @@ export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): V
     nextReservationId:
       typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId,
     qaDemoSuppressed: raw.qaDemoSuppressed,
-    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup
+    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup,
+    ...(raw.yearRollover ? { yearRollover: raw.yearRollover } : {})
   };
 }
 
@@ -103,7 +118,20 @@ export async function getVacationsBackend(): Promise<'json' | 'postgres'> {
   return (await vacationsRepo()).backend;
 }
 
+/** Служебные поля, которые не отдаём клиенту (снимок остатков всех сотрудников при переходе года). */
+export function withoutVacationServiceFields(state: VacationStoreState): VacationStoreState {
+  if (!state.yearRollover) return state;
+  const { yearRollover: _hidden, ...rest } = state;
+  return rest;
+}
+
+/** Состояние для API и логики (без служебного снимка перехода года). */
 export async function readVacations(): Promise<VacationStoreState> {
+  return withoutVacationServiceFields(await readVacationsWithServiceFields());
+}
+
+/** Полное состояние, включая `yearRollover` (только для перехода года). */
+export async function readVacationsWithServiceFields(): Promise<VacationStoreState> {
   const raw = await (await vacationsRepo()).readRaw();
   return mergeQaTestVacationState(normalizeVacationStoreState(raw));
 }
@@ -118,6 +146,8 @@ export async function writeVacations(
 }
 
 /**
+ * Mutator получает полное состояние (со служебным `yearRollover` — его надо сохранять, как остальные поля),
+ * наружу возвращается состояние без служебных полей.
  * Сериализует все правки отпусков — без гонок при параллельных POST/PATCH.
  * JSON: очередь в процессе. Postgres: очередь + транзакция под advisory lock (см. repositories/vacations.ts).
  * Возвращает состояние, которое вернул mutator (с демо-записями QA, как и раньше).
@@ -132,7 +162,7 @@ export async function mutateVacations(
     result = await mutator(current);
     return stripQaFromVacationState(result);
   }, ctx);
-  return result;
+  return withoutVacationServiceFields(result);
 }
 
 function normalizeEmployeeNameKey(name: string): string {

@@ -204,13 +204,23 @@ export const assessVacationBalance = (
   const filtered = excludeRequestId
     ? requests.filter((r) => r.id !== excludeRequestId)
     : requests;
+  // Год впереди учётного: база на 01.01 — переходящий остаток на 31.12 предыдущих лет
+  // (как при rollover), а не opening balance текущего учётного года.
+  const opening = openingBalanceForYear(
+    employeeName,
+    hireIso,
+    accountYear,
+    filtered,
+    primaryYear,
+    openingBalance
+  );
   const available = calcAvailableOnDate(
     employeeName,
     hireIso,
     start,
     filtered,
     accountYear,
-    openingBalance
+    opening
   );
   if (available === null) {
     return { ...empty, status: 'unknown', neededDays, startLabel };
@@ -347,4 +357,33 @@ export const calcAvailableOnDate = (
     primaryYear
   );
   return Math.max(0, Math.floor((accrued - takenThru - pendingThru) * 10) / 10);
+};
+
+/**
+ * База остатка на 01.01.targetYear.
+ * targetYear ≤ primaryYear — как раньше: `vacation_opening_balance` (или null → оценка ЗУП).
+ * targetYear > primaryYear — цепочкой по годам: остаток на 31.12 каждого года (начисления минус
+ * approved и pending этого года), ровно то же, что запишет переход года (`vacationYearRollover`).
+ * `requests` — заявки всех нужных лет (папки primaryYear-1 … targetYear).
+ */
+export const openingBalanceForYear = (
+  employeeName: string,
+  hireIso: string,
+  targetYear: number,
+  requests: VacationRequest[],
+  primaryYear: number,
+  openingBalance?: number | null
+): number | null | undefined => {
+  if (!(targetYear > primaryYear)) return openingBalance;
+  const hireYear = Number(String(hireIso).slice(0, 4));
+  let opening: number | null | undefined = openingBalance;
+  for (let year = primaryYear; year < targetYear; year += 1) {
+    if (!Number.isNaN(hireYear) && hireYear > year) {
+      opening = 0;
+      continue;
+    }
+    const closing = calcAvailableOnDate(employeeName, hireIso, `${year}-12-31`, requests, year, opening);
+    opening = closing === null ? 0 : Math.floor(closing * 10) / 10;
+  }
+  return opening;
 };

@@ -256,6 +256,7 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
+import { requestsAroundYear } from '~/utils/vacationBookingYears';
 import { countVacationBillableDays, isPastApprovedVacationRequest, isVacationStartInPast, todayIso, toIso } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
@@ -514,7 +515,10 @@ const requestAdvance = (req: VacationRequest) =>
   );
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>
-  yearRequests.value.some(
+  [
+    ...yearRequests.value,
+    ...requestsAroundYear(state.value.requestsByYear, Number(start.slice(0, 4)))
+  ].some(
     (r) =>
       r.id !== excludeId &&
       vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }) &&

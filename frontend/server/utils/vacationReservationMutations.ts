@@ -11,6 +11,7 @@ import { notifyVacationReservationUpdated } from './vacationReservationNotificat
 import { assertReservationGroupCap } from './vacationReservationCapMutations';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
 import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
+import { isBookableVacationYear, vacationReservationYearMessage } from '../../app/utils/vacationBookingYears';
 
 const findReservation = (state: VacationStoreState, id: number) => {
   for (const [yearKey, list] of Object.entries(state.reservationsByYear)) {
@@ -88,6 +89,9 @@ export async function createVacationReservation(
   const yearKey = String(body.year);
 
   return mutateVacations(async (state) => {
+    if (!isBookableVacationYear(body.year, state.primaryYear)) {
+      throw createError({ statusCode: 400, statusMessage: vacationReservationYearMessage(state.primaryYear) });
+    }
     await assertReservationGroupCap(state, canonicalName, body.year, body.month);
 
     if (hasReservationConflict(state, yearKey, employeeRef, body.month)) {

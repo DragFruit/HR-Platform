@@ -335,6 +335,7 @@
 import { buildDaySetsForEmployee, isVacationStartInPast, todayIso } from '~/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { assessVacationBalance, calcEmployeeBalance } from '~/utils/vacationBalance';
+import { requestsAroundYear, vacationBookingYearError } from '~/utils/vacationBookingYears';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 import {
@@ -416,7 +417,10 @@ const {
 } = useVacationTraining();
 
 const yearRequests = computed(() => requestsForYear(props.viewYear));
-const displayRequests = computed(() => mergeRequestsForDisplay(props.viewYear, yearRequests.value));
+/** Свой календарь и проверка пересечений: соседние папки, чтобы отпуск через Новый год был виден в обоих годах. */
+const displayRequests = computed(() =>
+  mergeRequestsForDisplay(props.viewYear, requestsAroundYear(state.value.requestsByYear, props.viewYear))
+);
 /** Для лимитов: только реальные заявки (без учебных), все годы. */
 const capRequests = computed(() => Object.values(state.value.requestsByYear).flat());
 const employeeReservationsList = computed(() => {
@@ -693,7 +697,7 @@ const formGroupLeadOverlapDetails = computed(() => {
     department: emp.department,
     start: form.start,
     end: form.end,
-    allRequests: requestsForYear(state.value.primaryYear)
+    allRequests: capRequests.value
   });
 });
 
@@ -887,6 +891,11 @@ const submitRequest = async () => {
       title: 'Дата в прошлом',
       text: 'Нельзя оформить отпуск задним числом. Обратитесь к администратору.'
     };
+    return;
+  }
+  const yearError = vacationBookingYearError(form.start, form.end, state.value.primaryYear);
+  if (yearError) {
+    formError.value = { title: 'Год недоступен', text: yearError };
     return;
   }
   if (hasConflict(form.start, form.end)) {
