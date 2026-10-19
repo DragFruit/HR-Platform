@@ -1,4 +1,5 @@
-import { retryFailedBitrixVacationSyncs } from '../../utils/bitrixVacationAbsence';
+import { runBitrixVacationMaintenance } from '../../utils/bitrixVacationAbsence';
+import type { ReconcileAbsencesResult } from '../../utils/bitrixVacationAbsence';
 import { requireRole } from '../../utils/requireRole';
 import { isBitrixWritesBlockedMessage } from '../../utils/bitrixWriteGuard';
 import { mutateVacations } from '../../utils/vacationsStore';
@@ -10,6 +11,7 @@ export default defineEventHandler(async (event) => {
   let failed = 0;
   /** Стейдж/локалка: запись в Bitrix выключена — не ошибка, а skipped. */
   let blocked = 0;
+  let reconcile: Omit<ReconcileAbsencesResult, 'state'> | null = null;
 
   const state = await mutateVacations(async (current) => {
     const before = new Map(
@@ -17,15 +19,17 @@ export default defineEventHandler(async (event) => {
         .flat()
         .map((r) => [r.id, r.bitrix_sync_status] as const)
     );
-    const next = await retryFailedBitrixVacationSyncs(current);
-    for (const r of Object.values(next.requestsByYear).flat()) {
+    // Повтор failed/skipped + перенос, затем сверка дат будущих отпусков с графиком отсутствий.
+    const result = await runBitrixVacationMaintenance(current);
+    reconcile = result.reconcile;
+    for (const r of Object.values(result.state.requestsByYear).flat()) {
       const prev = before.get(r.id);
       if (prev !== 'failed' && prev !== 'skipped') continue;
       if (r.bitrix_sync_status === 'synced') synced += 1;
       else if (isBitrixWritesBlockedMessage(r.bitrix_sync_error)) blocked += 1;
       else if (r.bitrix_sync_status === 'failed' || r.bitrix_sync_status === 'skipped') failed += 1;
     }
-    return next;
+    return result.state;
   });
 
   return {
@@ -33,6 +37,7 @@ export default defineEventHandler(async (event) => {
     synced,
     failed,
     blocked,
+    reconcile,
     primaryYear: state.primaryYear
   };
 });
