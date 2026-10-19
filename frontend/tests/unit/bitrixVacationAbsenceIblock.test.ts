@@ -35,7 +35,8 @@ import {
   removeVacationAbsenceFromBitrix,
   resolveAbsenceIblockId,
   retryFailedBitrixVacationSyncs,
-  syncApprovedVacationsToBitrix
+  syncApprovedVacationsToBitrix,
+  toBitrixDate
 } from '../../server/utils/bitrixVacationAbsence';
 
 const ABSENCE_KEYS = [
@@ -155,8 +156,8 @@ describe('отпуска → настоящий график отсутстви�
     expect(add.params.IBLOCK_ID).toBe(3);
     expect(add.params.FIELDS).toEqual({
       NAME: 'Отпуск: Трифонов Николай (VBI HR)',
-      ACTIVE_FROM: '09.11.2026 00:00:00',
-      ACTIVE_TO: '15.11.2026 23:59:59',
+      ACTIVE_FROM: '09.11.2026',
+      ACTIVE_TO: '15.11.2026',
       PROPERTY_1: 501,
       PROPERTY_7: '1'
     });
@@ -175,8 +176,8 @@ describe('отпуска → настоящий график отсутстви�
     await syncApprovedVacationsToBitrix(stateOf([req({ status: 'pending' })]), stateOf([req({})]));
 
     const fields = callsOf('lists.element.add')[0].params.FIELDS;
-    expect(fields.PROPERTY_1548).toBe('09.11.2026 00:00:00');
-    expect(fields.PROPERTY_1549).toBe('15.11.2026 23:59:59');
+    expect(fields.PROPERTY_1548).toBe('09.11.2026');
+    expect(fields.PROPERTY_1549).toBe('15.11.2026');
     expect(String(fields.PROPERTY_1551)).toContain('2026-11-09');
   });
 
@@ -283,5 +284,42 @@ describe('отпуска → настоящий график отсутстви�
     expect(absenceElementUserId({ PROPERTY_1: { '1': '2579' } })).toBe(2579);
     process.env.BITRIX_ABSENCE_PROPERTY_USER = 'PROPERTY_99';
     expect(absenceElementUserId({ PROPERTY_99: { '7': '42' }, PROPERTY_1: { '1': '2579' } })).toBe(42);
+  });
+
+  it('даты отпуска — календарные «ДД.ММ.ГГГГ» без времени, одинаковые в любом TZ процесса', () => {
+    const prevTz = process.env.TZ;
+    try {
+      for (const tz of ['UTC', 'Europe/Moscow', 'Asia/Almaty', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
+        process.env.TZ = tz;
+        expect(toBitrixDate('2026-11-09')).toBe('09.11.2026');
+        expect(toBitrixDate('2026-12-31')).toBe('31.12.2026');
+        expect(toBitrixDate('2027-01-01')).toBe('01.01.2027');
+      }
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ;
+      else process.env.TZ = prevTz;
+    }
+    expect(() => toBitrixDate('09.11.2026')).toThrow();
+    expect(() => toBitrixDate('')).toThrow();
+  });
+
+  it('перенос дат: update шлёт новые даты без времени', async () => {
+    fakePortal({
+      33212: { CODE: 'vbi-hr-vac-1202', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026' }
+    });
+    const before = req({
+      id: 1202,
+      start: '2026-11-16',
+      end: '2026-11-22',
+      bitrix_absence_id: 33212,
+      bitrix_absence_iblock_id: 3,
+      bitrix_sync_status: 'synced'
+    });
+    const after = { ...before, start: '2026-11-23', end: '2026-11-29' };
+    await syncApprovedVacationsToBitrix(stateOf([before]), stateOf([after]));
+    const updates = callsOf('lists.element.update');
+    expect(updates.length).toBe(1);
+    expect(updates[0].params.FIELDS.ACTIVE_FROM).toBe('23.11.2026');
+    expect(updates[0].params.FIELDS.ACTIVE_TO).toBe('29.11.2026');
   });
 });

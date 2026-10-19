@@ -102,12 +102,6 @@ const updateRequestInState = (
   return state;
 };
 
-export const toBitrixDateTime = (isoDate: string, endOfDay = false): string => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d)}.${pad(m)}.${y} ${endOfDay ? '23:59:59' : '00:00:00'}`;
-};
-
 const absenceIblockTypeId = () =>
   String(process.env.BITRIX_ABSENCE_IBLOCK_TYPE_ID || 'structure').trim();
 
@@ -138,11 +132,19 @@ const optionalAbsenceProperty = (key: string): string | null => {
 /** Инфоблок «График отсутствий» на crm.vbi.ru (IBLOCK_TYPE_ID=structure, CODE=absence). */
 export const DEFAULT_ABSENCE_IBLOCK_ID = 3;
 
-/** ДД.ММ.ГГГГ для FILTER ACTIVE_FROM (без времени — иначе lists может не найти). */
-const toBitrixDate = (isoDate: string): string => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d)}.${pad(m)}.${y}`;
+/**
+ * Календарная дата отпуска → «ДД.ММ.ГГГГ» без времени (как у ручных отсутствий в графике).
+ * Даты, которые зафиксировал сотрудник, одинаковы в любом часовом поясе: только перестановка
+ * строки, без Date/UTC. Время («00:00:00»/«23:59:59») Bitrix пересчитывает из пояса
+ * пользователя токена/вебхука в пояс портала — граница дня могла уехать на соседние сутки.
+ * Дата без времени не пересчитывается. Используется и в FIELDS, и в FILTER ACTIVE_FROM.
+ */
+export const toBitrixDate = (isoDate: string): string => {
+  const m = String(isoDate || '')
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) throw new Error(`toBitrixDate: ожидалась дата YYYY-MM-DD, получено «${isoDate}»`);
+  return `${m[3]}.${m[2]}.${m[1]}`;
 };
 
 const isElementAlreadyExistsError = (message: string): boolean =>
@@ -380,15 +382,15 @@ const absenceFields = (params: {
 }): Record<string, unknown> => {
   const fields: Record<string, unknown> = {
     NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
-    ACTIVE_FROM: toBitrixDateTime(params.start, false),
-    ACTIVE_TO: toBitrixDateTime(params.end, true),
+    ACTIVE_FROM: toBitrixDate(params.start),
+    ACTIVE_TO: toBitrixDate(params.end),
     [absenceUserProperty()]: params.bitrixUserId,
     [absenceTypeProperty()]: absenceTypeEnum()
   };
   const startProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_START');
-  if (startProp) fields[startProp] = toBitrixDateTime(params.start, false);
+  if (startProp) fields[startProp] = toBitrixDate(params.start);
   const endProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_END');
-  if (endProp) fields[endProp] = toBitrixDateTime(params.end, true);
+  if (endProp) fields[endProp] = toBitrixDate(params.end);
   const infoProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_INFO');
   if (infoProp) {
     fields[infoProp] =
