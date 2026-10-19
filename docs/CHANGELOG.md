@@ -4,6 +4,22 @@
 
 ## 2026-10-19
 
+### Банк идей и база знаний на Postgres (этап 7, только стейдж)
+
+Идеи и статьи базы знаний переезжают из `server/data/*.json` в Postgres. Бой остаётся на JSON (флагов там нет); на прод все этапы поедут вместе отдельной выкаткой.
+
+- `ideas.json` → схема `ideas` (`ideas.ideas`, `ideas.user_votes`, `ideas.state`), флаг `DB_IDEAS=1`. Вложения остаются на диске в `server/data/idea-attachments/<id>/`.
+- `knowledge-articles.json` → схема `knowledge` (`knowledge.articles` с комментариями и правкой на проверке, `knowledge.state`), флаг `DB_KNOWLEDGE=1`. RAG-индекс `knowledge-rag-index.json` и фото оценок страниц остаются файлами, `pgvector` не подключали.
+- Миграция `0006_ideas_knowledge.sql`. Флаги только в `/etc/vbi-hr/bitrix.env` стейджа.
+- Общий репозиторий «файл-состояние» `frontend/server/db/repositories/keyedState.ts`: списки по таблицам с записью diff-ом, счётчики и порядок ключей в строке `state`, маппинг без потерь (`source_keys` + `extra`): ответы API байт-в-байт те же. Все правки строго по очереди, в Postgres под advisory lock, аудит с id сотрудника и причиной (`idea:*`, `knowledge:*`).
+- Чтение статей из кэша процесса (сбрасывается и обновляется при записи): `GET /api/knowledge`, `/knowledge`, RAG и лексический фолбэк не ходят в базу за ~1 МБ на каждый запрос. Триггеры пересборки RAG-индекса прежние.
+- Сид статей из git на стенде с базой сливается в базу при старте сервера (`frontend/server/knowledge/seedSync.ts`, та же функция из `deploy/scripts/merge-knowledge-articles-seed.mjs`, раз на версию сида), иначе платформенные статьи `kb-vibe-*` / `kb-case-ecom-*` из git перестали бы доезжать до стенда. Скрипт деплоя работает как раньше.
+- Разовый импорт при старте со сверкой поле-в-поле, у каждого домена своя готовность. `GET /api/admin/db-health` показывает `domains.ideas`, `domains.knowledge`.
+- Фасады с прежним API: `frontend/server/utils/ideasStore.ts`, `frontend/server/utils/knowledgeArticlesStore.ts`; форматы и импорт: `frontend/server/ideas/`, `frontend/server/knowledge/`.
+- Новые env: `DB_IDEAS`, `DB_KNOWLEDGE` (только стейдж). Новых ключей localStorage нет.
+- Тесты: `frontend/tests/unit/stage7IdeasKnowledge.test.ts` (один сценарий на JSON и Postgres даёт байт-в-байт тот же ответ, импорт реальных файлов из git, отсеянные записи, кэш, аудит, слияние сида). Postgres-часть: `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`.
+- Проверить на `:8080`: в `journalctl -u vbi-hr-staging` строки `[db] ideas: …`, `[db] knowledge: … verified=193`, `[db] knowledge: сид из git …`, `[knowledge-rag] warm ok`; `/knowledge` открывается так же быстро, статьи и поиск на месте; «Спросить ИИ»; правка и модерация статьи в админке; банк идей: подать идею с файлом, голос, смена статуса; `db-health` → все домены `postgres`.
+
 ### Фикс: стейдж зависал на вопросе в «Спросить ИИ» при сбое Yandex GPT
 
 Инцидент 19.10 ~13:05 UTC: Yandex GPT ответил 403 (PermissionDenied на каталог), `POST /api/knowledge/yandex-ask` ушёл в лексический фолбэк по всей базе знаний. Фолбэк для каждого токена запроса и каждого синонима заново разбивал текст каждой статьи на слова и стеммил каждое слово — ~40 с синхронного CPU на один вопрос («привет какие контакты юристов?»). Event loop Node стоял, nginx отдавал 504 на все страницы `:8080` (включая `/knowledge` и статику `/_nuxt`), пока сервис не перезапустил следующий деплой. Этап 5 (уведомления админки на Postgres) ни при чём: уведомление `knowledge_ai_degraded` записалось за 2 мс до зависания.

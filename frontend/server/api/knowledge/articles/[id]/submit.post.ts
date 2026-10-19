@@ -4,6 +4,7 @@ import {
   type KnowledgeArticle
 } from '../../../../utils/knowledgeArticlesStore';
 import { isKnowledgeArticleAuthor, notifyKnowledgeArticleEvent } from '../../../../utils/knowledgeNotifications';
+import { sessionActorEmployeeId } from '../../../../utils/employeesStore';
 
 const plainText = (html: string) =>
   html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -77,7 +78,7 @@ export default defineEventHandler(async (event) => {
     const articles = [...state.articles];
     articles[index] = updated;
     return { ...state, articles };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:submit' });
 
   if (!updatedArticle) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
 

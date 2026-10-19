@@ -1,6 +1,7 @@
 import { requireRole } from '../../../utils/requireRole';
 import { mutateKnowledgeArticles, type KnowledgeArticle } from '../../../utils/knowledgeArticlesStore';
 import { normalizeDepartmentList } from '../../../utils/knowledgeAudience';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 type CreateArticleBody = {
   title?: string;
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event) => {
       articles: [article, ...state.articles],
       nextId: state.nextId + 1
     };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:admin-create' });
 
   if (!created) throw createError({ statusCode: 500, statusMessage: 'Не удалось создать статью' });
   const { scheduleKnowledgeRagRebuild } = await import('../../../utils/knowledgeRag');

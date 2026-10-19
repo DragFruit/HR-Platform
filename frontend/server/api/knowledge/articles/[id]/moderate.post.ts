@@ -7,6 +7,7 @@ import {
   canModerateKnowledgeArticle,
   notifyKnowledgeArticleEvent
 } from '../../../../utils/knowledgeNotifications';
+import { sessionActorEmployeeId } from '../../../../utils/employeesStore';
 
 type ModerateBody = {
   action?: 'accept' | 'revision' | 'reject';
@@ -132,7 +133,7 @@ export default defineEventHandler(async (event) => {
     const articles = [...state.articles];
     articles[index] = updated;
     return { ...state, articles };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:moderate' });
 
   if (!updatedArticle || !notifyEvent) {
     throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });

@@ -6,6 +6,7 @@ import {
 } from '../../../utils/knowledgeArticlesStore';
 import { normalizeDepartmentList } from '../../../utils/knowledgeAudience';
 import { isKnowledgeArticleAuthor } from '../../../utils/knowledgeNotifications';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 type PatchBody = {
   title?: string;
@@ -96,7 +97,7 @@ export default defineEventHandler(async (event) => {
     const articles = [...state.articles];
     articles[index] = updated;
     return { ...state, articles };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:edit' });
 
   if (!updatedArticle) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
   return { article: updatedArticle, articles: next.articles };

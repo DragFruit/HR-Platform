@@ -9,6 +9,8 @@
  * не откатывает на файлы домены, которые уже живут в Postgres.
  * Этап 6: DB_PROFILE=1 — аватары, лента активности, награды продаж, пароли Vibe (схема profile),
  * у каждого файла свой импорт и своя готовность.
+ * Этап 7: DB_IDEAS=1 — банк идей (схема ideas), DB_KNOWLEDGE=1 — статьи базы знаний (схема knowledge),
+ * свой импорт и своя готовность у каждого.
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
@@ -45,6 +47,12 @@ import {
   setUserAvatarsPgReady,
   setVibePasswordsPgReady
 } from '../utils/profileStore';
+import { importIdeasFromJson } from '../ideas/domain';
+import { IDEAS_STATE_FULL_DEF, ideasDbFlag, setIdeasPgReady } from '../utils/ideasStore';
+import { importKnowledgeArticlesFromJson } from '../knowledge/domain';
+import { KNOWLEDGE_STATE_FULL_DEF, knowledgeDbFlag, knowledgePgRepo, setKnowledgePgReady } from '../utils/knowledgeArticlesStore';
+import { applyKnowledgeSeedToDb } from '../knowledge/seedSync';
+import type { StateImportResult } from '../db/repositories/keyedState';
 import type { Db } from '../db/client';
 import type { KeyedImportResult } from '../db/repositories/keyedList';
 
@@ -163,7 +171,58 @@ async function importProfilePart(label: string, run: (db: Db) => Promise<KeyedIm
   }
 }
 
+/** Импорт файла-состояния этапа 7; true — домен работает на Postgres. В лог — только счётчики. */
+async function importStatePart(
+  domain: string,
+  label: string,
+  flag: () => boolean,
+  run: (db: Db) => Promise<StateImportResult>
+): Promise<boolean> {
+  if (!flag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await run(db);
+    logPart(domain, r);
+    if (r.status === 'imported') console.info(`[db] ${domain}: строк ${JSON.stringify(r.parts)}`);
+    console.info(`[db] ${domain}: ${label} на Postgres`);
+    return true;
+  } catch (err: any) {
+    console.error(`[db] ${domain}: импорт (${label}) упал — остаётся на JSON:`, err?.message || err);
+    return false;
+  }
+}
+
+/**
+ * Сид статей из git (сборка) → база, раз на версию сида. Раньше это делал деплой на файле.
+ * Сбой не уводит базу знаний на файл: статьи уже в Postgres, просто без свежего сида.
+ */
+async function syncKnowledgeSeed(): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const seed = ((await import('../data/knowledge-articles.json')) as { default?: unknown }).default;
+    const r = await applyKnowledgeSeedToDb(db, knowledgePgRepo(db), seed);
+    if (r.status === 'already') {
+      console.info(`[db] knowledge: сид из git уже применён (${r.marker})`);
+      return;
+    }
+    const s = r.stats;
+    console.info(
+      `[db] knowledge: сид из git применён (${r.marker}) added=${s.added} refreshedBody=${s.refreshedBody} platformOwned=${s.platformOwned} retired=${s.retired} prunedEmptyTitle=${s.prunedEmptyTitle} changed=${r.changed}`
+    );
+    if (r.changed) {
+      const { scheduleKnowledgeRagRebuild } = await import('../utils/knowledgeRag');
+      scheduleKnowledgeRagRebuild();
+    }
+  } catch (err: any) {
+    console.error('[db] knowledge: слияние сида из git упало — статьи без свежего сида:', err?.message || err);
+  }
+}
+
 function setAllPgReady(ok: boolean) {
+  setIdeasPgReady(ok);
+  setKnowledgePgReady(ok);
   setAllProfilePgReady(ok);
   setNotificationsPgReady(ok);
   setCorePgReady(ok);
@@ -226,6 +285,12 @@ export default defineNitroPlugin(() => {
         setProfileActivityPgReady(await importProfilePart('лента активности', (db) => importProfileActivityFromJson(db)));
         setSalesBestAwardsPgReady(await importProfilePart('награды продаж', (db) => importSalesBestAwardsFromJson(db)));
         setVibePasswordsPgReady(await importProfilePart('пароли Vibe', (db) => importVibePasswordsFromJson(db)));
+        setIdeasPgReady(await importStatePart('ideas', 'банк идей', ideasDbFlag, (db) => importIdeasFromJson(db, IDEAS_STATE_FULL_DEF)));
+        const knowledgeOk = await importStatePart('knowledge', 'статьи базы знаний', knowledgeDbFlag, (db) =>
+          importKnowledgeArticlesFromJson(db, KNOWLEDGE_STATE_FULL_DEF)
+        );
+        if (knowledgeOk) await syncKnowledgeSeed();
+        setKnowledgePgReady(knowledgeOk);
       })
       .catch((err) => {
         disableDb('миграции упали');

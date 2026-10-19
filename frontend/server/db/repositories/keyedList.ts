@@ -65,7 +65,7 @@ export type KeyedListDef<T> = {
   audit?(change: KeyedChange<T>, reason: string | null): Pick<AuditEntry, 'action' | 'before' | 'after'> | null;
 };
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 export const asStored = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -126,7 +126,7 @@ function defaultAudit<T>(change: KeyedChange<T>, reason: string | null): Pick<Au
   return { action: 'update', before: diff.before, after: { reason, ...diff.after } };
 }
 
-async function applyDiff<T>(tx: Tx, def: KeyedListDef<T>, prevRows: Row[], nextItems: T[], ctx: KeyedListWriteContext) {
+export async function applyDiff<T>(tx: Tx, def: KeyedListDef<T>, prevRows: Row[], nextItems: T[], ctx: KeyedListWriteContext) {
   const keyOf = (r: Row) => r[def.keyProp] as Key;
   const prevByKey = new Map(prevRows.map((r) => [keyOf(r), r]));
   const prevItems = new Map(prevRows.map((r) => [keyOf(r), def.fromRow(r)]));

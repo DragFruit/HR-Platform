@@ -43,6 +43,13 @@
       "when": 1792414722116,
       "tag": "0005_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792416323309,
+      "tag": "0006_ideas_knowledge",
+      "breakpoints": true
     }
   ]
 }

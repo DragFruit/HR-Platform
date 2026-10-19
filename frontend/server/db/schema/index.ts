@@ -4,3 +4,5 @@ export * from './notifications';
 export * from './core';
 export * from './vacations';
 export * from './profile';
+export * from './ideas';
+export * from './knowledge';

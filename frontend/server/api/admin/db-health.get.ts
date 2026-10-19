@@ -6,6 +6,8 @@ import { getAdminNotificationsBackend } from '../../utils/adminNotificationsStor
 import { getVacationReminderLogsBackend } from '../../utils/vacationReminderLogsBackend';
 import { getVacationsBackend } from '../../utils/vacationsStore';
 import { getProfileBackends } from '../../utils/profileStore';
+import { getIdeasBackend } from '../../utils/ideasStore';
+import { getKnowledgeBackend } from '../../utils/knowledgeArticlesStore';
 
 /** Проверка PostgreSQL на стенде: {enabled, ok, latencyMs, migrations, domains}. Только admin. */
 export default defineEventHandler(async (event) => {
@@ -19,7 +21,9 @@ export default defineEventHandler(async (event) => {
     adminNotifications: await getAdminNotificationsBackend(),
     accessDenylist: await getAccessDenylistBackend(),
     vacationReminders: await getVacationReminderLogsBackend(),
-    ...(await getProfileBackends())
+    ...(await getProfileBackends()),
+    ideas: await getIdeasBackend(),
+    knowledge: await getKnowledgeBackend()
   };
   const sql = getSql();
   if (!isDbEnabled() || !sql) {

@@ -141,7 +141,7 @@ flowchart TB
 - `admin/employees.vue` (сотрудники, аккаунты, подчинение), `admin/hierarchy.vue` (редирект → employees), `admin/vacations.vue` (календарь + очередь согласования)
 - `admin/how-it-looks.vue` — превью как у руководителя; на бое с замком после выката рук-ам
 - `admin/users.vue` (редирект → employees), `admin/store.vue`, `admin/adaptation.vue`
-- `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json`
+- `admin/knowledge.vue` — редактор базы знаний (создать/редактировать/удалить/модерировать, WYSIWYG). Компонент `KnowledgeWysiwygEditor.vue`. Тело — HTML. Статусы: `draft` \| `pending_review` \| `published` \| `revision_requested` \| `rejected` (legacy `review` → `pending_review`). API: `GET/POST /api/admin/knowledge`, `PATCH/DELETE /api/admin/knowledge/:id` (в т.ч. `moderateAction`) → `server/data/knowledge-articles.json` (на стейдже схема `knowledge` в Postgres, см. «База данных → Этап 7»)
 - `admin/activity.vue` — ручные события профиля («Недавняя активность»)
 - `admin/ideas.vue` — банк идей: этапы, комментарии, удаление
 - `admin/surveys/index.vue`, `admin/surveys/[id]/index.vue`, `admin/surveys/[id]/results.vue` — опросы: список / конструктор / результаты. Подробно — раздел «Опросы» ниже
@@ -171,7 +171,7 @@ review (На рассмотрении)
 
 Топ-авторы: только идеи со `status === 'done'`, подпись «N реализованных идей».
 
-Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`), вложения `server/data/idea-attachments/{ideaId}/`, очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `GET/POST /api/ideas/:id/file`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json` (идемпотентность по ключу события, `admin_seen` не сбрасывается при повторном синке). На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
+Данные: `server/data/ideas.json` (`ideas`, `nextIdeaId`, `votesByUserId`; на стейдже схема `ideas` в Postgres, см. «База данных → Этап 7»), вложения `server/data/idea-attachments/{ideaId}/`, очередь `mutateIdeas`. API: `GET/POST /api/ideas`, `GET/POST /api/ideas/:id/file`, `POST /api/ideas/:id/vote`, `PATCH /api/ideas/:id/status`, `DELETE /api/ideas/:id`. При деплое файл не перезаписывается, если уже есть на сервере (как `vacations.json`). Уведомления admin — `server/data/admin-notifications.json` (идемпотентность по ключу события, `admin_seen` не сбрасывается при повторном синке). На production демо-сид идей не подмешиваем; word-filter по «тест/qa» в ФИО не используем (`getDeployAppEnv` + `ideas/index.get`).
 
 Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` остаются, но создание/статус шлют уведомления из server mutations.
 
@@ -680,6 +680,36 @@ JSON-файл не удаляется (бэкап на момент переез
 
 После переезда файлы не пишутся (бэкап на момент импорта, снять флаг = откат к нему).
 
+### Этап 7. Банк идей и статьи базы знаний (только стейдж)
+
+| Что | Было | Стало |
+|-----|------|-------|
+| Идеи | `ideas.json` → `ideas` | `ideas.ideas` |
+| Голоса за идеи | `ideas.json` → `votesByUserId` | `ideas.user_votes` (строка на пользователя, карта голосов как в файле) |
+| Счётчик `nextIdeaId`, порядок ключей файла | `ideas.json` | `ideas.state` (одна строка) |
+| Статьи базы знаний (с комментариями и правкой на проверке) | `knowledge-articles.json` → `articles` | `knowledge.articles` |
+| Счётчик `nextId` | `knowledge-articles.json` | `knowledge.state` |
+
+Флаги `DB_IDEAS=1` и `DB_KNOWLEDGE=1` (новые, по одному на домен) только в `/etc/vbi-hr/bitrix.env` стейджа; на проде их нет, там JSON. Миграция `0006_ideas_knowledge.sql`, схемы `ideas` и `knowledge`, маркеры импорта в `ideas.json_imports` и `knowledge.json_imports`.
+
+Остаются файлами: вложения идей (`server/data/idea-attachments/<id>/`, в базе только `attachmentName` / `attachmentStored`, как в JSON), фото оценок страниц (`page-feedback-photos/`), RAG-индекс `knowledge-rag-index.json` (производный кэш; `pgvector` не подключаем).
+
+Код:
+
+- `server/db/repositories/keyedState.ts`: общий репозиторий «файл-состояние» (объект со списками и счётчиками). Каждый список хранится в своей таблице и пишется diff-ом через `applyDiff` из `keyedList.ts`; всё остальное (счётчики, неизвестные ключи, порядок ключей верхнего уровня) лежит в строке `state` с `source_keys` + `extra`. Объект из базы байт-в-байт как файл. `mutate`: очередь в процессе + транзакция под `pg_advisory_xact_lock` домена (идеи `72461015`, статьи `72461016`), ошибка в fn → ничего не записано, аудит `create` / `update` (только изменившиеся поля) / `delete` по записям и `update` счётчиков. Чтение из кэша процесса (TTL 30 с, как у `core`): запись через процесс сразу обновляет кэш, наружу отдаётся копия. JSON-реализация с тем же контрактом: очередь, файл пишется только если что-то поменялось. `createStateGate`: флаг и готовность домена.
+- `server/ideas/domain.ts`, `server/knowledge/domain.ts`: маппинг через `server/db/fieldMapping.ts`, файлы в прежнем формате, разовый импорт (`importStateFromJson`: сверка каждой записи поле-в-поле и всего объекта байт-в-байт). Если запись отсеяна (нет id, дубль), то, что видит API после нормализации, должно совпасть с файлом, иначе импорт отменяется и домен остаётся на JSON.
+- Фасады с прежним API: `server/utils/ideasStore.ts` (`readIdeas`, `mutateIdeas`, `writeIdeas`), `server/utils/knowledgeArticlesStore.ts` (`readKnowledgeArticles`, `mutateKnowledgeArticles`, `writeKnowledgeArticles`). Нормализация одна на оба хранилища и, как раньше, применяется при чтении и записи; проверка вложения на диске (`attachmentStored`) тоже в фасаде.
+- Кто правит (для аудита): создание, голос, смена статуса и удаление идеи (`ideaMutations.ts`), загрузка файла к идее, все правки статей (`/api/admin/knowledge*`, `/api/knowledge/articles*`: создание, правка, отправка на проверку, модерация, комментарии) передают id сотрудника и `reason` (`idea:*`, `knowledge:*`).
+- `GET /api/admin/db-health` → `domains.ideas`, `domains.knowledge`.
+
+База знаний и RAG: `GET /api/knowledge`, SSR `/knowledge`, пересборка индекса и лексический фолбэк (`retrieveKnowledgeLexicalFallback`) читают статьи через `readKnowledgeArticles`, то есть из кэша процесса, а не запросом в базу на каждую статью или вызов. Триггеры пересборки индекса прежние: после правок статей (`scheduleKnowledgeRagRebuild` в обработчиках), прогрев при старте (`knowledge-rag-warm.ts`), cron `run-knowledge-rag-reindex.sh`, проверка `corpusHash` при поиске.
+
+Сид статей из git: раньше деплой сливал `server/data/knowledge-articles.json` из репозитория с файлом стенда (`deploy/scripts/merge-knowledge-articles-seed.mjs`: новые статьи, платформенные `kb-vibe-*` / `kb-case-ecom-*` из сида, снятые id). С `DB_KNOWLEDGE=1` файл стенда только бэкап, поэтому то же слияние (та же функция `mergeKnowledgeArticlesSeed` из этого скрипта) сервер делает в базе при старте после импорта: `server/knowledge/seedSync.ts`, сид из сборки, раз на версию сида (маркер `seed:<sha256>` в `knowledge.json_imports`, `reason: deploy-seed-merge` в аудите), после изменений пересборка RAG. Удалённая админом сид-статья не воскресает на каждом рестарте, только при новой версии сида. Деплой по-прежнему сливает сид и в файл (бэкап, JSON-режим прода).
+
+Идеи: при деплое `ideas.json` не перезаписывается, если файл уже есть (как раньше); с `DB_IDEAS=1` файл только бэкап.
+
+После переезда файлы не пишутся (бэкап на момент импорта, снять флаг = откат к нему). Скрипты `scripts/knowledge/check-*.mjs` и `scripts/bitrix/*-knowledge.mjs` читают и пишут JSON-файл из git, как и раньше.
+
 ### Целевая модель
 
 **Postgres-схема на домен** (`pgSchema`):
@@ -699,13 +729,13 @@ JSON-файл не удаляется (бэкап на момент переез
 
 **Принципы**: ссылки на сотрудника — `employee_id`, не ФИО; правила (лимиты, исключения групп вроде Цхай) — данными в таблицах, не константами в коде; история изменений — отдельные history-таблицы; внешние вызовы (Bitrix) — через outbox с ретраями, а не прямо из запроса; все мутации — в `audit.audit_log`.
 
-**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 (уведомления админки, журналы напоминаний, стоп-лист: см. «Этап 5»); 6 (профиль: аватары, лента, награды продаж, пароли Vibe: см. «Этап 6»), дальше остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
+**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 (уведомления админки, журналы напоминаний, стоп-лист: см. «Этап 5»); 6 (профиль: аватары, лента, награды продаж, пароли Vibe: см. «Этап 6»); 7 (банк идей и статьи базы знаний: см. «Этап 7»), дальше остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
 
 ### Тесты
 
 `npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
 
-Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, `tests/unit/vacationsRepo.test.ts`, `tests/unit/stage5Repos.test.ts`, `tests/unit/stage6Profile.test.ts`, блоки «Postgres»; `coreRepo`, `vacationsRepo`, `stage5Repos` и `stage6Profile` создают себе временную базу и удаляют её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
+Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, `tests/unit/vacationsRepo.test.ts`, `tests/unit/stage5Repos.test.ts`, `tests/unit/stage6Profile.test.ts`, `tests/unit/stage7IdeasKnowledge.test.ts`, блоки «Postgres»; `coreRepo`, `vacationsRepo`, `stage5Repos`, `stage6Profile` и `stage7IdeasKnowledge` создают себе временную базу и удаляют её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
 
 ---
 
