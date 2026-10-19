@@ -6,6 +6,7 @@ import {
   setCheckpointStatus
 } from '../../../../../utils/pitStopStore';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -28,5 +29,5 @@ export default defineEventHandler(async (event) => {
     if (!me) throw createError({ statusCode: 400, statusMessage: 'Сначала /join' });
     setCheckpointStatus(me, 6, 'done');
     return { ok: true };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-6' });
 });

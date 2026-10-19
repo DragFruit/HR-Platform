@@ -11,6 +11,9 @@
  * у каждого файла свой импорт и своя готовность.
  * Этап 7: DB_IDEAS=1 — банк идей (схема ideas), DB_KNOWLEDGE=1 — статьи базы знаний (схема knowledge),
  * свой импорт и своя готовность у каждого.
+ * Этап 8: DB_ENGAGEMENT=1 — пит-стоп, DB_SURVEYS=1 — опросы, DB_ADAPTATION=1 — адаптация,
+ * DB_VPN=1 — учёт VPN-ключей; у каждого файла свой импорт и своя готовность. При DB_CORE=1 сид
+ * сотрудников из git сливается в базу (раз на версию сида) до того, как core объявлен готовым.
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
@@ -53,6 +56,20 @@ import { importKnowledgeArticlesFromJson } from '../knowledge/domain';
 import { KNOWLEDGE_STATE_FULL_DEF, knowledgeDbFlag, knowledgePgRepo, setKnowledgePgReady } from '../utils/knowledgeArticlesStore';
 import { applyKnowledgeSeedToDb } from '../knowledge/seedSync';
 import type { StateImportResult } from '../db/repositories/keyedState';
+import type { StateFile } from '../db/repositories/stateFile';
+import { pitStopFile } from '../utils/pitStopStore';
+import { pitStopRaceFile } from '../utils/pitStopRaceStore';
+import { surveysFile } from '../utils/surveysStore';
+import { surveyResponsesFile } from '../utils/surveyResponsesStore';
+import { surveyStartsFile } from '../utils/surveyStartsStore';
+import { surveyVisitsFile } from '../utils/surveyVisitsStore';
+import { adaptationStateFile } from '../utils/adaptationStore';
+import { adaptationAssignmentsFile, adaptationScenariosFile } from '../utils/adaptationScenarios';
+import { vpnKeysFile } from '../utils/vpnKeysStore';
+import { applyEmployeesSeedToDb } from '../core/seedSync';
+import { createPgCoreRepo } from '../db/repositories/core';
+import { createPgAccessDenylistRepo } from '../db/repositories/accessDenylist';
+import { readAccessDenylistJson } from '../core/accessDenylistStore';
 import type { Db } from '../db/client';
 import type { KeyedImportResult } from '../db/repositories/keyedList';
 
@@ -220,7 +237,49 @@ async function syncKnowledgeSeed(): Promise<void> {
   }
 }
 
+/** Этап 8: все файлы-состояния по доменам (у каждого файла своя готовность). */
+const STAGE8_FILES: { domain: string; file: StateFile }[] = [
+  { domain: 'engagement', file: pitStopFile },
+  { domain: 'engagement', file: pitStopRaceFile },
+  { domain: 'surveys', file: surveysFile },
+  { domain: 'surveys', file: surveyResponsesFile },
+  { domain: 'surveys', file: surveyStartsFile },
+  { domain: 'surveys', file: surveyVisitsFile },
+  { domain: 'adaptation', file: adaptationStateFile },
+  { domain: 'adaptation', file: adaptationScenariosFile },
+  { domain: 'adaptation', file: adaptationAssignmentsFile },
+  { domain: 'vpn', file: vpnKeysFile }
+];
+
+/**
+ * Сид сотрудников из git (сборка) → база, раз на версию сида. Раньше это делал только деплой на
+ * файле (с DB_CORE=1 слияние доходило лишь до бэкапа). Сбой не уводит core на файлы: сотрудники уже
+ * в Postgres, просто без свежего сида; причина — в логе.
+ */
+async function syncEmployeesSeed(denylistOk: boolean): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const seed = ((await import('../data/employees.json')) as { default?: unknown }).default;
+    const readDenylist = denylistOk
+      ? () => createPgAccessDenylistRepo(db, { mirrorFile: null }).read()
+      : () => readAccessDenylistJson(ACCESS_DENYLIST_JSON_FILE);
+    const r = await applyEmployeesSeedToDb(db, createPgCoreRepo(db), readDenylist, seed);
+    if (r.status === 'already') {
+      console.info(`[db] core: сид сотрудников из git уже применён (${r.marker})`);
+      return;
+    }
+    const s = r.stats;
+    console.info(
+      `[db] core: сид сотрудников из git применён (${r.marker}) merged=${s.merged} server=${s.server} repo=${s.repo} both=${s.both} serverOnly=${s.serverOnly} repoOnly=${s.repoOnly} skippedDenied=${s.skippedDenied} employeesChanged=${r.employeesChanged} managersChanged=${r.managersChanged}`
+    );
+  } catch (err: any) {
+    console.error('[db] core: слияние сида сотрудников упало — сотрудники без свежего сида:', err?.message || err);
+  }
+}
+
 function setAllPgReady(ok: boolean) {
+  for (const { file } of STAGE8_FILES) file.setReady(ok);
   setIdeasPgReady(ok);
   setKnowledgePgReady(ok);
   setAllProfilePgReady(ok);
@@ -277,8 +336,11 @@ export default defineNitroPlugin(() => {
         setNotificationsPgReady(await importNotifications());
         setAdminNotificationsPgReady(await importAdminNotifications());
         const coreOk = await importCore();
+        const denylistOk = await importAccessDenylist(coreOk);
+        // сид до готовности core: запросы ждут и не пишут параллельно со слиянием
+        if (coreOk) await syncEmployeesSeed(denylistOk);
         setCorePgReady(coreOk);
-        setAccessDenylistPgReady(await importAccessDenylist(coreOk));
+        setAccessDenylistPgReady(denylistOk);
         setVacationsPgReady(await importVacations());
         setVacationReminderLogsPgReady(await importReminderLogs());
         setUserAvatarsPgReady(await importProfilePart('аватары', (db) => importUserAvatarsFromJson(db)));
@@ -291,6 +353,9 @@ export default defineNitroPlugin(() => {
         );
         if (knowledgeOk) await syncKnowledgeSeed();
         setKnowledgePgReady(knowledgeOk);
+        for (const { domain, file } of STAGE8_FILES) {
+          file.setReady(await importStatePart(domain, file.label, file.flag, (db) => file.importFromJson(db)));
+        }
       })
       .catch((err) => {
         disableDb('миграции упали');

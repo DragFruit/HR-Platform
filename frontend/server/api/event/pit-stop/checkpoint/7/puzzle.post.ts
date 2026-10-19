@@ -7,6 +7,7 @@ import {
   setCheckpointStatus
 } from '../../../../../utils/pitStopStore';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -48,5 +49,5 @@ export default defineEventHandler(async (event) => {
       return { ok: true, done: true };
     }
     return { ok: true, done: false, pressed: mine };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-7' });
 });

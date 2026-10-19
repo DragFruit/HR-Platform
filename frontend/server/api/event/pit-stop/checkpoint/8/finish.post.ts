@@ -5,6 +5,7 @@ import {
   setCheckpointStatus
 } from '../../../../../utils/pitStopStore';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 /** Офис: код из QR. Удалёнка: кодовое слово из видео. */
 export default defineEventHandler(async (event) => {
@@ -35,5 +36,5 @@ export default defineEventHandler(async (event) => {
     setCheckpointStatus(me, 8, 'done');
     me.completedAt = new Date().toISOString();
     return { ok: true, isRemote: me.isRemote };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-8' });
 });

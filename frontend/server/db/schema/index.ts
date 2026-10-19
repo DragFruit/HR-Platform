@@ -6,3 +6,7 @@ export * from './vacations';
 export * from './profile';
 export * from './ideas';
 export * from './knowledge';
+export * from './engagement';
+export * from './surveys';
+export * from './adaptation';
+export * from './vpn';

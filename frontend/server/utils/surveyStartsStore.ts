@@ -12,3 +12,6 @@ const store = createSurveyCounterStore('survey-starts.json', 'started');
 export const readSurveyStarts = store.read;
 export const startsForSurvey = store.countFor;
 export const recordSurveyStart = store.record;
+
+/** Этап 8: файл/репозиторий для импорта и db-health. */
+export const surveyStartsFile = store.file;

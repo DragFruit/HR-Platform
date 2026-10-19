@@ -1,8 +1,9 @@
 import { requireRole } from '../../../utils/requireRole';
 import { mutatePitStop, setCheckpointStatus } from '../../../utils/pitStopStore';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin']);
+  const session = await requireRole(event, ['admin']);
   const body = await readBody<{ userId?: number; all?: boolean }>(event).catch(() => ({}));
 
   return mutatePitStop((state) => {
@@ -16,5 +17,5 @@ export default defineEventHandler(async (event) => {
       if (!body.all) break;
     }
     return { ok: true, approved };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:coffee-approve' });
 });

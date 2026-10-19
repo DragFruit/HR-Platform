@@ -5,6 +5,7 @@ import { findQuizById } from '../../utils/trackLoader';
 import { scoreQuiz } from '../../utils/scoreQuiz';
 import { addAttempt } from '../../utils/adaptationStore';
 import type { AdaptationAnswer } from '../../utils/adaptationTypes';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event) => {
     passed: score_percent >= passing_score,
     submitted_at: new Date().toISOString(),
     admin_seen: false
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'adaptation:attempt' });
 
   return {
     attempt,

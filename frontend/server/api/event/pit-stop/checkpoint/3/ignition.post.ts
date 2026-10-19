@@ -6,6 +6,7 @@ import {
   setCheckpointStatus
 } from '../../../../../utils/pitStopStore';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 /** Зажать / отпустить тумблер. Успех — оба держат одновременно. */
 export default defineEventHandler(async (event) => {
@@ -44,5 +45,5 @@ export default defineEventHandler(async (event) => {
       started: false,
       waitingPartner: held && pair.ignitionHeldBy.length === 1
     };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-3' });
 });

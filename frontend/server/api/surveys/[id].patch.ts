@@ -2,9 +2,10 @@ import { requireRole } from '../../utils/requireRole';
 import { mutateSurveys, uniqueSlug } from '../../utils/surveysStore';
 import { slugify } from '../../../app/composables/useSurveys';
 import type { SurveyQuestion } from '../../../app/composables/useSurveys';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin', 'hr']);
+  const session = await requireRole(event, ['admin', 'hr']);
   const id = String(getRouterParam(event, 'id') || '').trim();
   const body = await readBody<{
     title?: string;
@@ -38,7 +39,7 @@ export default defineEventHandler(async (event) => {
     }
     survey.updatedAt = today;
     return current;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'surveys:update' });
 
   const survey = state.surveys.find((s) => s.id === id);
   return { survey };

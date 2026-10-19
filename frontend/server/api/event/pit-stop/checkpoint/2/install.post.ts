@@ -8,6 +8,7 @@ import {
 } from '../../../../../utils/pitStopStore';
 import { PIT_STOP_ASSEMBLY_PARTS } from '../../../../../../app/events/pit-stop-14/copy';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -45,5 +46,5 @@ export default defineEventHandler(async (event) => {
       nextTurn: pair.assemblyTurn,
       nextLabel: PIT_STOP_ASSEMBLY_PARTS[pair.assemblyStep]
     };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-2' });
 });

@@ -1,6 +1,3 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { writeJsonAtomic, createMutationQueue } from './atomicJson';
 import { getDeployAppEnv } from './appEnv';
 import type {
   PitStopCheckpointId,
@@ -11,9 +8,11 @@ import type {
   PitStopStoreState
 } from '../../app/events/pit-stop-14/types';
 import { PIT_STOP_EASTER_CODE } from '../../app/events/pit-stop-14/copy';
-
-const DATA_FILE = join(process.cwd(), 'server/data/pit-stop-14.json');
-const enqueue = createMutationQueue();
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { engagementJsonImports } from '../db/schema';
+import { PIT_STOP_STATE_DEF, engagementDbFlag } from '../engagement/domain';
 
 /** QA-пара на стейдже: Драго + Музыка (bitrix_user_id). */
 export const PIT_STOP_STAGING_QA = {
@@ -85,32 +84,44 @@ export function emptyPlayer(userId: number, name: string): PitStopPlayerProgress
   };
 }
 
-async function ensureFile() {
-  await mkdir(join(process.cwd(), 'server/data'), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultPitStopState());
-  }
+/** Нормализация стора (как до этапа 8), одна на оба бэкенда. */
+export function normalizePitStopState(raw: Partial<PitStopStoreState> | null | undefined): PitStopStoreState {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    pairs: Array.isArray(r.pairs) ? r.pairs : [],
+    players: Array.isArray(r.players) ? r.players : [],
+    easterCode: typeof r.easterCode === 'string' ? r.easterCode : PIT_STOP_EASTER_CODE,
+    finalizedAt: typeof r.finalizedAt === 'string' ? r.finalizedAt : null
+  };
 }
+
+export const PIT_STOP_STATE_FULL_DEF: KeyedStateDef = {
+  ...PIT_STOP_STATE_DEF,
+  normalize: (raw) => normalizePitStopState(raw as Partial<PitStopStoreState>)
+};
+
+/**
+ * Этап 8: DB_ENGAGEMENT=1 и задан DATABASE_URL → Postgres (схема engagement), иначе
+ * server/data/pit-stop-14.json. Флаг стоит только на стейдже. Публичный API не менялся.
+ */
+export const pitStopFile = defineStateFile({
+  fileName: 'pit-stop-14.json',
+  label: 'пит-стоп',
+  logTag: 'pit-stop',
+  flag: engagementDbFlag,
+  def: PIT_STOP_STATE_FULL_DEF,
+  jsonImports: engagementJsonImports,
+  defaultRaw: () => defaultPitStopState() as unknown as RawState,
+  // битый файл стор читал как пустое состояние
+  onBadJson: () => defaultPitStopState() as unknown as RawState
+});
 
 export async function readPitStop(): Promise<PitStopStoreState> {
-  await ensureFile();
-  try {
-    const raw = JSON.parse(await readFile(DATA_FILE, 'utf8')) as Partial<PitStopStoreState>;
-    return {
-      pairs: Array.isArray(raw.pairs) ? raw.pairs : [],
-      players: Array.isArray(raw.players) ? raw.players : [],
-      easterCode: typeof raw.easterCode === 'string' ? raw.easterCode : PIT_STOP_EASTER_CODE,
-      finalizedAt: typeof raw.finalizedAt === 'string' ? raw.finalizedAt : null
-    };
-  } catch {
-    return defaultPitStopState();
-  }
+  return normalizePitStopState((await (await pitStopFile.repo()).read()) as Partial<PitStopStoreState>);
 }
 
-export async function writePitStop(state: PitStopStoreState): Promise<void> {
-  await writeJsonAtomic(DATA_FILE, state);
+export async function writePitStop(state: PitStopStoreState, ctx: KeyedListWriteContext = {}): Promise<void> {
+  await (await pitStopFile.repo()).mutate(async () => ({ next: state as unknown as RawState, result: undefined }), ctx);
 }
 
 /**
@@ -191,20 +202,32 @@ export function ensureStagingQaPair(state: PitStopStoreState): boolean {
   return true;
 }
 
-export async function mutatePitStop<T>(fn: (state: PitStopStoreState) => T | Promise<T>): Promise<T> {
-  return enqueue(async () => {
-    const state = await readPitStop();
+/**
+ * Атомарное «прочитать → изменить → записать» (очередь репозитория; в Postgres ещё транзакция
+ * под advisory lock). Ошибка в fn → ничего не записано. ctx — кто и почему (аудит).
+ */
+export async function mutatePitStop<T>(
+  fn: (state: PitStopStoreState) => T | Promise<T>,
+  ctx: KeyedListWriteContext = {}
+): Promise<T> {
+  return (await pitStopFile.repo()).mutate(async (raw) => {
+    const state = normalizePitStopState(raw as Partial<PitStopStoreState>);
     ensureStagingQaPair(state);
     const result = await fn(state);
-    await writePitStop(state);
-    return result;
-  });
+    return { next: state as unknown as RawState, result };
+  }, ctx);
 }
 
-/** Чтение с гарантией QA-пары на стейдже (пишет на диск при необходимости). */
+/**
+ * Чтение с гарантией QA-пары на стейдже. Пишет, только если пару правда пришлось поправить
+ * (раньше каждый GET переписывал файл; теперь опрос состояния не ходит в транзакцию зря).
+ */
 export async function readPitStopForRequest(): Promise<PitStopStoreState> {
-  if (getDeployAppEnv() !== 'staging') return readPitStop();
-  return mutatePitStop((state) => state);
+  const state = await readPitStop();
+  if (getDeployAppEnv() !== 'staging') return state;
+  const probe = structuredClone(state);
+  if (!ensureStagingQaPair(probe)) return state;
+  return mutatePitStop((s) => s, { reason: 'pit-stop:staging-qa-pair' });
 }
 
 export function findPlayer(state: PitStopStoreState, userId: number) {

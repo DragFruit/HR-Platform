@@ -245,9 +245,9 @@ describe.skipIf(!TEST_DB)('Postgres', () => {
   const truncateAll = () =>
     sql`truncate ideas.ideas, ideas.user_votes, ideas.state, ideas.json_imports, knowledge.articles, knowledge.state, knowledge.json_imports, audit.audit_log`;
 
-  it('миграции: 7 штук, схемы ideas и knowledge', async () => {
+  it('миграции: этапы 0–7 на месте, схемы ideas и knowledge', async () => {
     const [row] = await sql`select count(*)::int as n from drizzle.__drizzle_migrations`;
-    expect(row!.n).toBe(7);
+    expect(row!.n).toBeGreaterThanOrEqual(7);
     const tables = await sql`select table_schema || '.' || table_name as t from information_schema.tables where table_schema in ('ideas', 'knowledge') order by 1`;
     expect(tables.map((t) => t.t)).toEqual([
       'ideas.ideas',

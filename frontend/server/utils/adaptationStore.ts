@@ -1,39 +1,55 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import type { AdaptationAttempt, AdaptationStoreState, StepCompletion } from './adaptationTypes';
-
-const DATA_FILE = join(process.cwd(), 'server/data/adaptation-state.json');
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { adaptationJsonImports } from '../db/schema';
+import { ADAPTATION_STATE_DEF, adaptationDbFlag } from '../adaptation/domain';
 
 const emptyState = (): AdaptationStoreState => ({
   attempts: [],
   step_completions: []
 });
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, emptyState());
-  }
-}
+export const ADAPTATION_STATE_FULL_DEF: KeyedStateDef = {
+  ...ADAPTATION_STATE_DEF,
+  // стор читает файл как есть, без нормализации
+  normalize: (raw) => raw
+};
+
+/**
+ * Этап 8: DB_ADAPTATION=1 и задан DATABASE_URL → Postgres (схема adaptation), иначе
+ * server/data/adaptation-state.json. Флаг стоит только на стейдже. Публичный API не менялся;
+ * правки теперь строго по очереди (раньше read → write без очереди).
+ */
+export const adaptationStateFile = defineStateFile({
+  fileName: 'adaptation-state.json',
+  label: 'адаптация (попытки и шаги)',
+  logTag: 'adaptation',
+  flag: adaptationDbFlag,
+  def: ADAPTATION_STATE_FULL_DEF,
+  jsonImports: adaptationJsonImports,
+  defaultRaw: () => emptyState() as unknown as RawState
+});
 
 export async function readAdaptationState(): Promise<AdaptationStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return JSON.parse(raw) as AdaptationStoreState;
+  return (await (await adaptationStateFile.repo()).read()) as unknown as AdaptationStoreState;
 }
 
-async function writeAdaptationState(state: AdaptationStoreState) {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, state);
+async function mutateAdaptationState<R>(
+  fn: (state: AdaptationStoreState) => R | Promise<R>,
+  ctx: KeyedListWriteContext
+): Promise<R> {
+  return (await adaptationStateFile.repo()).mutate(async (raw) => {
+    const state = raw as unknown as AdaptationStoreState;
+    const result = await fn(state);
+    return { next: state as unknown as RawState, result };
+  }, ctx);
 }
 
-export async function addAttempt(attempt: AdaptationAttempt): Promise<AdaptationAttempt> {
-  const state = await readAdaptationState();
-  state.attempts.push(attempt);
-  await writeAdaptationState(state);
+export async function addAttempt(attempt: AdaptationAttempt, ctx: KeyedListWriteContext = {}): Promise<AdaptationAttempt> {
+  await mutateAdaptationState((state) => {
+    state.attempts.push(attempt);
+  }, { reason: 'adaptation:attempt', ...ctx });
   return attempt;
 }
 
@@ -62,24 +78,22 @@ export async function listAttempts(filters?: {
   return list;
 }
 
-export async function markAttemptSeen(id: string): Promise<AdaptationAttempt | null> {
-  const state = await readAdaptationState();
-  const attempt = state.attempts.find((a) => a.id === id);
-  if (!attempt) return null;
-  attempt.admin_seen = true;
-  await writeAdaptationState(state);
-  return attempt;
+export async function markAttemptSeen(id: string, ctx: KeyedListWriteContext = {}): Promise<AdaptationAttempt | null> {
+  return mutateAdaptationState((state) => {
+    const attempt = state.attempts.find((a) => a.id === id);
+    if (!attempt) return null;
+    attempt.admin_seen = true;
+    return structuredClone(attempt);
+  }, { reason: 'adaptation:attempt-seen', ...ctx });
 }
 
-export async function addStepCompletion(completion: StepCompletion): Promise<StepCompletion> {
-  const state = await readAdaptationState();
-  const exists = state.step_completions.find(
-    (c) => c.step_id === completion.step_id && c.employee_id === completion.employee_id
-  );
-  if (!exists) {
-    state.step_completions.push(completion);
-    await writeAdaptationState(state);
-  }
+export async function addStepCompletion(completion: StepCompletion, ctx: KeyedListWriteContext = {}): Promise<StepCompletion> {
+  await mutateAdaptationState((state) => {
+    const exists = state.step_completions.find(
+      (c) => c.step_id === completion.step_id && c.employee_id === completion.employee_id
+    );
+    if (!exists) state.step_completions.push(completion);
+  }, { reason: 'adaptation:step-complete', ...ctx });
   return completion;
 }
 
@@ -94,34 +108,35 @@ export async function countUnseenAttempts(): Promise<number> {
 }
 
 /** Удалить прогресс адаптации сотрудника (назначение снимается отдельно). */
-export async function purgeAdaptationProgressForEmployee(ids: {
-  employee_id?: number;
-  platform_user_ids?: number[];
-}): Promise<number> {
+export async function purgeAdaptationProgressForEmployee(
+  ids: {
+    employee_id?: number;
+    platform_user_ids?: number[];
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<number> {
   const employeeId = ids.employee_id;
   const platformIds = new Set(
     (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
   );
   if (employeeId && employeeId > 0) platformIds.add(employeeId);
 
-  const state = await readAdaptationState();
-  const beforeAttempts = state.attempts.length;
-  const beforeSteps = state.step_completions.length;
+  return mutateAdaptationState((state) => {
+    const beforeAttempts = state.attempts.length;
+    const beforeSteps = state.step_completions.length;
 
-  state.attempts = state.attempts.filter((a) => {
-    if (employeeId && a.employee_id === employeeId) return false;
-    if (a.platform_user_id && platformIds.has(a.platform_user_id)) return false;
-    if (platformIds.has(a.employee_id)) return false;
-    return true;
-  });
-  state.step_completions = state.step_completions.filter((c) => {
-    if (employeeId && c.employee_id === employeeId) return false;
-    if (platformIds.has(c.employee_id)) return false;
-    return true;
-  });
+    state.attempts = state.attempts.filter((a) => {
+      if (employeeId && a.employee_id === employeeId) return false;
+      if (a.platform_user_id && platformIds.has(a.platform_user_id)) return false;
+      if (platformIds.has(a.employee_id)) return false;
+      return true;
+    });
+    state.step_completions = state.step_completions.filter((c) => {
+      if (employeeId && c.employee_id === employeeId) return false;
+      if (platformIds.has(c.employee_id)) return false;
+      return true;
+    });
 
-  const removed =
-    beforeAttempts - state.attempts.length + (beforeSteps - state.step_completions.length);
-  if (removed) await writeAdaptationState(state);
-  return removed;
+    return beforeAttempts - state.attempts.length + (beforeSteps - state.step_completions.length);
+  }, { reason: 'adaptation:purge-employee', ...ctx });
 }

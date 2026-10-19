@@ -8,6 +8,7 @@ import {
   scoreLapBotSuspicion,
   shouldFlagCheat
 } from '../../../../utils/pitStopAntiCheat';
+import { sessionActorEmployeeId } from '../../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
     ms: body.ms,
     color: body.color,
     cheatFlag
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop-race:lap' });
   return {
     bestMs: record.bestMs,
     laps: record.laps,

@@ -4,6 +4,20 @@
 
 ## 2026-10-19
 
+### Пит-стоп, опросы, адаптация, VPN на Postgres и сид сотрудников в базе (этап 8, только стейдж)
+
+Последние живые домены переезжают из `server/data/*.json` в Postgres. Бой остаётся на JSON (флагов там нет); на прод все этапы поедут вместе отдельной выкаткой.
+
+- `pit-stop-14.json`, `pit-stop-race.json` → схема `engagement` (пары, игроки, рекорды, заходы на хаб, топ-3), флаг `DB_ENGAGEMENT=1`. Фото кофе остаются файлами.
+- `surveys.json`, `survey-responses.json`, `survey-starts.json`, `survey-visits.json` → схема `surveys`, флаг `DB_SURVEYS=1`. Анонимность прежняя: у ответа нет колонки сотрудника, `respondent` только там, где он был в файле; публичная отправка без actor, в аудите ответа только id опроса; счётчики воронки хранят только число на опрос (без времени и без аудита на визит). Публичные `visit`/`start`/`submit` работают без логина.
+- `adaptation-state.json`, `adaptation-scenarios.json`, `adaptation-assignments.json` → схема `adaptation`, флаг `DB_ADAPTATION=1`. `adaptation-track.json` остаётся статичным файлом в репозитории. Правки адаптации и VPN теперь строго по очереди. Фикс: правка сценариев больше не меняет сид сценариев в памяти процесса.
+- `vpn-keys.json` → схема `vpn` (только метаданные: id пира, тип, пользователь, имя клиента, время), флаг `DB_VPN=1`. Поле записи вне метаданных (похожее на ключ или конфиг) останавливает перенос, в ошибке только имена полей.
+- Сид сотрудников: деплой сливал `employees.json` из репозитория только в файл, а с `DB_CORE=1` это бэкап. Теперь сервер при старте делает то же слияние в базе (`frontend/server/core/seedSync.ts`, функция `mergeEmployeesSeed` экспортирована из `deploy/scripts/merge-employees-seed.mjs`, CLI работает как раньше), раз на версию сида (маркер `employees-seed:<sha>` в `core.json_imports`), до того как core объявлен готовым. Результат совпадает с CLI на файлах (тест). Другие сиды деплоя в базу не нужны: `vacations`, `ideas`, `org-structure` копируются только если файла нет, база знаний сливается с этапа 7.
+- Миграция `0007_engagement_surveys_adaptation_vpn.sql`. Общая обвязка `frontend/server/db/repositories/stateFile.ts` поверх `keyedState.ts` (в нём новый `metaId`: одна таблица `state` на схему). Разовый импорт каждого файла со сверкой поле-в-поле и своей готовностью; запись diff-ом под своим advisory lock, аудит с кем и почему (`pit-stop:*`, `pit-stop-race:*`, `surveys:*`, `adaptation:*`, `vpn:*`, `access-revoked`). `GET /api/admin/db-health` показывает 10 новых доменов.
+- Новые env: `DB_ENGAGEMENT`, `DB_SURVEYS`, `DB_ADAPTATION`, `DB_VPN` (только стейдж). Новых ключей localStorage нет.
+- Тесты: `frontend/tests/unit/stage8EngagementSurveysAdaptationVpn.test.ts` (сценарий каждого файла на JSON и Postgres даёт байт-в-байт тот же ответ, импорт файлов из репозитория, анонимность ответов и счётчиков, VPN без секретов, сид сотрудников = CLI). Postgres-часть: `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`.
+- Проверить на `:8080`: в `journalctl -u vbi-hr-staging` строки `[db] engagement|surveys|adaptation|vpn: … verified=…` и `[db] core: сид сотрудников …`; `db-health` → все домены `postgres`; пит-стоп (хаб, гонка, админка квеста), опросы (создать, опубликовать, пройти `/s/<slug>` в приватном окне без логина, результаты и воронка), адаптация (сценарии, назначение, квиз), `/vpn`.
+
 ### Банк идей и база знаний на Postgres (этап 7, только стейдж)
 
 Идеи и статьи базы знаний переезжают из `server/data/*.json` в Postgres. Бой остаётся на JSON (флагов там нет); на прод все этапы поедут вместе отдельной выкаткой.

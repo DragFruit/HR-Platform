@@ -6,6 +6,7 @@ import {
   setCheckpointStatus
 } from '../../../../../utils/pitStopStore';
 import { isCheckpointUnlocked, isPitStopGameStopped } from '../../../../../../app/events/pit-stop-14/timeline';
+import { sessionActorEmployeeId } from '../../../../../utils/employeesStore';
 
 const FINISH_X = 4;
 const FINISH_Y = 4;
@@ -60,5 +61,5 @@ export default defineEventHandler(async (event) => {
       if (partner) setCheckpointStatus(partner, 4, 'done');
     }
     return { ok: true, x: pair.blindX, y: pair.blindY, finished };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:checkpoint-4' });
 });

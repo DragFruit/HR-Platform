@@ -146,7 +146,7 @@ async function revokeVpnPeersForEmployee(
   }
 
   if (owned.length) {
-    await removeVpnKeysByIds(owned.map((k) => k.id));
+    await removeVpnKeysByIds(owned.map((k) => k.id), { reason: 'access-revoked' });
   }
 
   if (failed.length) {
@@ -198,11 +198,14 @@ async function cascadeImmediateAfterRevocation(
   }
 
   try {
-    await removeAdaptationAssignmentForEmployee(emp.id);
-    await purgeAdaptationProgressForEmployee({
-      employee_id: emp.id,
-      platform_user_ids: userIds
-    });
+    await removeAdaptationAssignmentForEmployee(emp.id, { reason: 'access-revoked' });
+    await purgeAdaptationProgressForEmployee(
+      {
+        employee_id: emp.id,
+        platform_user_ids: userIds
+      },
+      { reason: 'access-revoked' }
+    );
   } catch (err) {
     console.warn('[employeeAccessDenylist] adaptation cascade failed:', err);
   }

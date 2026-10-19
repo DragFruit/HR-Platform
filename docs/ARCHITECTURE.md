@@ -182,7 +182,7 @@ Legacy endpoints `POST /api/ideas/notify` и `POST /api/ideas/status-notify` о�
 Продуктовые правила: **[PRODUCT.md](./PRODUCT.md)** §10b. Phase 1 — MVP.
 
 - **Типы данных**: `frontend/app/composables/useSurveys.ts` (`Survey`, `SurveyQuestion`, `SurveyResponse`, 9 `SurveyQuestionType`) — общий файл, используется и на клиенте, и на сервере (как `useIdeasBank.ts` для идей).
-- **Данные**: `server/data/surveys.json` (`surveys[]`, `nextSurveyId`), `server/data/survey-responses.json` (`responses: Record<surveyId, SurveyResponse[]>`). Чтение/запись/мутации — `server/utils/surveysStore.ts`, `surveyResponsesStore.ts` (atomic JSON + очередь мутаций, тот же паттерн, что `ideasStore.ts`). Валидация ответа на сервере — `surveyValidation.ts` (обязательные поля, допустимые опции/диапазоны — клиенту не доверяем). Агрегация результатов — `surveyResults.ts` (воронка + распределения по вопросу). Rate-limit публичной отправки — `simpleRateLimit.ts` (in-memory по IP, 20/мин).
+- **Данные**: `server/data/surveys.json` (`surveys[]`, `nextSurveyId`), `server/data/survey-responses.json` (`responses: Record<surveyId, SurveyResponse[]>`). Чтение/запись/мутации — `server/utils/surveysStore.ts`, `surveyResponsesStore.ts` (atomic JSON + очередь мутаций, тот же паттерн, что `ideasStore.ts`; на стейдже схема `surveys` в Postgres, см. «База данных → Этап 8»). Валидация ответа на сервере — `surveyValidation.ts` (обязательные поля, допустимые опции/диапазоны — клиенту не доверяем). Агрегация результатов — `surveyResults.ts` (воронка + распределения по вопросу). Rate-limit публичной отправки — `simpleRateLimit.ts` (in-memory по IP, 20/мин).
 - **Admin API** (`requireRole(['admin','hr'])`): `GET/POST /api/surveys`, `GET/PATCH/DELETE /api/surveys/:id`, `POST /api/surveys/:id/publish`, `POST /api/surveys/:id/unpublish` (→ `closed`, не `draft` — опрос мог уже собирать ответы), `GET /api/surveys/:id/results`.
 - **Публичные API** (без `requireVbiSession`): `GET /api/public/surveys/:slug` (только для `status: published`, отдаёт только `PublicSurvey` — без `id`/`createdBy`/статуса), `POST /api/public/surveys/:slug/submit`.
 - **Анонимность**: если `survey.anonymous === true`, `submit.post.ts` вообще не вызывает `getVbiSession` для привязки — поле `respondent` не попадает в объект ответа ни при каких условиях. Для неанонимных опросов `respondent` подставляется только если у отправителя была валидная Vibe-сессия (анонимный посетитель с улицы в неанонимном опросе просто не имеет `respondent`).
@@ -571,7 +571,7 @@ JSON-файл не удаляется — это бэкап на момент п
 
 Старт: миграции → (если флаг) импорт трёх файлов в одной транзакции: сотрудники без целого id или с дублем id не кладутся (`skipped`), сверка поле-в-поле (каждая строка, прочитанная из базы, совпадает с объектом файла байт-в-байт; оргструктура совпадает после нормализации), маркеры в `core.json_imports`. Лог: `[db] core: employees.json импорт file=N inserted=N skipped=N verified=N` и `[db] core: сотрудники и оргструктура на Postgres`. Сбой → домен на JSON, ошибка в журнале. Пока импорт не закончен, запросы ждут.
 
-JSON-файлы не удаляются (бэкап на момент переезда), после переезда в них не пишут: снять флаг = откат к состоянию момента импорта. Ручной путь `deploy-remote.sh` с `merge-employees-seed.mjs` на стенде с `DB_CORE=1` пишет только в JSON-бэкап (на стейдже CI его не вызывает). Dev-скрипты `scripts/test-vacation-team-scope.mjs`, `scripts/check-knowledge-org-answer.py` читают JSON-файлы, как и раньше.
+JSON-файлы не удаляются (бэкап на момент переезда), после переезда в них не пишут: снять флаг = откат к состоянию момента импорта. `deploy-remote.sh` (его вызывает и CI через `deploy-from-ci.sh`) сливает сид `merge-employees-seed.mjs` в JSON-бэкап; в базу тот же сид с этапа 8 сливает сервер при старте (см. «Этап 8 → Сид сотрудников»). Dev-скрипты `scripts/test-vacation-team-scope.mjs`, `scripts/check-knowledge-org-answer.py` читают JSON-файлы, как и раньше.
 
 ### Этап 4. Домен `vacations`: заявки и брони (только стейдж)
 
@@ -710,6 +710,58 @@ JSON-файл не удаляется (бэкап на момент переез
 
 После переезда файлы не пишутся (бэкап на момент импорта, снять флаг = откат к нему). Скрипты `scripts/knowledge/check-*.mjs` и `scripts/bitrix/*-knowledge.mjs` читают и пишут JSON-файл из git, как и раньше.
 
+### Этап 8. Пит-стоп, опросы, адаптация, VPN; сид сотрудников в базе (только стейдж)
+
+| Что | Было | Стало | Флаг |
+|-----|------|-------|------|
+| Пит-стоп: пары, игроки, `easterCode`, `finalizedAt` | `pit-stop-14.json` | `engagement.pit_stop_pairs`, `engagement.pit_stop_players`, `engagement.state` (id 1) | `DB_ENGAGEMENT=1` |
+| Гонка: рекорды, заходы на хаб, топ-3 | `pit-stop-race.json` | `engagement.pit_stop_race_records`, `…_visits`, `…_winners`, `engagement.state` (id 2) | `DB_ENGAGEMENT=1` |
+| Опросы, `nextSurveyId` | `surveys.json` | `surveys.surveys`, `surveys.state` (id 1) | `DB_SURVEYS=1` |
+| Ответы опросов | `survey-responses.json` | `surveys.responses` (строка на ответ, `survey_key` = ключ карты), `surveys.state` (id 2) | `DB_SURVEYS=1` |
+| «Начали отвечать» / визиты | `survey-starts.json` / `survey-visits.json` | `surveys.start_counts` / `surveys.visit_counts` (опрос + число), `surveys.state` (id 3 / 4) | `DB_SURVEYS=1` |
+| Попытки квизов и отмеченные шаги | `adaptation-state.json` | `adaptation.attempts`, `adaptation.step_completions` (ключ `[employee_id, step_id]`), `adaptation.state` (id 1) | `DB_ADAPTATION=1` |
+| Сценарии адаптации | `adaptation-scenarios.json` | `adaptation.scenarios`, `adaptation.state` (id 2) | `DB_ADAPTATION=1` |
+| Назначения сценариев | `adaptation-assignments.json` | `adaptation.assignments`, `adaptation.state` (id 3) | `DB_ADAPTATION=1` |
+| Учёт VPN-ключей (метаданные) | `vpn-keys.json` | `vpn.keys`, `vpn.state` | `DB_VPN=1` |
+
+Флаги новые, по одному на домен, только в `/etc/vbi-hr/bitrix.env` стейджа; на проде их нет, там JSON. Миграция `0007_engagement_surveys_adaptation_vpn.sql`, схемы `engagement`, `surveys`, `adaptation`, `vpn`, маркеры импорта в `<схема>.json_imports`. Advisory lock на каждый файл: `72461021` (пит-стоп), `72461022` (гонка), `72461023`…`72461026` (опросы, ответы, старты, визиты), `72461027`…`72461029` (адаптация: состояние, сценарии, назначения), `72461030` (VPN).
+
+Остаются файлами: фото кофе пит-стопа (`server/data/pit-stop-coffee/*`, в базе только путь, как в JSON), шаблон трека адаптации `adaptation-track.json` (статичный сид в git), токен OAuth Bitrix, состояние бота ChatGPT → Telegram, логи, RAG-индекс, фото оценок, вложения идей.
+
+Код:
+
+- `server/db/repositories/stateFile.ts`: обвязка «один файл ↔ один `KeyedStateDef`» поверх `keyedState.ts` (этап 7): флаг домена (`dbFlag`), своя готовность у каждого файла, JSON-бэкенд с тем же поведением, что у стора до переезда (нет файла → создать пустой; битый JSON → ошибка или прежнее запасное значение стора), разовый импорт с маркером и сверкой поле-в-поле (`importStateFromJson`). `flatListDef` и `mapPart` собирают маппинг записи и карты `{ ключ: значение }`. В `keyedState.ts` добавлен `metaId`: одна таблица `state` на схему, у каждого файла своя строка.
+- Маппинг: `server/engagement/domain.ts`, `server/surveys/domain.ts`, `server/adaptation/domain.ts`, `server/vpn/domain.ts` (`source_keys` + `extra`, объект из базы байт-в-байт как файл).
+- Фасады с прежним API: `pitStopStore.ts` (`readPitStop`, `mutatePitStop`, `readPitStopForRequest`), `pitStopRaceStore.ts`, `surveysStore.ts`, `surveyResponsesStore.ts`, `surveyCounterStore.ts` (+ `surveyStartsStore.ts`, `surveyVisitsStore.ts`), `adaptationStore.ts`, `adaptationScenarios.ts`, `vpnKeysStore.ts`. Нормализация одна на оба бэкенда. Правки адаптации и VPN раньше шли read → write без очереди, теперь строго по очереди (в Postgres под advisory lock).
+- Кто правит (аудит): 8 чек-поинтов, вступление в пару, одобрение кофе, cron `pit-stop-finalize` (`pit-stop:*`), круг, заход на хаб, разбор подозрения на бота (`pit-stop-race:*`), опросы в админке (`surveys:*`), адаптация (`adaptation:*`), выдача ключа (`vpn:issue`), чистки при офбординге (`access-revoked`).
+- `readPitStopForRequest` (GET `me`, `pair-state`) пишет только если QA-пару стейджа правда пришлось поправить; `ensureRaceFinalized` после фиксации топ-3 отвечает из кэша без транзакции.
+- `GET /api/admin/db-health` → `domains.pitStop`, `pitStopRace`, `surveys`, `surveyResponses`, `surveyStarts`, `surveyVisits`, `adaptationState`, `adaptationScenarios`, `adaptationAssignments`, `vpnKeys`.
+
+Анонимность опросов: в `surveys.responses` ровно то, что было бы в файле. Колонки сотрудника и внешнего ключа на `core` нет; `respondent` (`{ userId, name }`) лежит JSON-ом только там, где он есть в файле (неанонимный опрос и залогиненный респондент). Публичная отправка (`/api/public/surveys/:slug/submit`) пишет без `actorEmployeeId`; в аудите ответа только id опроса (без ответов и респондента). Счётчики воронки (`start_counts`, `visit_counts`) хранят только опрос и число: без времени, без `updated_at` и без записей аудита на событие (время записи аудита выдало бы время визита). Публичные `visit`/`start`/`submit` работают без логина, опрос читается из кэша процесса.
+
+VPN: в базе только метаданные (`id` пира wg-easy, `kind`, `userId`, `userEmail`, `clientName`, `createdAt`). Конфиг и QR по-прежнему берутся из wg-easy при запросе и не сохраняются. Импорт и запись в базу проверяют `assertVpnMetadataOnly`: любое поле записи вне этого списка (или похожее на секрет на верхнем уровне файла) останавливает перенос, в ошибке только имена полей, без значений; домен остаётся на файле.
+
+Сид сотрудников: деплой (`deploy-remote.sh`, в том числе из CI) сливает `employees.json` из git в файл стенда через `merge-employees-seed.mjs`. С `DB_CORE=1` файл только бэкап, поэтому то же слияние сервер делает в базе при старте: `server/core/seedSync.ts`, функция `mergeEmployeesSeed` экспортирована из того же скрипта (CLI запускается только при прямом вызове, проверка по `basename(process.argv[1])`, не по `import.meta.url`, который Nitro подменяет). Раз на версию сида (маркер `employees-seed:<sha256>` в `core.json_imports`, `reason: deploy-seed-merge` в аудите), стоп-лист берётся из базы (или из файла, если стоп-лист не на Postgres). Слияние идёт после импорта core и стоп-листа, но до того, как core объявлен готовым: запросы API ждут и не пишут параллельно. Сбой слияния не уводит core на файлы. Другие сиды деплоя: `vacations.json`, `ideas.json`, `org-structure.json` копируются только если файла на сервере нет (на стенде с базой ничего не меняют), `knowledge-articles.json` сливается в базу с этапа 7, `adaptation-track.json` статичный и остаётся файлом; аватары, профиль, опросы, пит-стоп, VPN деплой не трогает.
+
+Все домены в базе (стейдж):
+
+| Домен / файлы | Схема | Флаг | Этап |
+|---------------|-------|------|------|
+| Уведомления пользователей (`user-notifications.json`) | `notifications` | `DB_NOTIFICATIONS=1` | 2 |
+| Сотрудники, руководители, оргструктура, стоп-лист, сид сотрудников | `core` | `DB_CORE=1` | 3, 5, 8 |
+| Отпуска, журналы напоминаний | `vacations` | `DB_VACATIONS=1` | 4, 5 |
+| Уведомления админки | `notifications` | `DB_ADMIN_NOTIFICATIONS=1` | 5 |
+| Аватары, лента, награды продаж, пароли Vibe | `profile` | `DB_PROFILE=1` | 6 |
+| Банк идей | `ideas` | `DB_IDEAS=1` | 7 |
+| Статьи базы знаний (+ сид из git) | `knowledge` | `DB_KNOWLEDGE=1` | 7 |
+| Пит-стоп и гонка | `engagement` | `DB_ENGAGEMENT=1` | 8 |
+| Опросы, ответы, воронка | `surveys` | `DB_SURVEYS=1` | 8 |
+| Адаптация: попытки, шаги, сценарии, назначения | `adaptation` | `DB_ADAPTATION=1` | 8 |
+| Учёт VPN-ключей | `vpn` | `DB_VPN=1` | 8 |
+| Аудит всех правок | `audit` | всегда при `DATABASE_URL` | 1 |
+
+После переезда файлы не пишутся (бэкап на момент импорта, снять флаг = откат к нему).
+
 ### Целевая модель
 
 **Postgres-схема на домен** (`pgSchema`):
@@ -729,7 +781,7 @@ JSON-файл не удаляется (бэкап на момент переез
 
 **Принципы**: ссылки на сотрудника — `employee_id`, не ФИО; правила (лимиты, исключения групп вроде Цхай) — данными в таблицах, не константами в коде; история изменений — отдельные history-таблицы; внешние вызовы (Bitrix) — через outbox с ретраями, а не прямо из запроса; все мутации — в `audit.audit_log`.
 
-**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 (уведомления админки, журналы напоминаний, стоп-лист: см. «Этап 5»); 6 (профиль: аватары, лента, награды продаж, пароли Vibe: см. «Этап 6»); 7 (банк идей и статьи базы знаний: см. «Этап 7»), дальше остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
+**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 (уведомления админки, журналы напоминаний, стоп-лист: см. «Этап 5»); 6 (профиль: аватары, лента, награды продаж, пароли Vibe: см. «Этап 6»); 7 (банк идей и статьи базы знаний: см. «Этап 7»); 8 (пит-стоп, опросы, адаптация, VPN, сид сотрудников в базе: см. «Этап 8»). В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
 
 ### Тесты
 

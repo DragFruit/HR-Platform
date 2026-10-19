@@ -40,7 +40,7 @@ export async function listLiveUserVpnKeys(
   }
 
   if (deadIds.length) {
-    await removeVpnKeysByIds(deadIds);
+    await removeVpnKeysByIds(deadIds, { reason: 'vpn:peer-gone-in-panel' });
   }
 
   return live;

@@ -1,6 +1,7 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { writeJsonAtomic } from './atomicJson';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { surveysJsonImports } from '../db/schema';
+import { surveyCounterStateDef, surveysDbFlag } from '../surveys/domain';
 
 /**
  * Общая фабрика для простых identity-free счётчиков воронки опроса
@@ -8,12 +9,13 @@ import { writeJsonAtomic } from './atomicJson';
  * `{ "<key>": { "<surveyId>": <count> } }`. Никакой идентифицирующей
  * информации (IP/session/fingerprint/timestamp визита) не хранится —
  * только суммарное число событий на survey.id.
+ *
+ * Этап 8: DB_SURVEYS=1 → Postgres (surveys.start_counts / surveys.visit_counts: survey_id + count,
+ * без времени и без аудита на каждое событие), иначе тот же файл.
  */
 export type CounterStoreState = Record<string, Record<string, number>>;
 
-export function createSurveyCounterStore(fileName: string, key: string) {
-  const DATA_FILE = join(process.cwd(), 'server/data', fileName);
-
+export function createSurveyCounterStore(fileName: string, key: 'started' | 'visited') {
   const defaultState = (): CounterStoreState => ({ [key]: {} });
 
   function normalize(raw: unknown): CounterStoreState {
@@ -23,55 +25,51 @@ export function createSurveyCounterStore(fileName: string, key: string) {
       for (const [surveyId, count] of Object.entries(bucket as Record<string, unknown>)) {
         const n = Number(count);
         if (surveyId.trim() && Number.isFinite(n) && n >= 0) {
-          result[key][surveyId.trim()] = Math.floor(n);
+          result[key]![surveyId.trim()] = Math.floor(n);
         }
       }
     }
     return result;
   }
 
-  async function ensureFile() {
-    await mkdir(dirname(DATA_FILE), { recursive: true });
-    try {
-      await readFile(DATA_FILE, 'utf8');
-    } catch {
-      await writeJsonAtomic(DATA_FILE, defaultState());
-    }
-  }
+  const def: KeyedStateDef = { ...surveyCounterStateDef(key === 'started' ? 'starts' : 'visits'), normalize };
+
+  const file = defineStateFile({
+    fileName,
+    label: key === 'started' ? 'счётчик «начали отвечать»' : 'счётчик визитов опросов',
+    logTag: key === 'started' ? 'survey-starts' : 'survey-visits',
+    flag: surveysDbFlag,
+    def,
+    jsonImports: surveysJsonImports,
+    defaultRaw: () => defaultState() as unknown as RawState
+  });
 
   async function read(): Promise<CounterStoreState> {
-    await ensureFile();
-    const raw = await readFile(DATA_FILE, 'utf8');
-    return normalize(JSON.parse(raw));
+    return normalize(await (await file.repo()).read());
+  }
+
+  /** Очередь репозитория (в Postgres ещё транзакция под своим advisory lock). */
+  async function mutate(mutator: (state: CounterStoreState) => CounterStoreState): Promise<CounterStoreState> {
+    return (await file.repo()).mutate(async (raw) => {
+      const next = normalize(mutator(normalize(raw)));
+      return { next: next as unknown as RawState, result: next };
+    });
   }
 
   async function write(state: CounterStoreState): Promise<CounterStoreState> {
-    await ensureFile();
-    const normalized = normalize(state);
-    await writeJsonAtomic(DATA_FILE, normalized);
-    return normalized;
-  }
-
-  let mutationQueue: Promise<unknown> = Promise.resolve();
-  async function mutate(mutator: (state: CounterStoreState) => CounterStoreState): Promise<CounterStoreState> {
-    const run = mutationQueue.then(async () => {
-      const current = await read();
-      return write(mutator(current));
-    });
-    mutationQueue = run.catch(() => {});
-    return run;
+    return mutate(() => state);
   }
 
   function countFor(state: CounterStoreState, surveyId: string): number {
-    return state[key][surveyId] ?? 0;
+    return state[key]![surveyId] ?? 0;
   }
 
   async function record(surveyId: string): Promise<void> {
     await mutate((current) => {
-      current[key][surveyId] = (current[key][surveyId] || 0) + 1;
+      current[key]![surveyId] = (current[key]![surveyId] || 0) + 1;
       return current;
     });
   }
 
-  return { read, write, mutate, countFor, record };
+  return { read, write, mutate, countFor, record, file, def };
 }

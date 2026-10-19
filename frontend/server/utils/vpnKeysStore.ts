@@ -1,10 +1,10 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import type { VpnKeyKind } from './wgEasyClient';
 import { vpnLimitForKind } from './wgEasyClient';
-
-const DATA_FILE = join(process.cwd(), 'server/data/vpn-keys.json');
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { vpnJsonImports } from '../db/schema';
+import { VPN_KEYS_STATE_DEF, assertVpnMetadataOnly, vpnDbFlag } from '../vpn/domain';
 
 export type StoredVpnKey = {
   id: string;
@@ -19,37 +19,54 @@ type VpnKeysFile = {
   keys: StoredVpnKey[];
 };
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, { keys: [] } satisfies VpnKeysFile);
-  }
+/** Как до этапа 8: только валидные записи; не тот формат → пусто. */
+export function normalizeVpnKeys(parsed: unknown): StoredVpnKey[] {
+  const keys = parsed && typeof parsed === 'object' ? (parsed as Partial<VpnKeysFile>).keys : null;
+  if (!Array.isArray(keys)) return [];
+  return keys.filter(
+    (k) =>
+      k &&
+      typeof k.id === 'string' &&
+      (k.kind === 'wireguard' || k.kind === 'amnezia') &&
+      typeof k.userId === 'number' &&
+      typeof k.clientName === 'string'
+  );
 }
+
+export const VPN_KEYS_STATE_FULL_DEF: KeyedStateDef = {
+  ...VPN_KEYS_STATE_DEF,
+  normalize: (raw) => ({ keys: normalizeVpnKeys(raw) })
+};
+
+/**
+ * Этап 8: DB_VPN=1 и задан DATABASE_URL → Postgres (схема vpn, только метаданные), иначе
+ * server/data/vpn-keys.json. Флаг стоит только на стейдже. Правки теперь строго по очереди.
+ */
+export const vpnKeysFile = defineStateFile({
+  fileName: 'vpn-keys.json',
+  label: 'учёт VPN-ключей',
+  logTag: 'vpn-keys',
+  flag: vpnDbFlag,
+  def: VPN_KEYS_STATE_FULL_DEF,
+  jsonImports: vpnJsonImports,
+  defaultRaw: () => ({ keys: [] }) as unknown as RawState,
+  // битый файл стор читал как пустой список
+  onBadJson: () => ({ keys: [] }) as unknown as RawState,
+  beforeImport: assertVpnMetadataOnly
+});
 
 export async function readVpnKeys(): Promise<StoredVpnKey[]> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  try {
-    const parsed = JSON.parse(raw) as VpnKeysFile;
-    if (!parsed || !Array.isArray(parsed.keys)) return [];
-    return parsed.keys.filter(
-      (k) =>
-        k &&
-        typeof k.id === 'string' &&
-        (k.kind === 'wireguard' || k.kind === 'amnezia') &&
-        typeof k.userId === 'number' &&
-        typeof k.clientName === 'string'
-    );
-  } catch {
-    return [];
-  }
+  return normalizeVpnKeys(await (await vpnKeysFile.repo()).read());
 }
 
-async function writeVpnKeys(keys: StoredVpnKey[]) {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, { keys } satisfies VpnKeysFile);
+async function mutateVpnKeys<R>(fn: (keys: StoredVpnKey[]) => { keys: StoredVpnKey[]; result: R }, ctx: KeyedListWriteContext): Promise<R> {
+  const repo = await vpnKeysFile.repo();
+  return repo.mutate(async (raw) => {
+    const out = fn(normalizeVpnKeys(raw));
+    const next = { keys: out.keys } satisfies VpnKeysFile;
+    if (repo.backend === 'postgres') assertVpnMetadataOnly(next);
+    return { next: next as unknown as RawState, result: out.result };
+  }, ctx);
 }
 
 export async function listUserVpnKeys(userId: number, kind?: VpnKeyKind): Promise<StoredVpnKey[]> {
@@ -68,25 +85,21 @@ export async function canIssueVpnKey(userId: number, kind: VpnKeyKind): Promise<
   return count < vpnLimitForKind(kind);
 }
 
-export async function appendVpnKey(entry: StoredVpnKey): Promise<StoredVpnKey> {
-  const keys = await readVpnKeys();
-  if (keys.some((k) => k.id === entry.id)) {
-    return entry;
-  }
-  keys.push(entry);
-  await writeVpnKeys(keys);
-  return entry;
+export async function appendVpnKey(entry: StoredVpnKey, ctx: KeyedListWriteContext = {}): Promise<StoredVpnKey> {
+  return mutateVpnKeys((keys) => {
+    if (keys.some((k) => k.id === entry.id)) return { keys, result: entry };
+    return { keys: [...keys, entry], result: entry };
+  }, { reason: 'vpn:issue', ...ctx });
 }
 
 /** Убрать из учёта пиры, которых уже нет в админке (после ручного удаления). Не трогает панель. */
-export async function removeVpnKeysByIds(ids: string[]): Promise<number> {
+export async function removeVpnKeysByIds(ids: string[], ctx: KeyedListWriteContext = {}): Promise<number> {
   if (!ids.length) return 0;
   const idSet = new Set(ids);
-  const keys = await readVpnKeys();
-  const next = keys.filter((k) => !idSet.has(k.id));
-  const removed = keys.length - next.length;
-  if (removed > 0) await writeVpnKeys(next);
-  return removed;
+  return mutateVpnKeys((keys) => {
+    const next = keys.filter((k) => !idSet.has(k.id));
+    return { keys: next, result: keys.length - next.length };
+  }, { reason: 'vpn:remove', ...ctx });
 }
 
 

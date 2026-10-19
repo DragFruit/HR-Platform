@@ -2,6 +2,7 @@ import { requireRole } from '../../utils/requireRole';
 import { mutateSurveys, uniqueSlug } from '../../utils/surveysStore';
 import { slugify } from '../../../app/composables/useSurveys';
 import type { Survey } from '../../../app/composables/useSurveys';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireRole(event, ['admin', 'hr']);
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
     current.surveys.push(survey);
     current.nextSurveyId += 1;
     return current;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'surveys:create' });
 
   const created = state.surveys[state.surveys.length - 1];
   return { survey: created };

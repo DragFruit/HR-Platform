@@ -4,6 +4,7 @@ import {
   buildVpnClientName
 } from '../../utils/vpnKeysStore';
 import { listLiveUserVpnKeys } from '../../utils/vpnLiveKeys';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 import {
   createWgClient,
   getWgClientBundle,
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event) => {
     userEmail: session.email,
     clientName: createdClient.name || clientName,
     createdAt: new Date().toISOString()
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'vpn:issue' });
   const bundle = await getWgClientBundle(panelForKind(kind), stored.id);
   const key = {
     ...stored,

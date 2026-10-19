@@ -32,5 +32,5 @@ export default defineEventHandler(async (event) => {
       skinId: PIT_STOP_SKIN_ID,
       note: 'Флаги выставлены; каталог ачивок и лента бота — следующим коммитом после ОК'
     };
-  });
+  }, { reason: 'pit-stop:finalize-cron' });
 });

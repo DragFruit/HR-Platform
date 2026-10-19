@@ -8,6 +8,15 @@ import { getVacationsBackend } from '../../utils/vacationsStore';
 import { getProfileBackends } from '../../utils/profileStore';
 import { getIdeasBackend } from '../../utils/ideasStore';
 import { getKnowledgeBackend } from '../../utils/knowledgeArticlesStore';
+import { pitStopFile } from '../../utils/pitStopStore';
+import { pitStopRaceFile } from '../../utils/pitStopRaceStore';
+import { surveysFile } from '../../utils/surveysStore';
+import { surveyResponsesFile } from '../../utils/surveyResponsesStore';
+import { surveyStartsFile } from '../../utils/surveyStartsStore';
+import { surveyVisitsFile } from '../../utils/surveyVisitsStore';
+import { adaptationStateFile } from '../../utils/adaptationStore';
+import { adaptationAssignmentsFile, adaptationScenariosFile } from '../../utils/adaptationScenarios';
+import { vpnKeysFile } from '../../utils/vpnKeysStore';
 
 /** Проверка PostgreSQL на стенде: {enabled, ok, latencyMs, migrations, domains}. Только admin. */
 export default defineEventHandler(async (event) => {
@@ -23,7 +32,17 @@ export default defineEventHandler(async (event) => {
     vacationReminders: await getVacationReminderLogsBackend(),
     ...(await getProfileBackends()),
     ideas: await getIdeasBackend(),
-    knowledge: await getKnowledgeBackend()
+    knowledge: await getKnowledgeBackend(),
+    pitStop: await pitStopFile.backend(),
+    pitStopRace: await pitStopRaceFile.backend(),
+    surveys: await surveysFile.backend(),
+    surveyResponses: await surveyResponsesFile.backend(),
+    surveyStarts: await surveyStartsFile.backend(),
+    surveyVisits: await surveyVisitsFile.backend(),
+    adaptationState: await adaptationStateFile.backend(),
+    adaptationScenarios: await adaptationScenariosFile.backend(),
+    adaptationAssignments: await adaptationAssignmentsFile.backend(),
+    vpnKeys: await vpnKeysFile.backend()
   };
   const sql = getSql();
   if (!isDbEnabled() || !sql) {

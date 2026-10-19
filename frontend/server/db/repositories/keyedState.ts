@@ -44,6 +44,11 @@ export type KeyedStateDef = {
   /** Сущность аудита для строки state (счётчики). */
   auditEntity: string;
   metaTable: PgTable;
+  /**
+   * id строки в metaTable (по умолчанию 1). Этап 8: одна таблица state на схему, у каждого файла
+   * своя строка (engagement.state: 1 — pit-stop-14.json, 2 — pit-stop-race.json и т.д.).
+   */
+  metaId?: number;
   metaFields: FieldSpecs;
   /** Первый — основной список (по нему fileCount / inserted / skipped в json_imports). */
   parts: StatePart[];
@@ -60,7 +65,7 @@ export type StateRepo = {
 };
 
 type Row = Record<string, unknown>;
-const META_ID = 1;
+const metaIdOf = (def: Pick<KeyedStateDef, 'metaId'>) => def.metaId ?? 1;
 
 export const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   Boolean(v) && typeof v === 'object' && !Array.isArray(v);
@@ -91,7 +96,7 @@ export function splitState(def: KeyedStateDef, raw: unknown): Split {
     }
   }
   const { cols, sourceKeys, extra } = mapToColumns(metaObj, def.metaFields, [...lists.keys()]);
-  return { lists, meta: { ...nullColumns(def.metaFields), ...cols, id: META_ID, sourceKeys, extra } };
+  return { lists, meta: { ...nullColumns(def.metaFields), ...cols, id: metaIdOf(def), sourceKeys, extra } };
 }
 
 /** Строка state + списки → объект с теми же ключами в том же порядке. */
@@ -107,7 +112,7 @@ type Loaded = { meta: Row | undefined; rows: Map<string, Row[]> };
 
 async function loadAll(q: Pick<Db, 'select'>, def: KeyedStateDef): Promise<Loaded> {
   const metaId = (def.metaTable as unknown as Record<string, any>).id;
-  const [meta] = (await q.select().from(def.metaTable).where(eq(metaId, META_ID))) as Row[];
+  const [meta] = (await q.select().from(def.metaTable).where(eq(metaId, metaIdOf(def)))) as Row[];
   const rows = new Map<string, Row[]>();
   for (const part of def.parts) rows.set(part.prop, await loadKeyedRows(q, part.def));
   return { meta, rows };
@@ -176,7 +181,7 @@ export function createPgStateRepo(db: Db, def: KeyedStateDef, opts: { cacheTtlMs
             await writeAudit(tx, {
               action: loaded.meta ? 'update' : 'create',
               entity: def.auditEntity,
-              entityId: String(META_ID),
+              entityId: String(metaIdOf(def)),
               actorEmployeeId: ctx.actorEmployeeId ?? null,
               before: loaded.meta ? diff.before : null,
               after: { reason: ctx.reason ?? null, ...diff.after }

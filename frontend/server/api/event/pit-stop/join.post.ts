@@ -5,6 +5,7 @@ import {
   findPlayer,
   mutatePitStop
 } from '../../../utils/pitStopStore';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 /**
  * Временный join: если передан partnerUserId — создаём/находим пару.
@@ -52,5 +53,5 @@ export default defineEventHandler(async (event) => {
     }
 
     return { ok: true, pairId: me.pairId, waiting: !me.pairId };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'pit-stop:join' });
 });
