@@ -315,10 +315,18 @@ export const calcEmployeeBalance = (
   const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
   const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved'], primaryYear);
   const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending'], primaryYear);
-  const remain = Math.max(
-    0,
-    floorTenth(entitled - takenBooked - plannedBooked)
-  );
+  // Отпуска следующих лет (заявка на 2027, пока учётный 2026) тоже списываются из «Доступно» и идут в «План».
+  let futureBooked = 0;
+  for (let year = primaryYear + 1; year <= primaryYear + 2; year += 1) {
+    yearRequests.forEach((r) => {
+      if (r.status !== 'approved' && r.status !== 'pending') return;
+      const clipped = clipIsoRangeToYear(r.start, r.end, year);
+      if (clipped) futureBooked += countVacationBillableDays(clipped[0], clipped[1]);
+    });
+  }
+  planned += futureBooked;
+  // Без обрезки нулём: долг показывается отрицательным числом.
+  const remain = floorTenth(entitled - takenBooked - plannedBooked - futureBooked);
 
   return { remain: String(remain), taken, planned };
 };
@@ -383,7 +391,8 @@ const calcAvailableOnDateInYear = (
     targetDay,
     primaryYear
   );
-  return Math.max(0, floorTenth(accrued - takenThru - pendingThru));
+  // Без обрезки нулём: долг (отпуск авансом) честно отрицательный и переносится на следующий год.
+  return floorTenth(accrued - takenThru - pendingThru);
 };
 
 /**

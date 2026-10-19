@@ -107,10 +107,10 @@ describe('остаток непрерывен через Новый год', () 
   for (const f of fixtures) {
     it(`${f.name}: 31.12.2026 + начисление января − январские дни отпуска = 31.01.2027`, () => {
       const dec31 = shown(f, '2026-12-31');
-      const jan = Math.max(0, tenth(dec31 + accrual(f, '2026-12-31', '2027-01-31') - used2027(f, '2027-01-31')));
+      const jan = tenth(dec31 + accrual(f, '2026-12-31', '2027-01-31') - used2027(f, '2027-01-31'));
       expect(form(f, '2027-01-31')).toBe(jan);
       expect(shown(f, '2027-01-31')).toBe(jan);
-      const apr = Math.max(0, tenth(dec31 + accrual(f, '2026-12-31', '2027-04-30') - used2027(f, '2027-04-30')));
+      const apr = tenth(dec31 + accrual(f, '2026-12-31', '2027-04-30') - used2027(f, '2027-04-30'));
       expect(form(f, '2027-04-30')).toBe(apr);
       expect(shown(f, '2027-04-30')).toBe(apr);
     });

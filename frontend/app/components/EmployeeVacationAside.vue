@@ -377,11 +377,13 @@ const yearRequests = computed(() =>
 
 const myReservations = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeReservations(employeeName.value, balanceYear.value, employeeId.value);
-  const merged = mergeReservationsForDisplay(balanceYear.value, real);
+  // Брони текущего учётного и следующего года (бронь на 2027 видна, пока учётный 2026).
+  const y = balanceYear.value;
+  const real = [y, y + 1].flatMap((yr) => employeeReservations(employeeName.value, yr, employeeId.value));
+  const merged = mergeReservationsForDisplay(y, real);
   return merged
     .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
-    .sort((a, b) => a.month - b.month);
+    .sort((a, b) => a.year - b.year || a.month - b.month);
 });
 
 const formatReservationRow = (res: VacationReservation) =>
@@ -402,7 +404,10 @@ const removeReservation = async (id: number) => {
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeRequests(employeeName.value, balanceYear.value, employeeId.value);
+  // Заявки прошлого, текущего учётного и следующего года: заявка на 2027 видна сразу после подачи.
+  const real = balanceYearRequests.value.filter((r) =>
+    vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value })
+  );
   const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
     .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
