@@ -20104,3 +20104,36 @@ button.button {
   right: 3px;
   margin: 0;
 }
+
+/* Подсказки: «?» справа от слова в заголовке таблицы, без переноса */
+.employee-mini-stat th.vac-info-th {
+  white-space: nowrap;
+}
+
+.employee-mini-stat th.vac-info-th .vac-info-hint {
+  margin-left: 3px;
+}
+
+.employee-mini-stat th.vac-info-th .vac-info-hint__btn {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+}
+
+/* Контраст на тонированных плашках: цвет крупной цифры, а не бледной подписи */
+.emp-balance-card-label .vac-info-hint__btn {
+  color: #0d9488;
+  opacity: 0.75;
+}
+
+.vac-mob-balance__hint .vac-info-hint__btn {
+  color: #1d1d1f;
+  opacity: 0.6;
+}
+
+.emp-balance-card-label .vac-info-hint__btn:hover,
+.emp-balance-card-label .vac-info-hint__btn[aria-expanded='true'],
+.vac-mob-balance__hint .vac-info-hint__btn:hover,
+.vac-mob-balance__hint .vac-info-hint__btn[aria-expanded='true'] {
+  opacity: 1;
+}

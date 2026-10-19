@@ -62,16 +62,14 @@
       <thead>
         <tr>
           <th>Тип отпуска</th>
-          <th>
-            Отгулял
-            <VacInfoHint
+          <th class="vac-info-th">
+            Отгулял<VacInfoHint
               label="Отгулял"
               :text="VACATION_HINT_TAKEN"
             />
           </th>
-          <th>
-            План
-            <VacInfoHint
+          <th class="vac-info-th">
+            План<VacInfoHint
               label="План"
               :text="VACATION_HINT_PLANNED"
               reservations-note
