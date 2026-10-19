@@ -36,7 +36,9 @@ import {
   resolveAbsenceIblockId,
   retryFailedBitrixVacationSyncs,
   syncApprovedVacationsToBitrix,
-  toBitrixDate
+  toBitrixDate,
+  toBitrixDateTime,
+  elementMatchesDates
 } from '../../server/utils/bitrixVacationAbsence';
 
 const ABSENCE_KEYS = [
@@ -95,7 +97,11 @@ const fakePortal = (iblock3: Record<number, Record<string, unknown>>, nextId = 9
     }
     if (method === 'lists.element.add') return nextId;
     if (method === 'lists.element.update') {
-      if (!iblock3[Number(params.ELEMENT_ID)]) {
+      // Худший случай для нас: ELEMENT_CODE главнее ELEMENT_ID при поиске элемента.
+      const id = params.ELEMENT_CODE
+        ? Number(Object.entries(iblock3).find(([, el]) => el.CODE === params.ELEMENT_CODE)?.[0] ?? 0)
+        : Number(params.ELEMENT_ID);
+      if (!iblock3[id]) {
         throw new Error('Bitrix REST lists.element.update: Element not found');
       }
       return true;
@@ -156,8 +162,8 @@ describe('отпуска → настоящий график отсутстви�
     expect(add.params.IBLOCK_ID).toBe(3);
     expect(add.params.FIELDS).toEqual({
       NAME: 'Отпуск: Трифонов Николай (VBI HR)',
-      ACTIVE_FROM: '09.11.2026',
-      ACTIVE_TO: '15.11.2026',
+      ACTIVE_FROM: '09.11.2026 00:00:00',
+      ACTIVE_TO: '15.11.2026 23:59:59',
       PROPERTY_1: 501,
       PROPERTY_7: '1'
     });
@@ -176,8 +182,8 @@ describe('отпуска → настоящий график отсутстви�
     await syncApprovedVacationsToBitrix(stateOf([req({ status: 'pending' })]), stateOf([req({})]));
 
     const fields = callsOf('lists.element.add')[0].params.FIELDS;
-    expect(fields.PROPERTY_1548).toBe('09.11.2026');
-    expect(fields.PROPERTY_1549).toBe('15.11.2026');
+    expect(fields.PROPERTY_1548).toBe('09.11.2026 00:00:00');
+    expect(fields.PROPERTY_1549).toBe('15.11.2026 23:59:59');
     expect(String(fields.PROPERTY_1551)).toContain('2026-11-09');
   });
 
@@ -286,7 +292,7 @@ describe('отпуска → настоящий график отсутстви�
     expect(absenceElementUserId({ PROPERTY_99: { '7': '42' }, PROPERTY_1: { '1': '2579' } })).toBe(42);
   });
 
-  it('даты отпуска — календарные «ДД.ММ.ГГГГ» без времени, одинаковые в любом TZ процесса', () => {
+  it('даты отпуска: перестановка строки, 00:00:00 / 23:59:59, одинаковые в любом TZ процесса', () => {
     const prevTz = process.env.TZ;
     try {
       for (const tz of ['UTC', 'Europe/Moscow', 'Asia/Almaty', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
@@ -294,6 +300,9 @@ describe('отпуска → настоящий график отсутстви�
         expect(toBitrixDate('2026-11-09')).toBe('09.11.2026');
         expect(toBitrixDate('2026-12-31')).toBe('31.12.2026');
         expect(toBitrixDate('2027-01-01')).toBe('01.01.2027');
+        expect(toBitrixDateTime('2026-10-12')).toBe('12.10.2026 00:00:00');
+        expect(toBitrixDateTime('2026-10-25', true)).toBe('25.10.2026 23:59:59');
+        expect(toBitrixDateTime('2026-12-31', true)).toBe('31.12.2026 23:59:59');
       }
     } finally {
       if (prevTz === undefined) delete process.env.TZ;
@@ -303,7 +312,7 @@ describe('отпуска → настоящий график отсутстви�
     expect(() => toBitrixDate('')).toThrow();
   });
 
-  it('перенос дат: update шлёт новые даты без времени', async () => {
+  it('перенос дат: update шлёт 00:00:00 – 23:59:59 и ELEMENT_CODE своего элемента', async () => {
     fakePortal({
       33212: { CODE: 'vbi-hr-vac-1202', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026' }
     });
@@ -319,7 +328,65 @@ describe('отпуска → настоящий график отсутстви�
     await syncApprovedVacationsToBitrix(stateOf([before]), stateOf([after]));
     const updates = callsOf('lists.element.update');
     expect(updates.length).toBe(1);
-    expect(updates[0].params.FIELDS.ACTIVE_FROM).toBe('23.11.2026');
-    expect(updates[0].params.FIELDS.ACTIVE_TO).toBe('29.11.2026');
+    expect(updates[0].params.FIELDS.ACTIVE_FROM).toBe('23.11.2026 00:00:00');
+    expect(updates[0].params.FIELDS.ACTIVE_TO).toBe('29.11.2026 23:59:59');
+    // без ELEMENT_CODE lists.element.update стирает CODE (FIELDS.CODE Bitrix не применяет)
+    expect(updates[0].params.ELEMENT_ID).toBe(33212);
+    expect(updates[0].params.ELEMENT_CODE).toBe('vbi-hr-vac-1202');
+  });
+  it('elementMatchesDates: конец только 23:59:59 последнего дня', () => {
+    const ok = { ACTIVE_FROM: '16.11.2026 00:00:00', ACTIVE_TO: '22.11.2026 23:59:59' };
+    expect(elementMatchesDates(ok, '2026-11-16', '2026-11-22')).toBe(true);
+    expect(elementMatchesDates({ ...ok, ACTIVE_FROM: '16.11.2026' }, '2026-11-16', '2026-11-22')).toBe(true);
+    // так стало у 32004 после d7b8911: отпуск кончается в 00:00 последнего дня
+    expect(elementMatchesDates({ ...ok, ACTIVE_TO: '22.11.2026 00:00:00' }, '2026-11-16', '2026-11-22')).toBe(false);
+    expect(elementMatchesDates({ ...ok, ACTIVE_TO: '22.11.2026' }, '2026-11-16', '2026-11-22')).toBe(false);
+    expect(elementMatchesDates({ ...ok, ACTIVE_TO: '23.11.2026 02:59:59' }, '2026-11-16', '2026-11-22')).toBe(false);
+    expect(elementMatchesDates({ ...ok, ACTIVE_TO: '21.11.2026 23:59:59' }, '2026-11-16', '2026-11-22')).toBe(false);
+    expect(elementMatchesDates({ ...ok, ACTIVE_FROM: '15.11.2026 00:00:00' }, '2026-11-16', '2026-11-22')).toBe(false);
+  });
+
+  it('CODE стёрт (как у 32095): update с ELEMENT_CODE → not found → повтор по ELEMENT_ID, без add', async () => {
+    fakePortal({ 32095: { CODE: '', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026' } });
+    const before = req({
+      id: 3,
+      start: '2026-11-16',
+      end: '2026-11-22',
+      bitrix_absence_id: 32095,
+      bitrix_absence_iblock_id: 3,
+      bitrix_sync_status: 'synced'
+    });
+    const result = await syncApprovedVacationsToBitrix(
+      stateOf([before]),
+      stateOf([{ ...before, end: '2026-11-23' }])
+    );
+    const updates = callsOf('lists.element.update');
+    expect(updates).toHaveLength(2);
+    expect(updates[0].params).toMatchObject({ ELEMENT_ID: 32095, ELEMENT_CODE: 'vbi-hr-vac-3' });
+    expect(updates[1].params.ELEMENT_ID).toBe(32095);
+    expect(updates[1].params.ELEMENT_CODE).toBeUndefined();
+    expect(updates[1].params.FIELDS.ACTIVE_TO).toBe('23.11.2026 23:59:59');
+    expect(callsOf('lists.element.add')).toHaveLength(0);
+    expect(all(result)[0].bitrix_absence_id).toBe(32095);
+  });
+
+  it('CODE заявки у другого элемента → чужой по коду не адресуем, update только по ELEMENT_ID', async () => {
+    fakePortal({
+      32095: { CODE: '', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026' },
+      40001: { CODE: 'vbi-hr-vac-3', ACTIVE_FROM: '01.12.2026', ACTIVE_TO: '05.12.2026' }
+    });
+    const before = req({
+      id: 3,
+      start: '2026-11-16',
+      end: '2026-11-22',
+      bitrix_absence_id: 32095,
+      bitrix_absence_iblock_id: 3,
+      bitrix_sync_status: 'synced'
+    });
+    await syncApprovedVacationsToBitrix(stateOf([before]), stateOf([{ ...before, end: '2026-11-23' }]));
+    const updates = callsOf('lists.element.update');
+    expect(updates).toHaveLength(1);
+    expect(updates[0].params.ELEMENT_ID).toBe(32095);
+    expect(updates[0].params.ELEMENT_CODE).toBeUndefined();
   });
 });

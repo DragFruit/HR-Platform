@@ -93,7 +93,11 @@ const fakePortal = (iblock3: Record<number, El>, nextId = 99001) => {
     }
     if (method === 'lists.element.add') return nextId;
     if (method === 'lists.element.update') {
-      if (!iblock3[Number(params.ELEMENT_ID)]) {
+      // Худший случай для нас: ELEMENT_CODE главнее ELEMENT_ID при поиске элемента.
+      const id = params.ELEMENT_CODE
+        ? Number(Object.entries(iblock3).find(([, el]) => el.CODE === params.ELEMENT_CODE)?.[0] ?? 0)
+        : Number(params.ELEMENT_ID);
+      if (!iblock3[id]) {
         throw new Error('Bitrix REST lists.element.update: Element not found');
       }
       return true;
@@ -129,7 +133,7 @@ describe('ежедневная сверка дат отпусков с граф�
   const summaryLine = () =>
     info.mock.calls.map((c) => String(c[0])).find((l) => l.includes('reconcile: checked='));
 
-  it('сдвинутый элемент (ACTIVE_TO следующий день 02:59:59) обновляется датами без времени', async () => {
+  it('сдвинутый элемент (ACTIVE_TO следующий день 02:59:59) обновляется: 00:00:00 – 23:59:59', async () => {
     fakePortal({
       500: { CODE: 'vbi-hr-vac-1171', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '23.11.2026 02:59:59', PROPERTY_1: user(501) }
     });
@@ -138,8 +142,8 @@ describe('ежедневная сверка дат отпусков с граф�
     const [upd] = callsOf('lists.element.update');
     expect(upd.params.ELEMENT_ID).toBe(500);
     expect(upd.params.FIELDS).toMatchObject({
-      ACTIVE_FROM: '16.11.2026',
-      ACTIVE_TO: '22.11.2026',
+      ACTIVE_FROM: '16.11.2026 00:00:00',
+      ACTIVE_TO: '22.11.2026 23:59:59',
       PROPERTY_1: 501,
       CODE: 'vbi-hr-vac-1171'
     });
@@ -155,7 +159,7 @@ describe('ежедневная сверка дат отпусков с граф�
     );
   });
 
-  it('совпадающий элемент не трогаем (время в ACTIVE_TO не важно, только дата)', async () => {
+  it('совпадающий элемент (конец 23:59:59, как у 33212) не трогаем', async () => {
     fakePortal({
       500: { CODE: 'vbi-hr-vac-1171', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026 23:59:59', PROPERTY_1: user(501) }
     });
@@ -168,6 +172,25 @@ describe('ежедневная сверка дат отпусков с граф�
     expect(callsOf('lists.element.get')[0].params.FILTER.ID).toEqual([500]);
     expect(res).toMatchObject({ checked: 1, fixed: 0, readded: 0, failed: 0 });
     expect(res.state).toBe(state);
+  });
+
+  it('конец в 00:00:00 последнего дня (как у 32004 после d7b8911) → перезаписываем на 23:59:59', async () => {
+    fakePortal({
+      32004: { CODE: 'vbi-hr-vac-1043', ACTIVE_FROM: '12.10.2026 00:00:00', ACTIVE_TO: '25.10.2026 00:00:00', PROPERTY_1: user(501) },
+      32095: { CODE: 'vbi-hr-vac-3', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026', PROPERTY_1: user(501) }
+    });
+    const res = await reconcileFutureAbsences(
+      stateOf([
+        synced({ id: 1043, start: '2026-10-12', end: '2026-10-25', bitrix_absence_id: 32004 }),
+        synced({ id: 3, bitrix_absence_id: 32095 })
+      ])
+    );
+    const updates = callsOf('lists.element.update');
+    expect(updates.map((u) => u.params.ELEMENT_ID).sort()).toEqual([32004, 32095]);
+    const u32004 = updates.find((u) => u.params.ELEMENT_ID === 32004)!;
+    expect(u32004.params.ELEMENT_CODE).toBe('vbi-hr-vac-1043');
+    expect(u32004.params.FIELDS).toMatchObject({ ACTIVE_FROM: '12.10.2026 00:00:00', ACTIVE_TO: '25.10.2026 23:59:59' });
+    expect(res).toMatchObject({ checked: 2, fixed: 2, failed: 0 });
   });
 
   it('пустой CODE (как у 32004 заявки 1043) проставляется', async () => {
@@ -188,7 +211,7 @@ describe('ежедневная сверка дат отпусков с граф�
 
     const [add] = callsOf('lists.element.add');
     expect(add.params.ELEMENT_CODE).toBe('vbi-hr-vac-1171');
-    expect(add.params.FIELDS).toMatchObject({ ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026' });
+    expect(add.params.FIELDS).toMatchObject({ ACTIVE_FROM: '16.11.2026 00:00:00', ACTIVE_TO: '22.11.2026 23:59:59' });
     expect(callsOf('lists.element.delete')).toHaveLength(0);
     expect(res).toMatchObject({ checked: 1, fixed: 0, readded: 1, failed: 0 });
     expect(all(res.state)[0]).toMatchObject({ bitrix_absence_id: 99001, bitrix_absence_iblock_id: 3 });
@@ -287,8 +310,8 @@ describe('ежедневная сверка дат отпусков с граф�
       const [upd] = callsOf('lists.element.update');
       expect(upd.params.ELEMENT_ID).toBe(32167);
       expect(upd.params.FIELDS).toMatchObject({
-        ACTIVE_FROM: '16.11.2026',
-        ACTIVE_TO: '22.11.2026',
+        ACTIVE_FROM: '16.11.2026 00:00:00',
+        ACTIVE_TO: '22.11.2026 23:59:59',
         PROPERTY_1: TRIFONOV,
         CODE: 'vbi-hr-vac-1212'
       });

@@ -134,11 +134,9 @@ const optionalAbsenceProperty = (key: string): string | null => {
 export const DEFAULT_ABSENCE_IBLOCK_ID = 3;
 
 /**
- * Календарная дата отпуска → «ДД.ММ.ГГГГ» без времени (как у ручных отсутствий в графике).
- * Даты, которые зафиксировал сотрудник, одинаковы в любом часовом поясе: только перестановка
- * строки, без Date/UTC. Время («00:00:00»/«23:59:59») Bitrix пересчитывает из пояса
- * пользователя токена/вебхука в пояс портала — граница дня могла уехать на соседние сутки.
- * Дата без времени не пересчитывается. Используется и в FIELDS, и в FILTER ACTIVE_FROM.
+ * Календарная дата отпуска → «ДД.ММ.ГГГГ» (только перестановка строки, без Date/UTC,
+ * результат одинаков в любом часовом поясе сервера). Сама по себе нужна для FILTER ACTIVE_FROM;
+ * в FIELDS идёт через toBitrixDateTime с явным временем.
  */
 export const toBitrixDate = (isoDate: string): string => {
   const m = String(isoDate || '')
@@ -147,6 +145,16 @@ export const toBitrixDate = (isoDate: string): string => {
   if (!m) throw new Error(`toBitrixDate: ожидалась дата YYYY-MM-DD, получено «${isoDate}»`);
   return `${m[3]}.${m[2]}.${m[1]}`;
 };
+
+/**
+ * ACTIVE_FROM/ACTIVE_TO для графика отсутствий: «ДД.ММ.ГГГГ 00:00:00» и «ДД.ММ.ГГГГ 23:59:59».
+ * Время литералом в строке, без Date/UTC: Bitrix читает его в поясе пользователя токена,
+ * поэтому получается ровно 00:00–23:59:59 нужных суток (как у корректных элементов вида 33212).
+ * Дата без времени в ACTIVE_TO НЕ годится: Bitrix ставит 00:00:00 последнего дня,
+ * и последний день отпуска в график не попадает (так было 19.10.2026 после d7b8911).
+ */
+export const toBitrixDateTime = (isoDate: string, endOfDay = false): string =>
+  `${toBitrixDate(isoDate)} ${endOfDay ? '23:59:59' : '00:00:00'}`;
 
 const isElementAlreadyExistsError = (message: string): boolean =>
   /element already exists/i.test(message);
@@ -239,12 +247,28 @@ const bitrixDateToIso = (value: string | undefined): string => {
   return `${m[3]}-${m[2]}-${m[1]}`;
 };
 
-const elementMatchesDates = (
-  el: AbsenceListElement,
+/** Время из «ДД.ММ.ГГГГ ЧЧ:ММ[:СС]»; для даты без времени '' (Bitrix трактует как 00:00:00). */
+const bitrixTimePart = (value: string | undefined): string => {
+  const m = String(value || '')
+    .trim()
+    .match(/^\d{2}\.\d{2}\.\d{4}[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return '';
+  return `${m[1]}:${m[2]}:${m[3] ?? '00'}`;
+};
+
+/**
+ * Элемент актуален, только если начало в нужный день, а конец в нужный день в 23:59:59.
+ * Конец «ДД.ММ.ГГГГ» без времени или «… 00:00:00» = отпуск обрывается в начале последнего дня
+ * → считаем расхождением, сверка перезапишет элемент.
+ */
+export const elementMatchesDates = (
+  el: Pick<AbsenceListElement, 'ACTIVE_FROM' | 'ACTIVE_TO'>,
   start: string,
   end: string
 ): boolean =>
-  bitrixDateToIso(el.ACTIVE_FROM) === start && bitrixDateToIso(el.ACTIVE_TO) === end;
+  bitrixDateToIso(el.ACTIVE_FROM) === start &&
+  bitrixDateToIso(el.ACTIVE_TO) === end &&
+  bitrixTimePart(el.ACTIVE_TO) === '23:59:59';
 
 const pickAbsenceHit = (
   rows: AbsenceListElement[] | undefined,
@@ -383,15 +407,15 @@ const absenceFields = (params: {
 }): Record<string, unknown> => {
   const fields: Record<string, unknown> = {
     NAME: params.comment?.trim() || `Отпуск: ${params.employeeName} (VBI HR)`,
-    ACTIVE_FROM: toBitrixDate(params.start),
-    ACTIVE_TO: toBitrixDate(params.end),
+    ACTIVE_FROM: toBitrixDateTime(params.start, false),
+    ACTIVE_TO: toBitrixDateTime(params.end, true),
     [absenceUserProperty()]: params.bitrixUserId,
     [absenceTypeProperty()]: absenceTypeEnum()
   };
   const startProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_START');
-  if (startProp) fields[startProp] = toBitrixDate(params.start);
+  if (startProp) fields[startProp] = toBitrixDateTime(params.start, false);
   const endProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_END');
-  if (endProp) fields[endProp] = toBitrixDate(params.end);
+  if (endProp) fields[endProp] = toBitrixDateTime(params.end, true);
   const infoProp = optionalAbsenceProperty('BITRIX_ABSENCE_PROPERTY_INFO');
   if (infoProp) {
     fields[infoProp] =
@@ -525,17 +549,63 @@ const updateViaAbsenceIblock = async (params: {
     );
   }
 
-  const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
+  const code = `vbi-hr-vac-${params.requestId}`;
+  const base = {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
     ELEMENT_ID: params.absenceId,
-    // CODE иначе стирается после update — следующий перенос не найдёт элемент по ELEMENT_CODE.
-    FIELDS: {
-      ...absenceFields(params),
-      CODE: `vbi-hr-vac-${params.requestId}`
-    }
-  });
-  return { absenceId: params.absenceId, auth };
+    // FIELDS.CODE Bitrix игнорирует (19.10.2026 на crm.vbi.ru: update с FIELDS.CODE и только ELEMENT_ID
+    // стёр CODE «vbi-hr-vac-3» у 32095). Оставляем как безвредную подстраховку.
+    FIELDS: { ...absenceFields(params), CODE: code }
+  };
+
+  // lists.element.update «перезаписывает элемент полностью»; символьный код, как и в lists.element.add,
+  // берётся из параметра ELEMENT_CODE, поэтому без него CODE очищается. Но ELEMENT_CODE ещё и
+  // идентифицирует элемент, и документация не говорит, что главнее при ELEMENT_ID + ELEMENT_CODE.
+  // Поэтому сначала читаем, кому принадлежит код: чужой элемент никогда не адресуем по коду.
+  const holder = await findAbsenceIdByCode(iblockId, code);
+  if (holder === undefined || (holder !== null && holder !== params.absenceId)) {
+    console.warn(
+      `[bitrix-vacation] #${params.requestId}: ` +
+        (holder === undefined ? `не удалось проверить владельца CODE ${code}` : `CODE ${code} уже у элемента ${holder}`) +
+        `, обновляем ${params.absenceId} только по ELEMENT_ID (CODE не трогаем)`
+    );
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', base);
+    return { absenceId: params.absenceId, auth };
+  }
+
+  try {
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
+      ...base,
+      ELEMENT_CODE: code
+    });
+    return { absenceId: params.absenceId, auth };
+  } catch (err) {
+    // Код ещё ни у кого (стёрт прошлым update), и Bitrix ищет элемент по ELEMENT_CODE → not found.
+    // Не уходим в add (был бы дубль), повторяем по одному ELEMENT_ID, CODE поправит следующая сверка.
+    if (holder !== null || !isElementNotFoundError(errorMessage(err))) throw err;
+    console.warn(
+      `[bitrix-vacation] #${params.requestId}: update с ELEMENT_CODE ${code} → not found, повтор только по ELEMENT_ID ${params.absenceId}`
+    );
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', base);
+    return { absenceId: params.absenceId, auth };
+  }
+};
+
+/** ID элемента с символьным кодом code (lists.element.get + ELEMENT_CODE); null: нет, undefined: ошибка чтения. */
+const findAbsenceIdByCode = async (iblockId: number, code: string): Promise<number | null | undefined> => {
+  try {
+    const { result } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      ELEMENT_CODE: code
+    });
+    const hit = (result || []).find((el) => Number(el.ID) > 0 && String(el.CODE || '') === code);
+    return hit ? Number(hit.ID) : null;
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by ELEMENT_CODE (update) failed:', errorMessage(err));
+    return undefined;
+  }
 };
 
 /**
@@ -1127,8 +1197,9 @@ const RECONCILE_CONCURRENCY = 2;
 /**
  * Ежедневная сверка: согласованные и синкнутые заявки, которые ещё не закончились (end >= сегодня),
  * против их элементов в графике отсутствий (инфоблок 3). Читаем пачками по ID.
- * - даты элемента (только дата, без времени) или пользователь не совпадают, пустой CODE → update тем же путём,
- *   что и перенос дат (даты «ДД.ММ.ГГГГ», CODE vbi-hr-vac-<id>);
+ * - начало не тот день, конец не «последний день 23:59:59» (дата без времени и 00:00:00 тоже расхождение),
+ *   пользователь не совпадает, пустой CODE → update тем же путём, что и перенос дат
+ *   (00:00:00 – 23:59:59, ELEMENT_CODE vbi-hr-vac-<id>);
  * - элемента нет → как «не найден»: обычная логика синка (поиск по CODE/датам, сирота, иначе add);
  * - CODE элемента принадлежит другой заявке → не трогаем, только лог.
  * Ничего не удаляет; элементы, не привязанные к заявкам, не трогает (кроме усыновления сироты
