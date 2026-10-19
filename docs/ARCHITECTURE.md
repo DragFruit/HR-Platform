@@ -295,7 +295,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Типы: руководителю — `vacation_submitted`, `vacation_updated`, `vacation_deleted` (при правке/удалении — manager + director отдела); сотруднику — `vacation_approved`, `vacation_rejected`, `vacation_next_stage`; автору идеи — `idea_status_changed` (платформа + Bitrix при смене этапа); после «Позже» / «Прочитать» на памятке — `post_vacation_memo`.
 
-Хранение: до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
+Хранение: JSON или Postgres (см. «База данных → Этап 2»); до 100 уведомлений на получателя (FIFO); крестик в колокольчике → `hidden_from_bell` (запись остаётся на `/notifications`); `DELETE /api/notifications/:id` — полное удаление.
 
 Параллельно в Битрикс (`bitrixVacationNotify.ts` / `ideaNotifications.ts`): только `im.notify.system.add` через OAuth (колокольчик от системы); без токена — не шлём. Личный чат (`im.message.add`) для согласования **не используется** (см. правило `bitrix-vacation-notify-no-chat`).
 
@@ -501,9 +501,31 @@ NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 | `server/db/schema/` | Таблицы Drizzle, `index.ts` реэкспортирует домены. Сейчас одна: `audit.audit_log` (`id bigserial`, `at timestamptz default now()`, `actor_employee_id int null`, `action`, `entity`, `entity_id`, `before jsonb`, `after jsonb`) — пока никто не пишет. |
 | `server/db/migrations/` | SQL от `drizzle-kit generate` (коммитим). `drizzle.config.ts` в `frontend/`. |
 | `server/db/migrate.ts` + `server/plugins/db-migrate.ts` | При старте: отдельное соединение, `pg_advisory_lock`, drizzle `migrate()`, одна строка `[db] migrations ok applied=N`. Ошибка → лог + `disableDb()`, процесс и JSON-функции живут. |
-| `server/api/admin/db-health.get.ts` | `GET /api/admin/db-health` (admin): `{enabled, ok, latencyMs, migrations}`. |
+| `server/api/admin/db-health.get.ts` | `GET /api/admin/db-health` (admin): `{enabled, ok, latencyMs, migrations, domains}`; `domains.notifications` = `postgres` или `json` (где сейчас живут уведомления). |
+| `server/db/audit.ts` | `writeAudit(tx, …)` — запись в `audit.audit_log` в той же транзакции, что и мутация. |
 
 Миграции в артефакте: хук `nitro:init → compiled` в `nuxt.config.ts` копирует `server/db/migrations` → `.output/server/db/migrations` (не `serverAssets` — бандл Nitro не растёт). Поиск папки: `DB_MIGRATIONS_DIR` → `<dirname(index.mjs)>/db/migrations` → `cwd/.output/server/db/migrations` → `cwd/server/db/migrations` (dev).
+
+### Этап 2 — домен `notifications` (пилот, только стейдж)
+
+Переключатель один: **`DB_NOTIFICATIONS=1` и задан `DATABASE_URL`** → уведомления пользователей в Postgres, иначе в JSON (`server/data/user-notifications.json`). На проде `DATABASE_URL` есть, но флага нет — прод на JSON и после попадания кода в `main`. Флаг стоит только в `/etc/vbi-hr/bitrix.env` (источник `.env` стейджа при каждом деплое).
+
+| Файл | Назначение |
+|------|------------|
+| `server/db/schema/notifications.ts` | `notifications.user_notifications` и `notifications.json_imports`; миграция `0001_notifications.sql`. |
+| `server/utils/userNotificationsStore.ts` | Фасад с прежним API (`listUserNotifications`, `createUserNotification`, …): выбирает хранилище, вызывающий код не менялся. |
+| `server/notifications/jsonStore.ts` | JSON-реализация (прежняя логика + очередь мутаций `createMutationQueue`). |
+| `server/db/repositories/userNotifications.ts` | Postgres-реализация того же интерфейса `UserNotificationsRepo` (`server/notifications/types.ts`). |
+| `server/notifications/rowMapping.ts` | JSON ↔ строка БД без потерь: неизвестные поля и даты не формата `YYYY-MM-DD` — в `extra jsonb`. |
+| `server/notifications/importJson.ts` | Разовый импорт JSON → БД при старте. |
+
+Таблица `user_notifications`: `id uuid` (тот же, что в JSON), `kind`, `recipient_user_id int` (тот же id, что `session.id`: `bitrix_user_id`, иначе platform id; FK появится с `core.employees`), `vacation_request_id`, `employee_name` (снимок подписи «о ком», не ключ), `start_date`/`end_date date`, `stage_label`, `idea_id`, `idea_title`, `status_comment`, `created_at`, `seen` + `seen_at`, `hidden_from_bell` + `hidden_at` (время прочтения/скрытия пишется с момента переезда; у импортированных — `null`, не выдумываем), `extra jsonb`. Индексы: `(recipient_user_id, created_at desc)`, частичный по непрочитанным для колокольчика, `(kind, vacation_request_id)`. Лимит 100 на получателя — как в JSON (лишние удаляются в той же транзакции).
+
+Старт процесса: миграции → если флаг, импорт под `pg_advisory_xact_lock`: строки `on conflict (id) do nothing`, проверка «все id из файла есть в базе», маркер в `json_imports` (повторный старт импорт пропускает — удалённые в базе уведомления не воскресают). Лог: `[db] notifications: импорт из JSON file=N inserted=N existing=N skipped=N verified=N`. Пока импорт не закончился, запросы уведомлений ждут; если миграции/импорт упали — фасад работает на JSON и пишет ошибку в журнал.
+
+JSON-файл не удаляется — это бэкап на момент переезда. После переезда в него больше не пишут: откат (снять флаг) вернёт уведомления на состояние момента импорта.
+
+Аудит (`audit.audit_log`, `entity = notifications.user_notification`): `create`, `delete`, `trim` (лимит 100), `delete_for_recipients` (офбординг), `import_json`. Прочтение/скрытие не аудируются — для них `seen_at`/`hidden_at`.
 
 ### Целевая модель
 
@@ -529,6 +551,8 @@ NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 ### Тесты
 
 `npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
+
+Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, блок «Postgres»): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет — блок пропускается, контракт хранилища проверяется на JSON-реализации.
 
 ---
 

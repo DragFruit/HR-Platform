@@ -1,209 +1,90 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { getDb, isDbEnabled } from '../db/client';
+import { createPgUserNotificationsRepo } from '../db/repositories/userNotifications';
+import { createJsonUserNotificationsRepo } from '../notifications/jsonStore';
+import type {
+  CreateUserNotificationInput,
+  RecipientIds,
+  UserNotification,
+  UserNotificationsRepo
+} from '../notifications/types';
 
-export type UserNotificationKind =
-  | 'vacation_submitted'
-  | 'vacation_updated'
-  | 'vacation_deleted'
-  | 'vacation_approved'
-  | 'vacation_rejected'
-  | 'vacation_next_stage'
-  | 'vacation_reservation_updated'
-  | 'vacation_reservation_expiring'
-  | 'vacation_reservation_expiring_manager'
-  | 'idea_status_changed'
-  | 'post_vacation_memo'
-  | 'knowledge_article_submitted'
-  | 'knowledge_article_accepted'
-  | 'knowledge_article_revision'
-  | 'knowledge_article_rejected';
+export type { UserNotification, UserNotificationKind } from '../notifications/types';
+export { USER_NOTIFICATIONS_MAX_PER_RECIPIENT } from '../notifications/types';
 
-export type UserNotification = {
-  id: string;
-  kind: UserNotificationKind;
-  recipient_user_id: number;
-  /** Для уведомлений по отпускам; для идей может отсутствовать */
-  vacation_request_id?: number;
-  employee_name: string;
-  start?: string;
-  end?: string;
-  /** Подпись этапа (отпуска / статус идеи) */
-  stage_label?: string;
-  idea_id?: string;
-  idea_title?: string;
-  status_comment?: string;
-  created_at: string;
-  seen: boolean;
-  /** Скрыто из выпадающего колокольчика; остаётся на /notifications */
-  hidden_from_bell?: boolean;
-};
-
-type NotificationsState = {
-  items: UserNotification[];
-};
-
-/** Максимум уведомлений на одного получателя; при превышении удаляются самые старые. */
-export const USER_NOTIFICATIONS_MAX_PER_RECIPIENT = 100;
-
-const DATA_FILE = join(process.cwd(), 'server/data/user-notifications.json');
-
-const emptyState = (): NotificationsState => ({ items: [] });
-
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, emptyState());
-  }
+/**
+ * Единая точка входа уведомлений. Хранилище выбирается одним переключателем:
+ * DB_NOTIFICATIONS=1 и задан DATABASE_URL → Postgres (схема notifications), иначе JSON-файл.
+ * Флаг стоит только на стейдже; на проде DATABASE_URL есть, но флага нет → JSON.
+ */
+export function notificationsDbFlag(): boolean {
+  return String(process.env.DB_NOTIFICATIONS || '').trim() === '1' && isDbEnabled();
 }
 
-async function readState(): Promise<NotificationsState> {
-  await ensureFile();
-  try {
-    const raw = await readFile(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<NotificationsState>;
-    return { items: Array.isArray(parsed.items) ? parsed.items : [] };
-  } catch {
-    return emptyState();
-  }
+let resolvePgReady!: (ok: boolean) => void;
+const pgReady = new Promise<boolean>((resolve) => {
+  resolvePgReady = resolve;
+});
+
+/** Вызывает плагин db-migrate: true — миграции и импорт прошли, можно читать/писать в Postgres. */
+export function setNotificationsPgReady(ok: boolean) {
+  resolvePgReady(ok);
 }
 
-async function writeState(state: NotificationsState): Promise<void> {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, state);
-}
+let jsonRepo: UserNotificationsRepo | null = null;
+let pgRepo: UserNotificationsRepo | null = null;
+let warnedFallback = false;
 
-const trimRecipientToMax = (state: NotificationsState, recipientUserId: number) => {
-  const owned = state.items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => item.recipient_user_id === recipientUserId)
-    .sort(
-      (a, b) =>
-        new Date(a.item.created_at).getTime() - new Date(b.item.created_at).getTime()
-    );
-
-  const overflow = owned.length - USER_NOTIFICATIONS_MAX_PER_RECIPIENT;
-  if (overflow <= 0) return;
-
-  const removeIndexes = new Set(owned.slice(0, overflow).map(({ index }) => index));
-  state.items = state.items.filter((_, index) => !removeIndexes.has(index));
-};
-
-export async function listUserNotifications(
-  recipientUserId: number | number[],
-  filters?: { unseen?: boolean; forBell?: boolean }
-): Promise<UserNotification[]> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  let list = state.items
-    .filter((item) => recipients.has(item.recipient_user_id))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  if (filters?.forBell) {
-    list = list.filter((item) => !item.hidden_from_bell);
-  }
-  if (filters?.unseen) {
-    list = list.filter((item) => !item.seen);
-  }
-  return list;
-}
-
-export async function countUnseenUserNotifications(recipientUserId: number | number[]): Promise<number> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  return state.items.filter(
-    (item) =>
-      recipients.has(item.recipient_user_id) &&
-      !item.seen &&
-      !item.hidden_from_bell
-  ).length;
-}
-
-export async function markUserNotificationSeen(
-  recipientUserId: number | number[],
-  id: string
-): Promise<UserNotification | null> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  const item = state.items.find((row) => row.id === id && recipients.has(row.recipient_user_id));
-  if (!item) return null;
-  item.seen = true;
-  await writeState(state);
-  return item;
-}
-
-export async function markAllUserNotificationsSeen(recipientUserId: number | number[]): Promise<number> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  let changed = 0;
-  for (const item of state.items) {
-    if (recipients.has(item.recipient_user_id) && !item.seen) {
-      item.seen = true;
-      changed += 1;
+async function repo(): Promise<UserNotificationsRepo> {
+  if (notificationsDbFlag()) {
+    const ok = await pgReady;
+    const db = ok ? getDb() : null;
+    if (db) return (pgRepo ??= createPgUserNotificationsRepo(db));
+    if (!warnedFallback) {
+      warnedFallback = true;
+      console.error('[notifications] DB_NOTIFICATIONS=1, но Postgres недоступен — работаем на JSON (бэкап может быть устаревшим)');
     }
   }
-  if (changed) await writeState(state);
-  return changed;
+  return (jsonRepo ??= createJsonUserNotificationsRepo());
+}
+
+export async function getUserNotificationsBackend(): Promise<'json' | 'postgres'> {
+  return (await repo()).backend;
+}
+
+export async function listUserNotifications(
+  recipientUserId: RecipientIds,
+  filters?: { unseen?: boolean; forBell?: boolean }
+): Promise<UserNotification[]> {
+  return (await repo()).list(recipientUserId, filters);
+}
+
+export async function countUnseenUserNotifications(recipientUserId: RecipientIds): Promise<number> {
+  return (await repo()).countUnseen(recipientUserId);
+}
+
+export async function markUserNotificationSeen(recipientUserId: RecipientIds, id: string) {
+  return (await repo()).markSeen(recipientUserId, id);
+}
+
+export async function markAllUserNotificationsSeen(recipientUserId: RecipientIds): Promise<number> {
+  return (await repo()).markAllSeen(recipientUserId);
 }
 
 /** Убрать из колокольчика; запись остаётся в разделе «Уведомления». */
-export async function hideUserNotificationFromBell(
-  recipientUserId: number | number[],
-  id: string
-): Promise<UserNotification | null> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  const item = state.items.find((row) => row.id === id && recipients.has(row.recipient_user_id));
-  if (!item) return null;
-  item.hidden_from_bell = true;
-  item.seen = true;
-  await writeState(state);
-  return item;
+export async function hideUserNotificationFromBell(recipientUserId: RecipientIds, id: string) {
+  return (await repo()).hideFromBell(recipientUserId, id);
 }
 
 /** Полное удаление (раздел «Уведомления» / админская очистка). */
-export async function dismissUserNotification(
-  recipientUserId: number | number[],
-  id: string
-): Promise<boolean> {
-  const recipients = new Set(Array.isArray(recipientUserId) ? recipientUserId : [recipientUserId]);
-  const state = await readState();
-  const index = state.items.findIndex(
-    (row) => row.id === id && recipients.has(row.recipient_user_id)
-  );
-  if (index === -1) return false;
-  state.items.splice(index, 1);
-  await writeState(state);
-  return true;
+export async function dismissUserNotification(recipientUserId: RecipientIds, id: string): Promise<boolean> {
+  return (await repo()).dismiss(recipientUserId, id);
 }
 
-export async function createUserNotification(
-  input: Omit<UserNotification, 'id' | 'created_at' | 'seen' | 'hidden_from_bell'>
-): Promise<UserNotification> {
-  const state = await readState();
-  const notification: UserNotification = {
-    ...input,
-    id: randomUUID(),
-    created_at: new Date().toISOString(),
-    seen: false,
-    hidden_from_bell: false
-  };
-  state.items.push(notification);
-  trimRecipientToMax(state, notification.recipient_user_id);
-  await writeState(state);
-  return notification;
+export async function createUserNotification(input: CreateUserNotificationInput): Promise<UserNotification> {
+  return (await repo()).create(input);
 }
 
 /** Полная очистка колокольчика/истории для получателей (офбординг). */
 export async function deleteUserNotificationsForRecipients(recipientUserIds: number[]): Promise<number> {
-  const ids = new Set(recipientUserIds.filter((id) => Number.isFinite(id) && id > 0));
-  if (!ids.size) return 0;
-  const state = await readState();
-  const before = state.items.length;
-  state.items = state.items.filter((item) => !ids.has(item.recipient_user_id));
-  const removed = before - state.items.length;
-  if (removed) await writeState(state);
-  return removed;
+  return (await repo()).deleteForRecipients(recipientUserIds);
 }

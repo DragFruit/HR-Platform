@@ -4,6 +4,17 @@
 
 ## 2026-10-16
 
+### DB этап 2: уведомления на Postgres (только стейдж)
+
+- Схема `notifications` (`user_notifications`, `json_imports`), миграция `frontend/server/db/migrations/0001_notifications.sql`.
+- `frontend/server/utils/userNotificationsStore.ts` — фасад с прежним API; хранилище выбирает флаг: `DB_NOTIFICATIONS=1` + `DATABASE_URL` → Postgres, иначе JSON. Реализации: `frontend/server/notifications/jsonStore.ts`, `frontend/server/db/repositories/userNotifications.ts`.
+- Разовый импорт `server/data/user-notifications.json` при старте (`frontend/server/notifications/importJson.ts`), идемпотентно, с маркером в `notifications.json_imports`; JSON остаётся бэкапом. Счётчики в журнале `[db] notifications: импорт из JSON …`.
+- Аудит мутаций в `audit.audit_log` (`frontend/server/db/audit.ts`); новые колонки `seen_at`/`hidden_at`.
+- `GET /api/admin/db-health` → `domains.notifications` (`postgres`/`json`).
+- Новый env: `DB_NOTIFICATIONS` (ставится только на стейдже, `/etc/vbi-hr/bitrix.env`). Прод: флага нет → JSON.
+- Тесты: `frontend/tests/unit/userNotificationsRepo.test.ts` (маппинг, контракт JSON; с `TEST_DATABASE_URL` — Postgres, аудит, импорт).
+- Проверить: на `:8080` колокольчик и `/notifications` показывают прежние уведомления, «прочитано»/крестик/удаление работают; `/api/admin/db-health` → `domains.notifications = postgres`.
+
 ### Fix: даты отпуска в графике отсутствий без сдвига часового пояса
 
 Правило: даты, которые зафиксировал сотрудник, — календарные и в Bitrix должны быть ровно такими же в любом часовом поясе.
