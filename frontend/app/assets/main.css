@@ -12841,7 +12841,8 @@ button.emp-name--card:hover {
 .vac-year-tab.vac-emp-calendar-yeartab {
   position: absolute;
   top: 0;
-  right: 12px;
+  /* Ярлык года на прямом участке верхней линии, правее дуги угла не заходит */
+  right: calc(var(--vac-frame-radius) + 2px);
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
@@ -12990,10 +12991,17 @@ button.emp-name--card:hover {
   max-height: none;
 }
 
-/* «Общий»: левые углы скруглены, правый край ровный под ярлыки */
+/* «Общий»: как «Мой календарь», все четыре угла скруглены, правая линия рамки на месте;
+   активный ярлык справа заходит на неё (margin-left: -1px) и выглядит пришитым к рамке. */
 .vacations-employee-shell .vac-emp-calendar-slot--with-tabs .vac-emp-calendar-pane--team {
-  border-radius: var(--vac-frame-radius) 0 0 var(--vac-frame-radius);
-  border-right: none;
+  border-radius: var(--vac-frame-radius);
+  overflow: hidden;
+  background-clip: padding-box;
+}
+
+/* Ярлыки справа начинаются под скруглением верхнего правого угла, а не на дуге */
+.vac-emp-calendar-slot--with-tabs > .vac-cal-side-tabs {
+  padding-top: var(--vac-frame-radius);
 }
 
 /* «Мой календарь»: полная рамка со всеми скруглёнными углами */
