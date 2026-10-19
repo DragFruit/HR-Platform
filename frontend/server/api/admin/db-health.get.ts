@@ -1,7 +1,9 @@
 import { getDbDisabledReason, getSql, isDbEnabled } from '../../db/client';
 import { requireRole } from '../../utils/requireRole';
 import { getUserNotificationsBackend } from '../../utils/userNotificationsStore';
-import { getCoreBackend } from '../../utils/coreStore';
+import { getAccessDenylistBackend, getCoreBackend } from '../../utils/coreStore';
+import { getAdminNotificationsBackend } from '../../utils/adminNotificationsStore';
+import { getVacationReminderLogsBackend } from '../../utils/vacationReminderLogsBackend';
 import { getVacationsBackend } from '../../utils/vacationsStore';
 
 /** Проверка PostgreSQL на стенде: {enabled, ok, latencyMs, migrations, domains}. Только admin. */
@@ -12,7 +14,10 @@ export default defineEventHandler(async (event) => {
   const domains = {
     notifications: await getUserNotificationsBackend(),
     core: await getCoreBackend(),
-    vacations: await getVacationsBackend()
+    vacations: await getVacationsBackend(),
+    adminNotifications: await getAdminNotificationsBackend(),
+    accessDenylist: await getAccessDenylistBackend(),
+    vacationReminders: await getVacationReminderLogsBackend()
   };
   const sql = getSql();
   if (!isDbEnabled() || !sql) {

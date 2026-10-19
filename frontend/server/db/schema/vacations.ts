@@ -126,6 +126,58 @@ export const vacationRequestHistory = vacationsSchema.table(
   (t) => [index('request_status_history_request_idx').on(t.requestId, t.changedAt)]
 );
 
+/**
+ * Журнал отправленных напоминаний «за 3 недели до отпуска» (cron vacation-pre-reminders):
+ * ключ `pre_3w:<id заявки>:<начало>` не даёт отправить повторно. Этап 5
+ * (раньше server/data/vacation-pre-reminders.json), тот же флаг DB_VACATIONS=1.
+ */
+export const vacationPreReminders = vacationsSchema.table(
+  'pre_reminders',
+  {
+    key: text('key').primaryKey(),
+    /** Порядок как в массиве sent файла. */
+    position: integer('position').notNull().default(0),
+    kind: text('kind'),
+    requestId: integer('request_id'),
+    employee: text('employee'),
+    bitrixUserId: integer('bitrix_user_id'),
+    start: text('start'),
+    end: text('end'),
+    /** ISO-строка как в JSON. */
+    sentAt: text('sent_at'),
+    channel: text('channel'),
+    sourceKeys: text('source_keys').array(),
+    /** message_id (число или строка) и нестандартные поля. */
+    extra: json('extra').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [index('pre_reminders_request_idx').on(t.requestId)]
+);
+
+/**
+ * Журнал напоминаний руководителям «отпуска в следующем / текущем месяце»
+ * (cron vacation-manager-month-reminders), ключ `<kind>:<bitrix id>:<YYYY-MM>`. Этап 5
+ * (раньше server/data/vacation-manager-month-reminders.json), флаг DB_VACATIONS=1.
+ */
+export const vacationManagerMonthReminders = vacationsSchema.table(
+  'manager_month_reminders',
+  {
+    key: text('key').primaryKey(),
+    position: integer('position').notNull().default(0),
+    kind: text('kind'),
+    targetMonth: text('target_month'),
+    manager: text('manager'),
+    bitrixUserId: integer('bitrix_user_id'),
+    vacationCount: integer('vacation_count'),
+    sentAt: text('sent_at'),
+    channel: text('channel'),
+    sourceKeys: text('source_keys').array(),
+    extra: json('extra').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [index('manager_month_reminders_target_idx').on(t.targetMonth)]
+);
+
 /** Разовые импорты из JSON домена vacations: строка есть → импорт уже был. */
 export const vacationsJsonImports = vacationsSchema.table('json_imports', {
   source: text('source').primaryKey(),

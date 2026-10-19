@@ -3,8 +3,10 @@ import {
   bigserial,
   date,
   doublePrecision,
+  boolean,
   index,
   integer,
+  json,
   jsonb,
   pgSchema,
   text,
@@ -184,6 +186,44 @@ export const orgLinks = coreSchema.table('org_links', {
   position: integer('position').notNull().default(0),
   extra: jsonb('extra').$type<Record<string, unknown>>()
 });
+
+/**
+ * Стоп-лист доступа: сотрудник удалён из справочника → вход закрыт, данные чистятся по срокам.
+ * Этап 5 (раньше server/data/employee-access-denylist.json), флаг DB_CORE=1. Читается на каждом
+ * запросе с сессией — через кэш процесса; JSON-файл обновляется зеркалом после каждой записи
+ * (запасной вариант при недоступной базе, см. docs/ARCHITECTURE.md «Этап 5»).
+ * Естественного ключа нет (bitrix id / email / employee_id бывают пустыми) — суррогатный id.
+ */
+export const accessDenylist = coreSchema.table(
+  'access_denylist',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    position: integer('position').notNull().default(0),
+    bitrixUserId: integer('bitrix_user_id'),
+    platformUserId: integer('platform_user_id'),
+    email: text('email'),
+    name: text('name'),
+    employeeId: integer('employee_id'),
+    /** Время отзыва (ISO как в JSON). */
+    revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+    /** Метка «почему»: removed-from-roster и т.п. */
+    reason: text('reason'),
+    avatarPurgeAt: timestamp('avatar_purge_at', { withTimezone: true, mode: 'date' }),
+    vacationsPurgeAt: timestamp('vacations_purge_at', { withTimezone: true, mode: 'date' }),
+    walletPurgeAt: timestamp('wallet_purge_at', { withTimezone: true, mode: 'date' }),
+    purchasesPurgeAt: timestamp('purchases_purge_at', { withTimezone: true, mode: 'date' }),
+    avatarPurged: boolean('avatar_purged'),
+    vacationsPurged: boolean('vacations_purged'),
+    sourceKeys: text('source_keys').array(),
+    extra: json('extra').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index('access_denylist_bitrix_idx').on(t.bitrixUserId),
+    index('access_denylist_employee_idx').on(t.employeeId),
+    index('access_denylist_email_idx').on(t.email)
+  ]
+);
 
 /** Разовые импорты из JSON домена core: строка есть → импорт уже был. */
 export const coreJsonImports = coreSchema.table('json_imports', {

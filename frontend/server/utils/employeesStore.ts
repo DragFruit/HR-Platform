@@ -113,12 +113,12 @@ export async function writeEmployees(
     const nextIds = new Set(normalized.map((row) => row.id));
     for (const prev of previous) {
       if (nextIds.has(prev.id)) continue;
-      await revokeEmployeeAccess(prev, 'removed-from-roster');
+      await revokeEmployeeAccess(prev, 'removed-from-roster', ctx);
     }
     const previousIds = new Set(previous.map((row) => row.id));
     for (const row of normalized) {
       if (previousIds.has(row.id)) continue;
-      await clearAccessRevocationForEmployee(row);
+      await clearAccessRevocationForEmployee(row, ctx);
     }
 
     // После clear: старые отзывы не пишем обратно в справочник

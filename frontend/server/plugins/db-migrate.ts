@@ -4,6 +4,9 @@
  * Этап 2: при DB_NOTIFICATIONS=1 после миграций — разовый импорт уведомлений из JSON.
  * Этап 3: при DB_CORE=1 — разовый импорт сотрудников, overlay руководителей и оргструктуры.
  * Этап 4: при DB_VACATIONS=1 — разовый импорт vacations.json (заявки, брони, счётчики id).
+ * Этап 5: DB_ADMIN_NOTIFICATIONS=1 — admin-notifications.json; DB_CORE=1 — стоп-лист доступа;
+ * DB_VACATIONS=1 — журналы напоминаний. У каждого своя готовность: сбой импорта нового домена
+ * не откатывает на файлы домены, которые уже живут в Postgres.
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
@@ -16,6 +19,69 @@ import { coreDbFlag, setCorePgReady } from '../utils/coreStore';
 import { importVacationsFromJson } from '../vacations/importJson';
 import { VACATIONS_JSON_FILE } from '../vacations/jsonStore';
 import { setVacationsPgReady, vacationsDbFlag } from '../utils/vacationsStore';
+import { importAdminNotificationsFromJson } from '../adminNotifications/importJson';
+import { ADMIN_NOTIFICATIONS_JSON_FILE } from '../adminNotifications/jsonStore';
+import { adminNotificationsDbFlag, setAdminNotificationsPgReady } from '../utils/adminNotificationsStore';
+import { importAccessDenylistFromJson } from '../core/importDenylist';
+import { ACCESS_DENYLIST_JSON_FILE } from '../core/accessDenylistStore';
+import { setAccessDenylistPgReady } from '../utils/coreStore';
+import { importReminderLogFromJson, type ReminderLogImportResult } from '../vacations/reminderLogs';
+import { setVacationReminderLogsPgReady } from '../utils/vacationReminderLogsBackend';
+import { VACATION_PRE_REMINDER_FILE } from '../utils/vacationPreReminderStore';
+import { VACATION_MANAGER_MONTH_REMINDER_FILE } from '../utils/vacationManagerMonthReminderStore';
+
+function logPart(domain: string, p: ReminderLogImportResult | { source: string; status: string; [k: string]: unknown }) {
+  const r = p as Record<string, unknown>;
+  if (r.status === 'already') {
+    console.info(`[db] ${domain}: ${r.source} импорт уже был ${r.importedAt} (file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped})`);
+  } else {
+    console.info(`[db] ${domain}: ${r.source} импорт file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped} verified=${r.verified}`);
+  }
+}
+
+async function importAdminNotifications(): Promise<boolean> {
+  if (!adminNotificationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await importAdminNotificationsFromJson(db, ADMIN_NOTIFICATIONS_JSON_FILE);
+    logPart('admin-notifications', { source: 'admin-notifications.json', ...r });
+    console.info('[db] admin-notifications: уведомления админки на Postgres');
+    return true;
+  } catch (err: any) {
+    console.error('[db] admin-notifications: импорт из JSON упал — уведомления админки остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importAccessDenylist(coreOk: boolean): Promise<boolean> {
+  if (!coreOk || !coreDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('core', await importAccessDenylistFromJson(db, ACCESS_DENYLIST_JSON_FILE));
+    console.info('[db] core: стоп-лист доступа на Postgres (JSON-файл — зеркало)');
+    return true;
+  } catch (err: any) {
+    console.error('[db] core: импорт стоп-листа упал — стоп-лист остаётся на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importReminderLogs(): Promise<boolean> {
+  if (!vacationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('vacations', await importReminderLogFromJson(db, 'pre', VACATION_PRE_REMINDER_FILE()));
+    logPart('vacations', await importReminderLogFromJson(db, 'manager-month', VACATION_MANAGER_MONTH_REMINDER_FILE()));
+    console.info('[db] vacations: журналы напоминаний на Postgres');
+    return true;
+  } catch (err: any) {
+    console.error('[db] vacations: импорт журналов напоминаний упал — журналы остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
 
 async function importVacations(): Promise<boolean> {
   if (!vacationsDbFlag()) return false;
@@ -68,6 +134,9 @@ function setAllPgReady(ok: boolean) {
   setNotificationsPgReady(ok);
   setCorePgReady(ok);
   setVacationsPgReady(ok);
+  setAdminNotificationsPgReady(ok);
+  setAccessDenylistPgReady(ok);
+  setVacationReminderLogsPgReady(ok);
 }
 
 async function importNotifications(): Promise<boolean> {
@@ -113,8 +182,12 @@ export default defineNitroPlugin(() => {
       .then(async (applied) => {
         console.info(`[db] migrations ok applied=${applied} in ${Date.now() - startedAt}ms`);
         setNotificationsPgReady(await importNotifications());
-        setCorePgReady(await importCore());
+        setAdminNotificationsPgReady(await importAdminNotifications());
+        const coreOk = await importCore();
+        setCorePgReady(coreOk);
+        setAccessDenylistPgReady(await importAccessDenylist(coreOk));
         setVacationsPgReady(await importVacations());
+        setVacationReminderLogsPgReady(await importReminderLogs());
       })
       .catch((err) => {
         disableDb('миграции упали');

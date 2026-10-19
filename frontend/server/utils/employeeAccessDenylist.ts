@@ -1,7 +1,7 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import type { ServerEmployee } from './employeesStore';
+import type { CoreWriteContext } from '../core/types';
+import type { AccessDenylistEntry } from '../core/accessDenylistStore';
+import { accessDenylistRepo } from './coreStore';
 import {
   normalizeManagerNameKey,
   readManagerAssignments,
@@ -18,56 +18,30 @@ import { removeAdaptationAssignmentForEmployee } from './adaptationScenarios';
 import { deleteProfileActivityForEmployee } from './profileActivityStore';
 import { purgeVacationsForEmployeeName } from './vacationsStore';
 
-export type AccessDenylistEntry = {
-  bitrix_user_id?: number | null;
-  platform_user_id?: number | null;
-  email?: string;
-  name?: string;
-  employee_id?: number;
-  revoked_at: string;
-  reason?: string;
-  /** Аватар удаляем через 14 дней после отзыва. */
-  avatar_purge_at?: string;
-  /** Отпуска удаляем через 1 год после отзыва. */
-  vacations_purge_at?: string;
-  /** Кошелёк / покупки магазина — 1 год (когда появятся серверные сторы). */
-  wallet_purge_at?: string;
-  purchases_purge_at?: string;
-  avatar_purged?: boolean;
-  vacations_purged?: boolean;
-};
-
-type DenylistFile = { entries: AccessDenylistEntry[] };
-
-const DATA_FILE = join(process.cwd(), 'server/data/employee-access-denylist.json');
+export type { AccessDenylistEntry } from '../core/accessDenylistStore';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AVATAR_RETENTION_MS = 14 * DAY_MS;
 const YEAR_RETENTION_MS = 365 * DAY_MS;
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, { entries: [] } satisfies DenylistFile);
-  }
-}
-
+/**
+ * Стоп-лист (этап 5): DB_CORE=1 + DATABASE_URL → core.access_denylist (кэш процесса, при сбое базы —
+ * последний прочитанный список или JSON-зеркало), иначе server/data/employee-access-denylist.json.
+ */
 export async function readAccessDenylist(): Promise<AccessDenylistEntry[]> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  try {
-    const parsed = JSON.parse(raw) as DenylistFile;
-    return Array.isArray(parsed.entries) ? parsed.entries : [];
-  } catch {
-    return [];
-  }
+  return (await accessDenylistRepo()).read();
 }
 
-async function writeAccessDenylist(entries: AccessDenylistEntry[]) {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, { entries });
+/** Одна и та же запись отзыва в снимке и в свежем списке. */
+const revocationIdentity = (e: AccessDenylistEntry) =>
+  JSON.stringify([e.revoked_at ?? null, e.employee_id ?? null, e.bitrix_user_id ?? null, e.platform_user_id ?? null, e.email ?? null]);
+
+/** Правка стоп-листа: строго по очереди, читается внутри той же операции (без гонок). */
+async function mutateAccessDenylist(
+  fn: (entries: AccessDenylistEntry[]) => AccessDenylistEntry[] | null,
+  ctx: CoreWriteContext
+) {
+  await (await accessDenylistRepo()).mutate(fn, ctx);
 }
 
 function normEmail(email: string | undefined | null) {
@@ -279,9 +253,11 @@ export async function purgeExpiredRevocationArtifacts(): Promise<void> {
   if (!entries.length) return;
 
   const now = Date.now();
-  let changed = false;
+  /** Какие записи (по снимку) дочищены — флаги ставим потом, на свежем списке. */
+  const done: { row: AccessDenylistEntry; avatar: boolean; vacations: boolean }[] = [];
 
   for (const row of entries) {
+    const mark = { row: { ...row }, avatar: false, vacations: false };
     const userIds = [
       Number(row.employee_id || 0),
       Number(row.bitrix_user_id || 0),
@@ -291,8 +267,7 @@ export async function purgeExpiredRevocationArtifacts(): Promise<void> {
     if (!row.avatar_purged && row.avatar_purge_at && new Date(row.avatar_purge_at).getTime() <= now) {
       try {
         await removeUserAvatars(userIds);
-        row.avatar_purged = true;
-        changed = true;
+        mark.avatar = true;
       } catch (err) {
         console.warn('[employeeAccessDenylist] avatar purge failed:', err);
       }
@@ -306,74 +281,100 @@ export async function purgeExpiredRevocationArtifacts(): Promise<void> {
     ) {
       try {
         await purgeVacationsForEmployeeName(row.name);
-        row.vacations_purged = true;
-        changed = true;
+        mark.vacations = true;
       } catch (err) {
         console.warn('[employeeAccessDenylist] vacations purge failed:', err);
       }
     }
+    if (mark.avatar || mark.vacations) done.push(mark);
   }
 
-  if (changed) await writeAccessDenylist(entries);
+  if (!done.length) return;
+  await mutateAccessDenylist(
+    (current) => {
+      let changed = false;
+      for (const entry of current) {
+        const hit = done.find((d) => revocationIdentity(d.row) === revocationIdentity(entry));
+        if (!hit) continue;
+        if (hit.avatar && !entry.avatar_purged) {
+          entry.avatar_purged = true;
+          changed = true;
+        }
+        if (hit.vacations && !entry.vacations_purged) {
+          entry.vacations_purged = true;
+          changed = true;
+        }
+      }
+      return changed ? current : null;
+    },
+    { reason: 'retention-purge' }
+  );
 }
 
-/** Записать отзыв доступа (идемпотентно по bitrix_user_id / email). */
+/** Записать отзыв доступа (идемпотентно по bitrix_user_id / email). ctx — кто и почему (аудит в Postgres). */
 export async function revokeEmployeeAccess(
   emp: Pick<
     ServerEmployee,
     'id' | 'name' | 'email' | 'bitrix_user_id' | 'platform_user_id' | 'account_role'
   >,
-  reason = 'removed-from-roster'
+  reason = 'removed-from-roster',
+  ctx: CoreWriteContext = {}
 ): Promise<void> {
   if (emp.account_role === 'admin') return;
 
-  const entries = await readAccessDenylist();
   const bitrixId = Number(emp.bitrix_user_id ?? emp.platform_user_id ?? 0) || null;
   const email = normEmail(emp.email);
-  const filtered = entries.filter((row) => {
-    if (bitrixId && Number(row.bitrix_user_id) === bitrixId) return false;
-    if (bitrixId && Number(row.platform_user_id) === bitrixId) return false;
-    if (email && normEmail(row.email) === email) return false;
-    if (row.employee_id === emp.id) return false;
-    return true;
-  });
+  await mutateAccessDenylist(
+    (entries) => {
+      const filtered = entries.filter((row) => {
+        if (bitrixId && Number(row.bitrix_user_id) === bitrixId) return false;
+        if (bitrixId && Number(row.platform_user_id) === bitrixId) return false;
+        if (email && normEmail(row.email) === email) return false;
+        if (row.employee_id === emp.id) return false;
+        return true;
+      });
 
-  const revokedAt = new Date().toISOString();
-  filtered.push({
-    bitrix_user_id: bitrixId,
-    platform_user_id: emp.platform_user_id ?? bitrixId,
-    email: email || undefined,
-    name: emp.name?.trim() || undefined,
-    employee_id: emp.id,
-    revoked_at: revokedAt,
-    reason,
-    avatar_purge_at: addMs(revokedAt, AVATAR_RETENTION_MS),
-    vacations_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
-    wallet_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
-    purchases_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
-    avatar_purged: false,
-    vacations_purged: false
-  });
-
-  await writeAccessDenylist(filtered);
+      const revokedAt = new Date().toISOString();
+      filtered.push({
+        bitrix_user_id: bitrixId,
+        platform_user_id: emp.platform_user_id ?? bitrixId,
+        email: email || undefined,
+        name: emp.name?.trim() || undefined,
+        employee_id: emp.id,
+        revoked_at: revokedAt,
+        reason,
+        avatar_purge_at: addMs(revokedAt, AVATAR_RETENTION_MS),
+        vacations_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
+        wallet_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
+        purchases_purge_at: addMs(revokedAt, YEAR_RETENTION_MS),
+        avatar_purged: false,
+        vacations_purged: false
+      });
+      return filtered;
+    },
+    { actorEmployeeId: ctx.actorEmployeeId ?? null, reason: ctx.reason ? `${reason}:${ctx.reason}` : reason }
+  );
   await cascadeImmediateAfterRevocation(emp);
 }
 
 /** Снять отзыв при повторном добавлении в справочник. */
 export async function clearAccessRevocationForEmployee(
-  emp: Pick<ServerEmployee, 'bitrix_user_id' | 'platform_user_id' | 'email' | 'id'>
+  emp: Pick<ServerEmployee, 'bitrix_user_id' | 'platform_user_id' | 'email' | 'id'>,
+  ctx: CoreWriteContext = {}
 ): Promise<void> {
-  const entries = await readAccessDenylist();
   const bitrixId = Number(emp.bitrix_user_id ?? emp.platform_user_id ?? 0) || null;
   const email = normEmail(emp.email);
-  const next = entries.filter((row) => {
-    if (bitrixId && Number(row.bitrix_user_id) === bitrixId) return false;
-    if (bitrixId && Number(row.platform_user_id) === bitrixId) return false;
-    if (email && normEmail(row.email) === email) return false;
-    if (row.employee_id === emp.id) return false;
-    return true;
-  });
-  if (next.length !== entries.length) {
-    await writeAccessDenylist(next);
-  }
+  await mutateAccessDenylist(
+    (entries) => {
+      const next = entries.filter((row) => {
+        if (bitrixId && Number(row.bitrix_user_id) === bitrixId) return false;
+        if (bitrixId && Number(row.platform_user_id) === bitrixId) return false;
+        if (email && normEmail(row.email) === email) return false;
+        if (row.employee_id === emp.id) return false;
+        return true;
+      });
+      return next.length !== entries.length ? next : null;
+    },
+    { actorEmployeeId: ctx.actorEmployeeId ?? null, reason: ctx.reason ? `re-added:${ctx.reason}` : 're-added' }
+  );
 }

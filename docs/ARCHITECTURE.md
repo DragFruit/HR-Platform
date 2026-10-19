@@ -606,9 +606,47 @@ JSON-файлы не удаляются (бэкап на момент перее
 
 Bitrix: стейдж по-прежнему в Bitrix не пишет (гвард e78062f); сверка `reconcileFutureAbsences` в dry-run читает заявки уже из Postgres.
 
-Остались на JSON (осознанно): `vacation-pre-reminders.json` и `vacation-manager-month-reminders.json` (журналы отправленных напоминаний в чат-бот Bitrix; на стейдже этих файлов нет и отправка в Bitrix выключена, переносить нечего и проверить нельзя), правила групп и лимиты броней в коде (`vacationDepartmentGroups.ts`, `vacationReservationCaps.ts`). Outbox для Bitrix не делали: синк по-прежнему внутри `mutateVacations`.
+Остались на JSON (осознанно): правила групп и лимиты броней в коде (`vacationDepartmentGroups.ts`, `vacationReservationCaps.ts`). Outbox для Bitrix не делали: синк по-прежнему внутри `mutateVacations`.
 
 JSON-файл не удаляется (бэкап на момент переезда), после переезда в него не пишут: снять флаг = откат к состоянию момента импорта. Скрипты `scripts/audit-vacations-block.mjs`, `scripts/import-vacation*.py`, `scripts/rollover-vacation-year.mjs`, `scripts/backfill-vacation-employee-ids.mjs` и еженедельный бэкап `vbi-hr-vacations-backup` работают с файлом (бой на JSON); на стейдже с `DB_VACATIONS=1` они видят только бэкап.
+
+### Этап 5. Уведомления админки, журналы напоминаний, стоп-лист доступа (только стейдж)
+
+Три небольших домена с многими писателями. Публичный API модулей не менялся, у каждого фасад выбирает JSON или Postgres, у каждого своя готовность после импорта (сбой импорта нового домена не откатывает на устаревшие файлы домены, которые уже живут в Postgres).
+
+| Что | Было | Стало | Флаг |
+|-----|------|-------|------|
+| Уведомления админки | `admin-notifications.json` | `notifications.admin_notifications` | `DB_ADMIN_NOTIFICATIONS=1` (новый) |
+| Журнал «за 3 недели до отпуска» | `vacation-pre-reminders.json` | `vacations.pre_reminders` | `DB_VACATIONS=1` |
+| Журнал напоминаний руководителям | `vacation-manager-month-reminders.json` | `vacations.manager_month_reminders` | `DB_VACATIONS=1` |
+| Стоп-лист доступа | `employee-access-denylist.json` | `core.access_denylist` | `DB_CORE=1` |
+
+Флаги только в `/etc/vbi-hr/bitrix.env` (стейдж); на проде их нет, там JSON. Миграция `0004_admin_notifications_reminders_denylist.sql`.
+
+Почему у уведомлений админки свой флаг: у домена больше десяти писателей (синк Bitrix, сбои синка отпусков и `im.notify`, идеи, юбилейные заказы, оценки страниц, ИИ базы знаний, VPN-офбординг, лучший продавец, отметки «прочитано»). Отдельный флаг даёт откатить только его, не трогая уведомления пользователей (этап 2). При выкатке на прод флаги ставятся все сразу.
+
+Общее для всех трёх:
+
+- Маппинг `server/db/fieldMapping.ts`: известное поле нужного типа идёт в колонку, остальное в `extra json`; `source_keys text[]` хранит набор и порядок ключей. Объект из базы сериализуется байт-в-байт как из файла (отсутствующее поле отсутствует, `null` остаётся `null`, `undefined` не хранится, как и в файле).
+- Разовый импорт при старте: своя транзакция под advisory lock, маркер в `json_imports` своей схемы, сверка каждой записи поле-в-поле и всего списка (порядок). Нет файла: 0 записей. Повторный старт: «импорт уже был», удалённое в базе не воскресает.
+- Аудит в `audit.audit_log` с `actor_employee_id` и `reason`.
+- `GET /api/admin/db-health` → `domains.adminNotifications`, `domains.accessDenylist`, `domains.vacationReminders`.
+
+**Уведомления админки.** `server/utils/adminNotificationsStore.ts` (фасад, функции прежние), `server/adminNotifications/` (типы, JSON, маппинг, импорт), `server/db/repositories/adminNotifications.ts`. Репозиторий: `readAll` (порядок файла по `position`), `countUnseen` (SQL), `getById`, `mutate(fn)`. Вся бизнес-логика (дедуп по заказу/идее/периоду, замена устаревшего расхождения с Bitrix, «не чаще раза в час» для ИИ базы знаний) осталась в фасаде и работает одинаково на обоих хранилищах через `mutate`. В Postgres `mutate` это очередь в процессе плюс транзакция под `pg_advisory_xact_lock(72461005)`, запись diff-ом по `id`. В JSON теперь тоже очередь (раньше параллельные писатели могли затереть друг друга). Новое: `seen_at` (когда отмечено прочитанным; до переезда неизвестно, `null`). Аудит: `create`, `update` (только изменившиеся поля), `delete`, `mark_seen` (одной записью со списком id; `PATCH /api/admin/notifications/:id/seen` и `seen-all` передают id админа).
+
+**Журналы напоминаний.** `server/vacations/reminderLogs.ts` (JSON, Postgres, импорт), выбор хранилища в `server/utils/vacationReminderLogsBackend.ts`, фасады `vacationPreReminderStore.ts` / `vacationManagerMonthReminderStore.ts` (`has*`, `record*` прежние; env `VACATION_PRE_REMINDER_FILE` / `VACATION_MANAGER_MONTH_REMINDER_FILE` по-прежнему задают файл). Ключ `key` первичный, `record` идемпотентен (`on conflict do nothing`). Свой lock `72461006`, не общий с отпусками: запись журнала из cron не должна ждать транзакцию отпусков. На стейдже файлов нет, импорт даёт 0 строк.
+
+**Стоп-лист доступа.** `server/utils/employeeAccessDenylist.ts` (логика прежняя), `server/core/accessDenylistStore.ts` (тип, JSON, маппинг), `server/db/repositories/accessDenylist.ts`, импорт `server/core/importDenylist.ts`, выбор хранилища `accessDenylistRepo()` в `coreStore.ts`. Естественного ключа нет (bitrix id, email, employee_id бывают пустыми), поэтому суррогатный `id` и `position`; запись заменяет список целиком в транзакции под lock `72461007`. Все правки (`revokeEmployeeAccess`, `clearAccessRevocationForEmployee`, отметки чисток по срокам) идут через `mutate`: список читается внутри той же операции, гонок «прочитал, долго чистил аватары, записал старое» больше нет. `revokeEmployeeAccess` и `clearAccessRevocationForEmployee` принимают контекст из `writeEmployees` (кто удалил из справочника). Каскад отзыва работает при любом сочетании хранилищ: руководители и оргструктура (core), уведомления, отпуска уже в Postgres, VPN, аватары, адаптация, активность профиля на файлах; каждый шаг через свой фасад.
+
+Стоп-лист стоит на пути авторизации (сессия, вход Bitrix и Vibe, синк, справочник), поэтому решение такое:
+
+- чтение из кэша процесса (TTL 30 с; запись этого процесса обновляет кэш сразу);
+- после каждой успешной записи в базу список дублируется в `employee-access-denylist.json` (JSON-зеркало, тот же формат);
+- база не ответила при чтении: берём последний успешно прочитанный список (даже старше TTL), если его нет (первый запрос после старта), то JSON-зеркало. Ошибка в `console.error` (не чаще раза в минуту). Пустой список при ошибке не отдаём (никого из стоп-листа не впускаем), ошибку наружу не бросаем (не закрываем вход всем);
+- база недоступна при старте: как в этапе 3, домен на JSON, а JSON здесь актуален благодаря зеркалу;
+- запись при недоступной базе: ошибка, как у остальных доменов core (удаление из справочника не пройдёт молча).
+
+После переезда файлы уведомлений админки и журналов не пишутся (бэкап на момент импорта, снять флаг = откат к нему). Файл стоп-листа, наоборот, продолжает обновляться как зеркало.
 
 ### Целевая модель
 
@@ -629,13 +667,13 @@ JSON-файл не удаляется (бэкап на момент переез
 
 **Принципы**: ссылки на сотрудника — `employee_id`, не ФИО; правила (лимиты, исключения групп вроде Цхай) — данными в таблицах, не константами в коде; история изменений — отдельные history-таблицы; внешние вызовы (Bitrix) — через outbox с ретраями, а не прямо из запроса; все мутации — в `audit.audit_log`.
 
-**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 — остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
+**Фазы**: 1 — фундамент (этот шаг: клиент, миграции, health, тесты в CI, бэкапы); 2 — пилот `notifications`; 3 — `core` (сотрудники/оргструктура); 4 — `vacations` + Bitrix outbox; 5 (уведомления админки, журналы напоминаний, стоп-лист: см. «Этап 5»), дальше остальные домены. В конце живые данные уходят из git (`server/data/*.json` перестают быть источником правды и сидом деплоя).
 
 ### Тесты
 
 `npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
 
-Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, `tests/unit/vacationsRepo.test.ts`, блоки «Postgres»; `coreRepo` и `vacationsRepo` создают себе временную базу и удаляют её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
+Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, `tests/unit/vacationsRepo.test.ts`, `tests/unit/stage5Repos.test.ts`, блоки «Postgres»; `coreRepo`, `vacationsRepo` и `stage5Repos` создают себе временную базу и удаляют её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
 
 ---
 

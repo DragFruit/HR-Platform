@@ -4,6 +4,19 @@
 
 ## 2026-10-19
 
+### Уведомления админки, журналы напоминаний и стоп-лист на Postgres (этап 5, только стейдж)
+
+Последние домены этого этапа переезжают из `server/data/*.json` в Postgres. Бой остаётся на JSON (флагов там нет); на прод все этапы поедут вместе отдельной выкаткой.
+
+- Уведомления админки (`admin-notifications.json` → `notifications.admin_notifications`), новый флаг `DB_ADMIN_NOTIFICATIONS=1`. Фасад `frontend/server/utils/adminNotificationsStore.ts`, функции прежние; модуль `frontend/server/adminNotifications/`, репозиторий `frontend/server/db/repositories/adminNotifications.ts`. Все правки строго по очереди (в JSON тоже). Новое: время прочтения `seen_at`, аудит с id админа для «прочитано».
+- Журналы напоминаний об отпусках (`vacation-pre-reminders.json`, `vacation-manager-month-reminders.json` → `vacations.pre_reminders`, `vacations.manager_month_reminders`) под флагом `DB_VACATIONS=1`. Код: `frontend/server/vacations/reminderLogs.ts`, `frontend/server/utils/vacationReminderLogsBackend.ts`. Нет файла: импорт 0 строк.
+- Стоп-лист доступа (`employee-access-denylist.json` → `core.access_denylist`) под флагом `DB_CORE=1`. Кэш процесса 30 с; при сбое базы проверка по последнему прочитанному списку или по JSON-зеркалу (файл обновляется после каждой записи). Никого из стоп-листа не впускаем и не закрываем вход всем. Код: `frontend/server/core/accessDenylistStore.ts`, `frontend/server/db/repositories/accessDenylist.ts`, `frontend/server/core/importDenylist.ts`.
+- Общий маппинг без потерь `frontend/server/db/fieldMapping.ts` (`source_keys` + `extra`): ответы API байт-в-байт те же. Миграция `0004_admin_notifications_reminders_denylist.sql`.
+- Разовый импорт при старте со сверкой поле-в-поле, у каждого домена своя готовность. `GET /api/admin/db-health` показывает `domains.adminNotifications`, `domains.accessDenylist`, `domains.vacationReminders`.
+- Новый env: `DB_ADMIN_NOTIFICATIONS` (только стейдж). Новых ключей localStorage нет.
+- Тесты: `frontend/tests/unit/stage5Repos.test.ts` (контракт JSON и Postgres, импорт, аудит, кэш и запасной путь стоп-листа). Postgres-часть: `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`.
+- Проверить на `:8080`: в `journalctl -u vbi-hr-staging` строки `[db] admin-notifications: … verified=N`, `[db] core: employee-access-denylist.json …`, `[db] vacations: vacation-pre-reminders.json …`; раздел «Уведомления» админки показывает те же записи, «прочитано» и «прочитать все» работают; `db-health` → все домены `postgres`.
+
 ### Отпуска на Postgres (этап 4, только стейдж)
 
 Заявки на отпуск, предварительные брони, счётчики id и учётный год переезжают из `server/data/vacations.json` в Postgres (схема `vacations`). Включается флагом `DB_VACATIONS=1` вместе с `DATABASE_URL`; флаг стоит только в `/etc/vbi-hr/bitrix.env` на стейдже. Бой остаётся на JSON.
