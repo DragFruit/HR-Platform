@@ -12991,10 +12991,10 @@ button.emp-name--card:hover {
   max-height: none;
 }
 
-/* «Общий»: как «Мой календарь», все четыре угла скруглены, правая линия рамки на месте;
-   активный ярлык справа заходит на неё (margin-left: -1px) и выглядит пришитым к рамке. */
+/* «Общий»: верхние и нижний левый углы скруглены, нижний правый прямой, как было до скругления:
+   активный ярлык «Общий» стоит внизу справа и вливается в рамку (margin-left: -1px). */
 .vacations-employee-shell .vac-emp-calendar-slot--with-tabs .vac-emp-calendar-pane--team {
-  border-radius: var(--vac-frame-radius);
+  border-radius: var(--vac-frame-radius) var(--vac-frame-radius) 0 var(--vac-frame-radius);
   overflow: hidden;
   background-clip: padding-box;
 }
