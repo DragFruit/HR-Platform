@@ -20007,3 +20007,100 @@ button.button {
     transition: none;
   }
 }
+
+/* Кружок «?» с подсказкой к цифрам отпуска (VacInfoHint.vue) */
+.vac-info-hint {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 4px;
+  line-height: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.vac-info-hint__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.vac-info-hint__btn:hover,
+.vac-info-hint__btn[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.vac-info-hint__btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent, #57a3d9);
+  outline-offset: 2px;
+}
+
+.vac-info-hint__pop {
+  position: fixed;
+  z-index: 200;
+  width: max-content;
+  max-width: min(280px, 88vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.vac-info-hint__title {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vac-info-hint__text {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.vac-info-hint__note {
+  margin-top: 8px;
+  color: var(--text-muted);
+}
+
+.vac-info-hint__sample {
+  vertical-align: 1px;
+  margin: 0 2px;
+  font-size: 0.68rem;
+}
+
+.vac-mob-balance {
+  position: relative;
+}
+
+.vac-mob-balance__hint {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  margin: 0;
+}

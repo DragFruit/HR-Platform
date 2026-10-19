@@ -22,7 +22,14 @@
     />
 
     <div class="emp-balance-card" data-tour="vac-balance">
-      <div class="emp-balance-card-label">Доступно дней отпуска</div>
+      <div class="emp-balance-card-label">
+        Доступно дней отпуска
+        <VacInfoHint
+          label="Доступно дней отпуска"
+          :text="'Остаток на сегодня минус все будущие отпуска: согласованные и на согласовании, в любом году. Может быть меньше нуля, если отпуск взят авансом.'"
+          reservations-note
+        />
+      </div>
       <div class="emp-balance-figures emp-balance-figures-single">
         <span class="emp-balance-big">{{ balance.remain }}</span>
       </div>
@@ -55,8 +62,21 @@
       <thead>
         <tr>
           <th>Тип отпуска</th>
-          <th>Отгулял</th>
-          <th>План</th>
+          <th>
+            Отгулял
+            <VacInfoHint
+              label="Отгулял"
+              text="Дни согласованных отпусков, которые уже прошли (по сегодня включительно), за всё время в платформе."
+            />
+          </th>
+          <th>
+            План
+            <VacInfoHint
+              label="План"
+              text="Будущие дни согласованных отпусков и все дни заявок на согласовании, в любом году."
+              reservations-note
+            />
+          </th>
         </tr>
       </thead>
       <tbody>

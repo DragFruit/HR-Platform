@@ -114,8 +114,14 @@
             ✓
           </button>
         </form>
-        <div class="vac-mob-balance" data-tour="vac-balance" title="Доступно дней отпуска">
+        <div class="vac-mob-balance" data-tour="vac-balance" aria-label="Доступно дней отпуска">
           <span class="vac-mob-balance__num">{{ mobileBalanceRemain }}</span>
+          <VacInfoHint
+            class="vac-mob-balance__hint"
+            label="Доступно дней отпуска"
+            :text="'Остаток на сегодня минус все будущие отпуска: согласованные и на согласовании, в любом году. Может быть меньше нуля, если отпуск взят авансом.'"
+            reservations-note
+          />
         </div>
       </div>
 
