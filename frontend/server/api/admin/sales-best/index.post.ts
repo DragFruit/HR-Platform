@@ -1,5 +1,5 @@
 import { requireRole } from '../../../utils/requireRole';
-import { findEmployeeById } from '../../../utils/employeesStore';
+import { findEmployeeById, sessionActorEmployeeId } from '../../../utils/employeesStore';
 import { upsertSalesBestAward, periodLabelRu } from '../../../utils/salesBestAwardsStore';
 import { normalizeDepartment } from '../../../../app/data/departments';
 
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     employee_id: employee.id,
     employee_name: employee.name,
     selected_by: session.id
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session) });
 
   return {
     ok: true,

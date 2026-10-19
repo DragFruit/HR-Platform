@@ -4,6 +4,20 @@
 
 ## 2026-10-19
 
+### Профиль: аватары, лента активности, награды продаж и пароли Vibe на Postgres (этап 6, только стейдж)
+
+Четыре файла профиля переезжают в схему `profile`. Бой остаётся на JSON (флага там нет); на прод все этапы поедут вместе отдельной выкаткой.
+
+- `user-avatars.json` → `profile.user_avatars`, `profile-activity.json` → `profile.activity`, `sales-best-awards.json` → `profile.sales_best_awards`, `vibe-passwords.json` → `profile.vibe_passwords`. Новый флаг `DB_PROFILE=1` (только `/etc/vbi-hr/bitrix.env` стейджа). Миграция `0005_profile.sql`.
+- Фасады с прежним API: `frontend/server/utils/userAvatarsStore.ts`, `profileActivityStore.ts`, `salesBestAwardsStore.ts`, `vibePasswordsStore.ts`; выбор хранилища `frontend/server/utils/profileStore.ts`; общий репозиторий `frontend/server/db/repositories/keyedList.ts`; форматы и импорт `frontend/server/profile/`.
+- Маппинг без потерь (`source_keys` + `extra`, общий `fieldMapping.ts`): ответы API байт-в-байт те же. Запись diff-ом под advisory lock, все правки строго по очереди (в JSON тоже).
+- Пароли Vibe: в базе те же хеш scrypt и зашифрованная копия, открытого текста нет. Аудит только «пароль задан / снят / дописан seal» и кто; значения не пишутся ни в аудит, ни в лог, ошибки базы без параметров. Вход по паролю Vibe работает как раньше.
+- Разовый импорт при старте со сверкой поле-в-поле, у каждого файла своя готовность. `GET /api/admin/db-health` показывает `domains.userAvatars`, `domains.profileActivity`, `domains.salesBestAwards`, `domains.vibePasswords`.
+- Аудит с id сотрудника: смена аватара, запись и удаление в ленте, выбор лучшего продавца, пароль Vibe (HR и сам сотрудник).
+- Новый env: `DB_PROFILE` (только стейдж). Новых ключей localStorage нет.
+- Тесты: `frontend/tests/unit/stage6Profile.test.ts` (контракт JSON и Postgres для всех четырёх, импорт, аудит без секретов). Postgres-часть: `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`.
+- Проверить на `:8080`: в `journalctl -u vbi-hr-staging` строки `[db] profile: … verified=N`; аватар в шапке и выбор нового аватара; лента «Недавняя активность» в профиле, добавление и удаление записи HR; «Лучший продавец» в админке; вход по логину и паролю Vibe, глаз «показать пароль» в профиле, смена пароля; `db-health` → все домены `postgres`.
+
 ### Уведомления админки, журналы напоминаний и стоп-лист на Postgres (этап 5, только стейдж)
 
 Последние домены этого этапа переезжают из `server/data/*.json` в Postgres. Бой остаётся на JSON (флагов там нет); на прод все этапы поедут вместе отдельной выкаткой.

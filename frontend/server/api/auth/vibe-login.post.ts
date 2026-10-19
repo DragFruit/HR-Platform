@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Старые записи без seal — дописать при успешном входе, чтобы глаз в профиле открывал текст
-  await ensureVibePasswordSeal(emp.id, password).catch(() => {});
+  await ensureVibePasswordSeal(emp.id, password, { actorEmployeeId: emp.id }).catch(() => {});
 
   const userId = sessionUserId(emp);
   const email = String(emp.email || '').trim().toLowerCase();

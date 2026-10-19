@@ -36,6 +36,13 @@
       "when": 1792405502161,
       "tag": "0004_admin_notifications_reminders_denylist",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792414722116,
+      "tag": "0005_profile",
+      "breakpoints": true
     }
   ]
 }

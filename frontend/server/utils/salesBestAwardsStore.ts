@@ -1,9 +1,9 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createError } from 'h3';
 import { firstWorkingDayOfMonth, toIso } from '../../app/utils/vacationCalendar';
+import type { SalesBestAwardRaw } from '../profile/domains';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import { salesBestAwardsRepo } from './profileStore';
 
 export type SalesBestAward = {
   id: string;
@@ -19,37 +19,16 @@ export type SalesBestAward = {
   activity_id?: string;
 };
 
-type SalesBestState = {
-  awards: SalesBestAward[];
-};
-
-const DATA_FILE = join(process.cwd(), 'server/data/sales-best-awards.json');
-
-const emptyState = (): SalesBestState => ({ awards: [] });
-
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, emptyState());
-  }
+/**
+ * Награды «Лучший специалист продаж». Этап 6: DB_PROFILE=1 → profile.sales_best_awards,
+ * иначе server/data/sales-best-awards.json. API не менялся; правки — через repo().mutate.
+ */
+async function readAwards(): Promise<SalesBestAward[]> {
+  return (await (await salesBestAwardsRepo()).read()) as unknown as SalesBestAward[];
 }
 
-async function readState(): Promise<SalesBestState> {
-  await ensureFile();
-  try {
-    const raw = await readFile(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<SalesBestState>;
-    return { awards: Array.isArray(parsed.awards) ? parsed.awards : [] };
-  } catch {
-    return emptyState();
-  }
-}
-
-async function writeState(state: SalesBestState): Promise<void> {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, state);
+async function mutateAwards<R>(fn: (awards: SalesBestAward[]) => R, ctx: KeyedListWriteContext): Promise<R> {
+  return (await salesBestAwardsRepo()).mutate((raw: SalesBestAwardRaw[]) => fn(raw as unknown as SalesBestAward[]), ctx);
 }
 
 export function periodLabelRu(period: string): string {
@@ -107,13 +86,11 @@ export function revealOnForPeriod(period: string): string {
 }
 
 export async function listSalesBestAwards(): Promise<SalesBestAward[]> {
-  const state = await readState();
-  return [...state.awards].sort((a, b) => b.period.localeCompare(a.period));
+  return [...(await readAwards())].sort((a, b) => b.period.localeCompare(a.period));
 }
 
 export async function getSalesBestAwardForPeriod(period: string): Promise<SalesBestAward | null> {
-  const state = await readState();
-  return state.awards.find((row) => row.period === period) || null;
+  return (await readAwards()).find((row) => row.period === period) || null;
 }
 
 export function isAwardRevealed(award: SalesBestAward, todayIsoDate: string): boolean {
@@ -124,8 +101,7 @@ export async function countRevealedSalesBestForEmployee(
   employeeId: number,
   todayIsoDate = toIso(new Date())
 ): Promise<number> {
-  const state = await readState();
-  return state.awards.filter(
+  return (await readAwards()).filter(
     (row) => row.employee_id === employeeId && isAwardRevealed(row, todayIsoDate)
   ).length;
 }
@@ -134,48 +110,54 @@ export async function listRevealedSalesBestForEmployee(
   employeeId: number,
   todayIsoDate = toIso(new Date())
 ): Promise<SalesBestAward[]> {
-  const state = await readState();
-  return state.awards
+  return (await readAwards())
     .filter((row) => row.employee_id === employeeId && isAwardRevealed(row, todayIsoDate))
     .sort((a, b) => b.period.localeCompare(a.period));
 }
 
 /** Выбор / перевыбор лучшего за period. */
-export async function upsertSalesBestAward(input: {
-  period: string;
-  employee_id: number;
-  employee_name: string;
-  selected_by?: number;
-}): Promise<SalesBestAward> {
+export async function upsertSalesBestAward(
+  input: {
+    period: string;
+    employee_id: number;
+    employee_name: string;
+    selected_by?: number;
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<SalesBestAward> {
   const period = String(input.period || '').trim();
   if (!/^\d{4}-\d{2}$/.test(period)) {
     throw createError({ statusCode: 400, statusMessage: 'period должен быть YYYY-MM' });
   }
 
-  const state = await readState();
   const reveal_on = revealOnForPeriod(period);
-  const now = new Date().toISOString();
-  const existingIdx = state.awards.findIndex((row) => row.period === period);
-  const previous = existingIdx >= 0 ? state.awards[existingIdx] : null;
+  const award = await mutateAwards(
+    (awards) => {
+      const now = new Date().toISOString();
+      const existingIdx = awards.findIndex((row) => row.period === period);
+      const previous = existingIdx >= 0 ? awards[existingIdx] : null;
 
-  const award: SalesBestAward = {
-    id: previous?.id || randomUUID(),
-    period,
-    employee_id: input.employee_id,
-    employee_name: input.employee_name,
-    selected_at: now,
-    selected_by: input.selected_by,
-    reveal_on,
-    // если уже публиковали — обновим текст при следующем publish; до reveal id пустой
-    activity_id: previous?.reveal_on === reveal_on ? previous.activity_id : undefined
-  };
+      const next: SalesBestAward = {
+        id: previous?.id || randomUUID(),
+        period,
+        employee_id: input.employee_id,
+        employee_name: input.employee_name,
+        selected_at: now,
+        selected_by: input.selected_by,
+        reveal_on,
+        // если уже публиковали — обновим текст при следующем publish; до reveal id пустой
+        activity_id: previous?.reveal_on === reveal_on ? previous.activity_id : undefined
+      };
 
-  if (existingIdx >= 0) {
-    state.awards[existingIdx] = award;
-  } else {
-    state.awards.push(award);
-  }
-  await writeState(state);
+      if (existingIdx >= 0) {
+        awards[existingIdx] = next;
+      } else {
+        awards.push(next);
+      }
+      return next;
+    },
+    { reason: 'sales-best-pick', ...ctx }
+  );
 
   // если reveal уже наступил (редкий перевыбор) — сразу обновить ленту
   await publishRevealedSalesBestActivities();
@@ -186,6 +168,9 @@ export async function upsertSalesBestAward(input: {
 /**
  * Ачивка + лента: в день reveal_on (и позже) публикуем событие в profile-activity.
  * Идемпотентно. Не создаём раньше — интрига до первого рабочего дня.
+ * Порядок как раньше: сначала запись в ленте (upsert по стабильному id), потом отметка
+ * activity_id у награды. Если между ними сбой — следующий вызов доделает (оба шага идемпотентны),
+ * поэтому ленте и наградам не нужна общая транзакция и они могут жить на разных бэкендах.
  */
 export async function publishRevealedSalesBestActivities(
   todayIsoDate?: string
@@ -196,28 +181,39 @@ export async function publishRevealedSalesBestActivities(
     todayIsoDate ||
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  const state = await readState();
-  let published = 0;
+  const revealed = (await readAwards()).filter((award) => isAwardRevealed(award, today));
+  if (!revealed.length) return { published: 0 };
 
-  for (const award of state.awards) {
-    if (!isAwardRevealed(award, today)) continue;
-
-    const activityId = `sales-best-${award.period}`;
+  for (const award of revealed) {
     const label = periodLabelRu(award.period);
-    await upsertAutoProfileActivity({
-      id: activityId,
-      employee_id: award.employee_id,
-      kind: 'achievement',
-      text: `${award.employee_name} стал(а) Лучшим специалистом отдела продаж за ${label}`,
-      occurred_at: award.reveal_on
-    });
-
-    if (award.activity_id !== activityId) {
-      award.activity_id = activityId;
-      published += 1;
-    }
+    await upsertAutoProfileActivity(
+      {
+        id: `sales-best-${award.period}`,
+        employee_id: award.employee_id,
+        kind: 'achievement',
+        text: `${award.employee_name} стал(а) Лучшим специалистом отдела продаж за ${label}`,
+        occurred_at: award.reveal_on
+      },
+      { reason: 'sales-best-publish' }
+    );
   }
 
-  if (published) await writeState(state);
+  // Отметку ставим на свежем списке (под очередью/блокировкой), только тем, чья запись в ленте уже есть.
+  const done = new Set(revealed.map((a) => `${a.id}|${a.period}|${a.reveal_on}`));
+  const published = await mutateAwards(
+    (awards) => {
+      let n = 0;
+      for (const award of awards) {
+        if (!done.has(`${award.id}|${award.period}|${award.reveal_on}`)) continue;
+        const activityId = `sales-best-${award.period}`;
+        if (award.activity_id !== activityId) {
+          award.activity_id = activityId;
+          n += 1;
+        }
+      }
+      return n;
+    },
+    { reason: 'sales-best-publish' }
+  );
   return { published };
 }

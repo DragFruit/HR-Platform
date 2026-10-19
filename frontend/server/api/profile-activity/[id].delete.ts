@@ -1,5 +1,6 @@
 import { requireVbiSession } from '../../utils/session';
 import { deleteProfileActivity } from '../../utils/profileActivityStore';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Не указан id' });
   }
 
-  const ok = await deleteProfileActivity(id);
+  const ok = await deleteProfileActivity(id, { actorEmployeeId: await sessionActorEmployeeId(session) });
   if (!ok) {
     throw createError({ statusCode: 404, statusMessage: 'Запись не найдена' });
   }

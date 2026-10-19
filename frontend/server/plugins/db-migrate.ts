@@ -7,6 +7,8 @@
  * Этап 5: DB_ADMIN_NOTIFICATIONS=1 — admin-notifications.json; DB_CORE=1 — стоп-лист доступа;
  * DB_VACATIONS=1 — журналы напоминаний. У каждого своя готовность: сбой импорта нового домена
  * не откатывает на файлы домены, которые уже живут в Postgres.
+ * Этап 6: DB_PROFILE=1 — аватары, лента активности, награды продаж, пароли Vibe (схема profile),
+ * у каждого файла свой импорт и своя готовность.
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
@@ -29,6 +31,22 @@ import { importReminderLogFromJson, type ReminderLogImportResult } from '../vaca
 import { setVacationReminderLogsPgReady } from '../utils/vacationReminderLogsBackend';
 import { VACATION_PRE_REMINDER_FILE } from '../utils/vacationPreReminderStore';
 import { VACATION_MANAGER_MONTH_REMINDER_FILE } from '../utils/vacationManagerMonthReminderStore';
+import {
+  importProfileActivityFromJson,
+  importSalesBestAwardsFromJson,
+  importUserAvatarsFromJson,
+  importVibePasswordsFromJson
+} from '../profile/importJson';
+import {
+  profileDbFlag,
+  setAllProfilePgReady,
+  setProfileActivityPgReady,
+  setSalesBestAwardsPgReady,
+  setUserAvatarsPgReady,
+  setVibePasswordsPgReady
+} from '../utils/profileStore';
+import type { Db } from '../db/client';
+import type { KeyedImportResult } from '../db/repositories/keyedList';
 
 function logPart(domain: string, p: ReminderLogImportResult | { source: string; status: string; [k: string]: unknown }) {
   const r = p as Record<string, unknown>;
@@ -130,7 +148,23 @@ async function importCore(): Promise<boolean> {
   }
 }
 
+/** Импорт одного файла профиля; true — домен работает на Postgres. В лог — только счётчики. */
+async function importProfilePart(label: string, run: (db: Db) => Promise<KeyedImportResult>): Promise<boolean> {
+  if (!profileDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('profile', await run(db));
+    console.info(`[db] profile: ${label} на Postgres`);
+    return true;
+  } catch (err: any) {
+    console.error(`[db] profile: импорт (${label}) упал — остаётся на JSON:`, err?.message || err);
+    return false;
+  }
+}
+
 function setAllPgReady(ok: boolean) {
+  setAllProfilePgReady(ok);
   setNotificationsPgReady(ok);
   setCorePgReady(ok);
   setVacationsPgReady(ok);
@@ -188,6 +222,10 @@ export default defineNitroPlugin(() => {
         setAccessDenylistPgReady(await importAccessDenylist(coreOk));
         setVacationsPgReady(await importVacations());
         setVacationReminderLogsPgReady(await importReminderLogs());
+        setUserAvatarsPgReady(await importProfilePart('аватары', (db) => importUserAvatarsFromJson(db)));
+        setProfileActivityPgReady(await importProfilePart('лента активности', (db) => importProfileActivityFromJson(db)));
+        setSalesBestAwardsPgReady(await importProfilePart('награды продаж', (db) => importSalesBestAwardsFromJson(db)));
+        setVibePasswordsPgReady(await importProfilePart('пароли Vibe', (db) => importVibePasswordsFromJson(db)));
       })
       .catch((err) => {
         disableDb('миграции упали');

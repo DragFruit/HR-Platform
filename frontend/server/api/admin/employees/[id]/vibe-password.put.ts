@@ -1,10 +1,10 @@
 import { requireRole } from '../../../../utils/requireRole';
-import { readEmployees } from '../../../../utils/employeesStore';
+import { readEmployees, sessionActorEmployeeId } from '../../../../utils/employeesStore';
 import { clearVibePassword, setVibePassword } from '../../../../utils/vibePasswordsStore';
 
 /** Админ/HR задаёт или сбрасывает локальный пароль Vibe у сотрудника. */
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin', 'hr']);
+  const session = await requireRole(event, ['admin', 'hr']);
 
   const id = Number(getRouterParam(event, 'id'));
   if (!Number.isFinite(id) || id <= 0) {
@@ -19,11 +19,11 @@ export default defineEventHandler(async (event) => {
   }
 
   if (body?.clear === true || body?.password === null) {
-    await clearVibePassword(id);
+    await clearVibePassword(id, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'admin-vibe-password-clear' });
     return { ok: true, employee_id: id, has_password: false };
   }
 
   const password = String(body?.password || '');
-  await setVibePassword(id, password);
+  await setVibePassword(id, password, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'admin-vibe-password-set' });
   return { ok: true, employee_id: id, has_password: true };
 });

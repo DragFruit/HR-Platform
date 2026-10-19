@@ -284,9 +284,9 @@ describe.skipIf(!TEST_DB)('Postgres', () => {
   });
   denylistContract('Postgres', async () => createPgAccessDenylistRepo(db(), { mirrorFile: join(tmp, 'pg-mirror.json') }));
 
-  it('миграции: 5 штук', async () => {
+  it('миграции: этапы 0–5 на месте (дальше — новые этапы)', async () => {
     const [row] = await sql`select count(*)::int as n from drizzle.__drizzle_migrations`;
-    expect(row!.n).toBe(5);
+    expect(row!.n).toBeGreaterThanOrEqual(5);
   });
 
   it('уведомления админки: seen_at при прочтении, аудит с кем/почему, перенумерация не нужна', async () => {

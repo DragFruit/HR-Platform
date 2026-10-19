@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       : emp;
 
   if (password) {
-    await setVibePassword(emp.id, password);
+    await setVibePassword(emp.id, password, { actorEmployeeId: emp.id, reason: 'self-vibe-password-set' });
   }
 
   const nextUser = {
