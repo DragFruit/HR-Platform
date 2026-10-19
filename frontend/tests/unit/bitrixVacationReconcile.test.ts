@@ -193,16 +193,55 @@ describe('ежедневная сверка дат отпусков с граф�
     expect(res).toMatchObject({ checked: 2, fixed: 2, failed: 0 });
   });
 
-  it('пустой CODE (как у 32004 заявки 1043) проставляется', async () => {
+  it('верные даты и пустой CODE (как 32004 после фикса на бою) → не трогаем', async () => {
+    fakePortal({
+      32004: { CODE: '', ACTIVE_FROM: '16.11.2026 00:00:00', ACTIVE_TO: '22.11.2026 23:59:59', PROPERTY_1: user(501) }
+    });
+    const state = stateOf([synced({ id: 1043, bitrix_absence_id: 32004 })]);
+    const res = await reconcileFutureAbsences(state);
+
+    expect(writes()).toHaveLength(0);
+    expect(res).toMatchObject({ checked: 1, fixed: 0, readded: 0, failed: 0 });
+    expect(res.state).toBe(state);
+  });
+
+  it('верные даты и чужой по форме CODE (заявки нет) → тоже не трогаем', async () => {
+    fakePortal({
+      500: { CODE: 'something-else', ACTIVE_FROM: '16.11.2026 00:00:00', ACTIVE_TO: '22.11.2026 23:59:59', PROPERTY_1: user(501) }
+    });
+    const res = await reconcileFutureAbsences(stateOf([synced({})]));
+    expect(writes()).toHaveLength(0);
+    expect(res.fixed).toBe(0);
+  });
+
+  it('неверные даты и пустой CODE: update по ELEMENT_CODE → not found → по ELEMENT_ID, в логе «CODE не установлен»', async () => {
     fakePortal({
       32004: { CODE: '', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '22.11.2026', PROPERTY_1: user(501) }
     });
     const res = await reconcileFutureAbsences(stateOf([synced({ id: 1043, bitrix_absence_id: 32004 })]));
 
-    const [upd] = callsOf('lists.element.update');
-    expect(upd.params.ELEMENT_ID).toBe(32004);
-    expect(upd.params.FIELDS.CODE).toBe('vbi-hr-vac-1043');
+    const updates = callsOf('lists.element.update');
+    expect(updates).toHaveLength(2);
+    expect(updates[0].params).toMatchObject({ ELEMENT_ID: 32004, ELEMENT_CODE: 'vbi-hr-vac-1043' });
+    expect(updates[1].params.ELEMENT_ID).toBe(32004);
+    expect(updates[1].params.ELEMENT_CODE).toBeUndefined();
+    expect(callsOf('lists.element.add')).toHaveLength(0);
     expect(res.fixed).toBe(1);
+
+    const line = info.mock.calls.map((c) => String(c[0])).find((l) => l.includes('reconcile #1043'))!;
+    expect(line).toContain('CODE не установлен (Bitrix не меняет код через update)');
+    expect(line).not.toContain('→ vbi-hr-vac-1043');
+    expect(line).not.toContain('установлен;');
+  });
+
+  it('неверные даты, CODE свой → в логе нет заметки про CODE', async () => {
+    fakePortal({
+      500: { CODE: 'vbi-hr-vac-1171', ACTIVE_FROM: '16.11.2026', ACTIVE_TO: '23.11.2026 02:59:59', PROPERTY_1: user(501) }
+    });
+    await reconcileFutureAbsences(stateOf([synced({})]));
+    const line = info.mock.calls.map((c) => String(c[0])).find((l) => l.includes('reconcile #1171'))!;
+    expect(line).toContain('500 обновлён');
+    expect(line).not.toContain('CODE');
   });
 
   it('элемента нет в графике → создаём заново обычным путём (ничего не удаляем)', async () => {
