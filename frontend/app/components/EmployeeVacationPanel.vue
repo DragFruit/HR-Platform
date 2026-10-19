@@ -119,7 +119,7 @@
           <VacInfoHint
             class="vac-mob-balance__hint"
             label="Доступно дней отпуска"
-            :text="'Остаток на сегодня минус все будущие отпуска: согласованные и на согласовании, в любом году. Может быть меньше нуля, если отпуск взят авансом.'"
+            :text="VACATION_HINT_AVAILABLE"
             reservations-note
           />
         </div>
@@ -342,6 +342,7 @@ import { buildDaySetsForEmployee, isVacationStartInPast, todayIso } from '~/util
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { assessVacationBalance, calcEmployeeBalance } from '~/utils/vacationBalance';
 import { requestsAroundYear, vacationBookingYearError } from '~/utils/vacationBookingYears';
+import { VACATION_HINT_AVAILABLE } from '~/utils/vacationBalanceHints';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
 import {

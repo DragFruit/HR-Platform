@@ -26,7 +26,7 @@
         Доступно дней отпуска
         <VacInfoHint
           label="Доступно дней отпуска"
-          :text="'Остаток на сегодня минус все будущие отпуска: согласованные и на согласовании, в любом году. Может быть меньше нуля, если отпуск взят авансом.'"
+          :text="VACATION_HINT_AVAILABLE"
           reservations-note
         />
       </div>
@@ -66,14 +66,14 @@
             Отгулял
             <VacInfoHint
               label="Отгулял"
-              text="Дни согласованных отпусков, которые уже прошли (по сегодня включительно), за всё время в платформе."
+              :text="VACATION_HINT_TAKEN"
             />
           </th>
           <th>
             План
             <VacInfoHint
               label="План"
-              text="Будущие дни согласованных отпусков и все дни заявок на согласовании, в любом году."
+              :text="VACATION_HINT_PLANNED"
               reservations-note
             />
           </th>
@@ -277,6 +277,7 @@
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
 import { requestsAroundYear } from '~/utils/vacationBookingYears';
+import { VACATION_HINT_AVAILABLE, VACATION_HINT_PLANNED, VACATION_HINT_TAKEN } from '~/utils/vacationBalanceHints';
 import { countVacationBillableDays, isPastApprovedVacationRequest, isVacationStartInPast, todayIso, toIso } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
