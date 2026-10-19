@@ -203,7 +203,7 @@ async function cascadeImmediateAfterRevocation(
     delete assignments.byName[nameKey];
     managersChanged = true;
   }
-  if (managersChanged) await writeManagerAssignments(assignments);
+  if (managersChanged) await writeManagerAssignments(assignments, { reason: 'access-revoked' });
 
   try {
     await revokeVpnPeersForEmployee(emp, userIds);
@@ -264,7 +264,7 @@ async function cascadeImmediateAfterRevocation(
         }
       }
     }
-    if (orgChanged) await writeOrgStructure(org);
+    if (orgChanged) await writeOrgStructure(org, { reason: 'access-revoked' });
   } catch (err) {
     console.warn('[employeeAccessDenylist] org cascade failed:', err);
   }

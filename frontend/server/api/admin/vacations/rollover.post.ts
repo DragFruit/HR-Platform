@@ -1,10 +1,10 @@
 import { requireRole } from '../../../utils/requireRole';
-import { readEmployees, writeEmployees } from '../../../utils/employeesStore';
+import { readEmployees, sessionActorEmployeeId, writeEmployees } from '../../../utils/employeesStore';
 import { readVacations, writeVacations } from '../../../utils/vacationsStore';
 import { applyVacationYearRollover } from '../../../utils/vacationYearRollover';
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin', 'hr']);
+  const session = await requireRole(event, ['admin', 'hr']);
 
   const body = await readBody<{ fromYear?: number; toYear?: number }>(event);
   const fromYear = Number(body?.fromYear);
@@ -27,7 +27,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const result = applyVacationYearRollover(employees, vacations, fromYear, toYear);
-  await Promise.all([writeEmployees(result.employees), writeVacations(result.vacations)]);
+  await Promise.all([writeEmployees(result.employees, {
+      actorEmployeeId: await sessionActorEmployeeId(session),
+      reason: 'vacation-rollover'
+    }), writeVacations(result.vacations)]);
 
   return {
     ok: true,

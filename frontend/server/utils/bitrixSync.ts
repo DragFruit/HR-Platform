@@ -400,7 +400,7 @@ async function syncEmployeesFromBitrixUncached(
     return true;
   });
 
-  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly], { preserveManagers: true });
+  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly], { preserveManagers: true, reason: 'bitrix-sync' });
 
   return {
     total: synced.length + keptRosterOnly.length + manualOnly.length,

@@ -1,6 +1,5 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
+import { coreRepo } from './coreStore';
+import type { CoreWriteContext } from '../core/types';
 import type {
   OrgExecutive,
   OrgLink,
@@ -18,7 +17,7 @@ export type OrgStructureState = {
   links: OrgLink[];
 };
 
-const DATA_FILE = join(process.cwd(), 'server/data/org-structure.json');
+/** Хранилище: server/data/org-structure.json или core.org_* (DB_CORE=1), см. coreStore.ts. */
 
 const PORT_SIDES = new Set<OrgPortSide>(['top', 'right', 'bottom', 'left']);
 const NODE_KINDS = new Set<OrgNodeKind>(['executive', 'unit', 'group']);
@@ -145,37 +144,29 @@ export function isOrgStructureEmpty(state: OrgStructureState): boolean {
   return state.executives.length === 0 && state.units.length === 0 && state.groups.length === 0;
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultOrgStructureState());
-  }
-}
-
 export async function readOrgStructure(): Promise<OrgStructureState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeOrgStructureState(JSON.parse(raw) as Partial<OrgStructureState>);
+  return normalizeOrgStructureState(await (await coreRepo()).readOrgStructureRaw());
 }
 
-export async function writeOrgStructure(state: OrgStructureState): Promise<OrgStructureState> {
-  await ensureFile();
+export async function writeOrgStructure(
+  state: OrgStructureState,
+  ctx: CoreWriteContext = {}
+): Promise<OrgStructureState> {
   const normalized = normalizeOrgStructureState(state);
-  await writeJsonAtomic(DATA_FILE, normalized);
+  await (await coreRepo()).writeOrgStructureRaw(normalized, ctx);
   return normalized;
 }
 
 let mutationQueue: Promise<unknown> = Promise.resolve();
 
 export async function mutateOrgStructure(
-  mutator: (state: OrgStructureState) => OrgStructureState | Promise<OrgStructureState>
+  mutator: (state: OrgStructureState) => OrgStructureState | Promise<OrgStructureState>,
+  ctx: CoreWriteContext = {}
 ): Promise<OrgStructureState> {
   const run = mutationQueue.then(async () => {
     const current = await readOrgStructure();
     const next = await mutator(current);
-    return writeOrgStructure(next);
+    return writeOrgStructure(next, ctx);
   });
   mutationQueue = run.catch(() => {});
   return run;

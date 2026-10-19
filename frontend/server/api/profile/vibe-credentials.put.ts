@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   const updated =
     login !== (emp.email || '').trim().toLowerCase()
-      ? await patchEmployeeEmail(emp.id, login)
+      ? await patchEmployeeEmail(emp.id, login, { actorEmployeeId: emp.id })
       : emp;
 
   if (password) {

@@ -2,6 +2,22 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-10-19
+
+### DB этап 3: сотрудники и оргструктура на Postgres (только стейдж)
+
+- Схема `core`: `employees`, `employee_assignment_history`, `manager_assignments`, `manager_assignments_by_name`, `org_executives`, `org_groups`, `org_units`, `org_links`, `json_imports`; миграция `frontend/server/db/migrations/0002_core.sql`.
+- Хранилище выбирает `frontend/server/utils/coreStore.ts`: `DB_CORE=1` + `DATABASE_URL` → Postgres (`frontend/server/db/repositories/core.ts`), иначе JSON (`frontend/server/core/jsonStore.ts`). `employeesStore.ts`, `employeeManagersStore.ts`, `orgStructureStore.ts` сохранили API и бизнес-логику, читают и пишут через него.
+- Id сотрудников те же, что в `employees.json` (отпуска и уведомления ссылаются по-прежнему). Неизвестные поля и значения не своего типа в `extra jsonb`; API отдаёт те же ключи в том же порядке.
+- Разовый импорт трёх файлов при старте (`frontend/server/core/importJson.ts`) с проверкой поле-в-поле и маркером в `core.json_imports`; файлы остаются бэкапом. Журнал: `[db] core: … импорт file=N inserted=N skipped=N verified=N`.
+- История отдела/должности/руководителя пишется с момента переезда (при импорте `valid_from = null`, прошлое не выдумываем). Аудит изменений в `audit.audit_log` с `actor_employee_id` и причиной (`admin-employees`, `bitrix-sync`, `org-editor`, …).
+- Кэш чтения в памяти процесса (TTL 30 с, сбрасывается записью).
+- Синк Bitrix (`user.get`/`department.get`) пишет в активное хранилище; в Bitrix стейдж по-прежнему не пишет.
+- `GET /api/admin/db-health` → `domains.core`.
+- Новый env: `DB_CORE` (только стейдж, `/etc/vbi-hr/bitrix.env`). Прод: флага нет → JSON.
+- Тесты: `frontend/tests/unit/coreRepo.test.ts` (маппинг, контракт JSON; с `TEST_DATABASE_URL` также Postgres на временной базе: кэш, импорт, история, аудит).
+- Проверить на `:8080`: `/admin/employees` (список, правка и сохранение сотрудника), `/org-structure` (схема, перенос карточки и сохранение), график отпусков и согласование (руководители на месте), вход через Bitrix; `/api/admin/db-health` → `domains.core = postgres`.
+
 ## 2026-10-16
 
 ### DB этап 2: уведомления на Postgres (только стейдж)

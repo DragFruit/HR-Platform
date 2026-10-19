@@ -257,7 +257,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 Клиент: `useEmployees` — `localStorage` + синхронизация через `persist()` → `PUT`.
 
-Сервер: `employeesStore.ts` + `employeeManagersStore.ts` — при чтении подмешивается `employee-managers.json`; при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
+Сервер: `employeesStore.ts` + `employeeManagersStore.ts` (хранилище JSON или Postgres, см. «База данных → Этап 3»): при чтении подмешивается overlay руководителей (`employee-managers.json` / `core.manager_assignments`); при сохранении из админки overlay обновляется. Синк Bitrix (`writeEmployees` с `preserveManagers: true`) overlay не трогает.
 
 Удаление из справочника: `writeEmployees` пишет denylist (`employeeAccessDenylist.ts` → `employee-access-denylist.json`, в `.gitignore`), сбрасывает сессию через проверку в `requireVbiSession` / `session.get`, блокирует `loginSessionFromBitrix` и демо-логин; `bitrixSync` и merge деплоя (`merge-employees-seed.mjs` + denylist) пропускают denylist-id; `readEmployees` не отдаёт их в список. Повторное добавление в справочник снимает отзыв. Каскад: VPN (панель + учёт), уведомления, адаптация, лента; аватар/отпуска — отложенный purge по `*_purge_at`.
 
@@ -527,6 +527,52 @@ JSON-файл не удаляется — это бэкап на момент п
 
 Аудит (`audit.audit_log`, `entity = notifications.user_notification`): `create`, `delete`, `trim` (лимит 100), `delete_for_recipients` (офбординг), `import_json`. Прочтение/скрытие не аудируются — для них `seen_at`/`hidden_at`.
 
+### Этап 3. Домен `core`: сотрудники и оргструктура (только стейдж)
+
+Переключатель: **`DB_CORE=1` и задан `DATABASE_URL`** → справочник сотрудников, overlay руководителей и оргструктура в Postgres (схема `core`), иначе JSON (`server/data/employees.json`, `employee-managers.json`, `org-structure.json`). Флаг только в `/etc/vbi-hr/bitrix.env` (стейдж); на проде флага нет → JSON.
+
+Кто пишет в эти данные (все идут через фасады ниже, прямой записи в файлы больше нет):
+
+| Писатель | Что |
+|----------|-----|
+| `bitrixSync.ts` (`user.get` + `department.get`, при входе раз в 5 мин и `POST /api/bitrix/sync-employees`) | `writeEmployees(…, { preserveManagers: true, reason: 'bitrix-sync' })`; Bitrix только читается |
+| `PUT /api/employees` (админка) | справочник + overlay руководителей |
+| `PUT /api/profile/vibe-credentials` | `patchEmployeeEmail` (логин Vibe) |
+| `POST /api/admin/vacations/rollover` | остатки отпуска на новый год |
+| `employeeAccessDenylist.ts` (отзыв доступа) | overlay руководителей, оргструктура |
+| `PUT /api/org-structure` (редактор) | оргструктура |
+| `readEmployees` | «лечение» дублей и denylist-строк |
+
+| Файл | Назначение |
+|------|------------|
+| `server/db/schema/core.ts` | таблицы `core.*`; миграция `0002_core.sql` |
+| `server/utils/coreStore.ts` | выбор хранилища (`coreDbFlag`, `coreRepo()`), ожидание импорта при старте |
+| `server/core/types.ts` | `CoreRepo`: сырое чтение/запись сотрудников, overlay, оргструктуры |
+| `server/core/jsonStore.ts` | JSON-реализация (прежние файлы) |
+| `server/db/repositories/core.ts` | Postgres-реализация: diff-запись, история, аудит, кэш в памяти процесса |
+| `server/core/rowMapping.ts` | JSON ↔ строки без потерь |
+| `server/core/importJson.ts` | разовый импорт трёх файлов |
+
+Бизнес-логика (дедуп, denylist, overlay руководителей, QA-сотрудники, нормализация оргструктуры) осталась в `employeesStore.ts` / `employeeManagersStore.ts` / `orgStructureStore.ts` и одна на оба хранилища; их API не менялся, вызывающий код не трогали (добавлен только необязательный контекст аудита: `actorEmployeeId`, `reason`).
+
+Таблицы:
+
+- `core.employees`: `id int`, тот же id, что в JSON (у Bitrix-сотрудников = `bitrix_user_id`; на него ссылаются отпуска, уведомления, адаптация, ФИО ключом не является); колонки `name`, `title`, `department` (строка), `manager` + `manager_id`, `hired_at date`, `birthday text` (`YYYY-MM-DD` или `MM-DD`), `platform_user_id`, `bitrix_user_id`, `email`, `account_role`, `vacation_opening_balance double`, `legal_entity`, `contract_form`, `position` (порядок в справочнике), `source_keys text[]` (набор и порядок ключей исходного объекта: отсутствующее поле остаётся отсутствующим, `null` остаётся `null`), `extra jsonb` (неизвестные поля и значения не своего типа, например `hired_at: ""`).
+- `core.employee_assignment_history`: отдел / должность / руководитель с `valid_from`/`valid_to`. При импорте одна открытая строка на сотрудника с `valid_from = null` («так было на момент импорта, с какого числа неизвестно»); дальше каждое изменение закрывает строку и открывает новую (`source`: `write`, `added`); удаление из справочника закрывает. Прошлое не восстанавливаем.
+- `core.manager_assignments` (overlay по id сотрудника) и `core.manager_assignments_by_name` (legacy-fallback по нормализованному ФИО, сохранён ради прежнего поведения).
+- Оргструктура: `core.org_executives` (корни) → `core.org_groups` (рамки) → `core.org_units` (отделы, `members jsonb`, `stack_id`) и `core.org_links` (стрелки). Координаты и порядок в `double precision`, `position` = порядок в массиве. Без FK: редактор допускает «висящие» ссылки, как и JSON.
+- `core.json_imports`: маркеры разового импорта.
+
+Отделы Bitrix (`department.get`) отдельной таблицей не храним: справочник, как и раньше, держит название отдела строкой; дерево отделов на платформе задаёт оргструктура.
+
+Запись сотрудников: diff в одной транзакции под `pg_advisory_xact_lock`: меняются только изменённые строки, лишние удаляются; аудит `core.employee` (`create`/`update`/`delete`, before/after, `actor_employee_id`, `reason`), `core.manager_assignment`, `core.org_structure` (id добавленных/удалённых/изменённых узлов). Перезапись без изменений (синк Bitrix) ничего не пишет. Оргструктура при изменении перезаписывается целиком (десятки строк).
+
+Чтение: кэш в памяти процесса, все записи идут через этот процесс и обновляют его сразу; TTL 30 с, чтобы подхватить ручную правку в базе. Вызывающий получает копию. Замер на 75 сотрудниках (локально): JSON-файл 0,18 мс, Postgres из кэша 0,08 мс, без кэша 1 мс; запись без изменений 1,8 мс.
+
+Старт: миграции → (если флаг) импорт трёх файлов в одной транзакции: сотрудники без целого id или с дублем id не кладутся (`skipped`), сверка поле-в-поле (каждая строка, прочитанная из базы, совпадает с объектом файла байт-в-байт; оргструктура совпадает после нормализации), маркеры в `core.json_imports`. Лог: `[db] core: employees.json импорт file=N inserted=N skipped=N verified=N` и `[db] core: сотрудники и оргструктура на Postgres`. Сбой → домен на JSON, ошибка в журнале. Пока импорт не закончен, запросы ждут.
+
+JSON-файлы не удаляются (бэкап на момент переезда), после переезда в них не пишут: снять флаг = откат к состоянию момента импорта. Ручной путь `deploy-remote.sh` с `merge-employees-seed.mjs` на стенде с `DB_CORE=1` пишет только в JSON-бэкап (на стейдже CI его не вызывает). Dev-скрипты `scripts/test-vacation-team-scope.mjs`, `scripts/check-knowledge-org-answer.py` читают JSON-файлы, как и раньше.
+
 ### Целевая модель
 
 **Postgres-схема на домен** (`pgSchema`):
@@ -552,7 +598,7 @@ JSON-файл не удаляется — это бэкап на момент п
 
 `npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
 
-Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, блок «Postgres»): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет — блок пропускается, контракт хранилища проверяется на JSON-реализации.
+Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, блоки «Postgres»; `coreRepo` создаёт себе временную базу и удаляет её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
 
 ---
 
