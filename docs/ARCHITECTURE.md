@@ -273,7 +273,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 | `PATCH /api/vacations/reservation-caps` | Зарезервировано (лимиты фиксированы в коде: 5 на отдел, 1 в подгруппе); UI у руководителей убран |
 | `DELETE /api/vacations/reservations/:id` | Удалить бронь (своя или admin) |
 
-Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок), `vacationRequestMutations.ts`, `vacationReservationMutations.ts`; при финальном согласовании заявки — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
+Сервер: `vacationsStore.ts` (`mutateVacations` — очередь правок; хранилище JSON или Postgres, см. «База данных → Этап 4»), `vacationRequestMutations.ts`, `vacationReservationMutations.ts`; при финальном согласовании заявки — синк в Битрикс (`bitrixVacationAbsence.ts`). `PUT /api/vacations` отключён (410).
 
 Клиент: `useVacations` — `GET` при входе, каждая правка через POST/PATCH/DELETE; `localStorage` `vbi-vacations-state-v6` — кэш (миграция с v5).
 
@@ -501,7 +501,7 @@ NITRO_PORT=3300 NITRO_HOST=127.0.0.1 node .output/server/index.mjs
 | `server/db/schema/` | Таблицы Drizzle, `index.ts` реэкспортирует домены. Сейчас одна: `audit.audit_log` (`id bigserial`, `at timestamptz default now()`, `actor_employee_id int null`, `action`, `entity`, `entity_id`, `before jsonb`, `after jsonb`) — пока никто не пишет. |
 | `server/db/migrations/` | SQL от `drizzle-kit generate` (коммитим). `drizzle.config.ts` в `frontend/`. |
 | `server/db/migrate.ts` + `server/plugins/db-migrate.ts` | При старте: отдельное соединение, `pg_advisory_lock`, drizzle `migrate()`, одна строка `[db] migrations ok applied=N`. Ошибка → лог + `disableDb()`, процесс и JSON-функции живут. |
-| `server/api/admin/db-health.get.ts` | `GET /api/admin/db-health` (admin): `{enabled, ok, latencyMs, migrations, domains}`; `domains.notifications` = `postgres` или `json` (где сейчас живут уведомления). |
+| `server/api/admin/db-health.get.ts` | `GET /api/admin/db-health` (admin): `{enabled, ok, latencyMs, migrations, domains}`; `domains.notifications` / `domains.core` / `domains.vacations` = `postgres` или `json` (где сейчас живёт домен). |
 | `server/db/audit.ts` | `writeAudit(tx, …)` — запись в `audit.audit_log` в той же транзакции, что и мутация. |
 
 Миграции в артефакте: хук `nitro:init → compiled` в `nuxt.config.ts` копирует `server/db/migrations` → `.output/server/db/migrations` (не `serverAssets` — бандл Nitro не растёт). Поиск папки: `DB_MIGRATIONS_DIR` → `<dirname(index.mjs)>/db/migrations` → `cwd/.output/server/db/migrations` → `cwd/server/db/migrations` (dev).
@@ -573,6 +573,43 @@ JSON-файл не удаляется — это бэкап на момент п
 
 JSON-файлы не удаляются (бэкап на момент переезда), после переезда в них не пишут: снять флаг = откат к состоянию момента импорта. Ручной путь `deploy-remote.sh` с `merge-employees-seed.mjs` на стенде с `DB_CORE=1` пишет только в JSON-бэкап (на стейдже CI его не вызывает). Dev-скрипты `scripts/test-vacation-team-scope.mjs`, `scripts/check-knowledge-org-answer.py` читают JSON-файлы, как и раньше.
 
+### Этап 4. Домен `vacations`: заявки и брони (только стейдж)
+
+Переключатель: **`DB_VACATIONS=1` и задан `DATABASE_URL`** → заявки на отпуск, предварительные брони и счётчики id в Postgres (схема `vacations`), иначе `server/data/vacations.json`. Флаг только в `/etc/vbi-hr/bitrix.env` (стейдж); на проде флага нет → JSON.
+
+Публичный API `server/utils/vacationsStore.ts` не менялся: `readVacations`, `writeVacations`, `mutateVacations`, `purgeVacationsForEmployeeName`. Добавлен только необязательный контекст аудита (`actorEmployeeId`, `reason`): его передают мутации заявок и броней (`api:request-create`, `api:request-patch`, `api:request-delete`, `api:reservation-*`, `bitrix-absence-removed`), `POST /api/bitrix/sync-vacations` (`bitrix-sync`), плагин обслуживания Bitrix (`bitrix-maintenance`), жизненный цикл броней (`reservation-lifecycle`), rollover (`vacation-rollover`), отзыв доступа (`access-revoked-purge`). Демо-записи QA (`qaTestVacationSeed`) по-прежнему подмешиваются при чтении и вырезаются при записи в фасаде, одинаково для обоих хранилищ.
+
+| Файл | Назначение |
+|------|------------|
+| `server/db/schema/vacations.ts` | таблицы `vacations.*`; миграция `0003_vacations.sql` |
+| `server/vacations/types.ts` | `VacationsRepo`: `readRaw` / `writeRaw` / `mutateRaw` над состоянием «как в файле» |
+| `server/vacations/jsonStore.ts` | JSON-реализация (прежний файл, очередь мутаций в процессе) |
+| `server/db/repositories/vacations.ts` | Postgres-реализация: diff-запись, история статусов, аудит |
+| `server/vacations/rowMapping.ts` | JSON ↔ строки без потерь |
+| `server/vacations/importJson.ts` | разовый импорт `vacations.json` |
+
+Таблицы:
+
+- `vacations.requests`: `id int` (тот же, что в JSON: на него ссылаются Bitrix `CODE vbi-hr-vac-<id>` и уведомления `vacation_request_id`), `bucket_year` (ключ папки в `requestsByYear`) + `position` (порядок в массиве), `employee` (снимок ФИО для подписи, не ключ), `employee_id` (id из `core.employees`, без FK: у старых заявок id нет, сотрудник может быть удалён), `start_date`/`end_date date`, `status`, `approval_step`, `comment`, `created_at_text` (`createdAt` как в JSON, «ДД.ММ.ГГГГ»), поля синка Bitrix один в один: `bitrix_absence_id`, `bitrix_absence_iblock_id`, `bitrix_sync_status`, `bitrix_sync_method`, `bitrix_synced_at` (строка ISO как в JSON, без переформатирования), `bitrix_sync_error`; `source_keys text[]` (набор и порядок ключей: отсутствующее поле остаётся отсутствующим, `null` остаётся `null`), `extra json` (неизвестные поля и значения не своего типа, например дата не `YYYY-MM-DD`).
+- `vacations.reservations`: то же для броней (`year`, `month`, `duration_days`, `expiry_notice_sent_at`).
+- `vacations.state` (одна строка): `primary_year`, `next_request_id`, `next_reservation_id`, `request_years` / `reservation_years` (какие папки годов есть, в том числе пустые), `qa_demo_suppressed`, `reservation_monthly_caps_by_group`.
+- `vacations.request_status_history`: статус, шаг согласования и даты «до/после», кто и откуда (`create`/`update`/`delete`). Пишется только с момента переезда, прошлое не восстанавливаем.
+- `vacations.json_imports`: маркер разового импорта.
+
+Непрозрачные значения (`extra`, `qa_demo_suppressed`, лимиты) хранятся в `json`, а не `jsonb`: порядок ключей не меняется, ответ `GET /api/vacations` из базы байт-в-байт тот же, что из файла.
+
+Конкуренция: `mutateVacations`, как и раньше, выполняет «прочитать → изменить → записать» строго по очереди. В Postgres это очередь в процессе плюс одна транзакция под `pg_advisory_xact_lock(72461004)`: состояние читается уже под блокировкой, mutator (в том числе синк и сверка Bitrix внутри него) работает с последним состоянием, запись идёт diff-ом (меняются только изменённые строки, лишние удаляются), аудит и история в той же транзакции. Ошибка в mutator → откат, ничего не записано. Чтение (`readVacations`) без блокировки, одним снимком (`repeatable read`), видит последнее закоммиченное состояние. Кэша нет: строк сотни, чтение 1–3 мс.
+
+Аудит (`audit.audit_log`): `vacations.request` и `vacations.reservation` (`create`/`update`/`delete`, before/after, `actor_employee_id`, `reason`), `vacations.state` (учётный год, папки годов, лимиты, демо-исключения; одни счётчики id не аудируются), `import_json`. Перезапись без изменений ничего не пишет.
+
+Старт: миграции → (если флаг) импорт под тем же advisory lock в одной транзакции: записи без целого id или с дублем id не кладутся (`skipped`), сверка поле-в-поле (каждая заявка и бронь из базы совпадает с объектом файла байт-в-байт, всё состояние после нормализации совпадает с файлом), маркер в `vacations.json_imports`. Лог: `[db] vacations: импорт из JSON file=N requests=N reservations=N inserted=N skipped=N verified=N — работаем на Postgres`. Сбой → домен на JSON, ошибка в журнале. Пока импорт не закончен, запросы ждут.
+
+Bitrix: стейдж по-прежнему в Bitrix не пишет (гвард e78062f); сверка `reconcileFutureAbsences` в dry-run читает заявки уже из Postgres.
+
+Остались на JSON (осознанно): `vacation-pre-reminders.json` и `vacation-manager-month-reminders.json` (журналы отправленных напоминаний в чат-бот Bitrix; на стейдже этих файлов нет и отправка в Bitrix выключена, переносить нечего и проверить нельзя), правила групп и лимиты броней в коде (`vacationDepartmentGroups.ts`, `vacationReservationCaps.ts`). Outbox для Bitrix не делали: синк по-прежнему внутри `mutateVacations`.
+
+JSON-файл не удаляется (бэкап на момент переезда), после переезда в него не пишут: снять флаг = откат к состоянию момента импорта. Скрипты `scripts/audit-vacations-block.mjs`, `scripts/import-vacation*.py`, `scripts/rollover-vacation-year.mjs`, `scripts/backfill-vacation-employee-ids.mjs` и еженедельный бэкап `vbi-hr-vacations-backup` работают с файлом (бой на JSON); на стейдже с `DB_VACATIONS=1` они видят только бэкап.
+
 ### Целевая модель
 
 **Postgres-схема на домен** (`pgSchema`):
@@ -598,7 +635,7 @@ JSON-файлы не удаляются (бэкап на момент перее
 
 `npm test` (vitest, `frontend/vitest.config.ts`, node, алиас `~` → `app/`) — юнит-тесты чистых функций в `frontend/tests/unit/`. В CI отдельная стадия `test` перед `build`: красный тест блокирует сборку и деплой.
 
-Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, блоки «Postgres»; `coreRepo` создаёт себе временную базу и удаляет её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
+Тесты с базой (`tests/unit/userNotificationsRepo.test.ts`, `tests/unit/coreRepo.test.ts`, `tests/unit/vacationsRepo.test.ts`, блоки «Postgres»; `coreRepo` и `vacationsRepo` создают себе временную базу и удаляют её): только при `TEST_DATABASE_URL`, локально `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`. В CI базы нет, блок пропускается, контракт хранилища проверяется на JSON-реализации.
 
 ---
 

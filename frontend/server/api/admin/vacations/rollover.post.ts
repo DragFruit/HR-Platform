@@ -27,10 +27,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const result = applyVacationYearRollover(employees, vacations, fromYear, toYear);
-  await Promise.all([writeEmployees(result.employees, {
-      actorEmployeeId: await sessionActorEmployeeId(session),
-      reason: 'vacation-rollover'
-    }), writeVacations(result.vacations)]);
+  const ctx = { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'vacation-rollover' };
+  await Promise.all([writeEmployees(result.employees, ctx), writeVacations(result.vacations, ctx)]);
 
   return {
     ok: true,

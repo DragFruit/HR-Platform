@@ -4,6 +4,20 @@
 
 ## 2026-10-19
 
+### Отпуска на Postgres (этап 4, только стейдж)
+
+Заявки на отпуск, предварительные брони, счётчики id и учётный год переезжают из `server/data/vacations.json` в Postgres (схема `vacations`). Включается флагом `DB_VACATIONS=1` вместе с `DATABASE_URL`; флаг стоит только в `/etc/vbi-hr/bitrix.env` на стейдже. Бой остаётся на JSON.
+
+- Хранилище: `frontend/server/utils/vacationsStore.ts` (фасад, API прежний), `frontend/server/vacations/` (JSON-реализация, маппинг, импорт), `frontend/server/db/repositories/vacations.ts` (Postgres), схема `frontend/server/db/schema/vacations.ts`, миграция `0003_vacations.sql`.
+- id заявок и броней те же (Bitrix `CODE vbi-hr-vac-<id>`, уведомления `vacation_request_id`), поля синка Bitrix хранятся один в один, порядок ключей и `null`/отсутствие поля сохраняются: `GET /api/vacations` отдаёт то же, что из файла.
+- `mutateVacations` по-прежнему строго по очереди: в Postgres транзакция под `pg_advisory_xact_lock`, синк и сверка Bitrix внутри неё работают с последним состоянием; ошибка = откат.
+- Новое: история статуса, шага согласования и дат заявки (`vacations.request_status_history`, только с момента переезда) и аудит изменений заявок, броней и состояния (`audit.audit_log`, кто и почему).
+- Разовый импорт при старте со сверкой поле-в-поле; файл остаётся бэкапом. `GET /api/admin/db-health` показывает `domains.vacations`.
+- Напоминания (`vacation-pre-reminders.json`, `vacation-manager-month-reminders.json`) остались на JSON: на стейдже их нет, отправка в Bitrix там выключена.
+- Новый env: `DB_VACATIONS` (только стейдж). Новых ключей localStorage нет.
+- Тесты: `frontend/tests/unit/vacationsRepo.test.ts` (контракт JSON и Postgres, очередь мутаций, два процесса на одной базе, идемпотентный импорт, поля Bitrix, реальный `vacations.json` байт-в-байт). Postgres-часть: `TEST_DATABASE_URL=postgres://localhost:5432/vbi_dev npm test`.
+- Проверить на `:8080`: в `journalctl -u vbi-hr-staging` строка `[db] vacations: импорт из JSON … verified=N` (при повторном старте «импорт уже был»), график отпусков показывает те же заявки, создание/правка/удаление заявки и брони работают, `db-health` → `domains.vacations: "postgres"`.
+
 ### Сверка не трогает записи только из-за пустого CODE
 
 Факт с боя: `lists.element.update` не ставит `CODE` элементу с пустым кодом (update с `ELEMENT_CODE` → «not found», повтор по `ELEMENT_ID` проходит, код остаётся пустым), а в форме отсутствия в Bitrix поля кода нет. У 32004, 32095, 32900, 33029, 33164 даты уже верные (00:00:00 – 23:59:59), но `CODE` пустой. Сверка считала это расхождением и переписывала бы их каждую ночь, а в логе писала «CODE «» → vbi-hr-vac-N», хотя код не ставился.

@@ -111,7 +111,7 @@ export async function createVacationReservation(
     const list = state.reservationsByYear[yearKey] ?? [];
     state.reservationsByYear[yearKey] = [...list, reservation];
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:reservation-create' });
 }
 
 export type PatchVacationReservationBody = {
@@ -173,7 +173,7 @@ export async function patchVacationReservation(
 
     nextReservation = { ...found.item };
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:reservation-patch' });
 
   if (previousReservation && nextReservation) {
     const prev = previousReservation;
@@ -221,5 +221,5 @@ export async function deleteVacationReservation(
     state.reservationsByYear[found.yearKey] = found.list.filter((item) => item.id !== id);
     state.qaDemoSuppressed = recordQaDemoVacationDeletion(state.qaDemoSuppressed, 'reservation', id);
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:reservation-delete' });
 }

@@ -2,13 +2,18 @@ import { getDbDisabledReason, getSql, isDbEnabled } from '../../db/client';
 import { requireRole } from '../../utils/requireRole';
 import { getUserNotificationsBackend } from '../../utils/userNotificationsStore';
 import { getCoreBackend } from '../../utils/coreStore';
+import { getVacationsBackend } from '../../utils/vacationsStore';
 
 /** Проверка PostgreSQL на стенде: {enabled, ok, latencyMs, migrations, domains}. Только admin. */
 export default defineEventHandler(async (event) => {
   await requireRole(event, ['admin']);
 
   /** Где сейчас живёт каждый перенесённый домен: postgres | json. */
-  const domains = { notifications: await getUserNotificationsBackend(), core: await getCoreBackend() };
+  const domains = {
+    notifications: await getUserNotificationsBackend(),
+    core: await getCoreBackend(),
+    vacations: await getVacationsBackend()
+  };
   const sql = getSql();
   if (!isDbEnabled() || !sql) {
     return { enabled: false, ok: false, latencyMs: null, migrations: 0, reason: getDbDisabledReason(), domains };

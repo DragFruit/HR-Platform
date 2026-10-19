@@ -26,7 +26,7 @@ const runOnce = async (trigger: 'startup' | 'daily') => {
   running = true;
   try {
     if (currentBitrixStand() === 'production') {
-      await mutateVacations(async (state) => (await runBitrixVacationMaintenance(state)).state);
+      await mutateVacations(async (state) => (await runBitrixVacationMaintenance(state)).state, { reason: 'bitrix-maintenance' });
       console.info(`[bitrix-vacation] ${trigger} retry/relocate/reconcile done`);
     } else {
       // Только чтение: state не пишем.

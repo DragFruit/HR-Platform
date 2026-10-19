@@ -43,7 +43,7 @@ export async function applyReservationLifecycle(): Promise<VacationStoreState> {
       state.reservationsByYear[yearKey] = kept;
     }
     return state;
-  });
+  }, { reason: 'reservation-lifecycle' });
 
   for (const reservation of toNotify) {
     await notifyVacationReservationExpiring(reservation);

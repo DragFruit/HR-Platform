@@ -228,7 +228,7 @@ export async function createVacationRequest(
     state.requestsByYear[yearKey] = [...list, request];
     createdRequest = { ...request };
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:request-create' });
 
   if (createdRequest) {
     await notifyVacationRequestCreated(createdRequest);
@@ -424,7 +424,7 @@ export async function patchVacationRequest(
 
     nextRequest = { ...found.item };
     return syncApprovedVacationsToBitrix(previous, state);
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:request-patch' });
 
   // Сняли согласование (reject или смена дат → снова pending) — пальму в Bitrix убираем.
   if (
@@ -446,7 +446,7 @@ export async function patchVacationRequest(
         found.item.bitrix_synced_at = undefined;
         found.item.bitrix_sync_error = undefined;
         return state;
-      });
+      }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'bitrix-absence-removed' });
       if (nextRequest) {
         nextRequest = {
           ...nextRequest,
@@ -522,7 +522,7 @@ export async function deleteVacationRequest(
     state.requestsByYear[found.yearKey] = nextList;
     state.qaDemoSuppressed = recordQaDemoVacationDeletion(state.qaDemoSuppressed, 'request', id);
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:request-delete' });
 
   if (removedRequest) {
     const removed = removedRequest as VacationRequest;

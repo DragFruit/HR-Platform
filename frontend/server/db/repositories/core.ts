@@ -40,7 +40,7 @@ export const CORE_CACHE_TTL_MS = 30_000;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /** INSERT … ON CONFLICT DO UPDATE SET <все колонки, кроме ключа> = excluded.<колонка>. */
-function excludedSet(table: PgTable, skip: string[]) {
+export function excludedSet(table: PgTable, skip: string[]) {
   const cols = getTableColumns(table) as Record<string, { name: string }>;
   const set: Record<string, unknown> = {};
   for (const [key, col] of Object.entries(cols)) {
@@ -50,7 +50,7 @@ function excludedSet(table: PgTable, skip: string[]) {
   return set;
 }
 
-function chunks<T>(list: T[], size = 500): T[][] {
+export function chunks<T>(list: T[], size = 500): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
   return out;

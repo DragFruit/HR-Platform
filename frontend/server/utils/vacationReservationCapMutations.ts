@@ -161,5 +161,5 @@ export async function patchReservationMonthlyCap(
     };
     state.reservationMonthlyCapsByGroup = nextCaps;
     return state;
-  });
+  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:reservation-cap' });
 }

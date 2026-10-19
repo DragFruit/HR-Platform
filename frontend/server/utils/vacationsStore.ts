@@ -1,5 +1,3 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
 import {
@@ -8,7 +6,10 @@ import {
   stripQaTestVacationReservations,
   type QaDemoVacationSuppressed
 } from '../../app/data/qaTestVacationSeed';
-import { writeJsonAtomic } from './atomicJson';
+import { getDb, isDbEnabled } from '../db/client';
+import { createPgVacationsRepo } from '../db/repositories/vacations';
+import { createJsonVacationsRepo, VACATIONS_JSON_FILE } from '../vacations/jsonStore';
+import type { VacationsRepo, VacationWriteContext } from '../vacations/types';
 
 export type { VacationRequest, VacationReservation };
 
@@ -23,8 +24,6 @@ export type VacationStoreState = {
   /** Лимит броней на месяц по группам Digital (groupId → max). */
   reservationMonthlyCapsByGroup?: Record<string, number>;
 };
-
-const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
 
 export const defaultVacationState = (): VacationStoreState => ({
   primaryYear: new Date().getFullYear(),
@@ -48,21 +47,6 @@ export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): V
   };
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultVacationState());
-  }
-}
-
-export async function readVacations(): Promise<VacationStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return mergeQaTestVacationState(normalizeVacationStoreState(JSON.parse(raw) as Partial<VacationStoreState>));
-}
-
 function stripQaFromVacationState(state: VacationStoreState): VacationStoreState {
   const requestsByYear = Object.fromEntries(
     Object.entries(state.requestsByYear).map(([year, rows]) => [
@@ -79,26 +63,76 @@ function stripQaFromVacationState(state: VacationStoreState): VacationStoreState
   return { ...state, requestsByYear, reservationsByYear };
 }
 
-export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {
-  await ensureFile();
-  const persisted = stripQaFromVacationState(state);
-  await writeJsonAtomic(DATA_FILE, persisted);
+/**
+ * Хранилище отпусков (этап 4). DB_VACATIONS=1 и задан DATABASE_URL → Postgres (схема vacations),
+ * иначе server/data/vacations.json. Флаг стоит только на стейдже; на проде DATABASE_URL есть,
+ * но флага нет → JSON. Публичный API (readVacations / writeVacations / mutateVacations) не менялся.
+ */
+export function vacationsDbFlag(): boolean {
+  return String(process.env.DB_VACATIONS || '').trim() === '1' && isDbEnabled();
+}
+
+let resolvePgReady!: (ok: boolean) => void;
+const pgReady = new Promise<boolean>((resolve) => {
+  resolvePgReady = resolve;
+});
+
+/** Вызывает плагин db-migrate: true — миграции и импорт прошли, можно работать с Postgres. */
+export function setVacationsPgReady(ok: boolean) {
+  resolvePgReady(ok);
+}
+
+let jsonRepo: VacationsRepo | null = null;
+let pgRepo: VacationsRepo | null = null;
+let warnedFallback = false;
+
+export async function vacationsRepo(): Promise<VacationsRepo> {
+  if (vacationsDbFlag()) {
+    const ok = await pgReady;
+    const db = ok ? getDb() : null;
+    if (db) return (pgRepo ??= createPgVacationsRepo(db));
+    if (!warnedFallback) {
+      warnedFallback = true;
+      console.error('[vacations] DB_VACATIONS=1, но Postgres недоступен — отпуска на JSON (бэкап может быть устаревшим)');
+    }
+  }
+  return (jsonRepo ??= createJsonVacationsRepo(VACATIONS_JSON_FILE, defaultVacationState));
+}
+
+export async function getVacationsBackend(): Promise<'json' | 'postgres'> {
+  return (await vacationsRepo()).backend;
+}
+
+export async function readVacations(): Promise<VacationStoreState> {
+  const raw = await (await vacationsRepo()).readRaw();
+  return mergeQaTestVacationState(normalizeVacationStoreState(raw));
+}
+
+/** Перезаписать состояние целиком (rollover). Возвращает то же состояние, что передали. */
+export async function writeVacations(
+  state: VacationStoreState,
+  ctx?: VacationWriteContext
+): Promise<VacationStoreState> {
+  await (await vacationsRepo()).writeRaw(stripQaFromVacationState(state), ctx);
   return state;
 }
 
-/** Сериализует все правки отпусков — без гонок при параллельных POST/PATCH. */
-let mutationQueue: Promise<unknown> = Promise.resolve();
-
+/**
+ * Сериализует все правки отпусков — без гонок при параллельных POST/PATCH.
+ * JSON: очередь в процессе. Postgres: очередь + транзакция под advisory lock (см. repositories/vacations.ts).
+ * Возвращает состояние, которое вернул mutator (с демо-записями QA, как и раньше).
+ */
 export async function mutateVacations(
-  mutator: (state: VacationStoreState) => VacationStoreState | Promise<VacationStoreState>
+  mutator: (state: VacationStoreState) => VacationStoreState | Promise<VacationStoreState>,
+  ctx?: VacationWriteContext
 ): Promise<VacationStoreState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readVacations();
-    const next = await mutator(current);
-    return writeVacations(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  let result!: VacationStoreState;
+  await (await vacationsRepo()).mutateRaw(async (raw) => {
+    const current = mergeQaTestVacationState(normalizeVacationStoreState(raw));
+    result = await mutator(current);
+    return stripQaFromVacationState(result);
+  }, ctx);
+  return result;
 }
 
 function normalizeEmployeeNameKey(name: string): string {
@@ -110,7 +144,10 @@ function normalizeEmployeeNameKey(name: string): string {
 }
 
 /** Удалить заявки/брони сотрудника по ФИО (после срока хранения 1 год). */
-export async function purgeVacationsForEmployeeName(employeeName: string): Promise<number> {
+export async function purgeVacationsForEmployeeName(
+  employeeName: string,
+  ctx: VacationWriteContext = { reason: 'access-revoked-purge' }
+): Promise<number> {
   const key = normalizeEmployeeNameKey(employeeName);
   if (!key) return 0;
 
@@ -128,6 +165,6 @@ export async function purgeVacationsForEmployeeName(employeeName: string): Promi
       next.reservationsByYear[year] = filtered;
     }
     return next;
-  });
+  }, ctx);
   return removed;
 }

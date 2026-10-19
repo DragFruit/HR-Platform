@@ -3,6 +3,7 @@
  * Ошибка миграции не роняет процесс: логируем и выключаем DB, JSON-функции продолжают работать.
  * Этап 2: при DB_NOTIFICATIONS=1 после миграций — разовый импорт уведомлений из JSON.
  * Этап 3: при DB_CORE=1 — разовый импорт сотрудников, overlay руководителей и оргструктуры.
+ * Этап 4: при DB_VACATIONS=1 — разовый импорт vacations.json (заявки, брони, счётчики id).
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
@@ -12,6 +13,31 @@ import { notificationsDbFlag, setNotificationsPgReady } from '../utils/userNotif
 import { importCoreFromJson } from '../core/importJson';
 import { defaultCoreJsonFiles } from '../core/jsonStore';
 import { coreDbFlag, setCorePgReady } from '../utils/coreStore';
+import { importVacationsFromJson } from '../vacations/importJson';
+import { VACATIONS_JSON_FILE } from '../vacations/jsonStore';
+import { setVacationsPgReady, vacationsDbFlag } from '../utils/vacationsStore';
+
+async function importVacations(): Promise<boolean> {
+  if (!vacationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await importVacationsFromJson(db, VACATIONS_JSON_FILE);
+    if (r.status === 'already') {
+      console.info(
+        `[db] vacations: импорт из JSON уже был ${r.importedAt} (file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped}) — работаем на Postgres`
+      );
+    } else {
+      console.info(
+        `[db] vacations: импорт из JSON file=${r.fileCount} requests=${r.requests} reservations=${r.reservations} inserted=${r.inserted} skipped=${r.skipped} verified=${r.verified} — работаем на Postgres`
+      );
+    }
+    return true;
+  } catch (err: any) {
+    console.error('[db] vacations: импорт из JSON упал — отпуска остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
 
 async function importCore(): Promise<boolean> {
   if (!coreDbFlag()) return false;
@@ -41,6 +67,7 @@ async function importCore(): Promise<boolean> {
 function setAllPgReady(ok: boolean) {
   setNotificationsPgReady(ok);
   setCorePgReady(ok);
+  setVacationsPgReady(ok);
 }
 
 async function importNotifications(): Promise<boolean> {
@@ -87,6 +114,7 @@ export default defineNitroPlugin(() => {
         console.info(`[db] migrations ok applied=${applied} in ${Date.now() - startedAt}ms`);
         setNotificationsPgReady(await importNotifications());
         setCorePgReady(await importCore());
+        setVacationsPgReady(await importVacations());
       })
       .catch((err) => {
         disableDb('миграции упали');

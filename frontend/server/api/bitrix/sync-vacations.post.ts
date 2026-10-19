@@ -3,9 +3,11 @@ import type { ReconcileAbsencesResult } from '../../utils/bitrixVacationAbsence'
 import { requireRole } from '../../utils/requireRole';
 import { isBitrixWritesBlockedMessage } from '../../utils/bitrixWriteGuard';
 import { mutateVacations } from '../../utils/vacationsStore';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin', 'hr']);
+  const session = await requireRole(event, ['admin', 'hr']);
+  const actorEmployeeId = await sessionActorEmployeeId(session);
 
   let synced = 0;
   let failed = 0;
@@ -30,7 +32,7 @@ export default defineEventHandler(async (event) => {
       else if (r.bitrix_sync_status === 'failed' || r.bitrix_sync_status === 'skipped') failed += 1;
     }
     return result.state;
-  });
+  }, { actorEmployeeId, reason: 'bitrix-sync' });
 
   return {
     ok: true,
