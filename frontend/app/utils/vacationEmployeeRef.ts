@@ -36,7 +36,9 @@ export const vacationBelongsToEmployee = (
   if (typeof emp === 'string') {
     return employeeNamesMatch(row.employee, emp);
   }
-  const rowId = refId(row);
+  // У заявки/брони свой `id` (номер заявки) — его нельзя путать с id сотрудника:
+  // legacy-строка без employee_id сравнивается по ФИО.
+  const rowId = refId({ employee_id: row.employee_id });
   const empId = refId(emp);
   if (rowId != null && empId != null) {
     return rowId === empId;

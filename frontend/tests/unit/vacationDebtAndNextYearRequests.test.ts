@@ -6,6 +6,7 @@ import {
   calcEmployeeBalance
 } from '../../app/utils/vacationBalance';
 import { requestsAroundYear } from '../../app/utils/vacationBookingYears';
+import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
 import { applyVacationYearRollover } from '../../server/utils/vacationYearRollover';
 import type { ServerEmployee } from '../../server/utils/employeesStore';
 import type { VacationStoreState } from '../../server/utils/vacationsStore';
@@ -96,5 +97,16 @@ describe('заявки на 2027 видны и списываются, пока 
     expect(calcAvailableOnDate(NAME, HIRE, '2027-06-30', around, 2026, 10)).toBe(28);
     const a = assessVacationBalance(NAME, HIRE, '2027-06-30', '2027-06-30', around, 2026, undefined, 10);
     expect(a.availableAtStart).toBe(28);
+  });
+});
+
+describe('старые заявки без employee_id', () => {
+  it('сравниваются по ФИО, а не по номеру заявки (было: id заявки 65 ≠ id сотрудника 2684 → «не моя»)', () => {
+    const legacy = r(65, '2026-02-24', '2026-03-01', 'approved', null);
+    expect(vacationBelongsToEmployee(legacy, { id: 2684, name: NAME })).toBe(true);
+    expect(vacationBelongsToEmployee(legacy, { id: 2684, name: 'Другой Человек' })).toBe(false);
+    expect(vacationBelongsToEmployee(r(1, '2026-02-24', '2026-03-01', 'approved', 7), { id: 2684, name: NAME })).toBe(false);
+    const b = calcEmployeeBalance(NAME, HIRE, [legacy], new Date('2026-10-19T12:00:00'), 2026, 10, 2684);
+    expect(b.taken).toBe(6);
   });
 });
