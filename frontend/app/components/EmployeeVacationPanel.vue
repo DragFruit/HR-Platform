@@ -623,18 +623,12 @@ const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
 const formAssessment = computed(() => {
   const y = state.value.primaryYear;
-  const byId = new Map<number, VacationRequest>();
-  for (const yr of [y - 1, y, y + 1]) {
-    for (const req of requestsForYear(yr)) {
-      byId.set(req.id, req);
-    }
-  }
   return assessVacationBalance(
     employeeName.value,
     hireIso.value,
     form.start,
     form.end,
-    [...byId.values()],
+    capRequests.value,
     y,
     undefined,
     currentEmployee.value?.vacation_opening_balance
@@ -768,14 +762,10 @@ const onMonthFocus = (monthIndex: number) => {
 
 const mobileBalanceRemain = computed(() => {
   const y = state.value.primaryYear;
-  const byId = new Map<number, VacationRequest>();
-  for (const yr of [y - 1, y, y + 1]) {
-    for (const req of requestsForYear(yr)) byId.set(req.id, req);
-  }
   return calcEmployeeBalance(
     employeeName.value,
     hireIso.value,
-    [...byId.values()],
+    capRequests.value,
     new Date(),
     y,
     currentEmployee.value?.vacation_opening_balance

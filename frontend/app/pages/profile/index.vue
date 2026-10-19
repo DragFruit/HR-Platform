@@ -574,7 +574,6 @@
 <script setup lang="ts">
 import type { AvatarCharacterId } from '~/composables/useAvatars';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
-import type { VacationRequest } from '~/composables/useVacations';
 import { profileTeamHeading } from '~/utils/profileTeamTitle';
 import {
   findUpcomingVacationWithinDays,
@@ -599,7 +598,7 @@ const { AVATAR_CHARACTER_IDS, avatarImageUrl, getAvatarId, setAvatarId } = useAv
 const { ideas, hydrate: hydrateIdeasBank } = useIdeasBank();
 const { isProduction } = useAppEnv();
 const { myCoupons, hydrate: hydrateCoupons } = useTenureCoupons();
-const { employeeRequests, hydrate: hydrateVacations } = useVacations();
+const { employeeRequests, hydrate: hydrateVacations, state: vacationsState } = useVacations();
 const { profileBadges, catalogForProfile, catalogSectionsForProfile, catalogForProfilePreview, earnedCount } =
   useAchievements();
 const { isEnabled: vacationTrainingEnabled, isCompletedForCurrentUser } = useVacationTraining();
@@ -948,21 +947,16 @@ const vacationStat = computed(() => {
   if (!name || !emp?.hired_at) {
     return { value: '—', planned: 0 };
   }
-  const year = new Date().getFullYear();
-  const byId = new Map<number, VacationRequest>();
-  for (const yr of [year - 1, year, year + 1]) {
-    for (const req of employeeRequests(name, yr)) {
-      byId.set(req.id, req);
-    }
-  }
-  const requests = [...byId.values()];
+  // Один непрерывный остаток: все заявки всех лет, учётный год из данных (не календарный).
+  const requests = Object.values(vacationsState.value.requestsByYear).flat();
   const result = calcEmployeeBalance(
     name,
     emp.hired_at,
     requests,
     new Date(),
-    year,
-    emp.vacation_opening_balance
+    vacationsState.value.primaryYear,
+    emp.vacation_opening_balance,
+    emp.id
   );
   return { value: result.remain, planned: result.planned };
 });

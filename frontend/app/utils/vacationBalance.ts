@@ -3,7 +3,6 @@ import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import {
   clipIsoRangeToYear,
   countVacationBillableDays,
-  countVacationBillableDaysInYear,
   isRuHoliday,
   toIso
 } from '~/utils/vacationCalendar';
@@ -107,40 +106,6 @@ const accruedVacationZupFromHire = (hireIso: string, asOfDate: Date) => {
   return floorTenth((n * ANNUAL_NORM) / 12);
 };
 
-/**
- * Списанные billable-дни в рамках учётного года.
- * Заявка через НГ лежит в папке года начала — январский хвост всё равно
- * списывается из баланса года, в который попали дни.
- */
-const countBookedDays = (
-  empName: string,
-  hireIso: string,
-  requests: VacationRequest[],
-  statuses: VacationRequest['status'][],
-  accountYear: number
-) => {
-  const hireDay = normalizeCalendarDate(new Date(`${hireIso}T12:00:00`));
-  const want = new Set(statuses);
-  let n = 0;
-  requests.forEach((r) => {
-    if (!vacationBelongsToEmployee(r, empName) || !want.has(r.status)) return;
-    const clipped = clipIsoRangeToYear(r.start, r.end, accountYear);
-    if (!clipped) return;
-    const start = normalizeCalendarDate(new Date(`${clipped[0]}T00:00:00`));
-    const end = normalizeCalendarDate(new Date(`${clipped[1]}T00:00:00`));
-    if (start > end) return;
-    const from = start > hireDay ? start : hireDay;
-    if (from > end) return;
-    const cursor = new Date(from);
-    while (cursor <= end) {
-      const iso = toIso(cursor);
-      if (!isRuHoliday(iso)) n += 1;
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  });
-  return n;
-};
-
 const countBookedDaysUpTo = (
   empName: string,
   hireIso: string,
@@ -199,9 +164,9 @@ export const assessVacationBalance = (
     return { ...empty, status: 'unknown' };
   }
 
-  // Для проверки «хватит ли» считаем дни в учётном году начала отпуска.
   const accountYear = Number(String(start).slice(0, 4)) || primaryYear;
-  const neededDays = countVacationBillableDaysInYear(start, end, accountYear);
+  // Все дни периода, и через Новый год тоже: смена года для остатка обычная смена месяца.
+  const neededDays = countVacationBillableDays(start, end);
   const startLabel = formatStartLabel(start);
   if (neededDays === 0) {
     return { status: 'ok', neededDays: 0, availableAtStart: 0, deficit: 0, startLabel };
@@ -262,6 +227,17 @@ const entitledVacationDays = (
   return floorTenth(base + accrualSinceJan1);
 };
 
+/**
+ * Цифры панели «Доступно / Отгулял / План». Один непрерывный остаток, без привязки к году
+ * (смена года = обычная смена месяца):
+ * - remain («Доступно дней отпуска») = остаток на сегодня (calcAvailableOnDate: база + помесячные
+ *   начисления по сегодня − approved и pending по сегодня) − все approved и pending дни после сегодня,
+ *   в любом году. Может быть отрицательным (долг).
+ * - taken («Отгулял») = прошедшие дни согласованных отпусков (по сегодня), за все годы из `requests`.
+ * - planned («План») = будущие дни согласованных отпусков + все дни заявок на согласовании, в любом году.
+ * primaryYear/openingBalance — только точка отсчёта хранения; переход года цифры не меняет.
+ * `requests` — все заявки (всех лет), иначе «Отгулял» и остаток будут неполными.
+ */
 export const calcEmployeeBalance = (
   employeeName: string,
   hireIso: string | undefined,
@@ -273,60 +249,36 @@ export const calcEmployeeBalance = (
 ) => {
   if (!hireIso) return { remain: '—', taken: 0, planned: 0 };
 
-  const yearRequests = requests.filter((r) =>
+  const own = requests.filter((r) =>
     vacationBelongsToEmployee(r, { id: employeeId, name: employeeName })
   );
   const today = normalizeCalendarDate(asOf);
   const todayIso = toIso(today);
-  const yearStartIso = `${primaryYear}-01-01`;
-  const yearEndIso = `${primaryYear}-12-31`;
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowIso = toIso(tomorrow);
+  const maxIso = (a: string, b: string) => (a > b ? a : b);
+  const minIso = (a: string, b: string) => (a < b ? a : b);
+
   let taken = 0;
   let planned = 0;
-  yearRequests.forEach((r) => {
-    const clipped = clipIsoRangeToYear(r.start, r.end, primaryYear);
-    if (!clipped) return;
-    const [clipStart, clipEnd] = clipped;
-
+  let futureDays = 0;
+  own.forEach((r) => {
+    if (r.status !== 'approved' && r.status !== 'pending') return;
+    const upcoming = r.end >= tomorrowIso ? countVacationBillableDays(maxIso(r.start, tomorrowIso), r.end) : 0;
+    futureDays += upcoming;
     if (r.status === 'pending') {
-      planned += countVacationBillableDays(clipStart, clipEnd);
+      planned += countVacationBillableDays(r.start, r.end);
       return;
     }
-    if (r.status !== 'approved') return;
-
-    const start = normalizeCalendarDate(new Date(`${clipStart}T00:00:00`));
-    const end = normalizeCalendarDate(new Date(`${clipEnd}T00:00:00`));
-    if (end < today) {
-      taken += countVacationBillableDays(clipStart, clipEnd);
-    } else if (start > today) {
-      planned += countVacationBillableDays(clipStart, clipEnd);
-    } else {
-      const takenTo =
-        todayIso < yearStartIso ? yearStartIso : todayIso > yearEndIso ? yearEndIso : todayIso;
-      taken += countVacationBillableDays(clipStart, takenTo);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowIso = toIso(tomorrow);
-      if (tomorrowIso <= clipEnd && tomorrowIso >= yearStartIso) {
-        planned += countVacationBillableDays(tomorrowIso, clipEnd);
-      }
-    }
+    if (r.start <= todayIso) taken += countVacationBillableDays(r.start, minIso(r.end, todayIso));
+    planned += upcoming;
   });
 
-  const entitled = entitledVacationDays(hireIso, asOf, primaryYear, openingBalance);
-  const takenBooked = countBookedDays(employeeName, hireIso, requests, ['approved'], primaryYear);
-  const plannedBooked = countBookedDays(employeeName, hireIso, requests, ['pending'], primaryYear);
-  // Отпуска следующих лет (заявка на 2027, пока учётный 2026) тоже списываются из «Доступно» и идут в «План».
-  let futureBooked = 0;
-  for (let year = primaryYear + 1; year <= primaryYear + 2; year += 1) {
-    yearRequests.forEach((r) => {
-      if (r.status !== 'approved' && r.status !== 'pending') return;
-      const clipped = clipIsoRangeToYear(r.start, r.end, year);
-      if (clipped) futureBooked += countVacationBillableDays(clipped[0], clipped[1]);
-    });
-  }
-  planned += futureBooked;
+  const balanceToday =
+    calcAvailableOnDate(employeeName, hireIso, todayIso, own, primaryYear, openingBalance) ?? 0;
   // Без обрезки нулём: долг показывается отрицательным числом.
-  const remain = floorTenth(entitled - takenBooked - plannedBooked - futureBooked);
+  const remain = floorTenth(balanceToday - futureDays);
 
   return { remain: String(remain), taken, planned };
 };

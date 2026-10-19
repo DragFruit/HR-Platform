@@ -506,13 +506,8 @@ const dayHeaderClass = (cell: YearDayCell) => {
 
 const balanceByEmployee = computed(() => {
   const y = vacationState.value.primaryYear;
-  const byId = new Map<number, (typeof props.requests)[number]>();
-  for (const yr of [y - 1, y, y + 1]) {
-    for (const req of vacationState.value.requestsByYear[String(yr)] ?? []) {
-      byId.set(req.id, req);
-    }
-  }
-  const requests = [...byId.values()];
+  // Один непрерывный остаток: все заявки всех лет.
+  const requests = Object.values(vacationState.value.requestsByYear).flat();
   const asOf = new Date();
   const map = new Map<string, string>();
   for (const emp of visibleEmployees.value) {

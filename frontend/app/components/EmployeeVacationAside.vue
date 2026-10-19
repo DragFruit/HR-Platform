@@ -359,14 +359,11 @@ const openingBalance = computed(() => currentEmployee.value?.vacation_opening_ba
 /** Цифры и списки aside всегда по текущему учётном году, даже если календарь смотрит прошлый. */
 const balanceYear = computed(() => state.value.primaryYear);
 
-/** Заявки соседних лет: отпуск через НГ лежит в папке года начала. */
+/** Все заявки всех лет: остаток один непрерывный, без привязки к году. */
 const balanceYearRequests = computed(() => {
-  const y = balanceYear.value;
   const byId = new Map<number, VacationRequest>();
-  for (const yr of [y - 1, y, y + 1]) {
-    for (const req of requestsForYear(yr)) {
-      byId.set(req.id, req);
-    }
+  for (const list of Object.values(state.value.requestsByYear)) {
+    for (const req of list) byId.set(req.id, req);
   }
   return [...byId.values()];
 });

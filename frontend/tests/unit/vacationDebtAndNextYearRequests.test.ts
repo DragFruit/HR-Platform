@@ -88,7 +88,7 @@ describe('заявки на 2027 видны и списываются, пока 
   it('«Доступно» уменьшается на billable-дни 2027 (7+7+5+5 = 24: 22–23.02 и 12.06 праздники), «План» растёт', () => {
     const only2026 = calcEmployeeBalance(NAME, HIRE, byYear['2026']!, asOf, 2026, 10, 2684);
     const all = calcEmployeeBalance(NAME, HIRE, around, asOf, 2026, 10, 2684);
-    expect(Number(only2026.remain) - Number(all.remain)).toBe(24);
+    expect(Number(only2026.remain) - Number(all.remain)).toBeCloseTo(24, 6);
     expect(all.planned - only2026.planned).toBe(24);
   });
 
