@@ -50,9 +50,17 @@
         <div v-if="survey.status === 'published'" class="survey-builder__link">
           <span class="survey-builder__field-label">Ссылка для респондентов</span>
           <div class="survey-builder__link-row">
-            <code>{{ publicUrl(survey.slug) }}</code>
+            <code ref="linkEl">{{ publicUrl(survey.slug) }}</code>
             <button class="button ghost" type="button" @click="copyLink">Скопировать</button>
           </div>
+          <p
+            v-if="copyState !== 'idle'"
+            class="survey-builder__copy-status"
+            :class="`survey-builder__copy-status--${copyState}`"
+            role="status"
+          >
+            {{ copyState === 'ok' ? 'Ссылка скопирована' : 'Не удалось скопировать автоматически — ссылка выделена, нажмите Ctrl+C (⌘C)' }}
+          </p>
         </div>
       </section>
 
@@ -442,14 +450,24 @@ const onUnpublish = async () => {
   if (refreshed) applySurvey(refreshed);
 };
 
+const linkEl = ref<HTMLElement | null>(null);
+const copyState = ref<'idle' | 'ok' | 'fail'>('idle');
+let copyStateTimer: ReturnType<typeof setTimeout> | undefined;
+
 const copyLink = async () => {
   if (!survey.value) return;
-  try {
-    await navigator.clipboard.writeText(publicUrl(survey.value.slug));
-  } catch {
-    /* буфер обмена недоступен — ссылка уже видна в поле */
-  }
+  const ok = await copyToClipboard(publicUrl(survey.value.slug));
+  if (!ok) selectElementText(linkEl.value);
+  copyState.value = ok ? 'ok' : 'fail';
+  if (copyStateTimer) clearTimeout(copyStateTimer);
+  copyStateTimer = setTimeout(() => {
+    copyState.value = 'idle';
+  }, ok ? 2000 : 6000);
 };
+
+onBeforeUnmount(() => {
+  if (copyStateTimer) clearTimeout(copyStateTimer);
+});
 </script>
 
 <style scoped>
@@ -617,6 +635,22 @@ const copyLink = async () => {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 0.82rem;
+  user-select: all;
+  word-break: break-all;
+}
+
+.survey-builder__copy-status {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.survey-builder__copy-status--ok {
+  color: var(--sv-accent);
+}
+
+.survey-builder__copy-status--fail {
+  color: #b42318;
 }
 
 .survey-builder__status--draft {
