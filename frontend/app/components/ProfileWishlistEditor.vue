@@ -546,11 +546,19 @@ const save = async () => {
   color: #2d6a4f;
 }
 
+/* Прилипает к низу скролла окна настроек: «Сохранить» всегда под рукой */
 .wish-editor__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  padding: 10px 0 12px;
+  background: #fff;
+  border-top: 1.5px solid #e4e4de;
+  box-shadow: 0 -8px 12px -10px rgba(32, 32, 32, 0.25);
 }
 
 @media (max-width: 560px) {

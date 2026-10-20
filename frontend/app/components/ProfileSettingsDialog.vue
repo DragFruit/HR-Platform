@@ -153,11 +153,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 </script>
 
 <style scoped>
+/*
+ * Окно всегда одного размера (как с пустым вишлистом), какой бы раздел ни был открыт:
+ * меньше контента — пустое место остаётся, больше — скроллится только правая панель.
+ */
 .profile-settings {
   display: flex;
   flex-direction: column;
-  width: min(820px, calc(100vw - 32px));
-  max-height: min(760px, calc(100vh - 32px));
+  box-sizing: border-box;
+  width: min(820px, 92vw);
+  height: min(540px, 86vh);
   padding: 18px 20px 20px;
   border: 2px solid #202020;
   border-radius: 20px;
@@ -166,6 +171,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 }
 
 .profile-settings__head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -182,6 +188,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 .profile-settings__layout {
   display: grid;
   grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 18px;
   min-height: 0;
   flex: 1 1 auto;
@@ -191,6 +198,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
   display: grid;
   align-content: start;
   gap: 8px;
+  min-height: 0;
 }
 
 .profile-settings__tab {
@@ -261,8 +269,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 .profile-settings__panel {
   min-height: 0;
-  padding: 4px 4px 4px 18px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 4px 4px 0 18px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-left: 1.5px solid #e4e4de;
 }
 
@@ -282,11 +293,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
 
 @media (max-width: 720px) {
   .profile-settings {
+    width: 100%;
+    height: calc(100dvh - 32px);
     padding: 14px 14px 16px;
   }
 
   .profile-settings__layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 12px;
   }
 
