@@ -284,7 +284,7 @@ import {
   formatReservationPeriod,
   type VacationReservation
 } from '~/utils/vacationReservations';
-import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
+import { vacationApplicationDenyReason } from '~/utils/vacationApplicationAccess';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { resolveVacationApprovalPath } from '~/utils/vacationApproval';
 
@@ -334,11 +334,15 @@ const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest
 const canManageRequest = (req: VacationRequest) =>
   !isTrainingRequest(req) && !isPastApprovedVacationRequest(req);
 
+/** pending (любой шаг) и approved, ТД, до старта — см. vacationApplicationAccess. */
 const canDownloadVacationApplication = (req: VacationRequest) =>
   !isTrainingRequest(req) &&
-  req.status === 'approved' &&
-  isLaborContractEmployee(currentEmployee.value?.contract_form) &&
-  req.start > todayIso();
+  vacationApplicationDenyReason({
+    status: req.status,
+    start: req.start,
+    today: todayIso(),
+    contractForm: currentEmployee.value?.contract_form
+  }) === null;
 
 const canOpenRequestMenu = (req: VacationRequest) =>
   canManageRequest(req) || canDownloadVacationApplication(req);

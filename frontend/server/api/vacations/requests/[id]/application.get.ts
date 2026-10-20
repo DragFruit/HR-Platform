@@ -1,5 +1,8 @@
 import { send } from 'h3';
-import { employeeNamesMatch } from '../../../../../app/utils/employeeName';
+import {
+  canViewVacationApplication,
+  vacationApplicationDenyReason
+} from '../../../../../app/utils/vacationApplicationAccess';
 import { todayIso } from '../../../../../app/utils/vacationCalendar';
 import { requireVbiSession } from '../../../../utils/session';
 import {
@@ -10,7 +13,6 @@ import {
 import { readVacations } from '../../../../utils/vacationsStore';
 import {
   buildVacationApplicationDocx,
-  isLaborContractEmployee,
   vacationApplicationFilename
 } from '../../../../utils/vacationApplicationDocx';
 
@@ -27,21 +29,8 @@ export default defineEventHandler(async (event) => {
   if (!request) throw createError({ statusCode: 404, statusMessage: 'Заявка не найдена' });
 
   const me = await findEmployeeForSession(session);
-  const elevated = session.role === 'admin' || session.role === 'hr';
-  const owns =
-    (me?.id && request.employee_id && me.id === request.employee_id) ||
-    (me && employeeNamesMatch(me.name, request.employee));
-  if (!elevated && !owns) {
+  if (!canViewVacationApplication({ role: session.role, employeeId: me?.id, employeeName: me?.name }, request)) {
     throw createError({ statusCode: 403, statusMessage: 'Нет доступа к этой заявке' });
-  }
-  if (request.status !== 'approved') {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Заявление доступно только после согласования заявки'
-    });
-  }
-  if (request.start <= todayIso()) {
-    throw createError({ statusCode: 403, statusMessage: 'Заявление доступно до начала отпуска' });
   }
 
   const employee =
@@ -50,12 +39,14 @@ export default defineEventHandler(async (event) => {
   if (!employee) {
     throw createError({ statusCode: 404, statusMessage: 'Сотрудник заявки не найден в справочнике' });
   }
-  if (!isLaborContractEmployee(employee.contract_form)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Заявление доступно только сотрудникам с трудовым договором (ТД)'
-    });
-  }
+  // С 2026-10-20: pending (любой шаг) и approved; rejected — нет. Документ одинаковый для обоих статусов.
+  const denied = vacationApplicationDenyReason({
+    status: request.status,
+    start: request.start,
+    today: todayIso(),
+    contractForm: employee.contract_form
+  });
+  if (denied) throw createError({ statusCode: 403, statusMessage: denied });
 
   let bytes: Buffer;
   try {
