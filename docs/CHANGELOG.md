@@ -4,6 +4,17 @@
 
 ## 2026-10-20
 
+### Профиль: праздничный вишлист и разделы настроек
+
+- **Вишлист**: сотрудник ведёт список «что меня порадует» — пункт словами и/или ссылкой (http/https, домен показывается подписью). До 20 пунктов × 300 символов, свой порядок (↑/↓), пустые пункты отбрасываются. Правит только владелец, читают все вошедшие. Текст выводится как текст (без HTML), ссылки в новой вкладке с `rel="noopener noreferrer"`.
+- **Визитка сотрудника**: заглушка «Вишлист (скоро)» заменена праздничным чипом «🎁 Вишлист · N» → уютная панель (гирлянда-флажки SVG, конфетти, тёплый фон). Пустой вишлист на чужой визитке не показывается; на своей — пунктирный чип и кнопка «Заполнить вишлист» (`/profile?settings=wishlist`).
+- **Настройки профиля**: шестерёнка открывает окно «Настройки профиля» с разделами «🔑 Вход в Вайб» (прежняя форма логина/пароля, глаз и карандаш без изменений), «🎁 Вишлист» (редактор + быстрые идеи), «🙂 Аватар». У имени — кнопка «🎁 Вишлист». На телефоне разделы — вкладки сверху.
+- Хранилище: `profile.wishlists` при `DB_PROFILE=1` (стейдж), миграция `frontend/server/db/migrations/0008_profile_wishlists.sql`; без флага — `frontend/server/data/wishlists.json` (в `.gitignore`). Аудит `profile.wishlist`.
+- API: `GET/PUT /api/profile/wishlist`, `GET /api/employees/:id/wishlist`.
+- Файлы: `frontend/app/utils/wishlist.ts`, `frontend/server/utils/wishlistsStore.ts`, `frontend/server/profile/domains.ts` (`WISHLISTS_DEF`), `frontend/server/profile/importJson.ts`, `frontend/server/utils/profileStore.ts`, `frontend/server/plugins/db-migrate.ts`, компоненты `ProfileSettingsDialog.vue`, `ProfileVibeCredentialsPanel.vue` (бывш. `ProfileVibeCredentialsDialog.vue`), `ProfileWishlistEditor.vue`, `EmployeeWishlistPanel.vue`, `WishlistItemsList.vue`, `WishlistGarland.vue`, `EmployeeVisitingCard.vue`, `pages/profile/index.vue`. Тесты: `frontend/tests/unit/wishlist.test.ts`.
+- Новых ключей localStorage/env нет.
+- Как проверить (стейдж `:8080`): Профиль → «🎁 Вишлист» → добавить «Книга» и ссылку `ozon.ru/...` → «Сохранить вишлист». Другим сотрудником: Профиль → «Твоя команда» → клик по коллеге → в визитке чип «🎁 Вишлист · 2» → панель, ссылка открывается в новой вкладке. Шестерёнка → «Вход в Вайб»: глаз и смена пароля работают как раньше.
+
 ### Ачивка «Первый юбилей»: короче подпись
 
 - Подпись ачивки «Первый юбилей — ачивка без купона» заменена на «Первый юбилей» (`frontend/app/data/achievementsCatalog.ts`).

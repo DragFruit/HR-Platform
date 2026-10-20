@@ -6,14 +6,17 @@ import {
   SALES_BEST_AWARDS_DEF,
   USER_AVATARS_DEF,
   VIBE_PASSWORDS_DEF,
+  WISHLISTS_DEF,
   profileActivityJsonIo,
   salesBestJsonIo,
   userAvatarsJsonIo,
   vibePasswordsJsonIo,
+  wishlistsJsonIo,
   type AvatarEntry,
   type ProfileActivityRaw,
   type SalesBestAwardRaw,
   type VibePasswordEntry,
+  type WishlistEntry,
   normalizeProfileActivityKind
 } from '../profile/domains';
 import seed from '../data/profile-activity.json';
@@ -71,23 +74,27 @@ const salesBest = profileGate<SalesBestAwardRaw>('награды продаж', 
   createJsonKeyedListRepo(salesBestJsonIo())
 );
 const vibe = profileGate<VibePasswordEntry>('пароли Vibe', VIBE_PASSWORDS_DEF, () => createJsonKeyedListRepo(vibePasswordsJsonIo()));
+const wishlist = profileGate<WishlistEntry>('вишлисты', WISHLISTS_DEF, () => createJsonKeyedListRepo(wishlistsJsonIo()));
 
 export const userAvatarsRepo = avatars.repo;
 export const profileActivityRepo = activity.repo;
 export const salesBestAwardsRepo = salesBest.repo;
 export const vibePasswordsRepo = vibe.repo;
+export const wishlistsRepo = wishlist.repo;
 
 /** Вызывает плагин db-migrate после импорта каждого файла. */
 export const setUserAvatarsPgReady = avatars.setReady;
 export const setProfileActivityPgReady = activity.setReady;
 export const setSalesBestAwardsPgReady = salesBest.setReady;
 export const setVibePasswordsPgReady = vibe.setReady;
+export const setWishlistsPgReady = wishlist.setReady;
 
 export function setAllProfilePgReady(ok: boolean) {
   avatars.setReady(ok);
   activity.setReady(ok);
   salesBest.setReady(ok);
   vibe.setReady(ok);
+  wishlist.setReady(ok);
 }
 
 /** Где сейчас живёт каждый домен профиля (для /api/admin/db-health). */
@@ -96,6 +103,7 @@ export async function getProfileBackends() {
     userAvatars: (await avatars.repo()).backend,
     profileActivity: (await activity.repo()).backend,
     salesBestAwards: (await salesBest.repo()).backend,
-    vibePasswords: (await vibe.repo()).backend
+    vibePasswords: (await vibe.repo()).backend,
+    wishlists: (await wishlist.repo()).backend
   };
 }

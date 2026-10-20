@@ -1,140 +1,132 @@
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="org-confirm-overlay"
-      role="presentation"
-      @click.self="close"
-    >
-      <form
-        class="vibe-creds-card card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="profile-vibe-creds-title"
-        @submit.prevent="submit"
-      >
-        <h3 id="profile-vibe-creds-title" class="vibe-creds-title">Вход в Vibe</h3>
-        <p class="vibe-creds-hint muted">Логин и пароль для входа без Битрикса.</p>
+  <form
+    class="vibe-creds-card"
+    aria-labelledby="profile-vibe-creds-title"
+    @submit.prevent="submit"
+  >
+    <h3 id="profile-vibe-creds-title" class="vibe-creds-title">Вход в Вайб</h3>
+    <p class="vibe-creds-hint muted">
+      Логин и пароль для входа без Битрикса. Глаз — показать пароль, карандаш — сменить.
+    </p>
 
-        <label class="vibe-creds-field">
-          <span class="vibe-creds-label">Логин (email)</span>
+    <label class="vibe-creds-field">
+      <span class="vibe-creds-label">Логин (email)</span>
+      <input
+        v-model="login"
+        type="email"
+        class="table-input"
+        autocomplete="username"
+        placeholder="name@company.ru"
+        :readonly="!editing"
+        required
+      />
+    </label>
+
+    <div class="vibe-creds-field">
+      <span class="vibe-creds-label">Пароль</span>
+      <div class="vibe-creds-password-row">
+        <div class="vibe-creds-password-wrap">
           <input
-            v-model="login"
-            type="email"
-            class="table-input"
-            autocomplete="username"
-            placeholder="name@company.ru"
+            :key="passwordVisible ? 'pw-visible' : 'pw-hidden'"
+            ref="passwordInput"
+            v-model="password"
+            class="table-input vibe-creds-password-input"
+            :type="passwordVisible ? 'text' : 'password'"
+            autocomplete="new-password"
             :readonly="!editing"
-            required
+            :placeholder="passwordPlaceholder"
+            :required="editing && !hasPassword"
+            @keydown.enter.prevent="editing && submit()"
           />
-        </label>
-
-        <div class="vibe-creds-field">
-          <span class="vibe-creds-label">Пароль</span>
-          <div class="vibe-creds-password-row">
-            <div class="vibe-creds-password-wrap">
-              <input
-                :key="passwordVisible ? 'pw-visible' : 'pw-hidden'"
-                ref="passwordInput"
-                v-model="password"
-                class="table-input vibe-creds-password-input"
-                :type="passwordVisible ? 'text' : 'password'"
-                autocomplete="new-password"
-                :readonly="!editing"
-                :placeholder="passwordPlaceholder"
-                :required="editing && !hasPassword"
-                @keydown.enter.prevent="editing && submit()"
-              />
-              <button
-                type="button"
-                class="vibe-creds-eye"
-                :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-                :title="passwordVisible ? 'Скрыть' : 'Показать'"
-                @click="togglePasswordVisible"
-              >
-                <svg
-                  v-if="passwordVisible"
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linejoin="round"
-                  />
-                  <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
-                </svg>
-                <svg
-                  v-else
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linejoin="round"
-                  />
-                  <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
-                  <path
-                    d="M4 20 20 4"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <button
-              type="button"
-              class="vibe-creds-pencil"
-              aria-label="Изменить пароль"
-              title="Изменить"
-              :disabled="editing"
-              @click="startEdit"
+          <button
+            type="button"
+            class="vibe-creds-eye"
+            :aria-label="passwordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+            :title="passwordVisible ? 'Скрыть' : 'Показать'"
+            @click="togglePasswordVisible"
+          >
+            <svg
+              v-if="passwordVisible"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              aria-hidden="true"
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-                <path
-                  d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <p v-if="formError" class="vibe-creds-error" role="alert">{{ formError }}</p>
-        <p v-if="formOk" class="vibe-creds-ok" role="status">{{ formOk }}</p>
-
-        <div v-if="editing" class="vibe-creds-actions row">
-          <button type="button" class="button ghost" :disabled="submitting" @click="cancelEdit">
-            Отмена
+              <path
+                d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+            </svg>
+            <svg
+              v-else
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.8" />
+              <path
+                d="M4 20 20 4"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
-          <button type="submit" class="button primary" :disabled="submitting">
-            {{ submitting ? 'Сохранение…' : 'Сохранить' }}
-          </button>
         </div>
-      </form>
+        <button
+          type="button"
+          class="vibe-creds-pencil"
+          aria-label="Изменить пароль"
+          title="Изменить"
+          :disabled="editing"
+          @click="startEdit"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+            <path
+              d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
-  </Teleport>
+
+    <p v-if="formError" class="vibe-creds-error" role="alert">{{ formError }}</p>
+    <p v-if="formOk" class="vibe-creds-ok" role="status">{{ formOk }}</p>
+
+    <div v-if="editing" class="vibe-creds-actions row">
+      <button type="button" class="button ghost" :disabled="submitting" @click="cancelEdit">
+        Отмена
+      </button>
+      <button type="submit" class="button primary" :disabled="submitting">
+        {{ submitting ? 'Сохранение…' : 'Сохранить' }}
+      </button>
+    </div>
+  </form>
 </template>
 
 <script setup lang="ts">
 import type { AuthSessionUser } from '~/composables/useAuth';
 
-const props = defineProps<{ open: boolean }>();
+/** Вкладка «Вход в Вайб» в настройках профиля (бывший отдельный диалог шестерёнки). */
 const emit = defineEmits<{
-  'update:open': [value: boolean];
   saved: [payload: { login: string; user: AuthSessionUser }];
+  /** Идёт сохранение — диалог настроек не закрывается. */
+  busy: [value: boolean];
 }>();
 
 const { user } = useAuth();
@@ -188,17 +180,11 @@ const load = async () => {
   applyViewPassword();
 };
 
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) void load();
-  }
-);
+onMounted(() => {
+  void load();
+});
 
-const close = () => {
-  if (submitting.value) return;
-  emit('update:open', false);
-};
+watch(submitting, (value) => emit('busy', value));
 
 const togglePasswordVisible = () => {
   passwordVisible.value = !passwordVisible.value;
@@ -293,7 +279,6 @@ const submit = async () => {
     formOk.value = 'Сохранено';
     await reloadFromServer().catch(() => {});
     emit('saved', { login: res.login, user: res.user });
-    window.setTimeout(() => emit('update:open', false), 700);
   } catch (err: unknown) {
     const fetchErr = err as { data?: { statusMessage?: string }; statusMessage?: string };
     formError.value =
@@ -306,10 +291,8 @@ const submit = async () => {
 
 <style scoped>
 .vibe-creds-card {
-  width: min(420px, calc(100vw - 2rem));
-  padding: 1.25rem 1.5rem 1.5rem;
-  border: 2px solid #111;
-  box-shadow: 4px 4px 0 #ddf365;
+  display: block;
+  max-width: 420px;
 }
 
 .vibe-creds-title {

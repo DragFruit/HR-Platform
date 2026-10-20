@@ -90,3 +90,15 @@ export const profileJsonImports = profileSchema.table('json_imports', {
   inserted: integer('inserted').notNull(),
   skipped: integer('skipped').notNull()
 });
+
+/**
+ * Вишлист сотрудника — одна строка на сотрудника (JSON-бэкенд: server/data/wishlists.json → entries).
+ * items — список { id, text, url } после проверки app/utils/wishlist.ts; правит только владелец.
+ */
+export const wishlists = profileSchema.table('wishlists', {
+  employeeId: integer('employee_id').primaryKey(),
+  position: integer('position').notNull().default(0),
+  items: json('items').$type<unknown[]>().notNull(),
+  /** Когда владелец последний раз сохранял (ISO в JSON-бэкенде). */
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull()
+});

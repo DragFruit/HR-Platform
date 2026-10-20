@@ -92,15 +92,19 @@
 
             <span v-if="displayAchievements.length" class="emp-card__rail-sep" aria-hidden="true" />
             <span class="emp-card__rail-ideas">Идеи: {{ ideasCount }}</span>
-            <span class="emp-card__rail-sep" aria-hidden="true" />
-            <button
-              type="button"
-              class="emp-card__rail-link"
-              title="Скоро"
-              disabled
-            >
-              Вишлист
-            </button>
+            <template v-if="wishlistChipVisible">
+              <span class="emp-card__rail-sep" aria-hidden="true" />
+              <button
+                type="button"
+                class="emp-card__wish-chip"
+                :class="{ 'emp-card__wish-chip--empty': !wishlistItems.length }"
+                :title="wishlistItems.length ? 'Открыть вишлист' : 'Заполнить вишлист'"
+                @click="wishlistOpen = true"
+              >
+                <span aria-hidden="true">🎁</span>
+                Вишлист<template v-if="wishlistItems.length"> · {{ wishlistItems.length }}</template>
+              </button>
+            </template>
             <span class="emp-card__rail-sep" aria-hidden="true" />
             <a
               v-if="bitrixUrl"
@@ -137,6 +141,13 @@
           />
         </div>
       </article>
+      <EmployeeWishlistPanel
+        :open="wishlistOpen"
+        :name="displayNameShort"
+        :items="wishlistItems"
+        :own="wishlistOwn"
+        @close="onWishlistClose"
+      />
     </template>
   </Teleport>
 </template>
@@ -150,6 +161,7 @@ import {
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import type { WishlistItem } from '~/utils/wishlist';
 
 const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
@@ -270,6 +282,41 @@ watch(
     await placeCard();
   }
 );
+
+/* ---------- вишлист: чип в рейле + праздничная панель ---------- */
+const wishlistItems = ref<WishlistItem[]>([]);
+const wishlistOwn = ref(false);
+const wishlistOpen = ref(false);
+/** У чужих пустой вишлист не показываем; у себя — «заполнить». */
+const wishlistChipVisible = computed(() => wishlistItems.value.length > 0 || wishlistOwn.value);
+const displayNameShort = computed(() => formatEmployeeShortName(employee.value?.name ?? '') || 'Сотрудник');
+
+let wishlistRequest = 0;
+watch(
+  openEmployeeId,
+  async (id) => {
+    const req = ++wishlistRequest;
+    wishlistOpen.value = false;
+    wishlistItems.value = [];
+    wishlistOwn.value = false;
+    if (id == null || !import.meta.client) return;
+    try {
+      const data = await $fetch<{ items: WishlistItem[]; own: boolean }>(`/api/employees/${id}/wishlist`);
+      if (req !== wishlistRequest) return;
+      wishlistItems.value = Array.isArray(data.items) ? data.items : [];
+      wishlistOwn.value = Boolean(data.own);
+    } catch {
+      /* нет вишлиста / нет доступа — чип просто не покажем */
+    }
+    if (req === wishlistRequest) void placeCard();
+  },
+  { immediate: true }
+);
+
+const onWishlistClose = (closeAll?: boolean) => {
+  wishlistOpen.value = false;
+  if (closeAll) closeEmployeeVisitingCard();
+};
 
 onMounted(() => {
   const onKey = (e: KeyboardEvent) => {
@@ -592,11 +639,40 @@ onMounted(() => {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-button.emp-card__rail-link:disabled {
-  color: var(--purple);
-  opacity: 1;
-  cursor: default;
-  text-decoration: underline;
+/* Вишлист: праздничный чип (пустой — только на своей визитке, пунктиром) */
+.emp-card__wish-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px 2px 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: nowrap;
+  background: linear-gradient(135deg, #ddf365 0%, #f3b33e 100%);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 1.5px 1.5px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.emp-card__wish-chip:hover {
+  transform: translate(-1px, -1px) rotate(-1.5deg);
+  box-shadow: 2.5px 2.5px 0 var(--ink);
+}
+
+.emp-card__wish-chip:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.emp-card__wish-chip--empty {
+  background: #fff;
+  border-style: dashed;
+  box-shadow: none;
 }
 
 .emp-card__rail-link--off {

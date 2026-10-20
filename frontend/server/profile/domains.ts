@@ -1,6 +1,7 @@
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { profileActivity, salesBestAwards, userAvatars, vibePasswords } from '../db/schema';
+import { profileActivity, salesBestAwards, userAvatars, vibePasswords, wishlists } from '../db/schema';
+import { sanitizeStoredWishlist, type WishlistItem } from '../../app/utils/wishlist';
 import { isInt, isoTimestamp, isStr, mapFromColumns, mapToColumns, nullColumns, type FieldSpecs } from '../db/fieldMapping';
 import { writeJsonAtomic } from '../utils/atomicJson';
 import type { KeyedListDef } from '../db/repositories/keyedList';
@@ -23,6 +24,10 @@ export const USER_AVATARS_LOCK_KEY = 72_461_011;
 export const PROFILE_ACTIVITY_LOCK_KEY = 72_461_012;
 export const SALES_BEST_AWARDS_LOCK_KEY = 72_461_013;
 export const VIBE_PASSWORDS_LOCK_KEY = 72_461_014;
+/** 015/016 заняты идеями и базой знаний (этап 7), 021+ — этап 8. */
+export const WISHLISTS_LOCK_KEY = 72_461_017;
+
+export const WISHLISTS_JSON_FILE = dataFile('wishlists.json');
 
 async function readJsonOr<T>(file: string, fallback: T): Promise<unknown> {
   let raw: string;
@@ -306,5 +311,70 @@ export const VIBE_PASSWORDS_DEF: KeyedListDef<VibePasswordEntry> = {
     if (change.before.password_hash !== change.after.password_hash) return { action: 'password_set', after };
     if (change.before.password_seal !== change.after.password_seal) return { action: 'password_seal_added', after };
     return { action: 'password_touched', after };
+  }
+};
+
+// ---------- вишлист ----------
+
+/** Вишлист одного сотрудника (ключ — id в справочнике сотрудников). */
+export type WishlistEntry = {
+  employee_id: number;
+  items: WishlistItem[];
+  updated_at: string;
+};
+
+const toIso = (v: unknown): string => {
+  const d = v instanceof Date ? v : new Date(String(v ?? ''));
+  return Number.isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+};
+
+/** Записи из файла: только с целым employee_id, пункты чистятся так же, как при чтении из базы. */
+export function wishlistEntriesFromFile(parsed: unknown): WishlistEntry[] {
+  const raw = (parsed as { entries?: unknown } | null)?.entries;
+  if (!Array.isArray(raw)) return [];
+  const out: WishlistEntry[] = [];
+  for (const row of raw) {
+    const e = row as Record<string, unknown> | null;
+    if (!e || typeof e !== 'object' || !isInt(e.employee_id)) continue;
+    out.push({ employee_id: e.employee_id as number, items: sanitizeStoredWishlist(e.items), updated_at: toIso(e.updated_at) });
+  }
+  return out;
+}
+
+export async function readWishlistsFile(file = WISHLISTS_JSON_FILE): Promise<unknown> {
+  return readJsonOr(file, { entries: [] });
+}
+
+export const wishlistsJsonIo = (file = WISHLISTS_JSON_FILE) => ({
+  async read() {
+    return wishlistEntriesFromFile(await readWishlistsFile(file));
+  },
+  async write(entries: WishlistEntry[]) {
+    await mkdir(dirname(file), { recursive: true });
+    await writeJsonAtomic(file, { entries });
+  }
+});
+
+export const WISHLISTS_DEF: KeyedListDef<WishlistEntry> = {
+  table: wishlists,
+  keyProp: 'employeeId',
+  lockKey: WISHLISTS_LOCK_KEY,
+  auditEntity: 'profile.wishlist',
+  logTag: 'wishlists',
+  touchUpdatedAt: false,
+  toRow: (e, position) =>
+    e && isInt(e.employee_id) && Array.isArray(e.items)
+      ? { employeeId: e.employee_id, position, items: e.items, updatedAt: new Date(e.updated_at) }
+      : null,
+  fromRow: (r) => ({
+    employee_id: r.employeeId as number,
+    items: sanitizeStoredWishlist(r.items),
+    updated_at: toIso(r.updatedAt)
+  }),
+  /** Аудит: сколько пунктов было/стало и сами пункты (это не секрет, но и не HTML). */
+  audit(change, reason) {
+    if (change.kind === 'create') return { action: 'wishlist_set', after: { reason, items: change.after.items } };
+    if (change.kind === 'delete') return { action: 'wishlist_cleared', before: { items: change.before.items }, after: reason ? { reason } : null };
+    return { action: 'wishlist_set', before: { items: change.before.items }, after: { reason, items: change.after.items } };
   }
 };

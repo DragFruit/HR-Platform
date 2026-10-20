@@ -40,7 +40,8 @@ import {
   importProfileActivityFromJson,
   importSalesBestAwardsFromJson,
   importUserAvatarsFromJson,
-  importVibePasswordsFromJson
+  importVibePasswordsFromJson,
+  importWishlistsFromJson
 } from '../profile/importJson';
 import {
   profileDbFlag,
@@ -48,7 +49,8 @@ import {
   setProfileActivityPgReady,
   setSalesBestAwardsPgReady,
   setUserAvatarsPgReady,
-  setVibePasswordsPgReady
+  setVibePasswordsPgReady,
+  setWishlistsPgReady
 } from '../utils/profileStore';
 import { importIdeasFromJson } from '../ideas/domain';
 import { IDEAS_STATE_FULL_DEF, ideasDbFlag, setIdeasPgReady } from '../utils/ideasStore';
@@ -347,6 +349,7 @@ export default defineNitroPlugin(() => {
         setProfileActivityPgReady(await importProfilePart('лента активности', (db) => importProfileActivityFromJson(db)));
         setSalesBestAwardsPgReady(await importProfilePart('награды продаж', (db) => importSalesBestAwardsFromJson(db)));
         setVibePasswordsPgReady(await importProfilePart('пароли Vibe', (db) => importVibePasswordsFromJson(db)));
+        setWishlistsPgReady(await importProfilePart('вишлисты', (db) => importWishlistsFromJson(db)));
         setIdeasPgReady(await importStatePart('ideas', 'банк идей', ideasDbFlag, (db) => importIdeasFromJson(db, IDEAS_STATE_FULL_DEF)));
         const knowledgeOk = await importStatePart('knowledge', 'статьи базы знаний', knowledgeDbFlag, (db) =>
           importKnowledgeArticlesFromJson(db, KNOWLEDGE_STATE_FULL_DEF)

@@ -10,11 +10,15 @@ import {
   USER_AVATARS_JSON_FILE,
   VIBE_PASSWORDS_DEF,
   VIBE_PASSWORDS_JSON_FILE,
+  WISHLISTS_DEF,
+  WISHLISTS_JSON_FILE,
   avatarEntriesFromMap,
   readProfileActivityFileItems,
   readSalesBestFileAwards,
   readUserAvatarsFile,
-  readVibePasswordsFileEntries
+  readVibePasswordsFileEntries,
+  readWishlistsFile,
+  wishlistEntriesFromFile
 } from './domains';
 
 /**
@@ -60,5 +64,17 @@ export async function importVibePasswordsFromJson(db: Db, file = VIBE_PASSWORDS_
     source: 'vibe-passwords.json',
     jsonImports: profileJsonImports,
     items: await readVibePasswordsFileEntries(file)
+  });
+}
+
+/** wishlists.json (если был на JSON-бэкенде) → profile.wishlists. Нет файла → 0 записей. */
+export async function importWishlistsFromJson(db: Db, file = WISHLISTS_JSON_FILE): Promise<KeyedImportResult> {
+  const parsed = await readWishlistsFile(file);
+  const raw = (parsed as { entries?: unknown } | null)?.entries;
+  return importKeyedListFromJson(db, WISHLISTS_DEF, {
+    source: 'wishlists.json',
+    jsonImports: profileJsonImports,
+    items: wishlistEntriesFromFile(parsed),
+    fileCount: Array.isArray(raw) ? raw.length : 0
   });
 }

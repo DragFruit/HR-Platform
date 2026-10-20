@@ -38,9 +38,9 @@
                 v-if="isOwnProfile"
                 type="button"
                 class="profile-identity__settings-btn"
-                aria-label="Логин и пароль Vibe"
-                title="Логин и пароль Vibe"
-                @click="vibeCredsOpen = true"
+                aria-label="Настройки профиля"
+                title="Настройки: вход, вишлист, аватар"
+                @click="openSettings('login')"
               >
                 <img
                   class="profile-identity__settings-gear"
@@ -50,6 +50,15 @@
                   height="22"
                   draggable="false"
                 />
+              </button>
+              <button
+                v-if="isOwnProfile"
+                type="button"
+                class="profile-identity__wish-btn"
+                title="Мой вишлист"
+                @click="openSettings('wishlist')"
+              >
+                <span aria-hidden="true">🎁</span> Вишлист
               </button>
               <a
                 v-if="bitrixProfileHref"
@@ -525,7 +534,7 @@
     </div>
   </Teleport>
 
-  <ProfileVibeCredentialsDialog v-model:open="vibeCredsOpen" />
+  <ProfileSettingsDialog v-model:open="vibeCredsOpen" v-model:tab="settingsTab" />
 </template>
 
 <script setup lang="ts">
@@ -571,6 +580,24 @@ const hasEarnedAchievements = computed(() => catalogForProfilePreview.value.leng
 
 const showPicker = ref(false);
 const vibeCredsOpen = ref(false);
+/** Раздел настроек профиля: вход, вишлист, аватар (?settings=wishlist открывает сразу). */
+type SettingsTab = 'login' | 'wishlist' | 'avatar';
+const settingsTab = ref<SettingsTab>('login');
+const openSettings = (tab: SettingsTab) => {
+  settingsTab.value = tab;
+  vibeCredsOpen.value = true;
+};
+watch(
+  () => route.query.settings,
+  (raw) => {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value !== 'login' && value !== 'wishlist' && value !== 'avatar') return;
+    openSettings(value);
+    const { settings: _drop, ...rest } = route.query;
+    void navigateTo({ path: route.path, query: rest }, { replace: true });
+  },
+  { immediate: true }
+);
 const achievementsOpen = ref(false);
 const achievementsPreviewRef = ref<HTMLElement | null>(null);
 const achievementsVisibleCount = ref(8);

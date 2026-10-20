@@ -347,6 +347,18 @@ IMAP → корпоративный Telegram и/или кнопка в помо�
 
 Сервер: `server/data/user-avatars.json`. Клиент: `useAvatars` + плагин `avatars.client.ts` (гидратация после входа). Локальный `vbi-user-avatars-v1` — кэш; при входе локальный аватар без записи на сервере подгружается автоматически.
 
+### Вишлист (API)
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/profile/wishlist` | Свой вишлист `{ employee_id, items, updated_at }` (сотрудник из сессии) |
+| `PUT /api/profile/wishlist` | Сохранить свой целиком `{ items: [{ id?, text, url }] }`; 400 — понятный текст ошибки; rate-limit 30/мин |
+| `GET /api/employees/:id/wishlist` | Вишлист сотрудника для визитки + `own` (это я?) — любой вошедший |
+
+- Правила проверки — одни на клиент и сервер: `app/utils/wishlist.ts` (`validateWishlistInput`, `normalizeWishUrl`, `sanitizeStoredWishlist`; лимиты 20 × 300, URL ≤ 1000, только http/https без логина в адресе). Сервер: `server/utils/wishlistsStore.ts`.
+- Хранилище: `DB_PROFILE=1` → `profile.wishlists` (миграция `0008_profile_wishlists.sql`, одна строка на сотрудника, `items json`), иначе `server/data/wishlists.json` (`{ entries: [...] }`, в `.gitignore`). Репозиторий — общий `keyedList` (lock `72461017`), аудит `profile.wishlist`: `wishlist_set` / `wishlist_cleared` с пунктами до/после и `actor_employee_id`.
+- UI: `ProfileSettingsDialog.vue` (разделы: `ProfileVibeCredentialsPanel.vue` — бывший `ProfileVibeCredentialsDialog`, `ProfileWishlistEditor.vue`, аватар), `EmployeeVisitingCard.vue` → чип + `EmployeeWishlistPanel.vue`, общие `WishlistItemsList.vue`, `WishlistGarland.vue` (SVG-гирлянда).
+
 ### Уведомления администратора (Bitrix)
 
 | Endpoint | Назначение |
@@ -660,6 +672,7 @@ JSON-файл не удаляется (бэкап на момент переез
 | Лента «Недавняя активность» | `profile-activity.json` (`items`) | `profile.activity` |
 | «Лучший специалист продаж» | `sales-best-awards.json` (`awards`) | `profile.sales_best_awards` |
 | Пароли входа Vibe | `vibe-passwords.json` (`entries`) | `profile.vibe_passwords` |
+| Вишлисты (с 2026-10-20) | `wishlists.json` (`entries`) | `profile.wishlists` (миграция `0008`) |
 
 Флаг `DB_PROFILE=1` (новый, один на все четыре) только в `/etc/vbi-hr/bitrix.env` стейджа; на проде его нет, там JSON. Миграция `0005_profile.sql`, схема `profile`, маркеры импорта в `profile.json_imports`.
 

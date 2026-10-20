@@ -228,7 +228,7 @@ describe.skipIf(!TEST_DB)('Postgres', () => {
     const [row] = await sql`select count(*)::int as n from drizzle.__drizzle_migrations`;
     expect(row!.n).toBeGreaterThanOrEqual(6);
     const tables = await sql`select table_name from information_schema.tables where table_schema = 'profile' order by 1`;
-    expect(tables.map((t) => t.table_name)).toEqual(['activity', 'json_imports', 'sales_best_awards', 'user_avatars', 'vibe_passwords']);
+    expect(tables.map((t) => t.table_name)).toEqual(['activity', 'json_imports', 'sales_best_awards', 'user_avatars', 'vibe_passwords', 'wishlists']);
   });
 
   it('запись — только изменения: неизменённые строки не трогаются', async () => {
