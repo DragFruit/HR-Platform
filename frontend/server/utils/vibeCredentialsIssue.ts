@@ -59,11 +59,16 @@ export function generateVibePassword(length = VIBE_PASSWORD_LENGTH): string {
 }
 
 const VBI_EMAIL_RE = /^[a-z0-9][a-z0-9._%+-]*@vbi\.ru$/;
+const ANY_EMAIL_RE = /^[a-z0-9][a-z0-9._%+-]*@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
 
-/** Логин для выдачи: email справочника на @vbi.ru (регистр не важен), иначе null. */
+/**
+ * Логин для выдачи: email справочника в нижнем регистре. Приоритет у @vbi.ru;
+ * нет такого, берём имеющийся корректный email (например @vbi.kz). Пусто или мусор: null.
+ */
 export function vibeLoginEmail(email: unknown): string | null {
   const e = String(email ?? '').trim().toLowerCase();
-  return VBI_EMAIL_RE.test(e) ? e : null;
+  if (VBI_EMAIL_RE.test(e)) return e;
+  return ANY_EMAIL_RE.test(e) ? e : null;
 }
 
 /** Текст сообщения сотруднику (утверждён заказчиком дословно). */
@@ -126,7 +131,7 @@ const REASON = {
   revoked: 'доступ закрыт (denylist)',
   noBitrix: 'нет Bitrix ID: бот не сможет написать',
   noEmail: 'нет email в справочнике',
-  notVbi: 'email не на @vbi.ru',
+  badEmail: 'email в справочнике некорректный',
   loginConflict: 'по этому email вход находит другого сотрудника',
   hasPassword: 'пароль Vibe уже задан (overwriteExisting не включён)',
   undelivered: 'пароль выдан, но не доставлен: повторить через resendUndelivered',
@@ -156,7 +161,7 @@ async function checkEligible(
   if (isQaTestEmployeeRow(emp)) return { skip: REASON.qa, email: rawEmail };
   if (!rawEmail) return { skip: REASON.noEmail, email: '' };
   const email = vibeLoginEmail(rawEmail);
-  if (!email) return { skip: REASON.notVbi, email: rawEmail };
+  if (!email) return { skip: REASON.badEmail, email: rawEmail };
   const bitrixUserId = Number(emp.bitrix_user_id || 0);
   if (!Number.isFinite(bitrixUserId) || bitrixUserId <= 0) return { skip: REASON.noBitrix, email };
   if (findEmployeeByVibeLogin(roster, email)?.id !== emp.id) return { skip: REASON.loginConflict, email };

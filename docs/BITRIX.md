@@ -225,7 +225,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 #### Выдача логина и пароля ботом (`POST /api/cron/vibe-credentials`)
 
-Массовая (или точечная) выдача: логин = email сотрудника на `@vbi.ru`, пароль = свой для каждого, 16 символов (заглавные, строчные, цифры, `!@#%+=?`, без похожих `0/O/o/1/l/I`), `crypto.randomInt`. Код: `server/utils/vibeCredentialsIssue.ts`.
+Массовая (или точечная) выдача: логин = email сотрудника из справочника: если он на `@vbi.ru`, берём его; если почта на другом домене (например `@vbi.kz`), логином становится она же (решение заказчика 20.10.2026). Пароль = свой для каждого, 16 символов (заглавные, строчные, цифры, `!@#%+=?`, без похожих `0/O/o/1/l/I`), `crypto.randomInt`. Код: `server/utils/vibeCredentialsIssue.ts`.
 
 Порядок на человека: пароль записывается тем же путём, что у админки (`setVibePassword`: хеш + seal, аудит `password_set` с `reason=vibe-credentials-issued`) → проверка тем же поиском по логину и `checkVibePassword`, что у `vibe-login`, и что seal открывается (глаз) → сообщение от чат-бота `imbot.message.add` (`bitrixImbot.ts`) → отметка `credentials_sent_at` (аудит `credentials_sent`). Значений в аудите, логах и ответе нет: только статусы.
 
@@ -240,7 +240,7 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 Пароль: <пароль>
 ```
 
-Кого пропускаем (статус `skipped` с причиной): нет в справочнике / denylist, QA-отдел, нет email или он не на `@vbi.ru`, нет `bitrix_user_id`, по email вход находит другого сотрудника, пароль Vibe уже есть (пока не передан `overwriteExisting: true`).
+Кого пропускаем (статус `skipped` с причиной): нет в справочнике / denylist, QA-отдел, нет email или он некорректный, нет `bitrix_user_id`, по email вход находит другого сотрудника, пароль Vibe уже есть (пока не передан `overwriteExisting: true`).
 
 Статусы: `would_issue` / `would_overwrite` / `would_resend` (dry run), `sent`, `resent`, `set_not_delivered` (пароль задан, бот не доставил: повторить), `skipped`, `failed`.
 

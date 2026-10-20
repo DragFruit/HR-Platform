@@ -59,6 +59,7 @@ import {
   vibeLoginEmail
 } from '../../server/utils/vibeCredentialsIssue';
 import { checkVibePassword, getVibePasswordPlain, setVibePassword } from '../../server/utils/vibePasswordsStore';
+import { findEmployeeByVibeLogin } from '../../server/utils/vibeLogin';
 
 const PASSWORD_IN_MESSAGE = /Пароль: (.+)$/m;
 const passwordOf = (message: string) => PASSWORD_IN_MESSAGE.exec(message)![1]!;
@@ -81,11 +82,14 @@ describe('generateVibePassword', () => {
 });
 
 describe('vibeLoginEmail', () => {
-  it('только @vbi.ru, без учёта регистра', () => {
+  it('@vbi.ru в приоритете, иначе имеющийся корректный email; регистр не важен', () => {
     expect(vibeLoginEmail(' Drago.S@VBI.RU ')).toBe('drago.s@vbi.ru');
-    expect(vibeLoginEmail('a@vbi.kz')).toBeNull();
-    expect(vibeLoginEmail('a@mail.vbi.ru')).toBeNull();
-    expect(vibeLoginEmail('a@vbi.ru.evil.com')).toBeNull();
+    expect(vibeLoginEmail('A@VBI.KZ')).toBe('a@vbi.kz');
+    expect(vibeLoginEmail('a@mail.vbi.ru')).toBe('a@mail.vbi.ru');
+    expect(vibeLoginEmail('ivan.petrov@gmail.com')).toBe('ivan.petrov@gmail.com');
+    expect(vibeLoginEmail('not-an-email')).toBeNull();
+    expect(vibeLoginEmail('a@b')).toBeNull();
+    expect(vibeLoginEmail('a b@vbi.kz')).toBeNull();
     expect(vibeLoginEmail('')).toBeNull();
     expect(vibeLoginEmail(undefined)).toBeNull();
   });
@@ -116,7 +120,8 @@ describe('issueVibeCredentials', () => {
       { id: 4, name: 'Без почты', email: '', bitrix_user_id: 11 },
       { id: 5, name: 'Уже с паролем', email: 'has@vbi.ru', bitrix_user_id: 12 },
       { id: 6, name: 'Закрыт', email: 'gone@vbi.ru', bitrix_user_id: 13 },
-      { id: 9001, name: 'Мария Тестова', email: 'qa@vbi.ru', bitrix_user_id: 14 }
+      { id: 9001, name: 'Мария Тестова', email: 'qa@vbi.ru', bitrix_user_id: 14 },
+      { id: 7, name: 'Кривая почта', email: 'not-an-email', bitrix_user_id: 15 }
     ];
     mocks.revokedEmails = new Set(['gone@vbi.ru']);
     mocks.entries = [];
@@ -151,7 +156,8 @@ describe('issueVibeCredentials', () => {
     expect(res.dry_run).toBe(true);
     const by = Object.fromEntries(res.rows.map((r) => [r.employee_id, r]));
     expect(by[1]).toMatchObject({ status: 'would_issue', email: 'drago@vbi.ru', bitrix_user_id: 2684 });
-    expect(by[2]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('@vbi.ru') });
+    expect(by[2]).toMatchObject({ status: 'would_issue', email: 'k@vbi.kz', bitrix_user_id: 10 });
+    expect(by[7]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('некорректный') });
     expect(by[3]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('Bitrix ID') });
     expect(by[4]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('нет email') });
     expect(by[5]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('уже задан') });
@@ -201,6 +207,31 @@ describe('issueVibeCredentials', () => {
     expect(JSON.stringify(res)).not.toContain('Твои доступы');
     expect(logs.join('\n')).not.toContain(pw);
     expect(logs.join('\n')).not.toContain('Твои доступы');
+  });
+
+  it('почта не на @vbi.ru: логин = имеющийся email, реальный вход находит именно этого сотрудника', async () => {
+    const res = await issueVibeCredentials({ employeeIds: [2], dryRun: false });
+    expect(res.rows[0]).toMatchObject({ employee_id: 2, status: 'sent', email: 'k@vbi.kz' });
+    const pw = passwordOf(mocks.sent[0]!.message);
+    expect(mocks.sent[0]!.message).toBe(vibeCredentialsMessage('k@vbi.kz', pw));
+    expect(findEmployeeByVibeLogin(mocks.employees, 'K@VBI.KZ')?.id).toBe(2);
+    expect(await checkVibePassword(2, pw)).toBe(true);
+  });
+
+  it('email не на @vbi.ru находит другого сотрудника → skipped, пароль не задаётся', async () => {
+    mocks.employees.push({ id: 8, name: 'Двойник', email: 'K@vbi.kz', bitrix_user_id: 16 });
+    const res = await issueVibeCredentials({ employeeIds: [8], dryRun: false });
+    expect(res.rows[0]).toMatchObject({ employee_id: 8, status: 'skipped', reason: expect.stringContaining('другого') });
+    expect(mocks.entries).toHaveLength(0);
+    expect(mocks.sent).toHaveLength(0);
+  });
+
+  it('у кого уже есть пароль и почта не на @vbi.ru: не перезаписываем', async () => {
+    await setVibePassword(2, 'Existing-Pass-456');
+    const res = await issueVibeCredentials({ employeeIds: [2], dryRun: false });
+    expect(res.rows[0]).toMatchObject({ status: 'skipped', reason: expect.stringContaining('уже задан') });
+    expect(await checkVibePassword(2, 'Existing-Pass-456')).toBe(true);
+    expect(mocks.sent).toHaveLength(0);
   });
 
   it('уже есть пароль: без overwriteExisting не трогаем, с ним перевыдаём', async () => {
