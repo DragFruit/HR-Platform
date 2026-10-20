@@ -20,10 +20,66 @@
           v-for="(row, index) in rows"
           :key="row.id"
           class="wish-editor__row"
+          :class="{ 'is-editing': isEditing(row) }"
           :style="{ '--wish-tone': tones[index % tones.length] }"
         >
           <span class="wish-editor__num" aria-hidden="true">{{ index + 1 }}</span>
-          <div class="wish-editor__fields">
+
+          <!-- Компактный вид: название, под ним ссылка; карандаш — редактировать -->
+          <template v-if="!isEditing(row)">
+            <div class="wish-editor__view">
+              <p v-if="row.text.trim()" class="wish-editor__view-text">{{ row.text.trim() }}</p>
+              <a
+                v-if="viewUrl(row)"
+                class="wish-editor__view-link"
+                :href="viewUrl(row)"
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                :title="viewUrl(row)"
+              >↗ {{ rowDomain(row) }}</a>
+            </div>
+            <div class="wish-editor__view-tools">
+              <button
+                type="button"
+                class="wish-editor__mini"
+                aria-label="Выше"
+                title="Выше"
+                :disabled="index === 0"
+                @click="move(index, -1)"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                class="wish-editor__mini"
+                aria-label="Ниже"
+                title="Ниже"
+                :disabled="index === rows.length - 1"
+                @click="move(index, 1)"
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                class="wish-editor__pencil"
+                aria-label="Редактировать желание"
+                title="Редактировать"
+                @click="startEdit(row)"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                  <path
+                    d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </template>
+
+          <!-- Редактирование пункта -->
+          <div v-else class="wish-editor__fields">
             <label class="wish-editor__field">
               <span class="wish-editor__label">Что хочется</span>
               <textarea
@@ -55,37 +111,29 @@
               </span>
               <span v-else-if="rowDomain(row)" class="wish-editor__domain">↗ {{ rowDomain(row) }}</span>
             </label>
-          </div>
-          <div class="wish-editor__tools">
-            <button
-              type="button"
-              class="wish-editor__tool"
-              aria-label="Выше"
-              title="Выше"
-              :disabled="index === 0"
-              @click="move(index, -1)"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              class="wish-editor__tool"
-              aria-label="Ниже"
-              title="Ниже"
-              :disabled="index === rows.length - 1"
-              @click="move(index, 1)"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              class="wish-editor__tool wish-editor__tool--remove"
-              aria-label="Убрать пункт"
-              title="Убрать"
-              @click="remove(index)"
-            >
-              ×
-            </button>
+
+            <div v-if="confirmDeleteId === row.id" class="wish-editor__confirm" role="alertdialog" aria-label="Удалить желание?">
+              <span class="wish-editor__confirm-text">Удалить желание?</span>
+              <button type="button" class="button ghost wish-editor__small-btn" @click="confirmDeleteId = null">
+                Отмена
+              </button>
+              <button type="button" class="button wish-editor__small-btn wish-editor__danger" @click="remove(index)">
+                Да, удалить
+              </button>
+            </div>
+            <div v-else class="wish-editor__row-foot">
+              <button type="button" class="wish-editor__delete" @click="askRemove(row, index)">
+                Удалить
+              </button>
+              <button
+                type="button"
+                class="button wish-editor__small-btn wish-editor__done"
+                :disabled="rowUrlError(row)"
+                @click="finishEdit(row, index)"
+              >
+                Готово
+              </button>
+            </div>
           </div>
         </li>
       </ol>
@@ -170,6 +218,20 @@ const loading = ref(true);
 const saving = ref(false);
 const formError = ref('');
 const formOk = ref('');
+/** Пункты в режиме редактирования (новые открываются сразу); остальные — компактно. */
+const editingIds = ref<string[]>([]);
+/** Пункт, для которого показано «Удалить желание?». */
+const confirmDeleteId = ref<string | null>(null);
+
+const isEditing = (row: Row) => editingIds.value.includes(row.id);
+const startEdit = (row: Row) => {
+  if (!isEditing(row)) editingIds.value = [...editingIds.value, row.id];
+};
+const stopEdit = (row: Row) => {
+  editingIds.value = editingIds.value.filter((id) => id !== row.id);
+  if (confirmDeleteId.value === row.id) confirmDeleteId.value = null;
+};
+const isBlank = (row: Row) => !row.text.trim() && !row.url.trim();
 
 const snapshot = (list: Row[]) =>
   JSON.stringify(list.map((r) => ({ id: r.id, text: r.text.trim(), url: r.url.trim() })));
@@ -181,6 +243,8 @@ watch(saving, (v) => emit('busy', v));
 const applyItems = (items: WishlistItem[]) => {
   rows.value = items.map((i) => ({ id: i.id, text: i.text, url: i.url }));
   savedSnapshot.value = snapshot(rows.value);
+  editingIds.value = [];
+  confirmDeleteId.value = null;
 };
 
 const load = async () => {
@@ -206,6 +270,8 @@ const rowDomain = (row: Row) => {
   const url = normalizeWishUrl(row.url);
   return url ? wishUrlDomain(url) : '';
 };
+/** Ссылка для компактного вида — только проверенная. */
+const viewUrl = (row: Row) => normalizeWishUrl(row.url) || '';
 const normalizeRowUrl = (row: Row) => {
   const url = normalizeWishUrl(row.url);
   if (url) row.url = url;
@@ -214,12 +280,36 @@ const normalizeRowUrl = (row: Row) => {
 const addRow = (text = '') => {
   if (rows.value.length >= WISHLIST_MAX_ITEMS) return;
   formOk.value = '';
-  rows.value.push({ id: newWishId(), text, url: '' });
+  const row = { id: newWishId(), text, url: '' };
+  rows.value.push(row);
+  startEdit(row);
+};
+
+/** Пустой пункт убираем сразу, заполненный — только после «Да, удалить». */
+const askRemove = (row: Row, index: number) => {
+  if (isBlank(row)) {
+    remove(index);
+    return;
+  }
+  confirmDeleteId.value = row.id;
 };
 
 const remove = (index: number) => {
   formOk.value = '';
-  rows.value.splice(index, 1);
+  const [row] = rows.value.splice(index, 1);
+  if (row) stopEdit(row);
+  confirmDeleteId.value = null;
+};
+
+/** «Готово»: свернуть пункт; пустой просто исчезает. */
+const finishEdit = (row: Row, index: number) => {
+  if (rowUrlError(row)) return;
+  normalizeRowUrl(row);
+  if (isBlank(row)) {
+    remove(index);
+    return;
+  }
+  stopEdit(row);
 };
 
 const move = (index: number, delta: number) => {
@@ -236,6 +326,8 @@ const reset = () => {
   formError.value = '';
   formOk.value = '';
   rows.value = (JSON.parse(savedSnapshot.value) as Row[]).map((r) => ({ ...r }));
+  editingIds.value = [];
+  confirmDeleteId.value = null;
 };
 
 const save = async () => {
@@ -246,6 +338,8 @@ const save = async () => {
     items = validateWishlistInput(rows.value);
   } catch (err) {
     formError.value = err instanceof Error ? err.message : 'Проверь пункты вишлиста';
+    // открыть пункты с плохой ссылкой, чтобы было видно, что править
+    for (const row of rows.value) if (rowUrlError(row)) startEdit(row);
     return;
   }
   saving.value = true;
@@ -336,12 +430,22 @@ const save = async () => {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: start;
-  padding: 12px;
+  align-items: center;
+  padding: 10px 12px;
   background: #fffdf6;
   border: 2px solid #202020;
   border-radius: 16px;
   box-shadow: 3px 3px 0 var(--wish-tone, #ddf365);
+}
+
+.wish-editor__row.is-editing {
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  padding: 12px;
+}
+
+.wish-editor__row.is-editing .wish-editor__num {
+  margin-top: 18px;
 }
 
 .wish-editor__num {
@@ -349,7 +453,6 @@ const save = async () => {
   place-items: center;
   width: 28px;
   height: 28px;
-  margin-top: 18px;
   font-size: 0.8rem;
   font-weight: 800;
   background: var(--wish-tone, #ddf365);
@@ -414,40 +517,153 @@ const save = async () => {
   color: #7451f4;
 }
 
-.wish-editor__tools {
+/* Компактный вид пункта */
+.wish-editor__view {
   display: grid;
-  gap: 4px;
-  margin-top: 18px;
+  gap: 3px;
+  min-width: 0;
+  align-self: center;
 }
 
-.wish-editor__tool {
+.wish-editor__view-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.wish-editor__view-link {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #7451f4;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wish-editor__view-link:hover {
+  text-decoration: underline;
+}
+
+.wish-editor__view-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.wish-editor__mini {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.8rem;
   line-height: 1;
-  color: #202020;
-  background: #fff;
-  border: 1.5px solid #202020;
-  border-radius: 8px;
+  color: #838383;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.wish-editor__tool:hover:not(:disabled) {
-  background: #ddf365;
+.wish-editor__mini:hover:not(:disabled) {
+  color: #202020;
+  background: #f5f5f0;
 }
 
-.wish-editor__tool:disabled {
-  opacity: 0.3;
+.wish-editor__mini:disabled {
+  opacity: 0.25;
   cursor: default;
 }
 
-.wish-editor__tool--remove:hover:not(:disabled) {
+.wish-editor__pencil {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 2px;
+  padding: 0;
+  color: #202020;
+  background: #fff;
+  border: 1.5px solid #202020;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.wish-editor__pencil:hover {
+  background: #ddf365;
+}
+
+.wish-editor__mini:focus-visible,
+.wish-editor__pencil:focus-visible,
+.wish-editor__delete:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 2px;
+}
+
+/* Низ пункта в редактировании: «Удалить» слева, «Готово» справа */
+.wish-editor__row-foot,
+.wish-editor__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d8d8d0;
+}
+
+.wish-editor__row-foot {
+  justify-content: space-between;
+}
+
+.wish-editor__delete {
+  padding: 4px 2px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--danger, #c44a36);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wish-editor__confirm {
+  justify-content: flex-end;
+  padding: 8px 10px;
+  background: #fff1ee;
+  border: 1.5px solid var(--danger, #c44a36);
+  border-radius: 12px;
+}
+
+.wish-editor__confirm-text {
+  margin-right: auto;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.wish-editor__small-btn {
+  min-height: 0;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+}
+
+.wish-editor__done {
+  color: #202020;
+  background: #ddf365;
+  border: 1.5px solid #202020;
+}
+
+.wish-editor__danger {
   color: #fff;
   background: var(--danger, #c44a36);
+  border: 1.5px solid var(--danger, #c44a36);
 }
 
 .wish-editor__empty {
@@ -562,8 +778,13 @@ const save = async () => {
 }
 
 @media (max-width: 560px) {
-  .wish-editor__row {
+  .wish-editor__row,
+  .wish-editor__row.is-editing {
     grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .wish-editor__row.is-editing {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .wish-editor__num {

@@ -10,7 +10,7 @@
         class="wish-panel"
         role="dialog"
         aria-modal="true"
-        :aria-label="`Вишлист: ${name}`"
+        :aria-label="`Вишлист: ${firstLast}`"
       >
         <span class="wish-panel__confetti wish-panel__confetti--a" aria-hidden="true" />
         <span class="wish-panel__confetti wish-panel__confetti--b" aria-hidden="true" />
@@ -27,22 +27,16 @@
 
         <header class="wish-panel__head">
           <span class="wish-panel__gift" aria-hidden="true">🎁</span>
-          <div>
-            <p class="wish-panel__kicker">Вишлист</p>
-            <h3 class="wish-panel__title">{{ own ? 'Мои желания' : `Что порадует: ${name}` }}</h3>
-          </div>
+          <h3 class="wish-panel__title">{{ own ? 'Мои желания' : `${firstLast} точно обрадуется` }}</h3>
         </header>
-        <p class="wish-panel__hint">
-          {{
-            own
-              ? 'Так твой вишлист видят коллеги. Можно дополнить в настройках профиля.'
-              : 'Подсказки к празднику — день рождения, юбилей в команде или просто так.'
-          }}
+        <p v-if="own" class="wish-panel__hint">
+          Так твой вишлист видят коллеги. Можно дополнить в настройках профиля.
         </p>
+        <div v-else class="wish-panel__gap" aria-hidden="true" />
 
         <div class="wish-panel__scroll">
           <p v-if="loading" class="wish-panel__empty">Разворачиваем подарки…</p>
-          <WishlistItemsList v-else-if="items.length" :items="items" :aria-label="`Вишлист: ${name}`" />
+          <WishlistItemsList v-else-if="items.length" :items="items" :aria-label="`Вишлист: ${firstLast}`" />
           <div v-else class="wish-panel__empty">
             <span aria-hidden="true">🎈</span>
             <p>Вишлист пока пустой. Добавь пару идей — коллегам будет проще порадовать тебя.</p>
@@ -61,14 +55,19 @@
 
 <script setup lang="ts">
 import type { WishlistItem } from '~/utils/wishlist';
+import { formatEmployeeFirstLastName } from '~/utils/employeeName';
 
 const props = defineProps<{
   open: boolean;
+  /** ФИО как в справочнике («Фамилия Имя Отчество»). */
   name: string;
   items: WishlistItem[];
   own?: boolean;
   loading?: boolean;
 }>();
+
+/** «Имя Фамилия» без отчества. */
+const firstLast = computed(() => formatEmployeeFirstLastName(props.name) || 'Коллега');
 
 /** closeAll=true — закрыть и визитку (переход в настройки). */
 const emit = defineEmits<{ close: [closeAll?: boolean] }>();
@@ -216,17 +215,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKey, true));
   }
 }
 
-.wish-panel__kicker {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #7451f4;
+.wish-panel__gap {
+  height: 14px;
 }
 
 .wish-panel__title {
-  margin: 2px 0 0;
+  margin: 0;
   font-family: var(--font-display);
   font-size: 1.05rem;
   line-height: 1.25;

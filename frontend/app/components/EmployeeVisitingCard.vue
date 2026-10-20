@@ -143,7 +143,7 @@
       </article>
       <EmployeeWishlistPanel
         :open="wishlistOpen"
-        :name="displayNameShort"
+        :name="employee.name"
         :items="wishlistItems"
         :own="wishlistOwn"
         @close="onWishlistClose"
@@ -289,7 +289,6 @@ const wishlistOwn = ref(false);
 const wishlistOpen = ref(false);
 /** У чужих пустой вишлист не показываем; у себя — «заполнить». */
 const wishlistChipVisible = computed(() => wishlistItems.value.length > 0 || wishlistOwn.value);
-const displayNameShort = computed(() => formatEmployeeShortName(employee.value?.name ?? '') || 'Сотрудник');
 
 let wishlistRequest = 0;
 watch(
@@ -639,29 +638,32 @@ onMounted(() => {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-/* Вишлист: праздничный чип (пустой — только на своей визитке, пунктиром) */
+/* Вишлист: тихий вторичный чип (контур, без заливки), как остальные ссылки рейла */
 .emp-card__wish-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 9px 2px 6px;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
   font: inherit;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1.5;
-  color: var(--ink);
+  line-height: 1.45;
+  color: var(--purple);
   white-space: nowrap;
-  background: linear-gradient(135deg, #ddf365 0%, #f3b33e 100%);
-  border: 1.5px solid var(--ink);
+  background: transparent;
+  border: 1px solid rgba(17, 17, 17, 0.35);
   border-radius: 999px;
-  box-shadow: 1.5px 1.5px 0 var(--ink);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.emp-card__wish-chip > span {
+  font-size: 10px;
 }
 
 .emp-card__wish-chip:hover {
-  transform: translate(-1px, -1px) rotate(-1.5deg);
-  box-shadow: 2.5px 2.5px 0 var(--ink);
+  background: rgba(221, 243, 101, 0.55);
+  border-color: var(--ink);
 }
 
 .emp-card__wish-chip:focus-visible {
@@ -670,9 +672,8 @@ onMounted(() => {
 }
 
 .emp-card__wish-chip--empty {
-  background: #fff;
   border-style: dashed;
-  box-shadow: none;
+  color: #565656;
 }
 
 .emp-card__rail-link--off {

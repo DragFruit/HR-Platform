@@ -12,6 +12,7 @@ import {
   validateWishlistInput,
   wishUrlDomain
 } from '../../app/utils/wishlist';
+import { formatEmployeeFirstLastName } from '../../app/utils/employeeName';
 
 // ---------- окружение для API-хендлеров (Nitro auto-imports) ----------
 
@@ -146,6 +147,15 @@ describe('вишлист: проверка списка', () => {
   it('чужой id с мусором заменяется', () => {
     const [item] = validateWishlistInput([{ id: '"><img src=x>', text: 'ok' }]);
     expect(item!.id).toMatch(/^w-/);
+  });
+});
+
+describe('вишлист: заголовок «Имя Фамилия точно обрадуется»', () => {
+  it('из «Фамилия Имя Отчество» — «Имя Фамилия» без отчества', () => {
+    expect(formatEmployeeFirstLastName('Драго Станислава Игоревна')).toBe('Станислава Драго');
+    expect(formatEmployeeFirstLastName('  Иванова   Анна ')).toBe('Анна Иванова');
+    expect(formatEmployeeFirstLastName('Алина')).toBe('Алина');
+    expect(formatEmployeeFirstLastName('')).toBe('');
   });
 });
 
