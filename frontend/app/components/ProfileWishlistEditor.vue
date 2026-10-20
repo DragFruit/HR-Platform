@@ -23,8 +23,6 @@
           :class="{ 'is-editing': isEditing(row) }"
           :style="{ '--wish-tone': tones[index % tones.length] }"
         >
-          <span class="wish-editor__num" aria-hidden="true">{{ index + 1 }}</span>
-
           <!-- Компактный вид: название, под ним ссылка; карандаш — редактировать -->
           <template v-if="!isEditing(row)">
             <div class="wish-editor__view">
@@ -39,26 +37,6 @@
               >↗ {{ rowDomain(row) }}</a>
             </div>
             <div class="wish-editor__view-tools">
-              <button
-                type="button"
-                class="wish-editor__mini"
-                aria-label="Выше"
-                title="Выше"
-                :disabled="index === 0"
-                @click="move(index, -1)"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                class="wish-editor__mini"
-                aria-label="Ниже"
-                title="Ниже"
-                :disabled="index === rows.length - 1"
-                @click="move(index, 1)"
-              >
-                ↓
-              </button>
               <button
                 type="button"
                 class="wish-editor__pencil"
@@ -312,16 +290,6 @@ const finishEdit = (row: Row, index: number) => {
   stopEdit(row);
 };
 
-const move = (index: number, delta: number) => {
-  const target = index + delta;
-  if (target < 0 || target >= rows.value.length) return;
-  const list = [...rows.value];
-  const [item] = list.splice(index, 1);
-  list.splice(target, 0, item!);
-  rows.value = list;
-  formOk.value = '';
-};
-
 const reset = () => {
   formError.value = '';
   formOk.value = '';
@@ -428,10 +396,10 @@ const save = async () => {
 
 .wish-editor__row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 16px;
   background: #fffdf6;
   border: 2px solid #202020;
   border-radius: 16px;
@@ -439,25 +407,9 @@ const save = async () => {
 }
 
 .wish-editor__row.is-editing {
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   padding: 12px;
-}
-
-.wish-editor__row.is-editing .wish-editor__num {
-  margin-top: 18px;
-}
-
-.wish-editor__num {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  background: var(--wish-tone, #ddf365);
-  border: 1.5px solid #202020;
-  border-radius: 50%;
 }
 
 .wish-editor__fields {
@@ -556,50 +508,25 @@ const save = async () => {
   gap: 4px;
 }
 
-.wish-editor__mini {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 0.8rem;
-  line-height: 1;
-  color: #838383;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.wish-editor__mini:hover:not(:disabled) {
-  color: #202020;
-  background: #f5f5f0;
-}
-
-.wish-editor__mini:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
 .wish-editor__pencil {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  margin-left: 2px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  color: #202020;
-  background: #fff;
-  border: 1.5px solid #202020;
+  color: #565656;
+  background: transparent;
+  border: 0;
   border-radius: 9px;
   cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .wish-editor__pencil:hover {
-  background: #ddf365;
+  color: #202020;
+  background: rgba(221, 243, 101, 0.6);
 }
 
-.wish-editor__mini:focus-visible,
 .wish-editor__pencil:focus-visible,
 .wish-editor__delete:focus-visible {
   outline: 2px solid #7451f4;
@@ -778,17 +705,8 @@ const save = async () => {
 }
 
 @media (max-width: 560px) {
-  .wish-editor__row,
-  .wish-editor__row.is-editing {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .wish-editor__row.is-editing {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .wish-editor__num {
-    display: none;
+  .wish-editor__row {
+    padding-left: 12px;
   }
 }
 </style>
