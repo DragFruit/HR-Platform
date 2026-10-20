@@ -219,9 +219,47 @@ CLI на коробке: `scripts/bitrix/diagnose-notify-chats.php`, схема/
 
 ### Вход логин/пароль (локально на Vibe)
 
-**Паролей Bitrix в репозитории/на сервере Vibe нет.** Сравнение идёт с локальными хешами `server/data/vibe-passwords.json` (задаёт HR в Админ → Сотрудники). Bitrix не вызывается — правок портала не нужно.
+**Паролей Bitrix в репозитории/на сервере Vibe нет.** Сравнение идёт с локальными хешами Vibe: при `DB_PROFILE=1` таблица `profile.vibe_passwords` (бой), иначе `server/data/vibe-passwords.json`. Хранится scrypt-хеш для входа и AES-seal для глаза в профиле, открытого текста нет. Задаёт HR в Админ → Сотрудники или выдача доступов ниже. Bitrix при входе не вызывается.
 
-`POST /api/auth/vibe-login` → cookie-сессия Vibe (`auth_source: vibe`).
+`POST /api/auth/vibe-login` → cookie-сессия Vibe (`auth_source: vibe`). Логин = email из справочника (или его часть до `@`).
+
+#### Выдача логина и пароля ботом (`POST /api/cron/vibe-credentials`)
+
+Массовая (или точечная) выдача: логин = email сотрудника на `@vbi.ru`, пароль = свой для каждого, 16 символов (заглавные, строчные, цифры, `!@#%+=?`, без похожих `0/O/o/1/l/I`), `crypto.randomInt`. Код: `server/utils/vibeCredentialsIssue.ts`.
+
+Порядок на человека: пароль записывается тем же путём, что у админки (`setVibePassword`: хеш + seal, аудит `password_set` с `reason=vibe-credentials-issued`) → проверка тем же поиском по логину и `checkVibePassword`, что у `vibe-login`, и что seal открывается (глаз) → сообщение от чат-бота `imbot.message.add` (`bitrixImbot.ts`) → отметка `credentials_sent_at` (аудит `credentials_sent`). Значений в аудите, логах и ответе нет: только статусы.
+
+Текст сообщения (дословно):
+
+```
+Хорошего тебе дня!
+В Вайбе доступен вход не только через Битрикс, но и по логину паролю
+
+Твои доступы:
+Логин: <email>
+Пароль: <пароль>
+```
+
+Кого пропускаем (статус `skipped` с причиной): нет в справочнике / denylist, QA-отдел, нет email или он не на `@vbi.ru`, нет `bitrix_user_id`, по email вход находит другого сотрудника, пароль Vibe уже есть (пока не передан `overwriteExisting: true`).
+
+Статусы: `would_issue` / `would_overwrite` / `would_resend` (dry run), `sent`, `resent`, `set_not_delivered` (пароль задан, бот не доставил: повторить), `skipped`, `failed`.
+
+**Повтор недоставленных:** `resendUndelivered: true` шлёт **тот же** пароль из seal (новый не генерируется) только тем, у кого `credentials_issued_at` есть, а `credentials_sent_at` нет. Обычный прогон таких не трогает. Поля `credentials_issued_at` / `credentials_sent_at` лежат в записи пароля (колонка `extra`), миграции не нужно. Ручная смена пароля HR сбрасывает эти отметки.
+
+**Защита:** только с самого сервера, напрямую на Node (`127.0.0.1:3300` бой, `:3301` стейдж), мимо nginx (запрос с `X-Forwarded-For` / `X-Real-IP` → 403), заголовок `X-Cron-Token` = первый заданный из `VIBE_CREDENTIALS_SECRET`, `CRON_SECRET`, `VACATION_PRE_REMINDER_CRON_SECRET` (на бою сейчас есть последний, в `/etc/vbi-hr/bitrix-production.env`; на стейдже `VIBE_CREDENTIALS_SECRET` в `/etc/vbi-hr/bitrix.env`). `?token=` не принимается. Параллельный боевой прогон → 409. На бою без `BITRIX_IMBOT_ID` боевой прогон отказывает (503) до записи паролей.
+
+Тело (JSON): `employeeIds: number[]` (id справочника) и/или `bitrixUserIds: number[]` (Bitrix ID), или `all: true`, `dryRun` (**по умолчанию true**), `overwriteExisting` (false), `resendUndelivered` (false), `actorEmployeeId` (кто запустил, для аудита; иначе система).
+
+**Стейдж:** запись в Bitrix выключена гвардом, поэтому боевой прогон на `:8080` задаёт пароль (вход по логину/паролю на стейдже можно проверить), а доставка честно `set_not_delivered: не доставлено: staging: запись в Bitrix отключена`. Сообщение не уходит. База стейджа своя, на бой это не влияет.
+
+```bash
+# на сервере (бой), секрет не печатаем
+TOKEN=$(grep -E '^VACATION_PRE_REMINDER_CRON_SECRET=' /etc/vbi-hr/bitrix-production.env | cut -d= -f2-)
+curl -s -X POST http://127.0.0.1:3300/api/cron/vibe-credentials \
+  -H "X-Cron-Token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"bitrixUserIds":[<bitrix id>],"dryRun":true}'
+# потом то же с "dryRun":false; недоставленным: "resendUndelivered":true,"dryRun":false
+```
 
 Запасной путь: OAuth «Войти через Битрикс24». Старый эксперимент `grant_type=password` к порталу — только при `BITRIX_PASSWORD_LOGIN=1` (нужна сеть Vibe→crm).
 

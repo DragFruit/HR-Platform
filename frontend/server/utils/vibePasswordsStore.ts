@@ -117,7 +117,8 @@ export async function hasVibePassword(employeeId: number): Promise<boolean> {
 export async function setVibePassword(
   employeeId: number,
   password: string,
-  ctx: KeyedListWriteContext = {}
+  ctx: KeyedListWriteContext = {},
+  meta: Pick<VibePasswordEntry, 'credentials_issued_at'> = {}
 ): Promise<void> {
   const trimmed = String(password || '');
   if (trimmed.length < 8) {
@@ -138,7 +139,8 @@ export async function setVibePassword(
         employee_id: employeeId,
         password_hash,
         password_seal,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        ...(meta.credentials_issued_at ? { credentials_issued_at: meta.credentials_issued_at } : {})
       };
       const idx = entries.findIndex((e) => e.employee_id === employeeId);
       if (idx >= 0) entries[idx] = next;
@@ -198,6 +200,46 @@ export async function checkVibePassword(
   const entry = (await readEntries()).find((e) => e.employee_id === employeeId);
   if (!entry?.password_hash) return false;
   return verifyVibePassword(password, entry.password_hash);
+}
+
+export type VibeCredentialsState = {
+  employee_id: number;
+  has_password: boolean;
+  /** seal открывается (глаз в профиле и повторная отправка работают). */
+  has_seal: boolean;
+  credentials_issued_at: string | null;
+  credentials_sent_at: string | null;
+};
+
+/** Статусы паролей для выдачи доступов: без хешей и текста. */
+export async function readVibeCredentialsStates(): Promise<Map<number, VibeCredentialsState>> {
+  const out = new Map<number, VibeCredentialsState>();
+  for (const e of await readEntries()) {
+    if (!e?.password_hash) continue;
+    out.set(e.employee_id, {
+      employee_id: e.employee_id,
+      has_password: true,
+      has_seal: openPassword(e.password_seal) !== null,
+      credentials_issued_at: e.credentials_issued_at || null,
+      credentials_sent_at: e.credentials_sent_at || null
+    });
+  }
+  return out;
+}
+
+/** Отметка «доступы доставлены ботом» (аудит: credentials_sent + actor, без значений). */
+export async function markVibeCredentialsSent(
+  employeeId: number,
+  ctx: KeyedListWriteContext = {}
+): Promise<void> {
+  await (await vibePasswordsRepo()).mutate(
+    (entries) => {
+      const entry = entries.find((e) => e.employee_id === employeeId);
+      if (!entry?.password_hash) return;
+      entry.credentials_sent_at = new Date().toISOString();
+    },
+    { ...ctx, reason: 'vibe-credentials-sent' }
+  );
 }
 
 export async function listVibePasswordEmployeeIds(): Promise<number[]> {

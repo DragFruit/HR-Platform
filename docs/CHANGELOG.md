@@ -4,6 +4,16 @@
 
 ## 2026-10-20
 
+### Вход: выдача логина и пароля Вайба с отправкой ботом
+
+- Новый `server/utils/vibeCredentialsIssue.ts` + `POST /api/cron/vibe-credentials`: логин = email сотрудника на `@vbi.ru`, пароль = свой у каждого (16 символов, `crypto.randomInt`, все классы, без `0/O/o/1/l/I`). Пароль пишется как у админки (scrypt-хеш + seal, глаз в профиле работает), проверяется тем же поиском и `checkVibePassword`, что у `vibe-login`, и только потом чат-бот (`imbot.message.add`) шлёт утверждённый текст.
+- Пропуск с причиной: не `@vbi.ru` / нет email, нет `bitrix_user_id`, denylist, QA-отдел, конфликт логина, пароль уже есть (без `overwriteExisting`). Не доставилось → `set_not_delivered`, повтор `resendUndelivered` шлёт тот же пароль из seal.
+- В записи пароля новые поля `credentials_issued_at` / `credentials_sent_at` (колонка `extra`, без миграции). Аудит: `password_set` с `reason=vibe-credentials-issued`, `credentials_sent`; значений нет ни в аудите, ни в логах, ни в ответе.
+- Защита: только `127.0.0.1` мимо nginx + `X-Cron-Token` (`VIBE_CREDENTIALS_SECRET` → `CRON_SECRET` → `VACATION_PRE_REMINDER_CRON_SECRET`), `dryRun` по умолчанию true. Стейдж: пароль задаётся, доставка `не доставлено: staging` (гвард Bitrix).
+- Поиск по логину вынесен в `server/utils/vibeLogin.ts` (общий для входа и выдачи).
+- Тесты: `tests/unit/vibeCredentialsIssue.test.ts`. Документация: `docs/BITRIX.md` (раздел «Выдача логина и пароля ботом»), `docs/PRODUCT.md` 9.1.
+- Проверка: на сервере `curl -X POST http://127.0.0.1:3301/api/cron/vibe-credentials -H "X-Cron-Token: …" -d '{"employeeIds":[id]}'` → `would_issue` или причина пропуска.
+
 ### Отпуска: «Скачать заявление» сразу после создания заявки
 
 - По просьбе заказчика пункт «Скачать заявление» (меню «⋯» у заявки в `EmployeeVacationAside.vue`) виден для `pending` на любом шаге согласования, а не только для `approved`. Для `rejected` — скрыт. Условия «ТД» и «до начала отпуска» без изменений.

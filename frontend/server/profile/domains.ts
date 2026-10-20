@@ -251,6 +251,10 @@ export type VibePasswordEntry = {
   password_hash: string;
   password_seal?: string;
   updated_at: string;
+  /** Когда пароль выдан рассылкой «логин + пароль» (issueVibeCredentials); в колонке extra. */
+  credentials_issued_at?: string;
+  /** Когда сообщение с доступами доставлено ботом Bitrix; нет → «задан, не доставлен». */
+  credentials_sent_at?: string;
 };
 
 const VIBE_FIELDS: FieldSpecs = {
@@ -298,6 +302,7 @@ export const VIBE_PASSWORDS_DEF: KeyedListDef<VibePasswordEntry> = {
     const after = reason ? { reason } : null;
     if (change.kind === 'create') return { action: 'password_set', after };
     if (change.kind === 'delete') return { action: 'password_cleared', after };
+    if (reason === 'vibe-credentials-sent') return { action: 'credentials_sent', after };
     if (change.before.password_hash !== change.after.password_hash) return { action: 'password_set', after };
     if (change.before.password_seal !== change.after.password_seal) return { action: 'password_seal_added', after };
     return { action: 'password_touched', after };
