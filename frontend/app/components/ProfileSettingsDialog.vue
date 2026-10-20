@@ -8,6 +8,7 @@
     >
       <div
         class="card profile-settings"
+        :class="{ 'profile-settings--wishlist': activeTab === 'wishlist' }"
         role="dialog"
         aria-modal="true"
         aria-label="Настройки профиля"
@@ -166,8 +167,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
   padding: 18px 20px 20px;
   border: 2px solid #202020;
   border-radius: 20px;
-  box-shadow: 5px 5px 0 #ddf365;
   overflow: hidden;
+}
+
+/* Праздничная лаймовая рамка — только в разделе «Вишлист»; остальные разделы как обычные диалоги */
+.profile-settings--wishlist {
+  box-shadow: 5px 5px 0 #ddf365;
 }
 
 .profile-settings__head {
