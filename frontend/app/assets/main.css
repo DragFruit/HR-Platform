@@ -4439,6 +4439,18 @@ button.org-unit-head--link:hover {
   flex-direction: column;
 }
 
+/* Нет полученных ачивок — блока нет, левая колонка занимает всю высоту */
+@media (min-width: 721px) {
+  .profile-grid-2--own.profile-grid-2--no-achievements {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .profile-grid-2--own.profile-grid-2--no-achievements.profile-grid-2--compact-team > .profile-slot,
+  .profile-grid-2--own.profile-grid-2--no-achievements > .profile-slot {
+    grid-row: 1;
+  }
+}
+
 .profile-left-stack {
   display: flex;
   flex-direction: column;

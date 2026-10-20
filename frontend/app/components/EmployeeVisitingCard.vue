@@ -65,7 +65,7 @@
           </div>
 
           <div class="emp-card__rail">
-            <div class="emp-card__rail-achs">
+            <div v-if="displayAchievements.length" class="emp-card__rail-achs">
               <span class="emp-card__rail-label">Достижения</span>
               <ul class="emp-card__achs" aria-label="Достижения">
                 <li
@@ -90,7 +90,7 @@
               </ul>
             </div>
 
-            <span class="emp-card__rail-sep" aria-hidden="true" />
+            <span v-if="displayAchievements.length" class="emp-card__rail-sep" aria-hidden="true" />
             <span class="emp-card__rail-ideas">Идеи: {{ ideasCount }}</span>
             <span class="emp-card__rail-sep" aria-hidden="true" />
             <button
@@ -221,25 +221,8 @@ const achievements = computed(() => {
   return publicAchievementsForEmployee(emp, ideasDone.value, { pitStopWinnerUserIds }).slice(0, 5);
 });
 
-/** Плитки как на эскизе (ровно 5 слотов). */
-const displayAchievements = computed(() => {
-  const real = achievements.value.slice(0, 5);
-  const slots: Array<{
-    id: string;
-    title: string;
-    imageSrc?: string;
-    emoji?: string;
-  }> = real.map((a) => ({
-    id: a.id,
-    title: a.title,
-    imageSrc: a.imageSrc,
-    emoji: a.emoji
-  }));
-  while (slots.length < 5) {
-    slots.push({ id: `empty-${slots.length}`, title: '' });
-  }
-  return slots;
-});
+/** Только полученные публичные ачивки (до 5), без пустых слотов. */
+const displayAchievements = computed(() => achievements.value.slice(0, 5));
 
 const bitrixUrl = computed(() => {
   const emp = employee.value;

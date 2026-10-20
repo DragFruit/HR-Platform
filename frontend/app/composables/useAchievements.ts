@@ -1,6 +1,7 @@
 import {
   ACHIEVEMENTS_CATALOG,
   PROFILE_ACHIEVEMENT_SLOTS,
+  earnedAchievementSections,
   groupAchievementsBySection,
   tierAchievementIds,
   type AchievementCatalogSection,
@@ -240,6 +241,11 @@ export function useAchievements() {
     groupAchievementsBySection(catalogForProfile.value)
   );
 
+  /** Витрина профиля: только полученные, пустые разделы скрыты. */
+  const earnedSectionsForProfile = computed((): AchievementCatalogSection[] =>
+    earnedAchievementSections(catalogForProfile.value)
+  );
+
   /** Превью блока: только полученные; закреплённые (квест) — первыми. Locked — только в оверлее. */
   const catalogForProfilePreview = computed(() => {
     const earned = sortItems(catalogItems.value).filter((a) => a.earned);
@@ -265,6 +271,7 @@ export function useAchievements() {
     earnedAchievements,
     catalogForProfile,
     catalogSectionsForProfile,
+    earnedSectionsForProfile,
     catalogForProfilePreview,
     earnedCount,
     earnedIds

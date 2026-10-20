@@ -72,7 +72,7 @@
               </a>
             </div>
             <ul
-              v-if="isOwnProfile && !achievementsLocked && profileBadges.length"
+              v-if="isOwnProfile && profileBadges.length"
               class="profile-identity__badges"
               :aria-label="`Достижения: ${profileBadges.length}`"
             >
@@ -243,14 +243,15 @@
     class="profile-grid-2"
     :class="{
       'profile-grid-2--own': isOwnProfile,
-      'profile-grid-2--compact-team': isCompactTeamLayout
+      'profile-grid-2--compact-team': isCompactTeamLayout,
+      'profile-grid-2--no-achievements': isOwnProfile && !hasEarnedAchievements
     }"
   >
+    <!-- Только полученные ачивки; нет ни одной — блока нет совсем -->
     <section
-      v-if="isOwnProfile"
+      v-if="isOwnProfile && hasEarnedAchievements"
       class="card profile-itmo-panel profile-achievements-preview profile-slot profile-slot--achievements"
-      :class="{ 'profile-achievements-preview--locked': achievementsLocked }"
-      :aria-label="achievementsLocked ? 'Ачивки — скоро откроются' : 'Ачивки'"
+      aria-label="Ачивки"
     >
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tl" aria-hidden="true" />
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tr" aria-hidden="true" />
@@ -259,29 +260,15 @@
 
       <div class="profile-achievements-preview__head">
         <h3 class="profile-itmo-panel__title">Ачивки</h3>
-        <p v-if="achievementsLocked" class="profile-achievements-preview__soon">
-          <svg class="profile-achievements-preview__lock" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <rect x="3.5" y="7" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-            <path
-              d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-          <span>Скоро откроются</span>
-        </p>
         <button
-          v-else
           type="button"
           class="profile-achievements-preview__all"
           @click="achievementsOpen = true"
         >
-          {{ `Все · ${catalogForProfile.length}` }}
+          Все
         </button>
       </div>
       <div
-        v-if="!achievementsLocked"
         ref="achievementsPreviewRef"
         class="profile-achievements-preview__track"
       >
@@ -309,16 +296,6 @@
             {{ item.emoji ?? '🏆' }}
           </span>
         </button>
-        <p v-if="!previewAchievements.length" class="muted profile-achievements-preview__empty">
-          Пока нет полученных — открой «Все», чтобы посмотреть каталог
-        </p>
-      </div>
-      <div v-else class="profile-achievements-preview__locked-body" aria-hidden="true">
-        <span
-          v-for="n in 6"
-          :key="n"
-          class="profile-achievements-preview__ghost"
-        />
       </div>
     </section>
 
@@ -418,7 +395,7 @@
 
   <Teleport to="body">
     <div
-      v-if="achievementsOpen && isOwnProfile && !achievementsLocked"
+      v-if="achievementsOpen && isOwnProfile && hasEarnedAchievements"
       class="org-confirm-overlay profile-achievements-overlay"
       role="presentation"
       @click.self="achievementsOpen = false"
@@ -431,12 +408,7 @@
         @click.stop
       >
         <div class="profile-achievements-overlay__head">
-          <div>
-            <h3 class="org-confirm-title">Ачивки</h3>
-            <p class="muted soft">
-              Получено {{ earnedCount }} из {{ catalogForProfile.length }}
-            </p>
-          </div>
+          <h3 class="org-confirm-title">Ачивки</h3>
           <button
             type="button"
             class="admin-notifications-bell__dismiss"
@@ -455,7 +427,7 @@
         </div>
         <div class="profile-achievements-overlay__body">
           <section
-            v-for="group in catalogSectionsForProfile"
+            v-for="group in earnedSectionsForProfile"
             :key="group.section"
             class="profile-achievements-overlay__section"
             :aria-labelledby="`ach-section-${group.section}`"
@@ -464,19 +436,13 @@
               <h4 :id="`ach-section-${group.section}`" class="profile-achievements-overlay__section-title">
                 {{ group.title }}
               </h4>
-              <span class="profile-achievements-overlay__section-count muted">
-                {{ group.earnedCount }} / {{ group.items.length }}
-              </span>
             </div>
             <ul class="list-reset profile-achievements-overlay__grid">
               <li
                 v-for="item in group.items"
                 :key="item.id"
                 class="profile-achievements-overlay__card"
-                :class="{
-                  'is-locked': !item.earned,
-                  'is-ack': item.earned && isAchievementAcked(item.id)
-                }"
+                :class="{ 'is-ack': isAchievementAcked(item.id) }"
               >
                 <div class="profile-achievements-overlay__art">
                   <img
@@ -498,21 +464,12 @@
                   </p>
                 </div>
                 <button
-                  v-if="item.earned"
                   type="button"
                   class="profile-achievements-overlay__cta"
                   :class="{ 'is-done': isAchievementAcked(item.id) }"
                   @click="ackAchievement(item.id)"
                 >
                   {{ isAchievementAcked(item.id) ? 'Получена' : 'Понятно!' }}
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  class="profile-achievements-overlay__cta is-locked"
-                  disabled
-                >
-                  Ещё впереди
                 </button>
               </li>
             </ul>
@@ -599,16 +556,18 @@ const { ideas, hydrate: hydrateIdeasBank } = useIdeasBank();
 const { isProduction } = useAppEnv();
 const { myCoupons, hydrate: hydrateCoupons } = useTenureCoupons();
 const { employeeRequests, hydrate: hydrateVacations, state: vacationsState } = useVacations();
-const { profileBadges, catalogForProfile, catalogSectionsForProfile, catalogForProfilePreview, earnedCount } =
-  useAchievements();
+const { profileBadges, earnedSectionsForProfile, catalogForProfilePreview } = useAchievements();
 const { isEnabled: vacationTrainingEnabled, isCompletedForCurrentUser } = useVacationTraining();
 const {
   hydrate: hydrateActivity,
   activityFor
 } = useProfileActivity();
 
-/** На бое ачивки пока закрыты — открываем только по явной команде. */
-const achievementsLocked = computed(() => isProduction.value);
+/**
+ * Ачивки открыты и на бое (явное «ок» заказчика 2026-10-20): показываем только
+ * полученные; нет ни одной — блока нет.
+ */
+const hasEarnedAchievements = computed(() => catalogForProfilePreview.value.length > 0);
 
 const showPicker = ref(false);
 const vibeCredsOpen = ref(false);
@@ -684,6 +643,16 @@ const measureAchievementsPreview = () => {
 
 let achievementsResizeObserver: ResizeObserver | null = null;
 let activityResizeObserver: ResizeObserver | null = null;
+
+/* Блок ачивок появляется только когда есть полученные (данные могут прийти позже) */
+watch(achievementsPreviewRef, (el) => {
+  achievementsResizeObserver?.disconnect();
+  achievementsResizeObserver = null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  achievementsResizeObserver = new ResizeObserver(() => measureAchievementsPreview());
+  achievementsResizeObserver.observe(el);
+  measureAchievementsPreview();
+});
 
 const onAchievementsKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && achievementsOpen.value) achievementsOpen.value = false;
@@ -996,11 +965,6 @@ onMounted(() => {
     nextTick(() => {
       measureAchievementsPreview();
       measureActivityScroll();
-      const el = achievementsPreviewRef.value;
-      if (el && typeof ResizeObserver !== 'undefined') {
-        achievementsResizeObserver = new ResizeObserver(() => measureAchievementsPreview());
-        achievementsResizeObserver.observe(el);
-      }
       const list = activityListRef.value;
       if (list && typeof ResizeObserver !== 'undefined') {
         activityResizeObserver = new ResizeObserver(() => measureActivityScroll());

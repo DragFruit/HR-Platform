@@ -340,3 +340,12 @@ export const groupAchievementsBySection = (
     };
   }).filter((group) => group.items.length > 0);
 };
+
+/**
+ * Витрина для сотрудника: только полученные ачивки, разделы без полученных
+ * не возвращаются вовсе (без заголовка). Общих счётчиков «N из M» нет.
+ */
+export const earnedAchievementSections = (
+  items: AchievementCatalogItem[]
+): AchievementCatalogSection[] =>
+  groupAchievementsBySection(items.filter((item) => item.earned));
