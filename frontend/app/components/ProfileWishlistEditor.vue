@@ -6,8 +6,8 @@
       <div class="wish-editor__hero-copy">
         <h3 id="wish-editor-title" class="wish-editor__title">Мой вишлист</h3>
         <p class="wish-editor__lead">
-          Что тебя порадует? Напиши словами или вставь ссылку — коллеги увидят вишлист
-          в твоей визитке и не будут гадать с подарком.
+          Что тебя порадует? Опиши словами или вставь ссылочку. Коллеги увидят твой вишлист
+          и не будут гадать с подарком.
         </p>
       </div>
     </div>
@@ -19,6 +19,7 @@
         <li
           v-for="(row, index) in rows"
           :key="row.id"
+          :data-wish-row="row.id"
           class="wish-editor__row"
           :class="{ 'is-editing': isEditing(row) }"
           :style="{ '--wish-tone': tones[index % tones.length] }"
@@ -137,12 +138,12 @@
         <span class="wish-editor__ideas-label muted">Идеи:</span>
         <button
           v-for="idea in ideas"
-          :key="idea"
+          :key="idea.text"
           type="button"
           class="wish-editor__idea"
-          @click="addRow(idea)"
+          @click="addIdea(idea)"
         >
-          {{ idea }}
+          {{ idea.text }}
         </button>
       </div>
 
@@ -188,7 +189,15 @@ const emit = defineEmits<{ busy: [value: boolean]; dirty: [value: boolean] }>();
 type Row = { id: string; text: string; url: string };
 
 const tones = ['#ddf365', '#fd81ff', '#f3b33e', '#b9a6ff', '#ee815a', '#9fd6c9'];
-const ideas = ['📚 Книга', '☕ Сертификат в кофейню', '🌿 Растение в горшке', '🎧 Наушники', '🍫 Что-нибудь сладкое'];
+/** Быстрые идеи: текст пункта; у «Ozon» сразу фокус в поле ссылки. */
+const ideas = [
+  { text: '📚 Книга', focus: 'text' },
+  { text: '💆 Массаж', focus: 'text' },
+  { text: '🎨 Мастер-класс', focus: 'text' },
+  { text: '🪴 Цветок в горшке', focus: 'text' },
+  { text: '🔋 Повербанк', focus: 'text' },
+  { text: '🛍️ Ozon', focus: 'url' }
+] as const;
 
 const rows = ref<Row[]>([]);
 const savedSnapshot = ref('[]');
@@ -255,13 +264,23 @@ const normalizeRowUrl = (row: Row) => {
   if (url) row.url = url;
 };
 
-const addRow = (text = '') => {
+const addRow = (text = '', focus: 'text' | 'url' = 'text') => {
   if (rows.value.length >= WISHLIST_MAX_ITEMS) return;
   formOk.value = '';
   const row = { id: newWishId(), text, url: '' };
   rows.value.push(row);
   startEdit(row);
+  if (!import.meta.client) return;
+  nextTick(() => {
+    const sel = focus === 'url' ? '.wish-editor__url' : '.wish-editor__text';
+    const el = document.querySelector<HTMLElement>(`[data-wish-row="${row.id}"] ${sel}`);
+    el?.focus({ preventScroll: true });
+    // по центру панели, чтобы поле не пряталось под липкими кнопками «Сохранить»
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
 };
+
+const addIdea = (idea: (typeof ideas)[number]) => addRow(idea.text, idea.focus);
 
 /** Пустой пункт убираем сразу, заполненный — только после «Да, удалить». */
 const askRemove = (row: Row, index: number) => {

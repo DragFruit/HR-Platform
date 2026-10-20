@@ -51,15 +51,6 @@
                   draggable="false"
                 />
               </button>
-              <button
-                v-if="isOwnProfile"
-                type="button"
-                class="profile-identity__wish-btn"
-                title="Мой вишлист"
-                @click="openSettings('wishlist')"
-              >
-                <span aria-hidden="true">🎁</span> Вишлист
-              </button>
               <a
                 v-if="bitrixProfileHref"
                 :href="bitrixProfileHref"
