@@ -1,6 +1,7 @@
 import { requireVbiSession } from '../../utils/session';
 import { filterArticlesForUser } from '../../utils/knowledgeAudience';
 import { readKnowledgeArticles } from '../../utils/knowledgeArticlesStore';
+import { resolveKnowledgeViewer } from '../../utils/knowledgeViewer';
 
 /** Список опубликованных статей — только для своей аудитории (нужна сессия). */
 export default defineEventHandler(async (event) => {
@@ -10,6 +11,7 @@ export default defineEventHandler(async (event) => {
     .filter((a) => a.status === 'published')
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-  const articles = filterArticlesForUser(published, session);
+  const viewer = await resolveKnowledgeViewer(session);
+  const articles = filterArticlesForUser(published, viewer);
   return { articles };
 });

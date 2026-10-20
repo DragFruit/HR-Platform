@@ -102,23 +102,67 @@ export function departmentBadgeLabel(departments: string[]): string {
 }
 
 /**
- * Видна ли статья сотруднику.
- * admin/hr — все; пустые departments — всем; иначе совпадение отдела.
+ * Как отдел может прийти в сессию: сырое имя из Bitrix `department.get` (вход через Bitrix —
+ * «Digital отдел», «SEO отдел», «Отдел разработки»…) вместо имени из справочника Vibe.
+ * Сводим к названию из KNOWLEDGE_DEPARTMENT_OPTIONS — иначе точное сравнение со «Digital» не проходит.
  */
-export function canUserSeeArticle(
-  departments: string[],
-  user: { role: string; department: string }
-): boolean {
+const VIEWER_DEPT_ALIASES: { re: RegExp; dept: KnowledgeDepartment }[] = [
+  { re: /digital|диджитал|дижитал/i, dept: 'Digital' },
+  { re: /\bseo\b|сео|\bserm\b|\borm\b/i, dept: 'SEO / ORM' },
+  { re: /^dev$|разработ/i, dept: 'DEV' },
+  { re: /продаж/i, dept: 'Отдел продаж' },
+  { re: /маркетинг/i, dept: 'Маркетинг' },
+  { re: /бухгалт|финанс/i, dept: 'Бухгалтерия' },
+  { re: /дирекци/i, dept: 'Дирекция' },
+  { re: /внутренн/i, dept: 'Внутренние проекты' },
+  { re: /^hr\b/i, dept: 'HR' }
+];
+
+/** Название отдела к виду справочника (регистр, Bitrix-варианты); неизвестное — как есть. */
+export function canonicalKnowledgeDepartment(value: unknown): string {
+  const raw = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!raw) return '';
+  const exact = KNOWLEDGE_DEPARTMENT_OPTIONS.find((d) => d.toLowerCase() === raw.toLowerCase());
+  if (exact) return exact;
+  const alias = VIEWER_DEPT_ALIASES.find((rule) => rule.re.test(raw));
+  return alias ? alias.dept : raw;
+}
+
+export type KnowledgeViewer = { role: string; department: string };
+
+/**
+ * Зритель БЗ: отдел берём из справочника сотрудников (core.employees.department — тот же,
+ * по которому размечены статьи), а не из сессии: при входе через Bitrix в сессии лежит
+ * имя первого подразделения из Bitrix (подотдел/«Digital отдел»), и Digital-статьи пропадали.
+ * Сессия — только запасной вариант, если сотрудника нет в справочнике.
+ */
+export function knowledgeViewerFrom(
+  session: { role: string; department?: string | null },
+  employee?: { department?: string | null } | null
+): KnowledgeViewer {
+  const fromRoster = String(employee?.department || '').trim();
+  return {
+    role: session.role,
+    department: fromRoster || String(session.department || '').trim()
+  };
+}
+
+/**
+ * Видна ли статья сотруднику — единое правило для списка/обычного поиска (/api/knowledge)
+ * и для «Спросить ИИ» (RAG).
+ * admin/hr — все; пустые departments — всем; иначе совпадение отдела (после canonicalKnowledgeDepartment).
+ */
+export function canUserSeeArticle(departments: string[], user: KnowledgeViewer): boolean {
   if (user.role === 'admin' || user.role === 'hr') return true;
   if (!departments.length) return true;
-  const mine = String(user.department || '').trim().toLowerCase();
+  const mine = canonicalKnowledgeDepartment(user.department).toLowerCase();
   if (!mine) return false;
-  return departments.some((d) => d.trim().toLowerCase() === mine);
+  return departments.some((d) => canonicalKnowledgeDepartment(d).toLowerCase() === mine);
 }
 
 export function filterArticlesForUser<T extends { departments: string[] }>(
   articles: T[],
-  user: { role: string; department: string }
+  user: KnowledgeViewer
 ): T[] {
   return articles.filter((a) => canUserSeeArticle(a.departments, user));
 }

@@ -4,6 +4,13 @@
 
 ## 2026-10-20
 
+### База знаний: поиск не скрывает статьи своего отдела
+
+- Баг на бою: сотрудники Digital, вошедшие через Bitrix, не видели в обычном поиске `/knowledge` статьи для Digital (на бою 130 опубликованных статей с `Digital` в аудитории). Причина: фильтр аудитории сравнивал `departments` статьи с `department` из сессии, а при входе через Bitrix туда пишется имя первого подразделения из Bitrix (`department.get`, напр. «Digital отдел» или подотдел), а не «Digital» из справочника — точное сравнение не проходило (на данных боя: сессия не «Digital» → 0 из 130). «Спросить ИИ» фильтровал так же.
+- Исправление: отдел зрителя берётся из справочника сотрудников (`findEmployeeForSession` → `department`), сессия только запасной вариант; названия сводятся к виду справочника (`canonicalKnowledgeDepartment`: «Digital отдел» → Digital, «SEO отдел» → SEO / ORM и т.п.). Одна функция для `/api/knowledge` (список и обычный поиск) и `/api/knowledge/yandex-ask`.
+- Файлы: `frontend/server/utils/knowledgeAudience.ts` (`canonicalKnowledgeDepartment`, `knowledgeViewerFrom`, `canUserSeeArticle`), новый `frontend/server/utils/knowledgeViewer.ts` (`resolveKnowledgeViewer`), `frontend/server/api/knowledge/index.get.ts`, `frontend/server/api/knowledge/yandex-ask.post.ts`. Тесты: `frontend/tests/unit/knowledgeAudience.test.ts`.
+- Как проверить: сотрудник Digital входит через Bitrix → `/knowledge` → обычный поиск «отпуск» → есть `[DIGITAL]`-регламент; сотрудник SEO Digital-статьи по-прежнему не видит.
+
 ### Доступы Вайба и для сотрудников без почты @vbi.ru
 
 - Выдача логина и пароля ботом больше не пропускает тех, у кого в справочнике почта не на `@vbi.ru`: логином становится их имеющийся email (например `@vbi.kz`). `@vbi.ru` по-прежнему в приоритете. Без email или с некорректным email: пропуск с причиной. Остальное без изменений: пароль Вайба уже есть, не перезаписываем; email находит другого сотрудника, пропуск; перед отправкой реальный вход проверяется тем же поиском, что у `POST /api/auth/vibe-login` (он и так принимает любой email справочника).
