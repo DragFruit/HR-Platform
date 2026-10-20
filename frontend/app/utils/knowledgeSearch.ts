@@ -1,10 +1,28 @@
 import type { KnowledgeArticleType, KnowledgeCard } from '~/data/knowledgeBaseCatalog';
+import { stemRu } from './ruStem';
+
+/**
+ * Обычный поиск /knowledge (вкладка «Поиск»).
+ *
+ * Запрос → смысловые слова: служебные слова (предлоги, союзы, частицы, местоимения, «как/где/когда»)
+ * отбрасываются, остальные сравниваются по основе (stemRu: «отпуска/отпуском/отпуск» — одно слово).
+ * Поля с весами: заголовок > теги/раздел/описание > текст статьи. Ранжирование: сначала статьи,
+ * где нашлись все смысловые слова, ниже — частичные совпадения.
+ *
+ * Индекс (словарь основ → статьи) строится один раз на список статей и кэшируется,
+ * повторный поиск — проход по словарю основ, без разбора текста статей.
+ *
+ * Синтаксис сохранён: "фраза" — подстрока, !слово — целое слово, a OR b — любое из слов.
+ */
 
 export type ParsedKnowledgeQuery = {
   phrases: string[];
   exact: string[];
   orGroups: string[][];
+  /** Смысловые слова запроса (без служебных). */
   soft: string[];
+  /** Отброшенные служебные слова. */
+  stop: string[];
 };
 
 export type KnowledgeSearchFilters = {
@@ -18,6 +36,9 @@ export type KnowledgeSearchFilters = {
 export type KnowledgeHit = {
   card: KnowledgeCard;
   score: number;
+  /** Сколько смысловых слов запроса нашлось в статье (из `termCount`). */
+  matched: number;
+  termCount: number;
   titleParts: { text: string; hit: boolean }[];
 };
 
@@ -35,6 +56,55 @@ export const hasActiveKnowledgeFilters = (filters: KnowledgeSearchFilters) =>
   Boolean(filters.dateFrom || filters.dateTo || filters.author || filters.topic || filters.type);
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* ── Служебные слова: не ищем по ним ── */
+export const KNOWLEDGE_STOP_WORDS: ReadonlySet<string> = new Set([
+  // предлоги
+  'в', 'во', 'на', 'по', 'для', 'к', 'ко', 'с', 'со', 'у', 'о', 'об', 'обо', 'от', 'ото', 'до', 'из', 'изо',
+  'за', 'над', 'под', 'при', 'про', 'через', 'без', 'между', 'перед', 'около', 'после', 'среди', 'вокруг',
+  'из-за', 'из-под', 'насчет', 'вместо', 'кроме', 'внутри',
+  // союзы
+  'и', 'а', 'но', 'или', 'либо', 'да', 'что', 'чтобы', 'чтоб', 'если', 'то', 'тоже', 'также', 'как', 'так',
+  'потому', 'поэтому', 'когда', 'пока', 'хотя', 'причем', 'зато',
+  // частицы
+  'не', 'ни', 'же', 'ли', 'бы', 'б', 'ведь', 'вот', 'вон', 'только', 'уже', 'еще', 'даже', 'лишь', 'именно',
+  'просто', 'разве', 'неужели', 'пусть', 'ну',
+  // вопросительные и местоимения
+  'где', 'куда', 'откуда', 'зачем', 'почему', 'какой', 'какая', 'какое', 'какие', 'каких', 'каким', 'какую',
+  'кто', 'кого', 'кому', 'чем', 'чего', 'чему', 'сколько', 'каков', 'который', 'которая', 'которые',
+  'я', 'мы', 'ты', 'вы', 'он', 'она', 'оно', 'они', 'мне', 'меня', 'мной', 'нам', 'нас', 'нами', 'тебе',
+  'тебя', 'вам', 'вас', 'ему', 'его', 'ей', 'ее', 'им', 'их', 'ими', 'них', 'нему', 'ней', 'нее', 'него',
+  'мой', 'моя', 'мое', 'мои', 'моего', 'моей', 'мою', 'твой', 'ваш', 'ваша', 'ваше', 'ваши', 'наш', 'наша',
+  'наше', 'наши', 'свой', 'своя', 'свое', 'свои', 'своего', 'своей', 'свою', 'своим', 'себе', 'себя',
+  'это', 'этот', 'эта', 'эти', 'этого', 'этой', 'этом', 'тот', 'та', 'те', 'того', 'той', 'том',
+  'весь', 'вся', 'все', 'всё', 'всех', 'всем', 'всего',
+  // связки и модальные
+  'быть', 'есть', 'был', 'была', 'было', 'были', 'будет', 'будут', 'можно', 'нужно', 'надо', 'нужен', 'нужна',
+  'хочу', 'могу', 'мочь',
+  // вежливые обращения к поиску
+  'пожалуйста', 'подскажи', 'подскажите', 'скажи', 'скажите', 'расскажи', 'расскажите',
+  // английские
+  'the', 'a', 'an', 'of', 'to', 'in', 'on', 'for', 'and', 'or', 'is', 'are', 'with', 'how', 'what'
+]);
+
+/** Нижний регистр + ё→е: «счёт» и «счет» — одно слово. */
+const norm = (s: string) => s.toLowerCase().replace(/ё/g, 'е');
+
+const WORD_RE = /[\p{L}\p{N}]+/gu;
+
+/** Слова текста (нормализованные). */
+export const tokenizeKnowledgeText = (text: string): string[] => norm(text).match(WORD_RE) ?? [];
+
+export const isKnowledgeStopWord = (word: string) => {
+  const w = norm(word);
+  if (KNOWLEDGE_STOP_WORDS.has(w)) return true;
+  // одиночная буква — шум; одиночная цифра — смысл («шаг 3»)
+  return w.length < 2 && !/\d/.test(w);
+};
+
+/** Смысловые слова запроса без служебных. */
+export const meaningfulQueryWords = (raw: string): string[] =>
+  tokenizeKnowledgeText(raw).filter((w) => !isKnowledgeStopWord(w));
 
 /* ── Транслит: кириллица ↔ латиница ── */
 const CYR_TO_LAT: Record<string, string> = {
@@ -83,20 +153,42 @@ const swapLayoutToEn = (s: string) => s.replace(/./g, (c) => RU_TO_EN[c] ?? c);
 const isCyrillic = (s: string) => /[а-яё]/i.test(s);
 const isLatin = (s: string) => /[a-z]/i.test(s);
 
-/** Все варианты написания токена для нечёткого поиска */
+/** Все варианты написания токена (транслит, не та раскладка). */
 const expandToken = (token: string): string[] => {
-  const low = token.toLowerCase();
+  const low = norm(token);
   const variants = new Set<string>([low]);
   if (isCyrillic(low)) {
     variants.add(cyrToLat(low));
     variants.add(swapLayoutToEn(low));
   }
   if (isLatin(low)) {
-    variants.add(latToCyr(low));
-    variants.add(swapLayoutToRu(low));
+    variants.add(norm(latToCyr(low)));
+    variants.add(norm(swapLayoutToRu(low)));
   }
   return [...variants];
 };
+
+/** Узкие группы синонимов/написаний из реальных статей (не толковый словарь). */
+const SYNONYM_GROUPS: string[][] = [
+  ['зп', 'зарплата', 'заработная'],
+  ['вернуть', 'возврат'],
+  ['вк', 'вконтакте', 'vk', 'вкр', 'vkr'],
+  ['впн', 'vpn'],
+  ['директ', 'direct'],
+  ['метрика', 'metrika'],
+  ['афина', 'afina'],
+  ['еком', 'ecom', 'ecommerce', 'екомерс'],
+  ['dayoff', 'dayofff', 'дейофф', 'дейоф']
+];
+const synonymsOf = (() => {
+  const map = new Map<string, string[]>();
+  for (const group of SYNONYM_GROUPS) {
+    for (const word of group) {
+      map.set(stemRu(word), group.filter((w) => w !== word));
+    }
+  }
+  return (word: string) => map.get(stemRu(word)) ?? [];
+})();
 
 const hasExactWord = (hay: string, word: string) => {
   const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(word)}(?![\\p{L}\\p{N}_])`, 'iu');
@@ -122,12 +214,14 @@ export function parseKnowledgeQuery(raw: string): ParsedKnowledgeQuery {
       atoms.push({ kind: 'exact', value: token.slice(1) });
       continue;
     }
-    atoms.push({ kind: 'word', value: token });
+    // «как-то», «отпуск,» → отдельные слова без пунктуации
+    for (const word of tokenizeKnowledgeText(token)) atoms.push({ kind: 'word', value: word });
   }
 
   const exact: string[] = [];
   const orGroups: string[][] = [];
   const soft: string[] = [];
+  const stop: string[] = [];
 
   let i = 0;
   while (i < atoms.length) {
@@ -143,92 +237,198 @@ export function parseKnowledgeQuery(raw: string): ParsedKnowledgeQuery {
         group.push(atoms[j + 1].value);
         j += 2;
       }
-      orGroups.push(group);
+      const meaningful = group.filter((w) => !isKnowledgeStopWord(w));
+      if (meaningful.length) orGroups.push(meaningful);
       i = j;
       continue;
     }
     if (current.kind === 'exact') exact.push(current.value);
-    else soft.push(current.value);
+    else if (isKnowledgeStopWord(current.value)) stop.push(current.value);
+    else if (!soft.includes(current.value)) soft.push(current.value);
     i += 1;
   }
 
-  return { phrases, exact, orGroups, soft };
+  return { phrases, exact, orGroups, soft, stop };
 }
 
-const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&\w+;/g, ' ');
-
-const articleText = (card: KnowledgeCard) =>
-  [card.title, card.description, card.category, card.author ?? '', ...(card.body ?? []), stripHtml(card.bodyHtml ?? '')].join('\n');
-
-const hayIncludesAny = (hayLower: string, token: string) =>
-  expandToken(token).some((v) => hayLower.includes(v));
-
-const hayExactAny = (hay: string, token: string) =>
-  expandToken(token).some((v) => hasExactWord(hay, v));
-
-const matchesRequired = (card: KnowledgeCard, parsed: ParsedKnowledgeQuery) => {
-  const hay = articleText(card);
-  const hayLower = hay.toLowerCase();
-
-  for (const phrase of parsed.phrases) {
-    if (!expandToken(phrase).some((v) => hayLower.includes(v))) return false;
-  }
-  for (const word of parsed.exact) {
-    if (!hayExactAny(hay, word)) return false;
-  }
-  for (const group of parsed.orGroups) {
-    const ok = group.some((word) => hayIncludesAny(hayLower, word));
-    if (!ok) return false;
-  }
-  return true;
-};
-
-const anyIncludes = (hay: string, token: string) =>
-  expandToken(token).some((v) => hay.includes(v));
-
-const scoreCard = (card: KnowledgeCard, parsed: ParsedKnowledgeQuery) => {
-  const title = card.title.toLowerCase();
-  const body = [card.description, ...(card.body ?? []), stripHtml(card.bodyHtml ?? '')].join('\n').toLowerCase();
-  let score = 0;
-
-  for (const phrase of parsed.phrases) {
-    if (anyIncludes(title, phrase)) score += 12;
-    else if (anyIncludes(body, phrase)) score += 6;
-  }
-  for (const word of parsed.exact) {
-    if (hayExactAny(card.title, word)) score += 10;
-    else score += 5;
-  }
-  for (const word of parsed.soft) {
-    if (anyIncludes(title, word)) score += 5;
-    else if (anyIncludes(body, word)) score += 2;
-  }
-  for (const group of parsed.orGroups) {
-    if (group.some((w) => anyIncludes(title, w))) score += 5;
-    else score += 2;
-  }
-  return score;
-};
-
-export function highlightTitle(title: string, parsed: ParsedKnowledgeQuery) {
-  const terms = [...parsed.phrases, ...parsed.exact, ...parsed.soft, ...parsed.orGroups.flat()]
-    .map((term) => term.trim())
-    .filter(Boolean)
-    .sort((a, b) => b.length - a.length);
-
-  if (!terms.length) return [{ text: title, hit: false }];
-
-  const re = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'giu');
-  const chunks = title.split(re).filter((chunk) => chunk !== '');
-  const lowered = new Set(terms.map((term) => term.toLowerCase()));
-
-  return chunks.map((text) => ({
-    text,
-    hit: lowered.has(text.toLowerCase())
-  }));
+/** В запросе есть текст, но только служебные слова («в», «и на по»). */
+export function isStopWordsOnlyQuery(raw: string): boolean {
+  if (!raw.trim()) return false;
+  const p = parseKnowledgeQuery(raw);
+  return !p.phrases.length && !p.exact.length && !p.orGroups.length && !p.soft.length && p.stop.length > 0;
 }
 
-export function applyKnowledgeFilters(cards: KnowledgeCard[], filters: KnowledgeSearchFilters) {
+/* ── Индекс: основа слова → статьи ── */
+
+const F_BODY = 1;
+const F_META = 2;
+const F_TITLE = 4;
+const W_TITLE = 10;
+const W_META = 5;
+const W_BODY = 2;
+
+const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&#?\w+;/g, ' ');
+
+type SearchIndex = {
+  cards: readonly KnowledgeCard[];
+  /** основа → (индекс статьи → биты полей | число вхождений в тексте << 3) */
+  postings: Map<string, Map<number, number>>;
+  vocab: string[];
+  /** Нормализованный полный текст — для "фраз" и !точных слов. */
+  texts: string[];
+  /** Кэш: основа запроса → подходящие основы словаря с качеством совпадения. */
+  termCache: Map<string, [string, number][]>;
+};
+
+const indexCache = new WeakMap<object, SearchIndex>();
+
+const cardMeta = (card: KnowledgeCard) =>
+  [card.category, ...(card.tags ?? []), ...(card.breadcrumbs ?? []), card.description].join('\n');
+
+const cardBody = (card: KnowledgeCard) =>
+  [card.author ?? '', ...(card.body ?? []), stripHtml(card.bodyHtml ?? '')].join('\n');
+
+function buildIndex(cards: readonly KnowledgeCard[]): SearchIndex {
+  const postings = new Map<string, Map<number, number>>();
+  const texts: string[] = [];
+  const add = (stem: string, idx: number, field: number) => {
+    let row = postings.get(stem);
+    if (!row) {
+      row = new Map();
+      postings.set(stem, row);
+    }
+    const prev = row.get(idx) ?? 0;
+    row.set(idx, field === F_BODY ? (prev | F_BODY) + 8 : prev | field);
+  };
+  cards.forEach((card, idx) => {
+    const title = card.title ?? '';
+    const meta = cardMeta(card);
+    const body = cardBody(card);
+    texts.push(norm(`${title}\n${meta}\n${body}`));
+    for (const w of tokenizeKnowledgeText(title)) add(stemRu(w), idx, F_TITLE);
+    for (const w of tokenizeKnowledgeText(meta)) add(stemRu(w), idx, F_META);
+    for (const w of tokenizeKnowledgeText(body)) add(stemRu(w), idx, F_BODY);
+  });
+  return { cards, postings, vocab: [...postings.keys()], texts, termCache: new Map() };
+}
+
+function getIndex(cards: readonly KnowledgeCard[]): SearchIndex {
+  const cached = indexCache.get(cards);
+  if (cached && cached.cards.length === cards.length && cached.cards.every((c, i) => c === cards[i])) {
+    return cached;
+  }
+  const built = buildIndex(cards.slice());
+  indexCache.set(cards, built);
+  return built;
+}
+
+const commonPrefix = (a: string, b: string) => {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i += 1;
+  return i;
+};
+
+/**
+ * Основы словаря, совпадающие с основой запроса.
+ * 1 — та же основа; 0.85 — основа-продолжение («увол» → «увольнен»);
+ * 0.75 — словарь короче запроса («отпускн» ← «отпуск»); 0.7 — общий длинный корень
+ * («переговорк» / «переговорн»). Короткие слова (зп, вк, seo) — только точное совпадение.
+ */
+function matchStem(index: SearchIndex, stem: string): [string, number][] {
+  const cached = index.termCache.get(stem);
+  if (cached) return cached;
+  const out: [string, number][] = [];
+  if (index.postings.has(stem)) out.push([stem, 1]);
+  if (stem.length >= 4) {
+    for (const v of index.vocab) {
+      if (v === stem) continue;
+      if (v.length > stem.length) {
+        if (v.startsWith(stem) && v.length - stem.length <= 4) out.push([v, 0.85]);
+        else if (stem.length >= 5) {
+          const cp = commonPrefix(v, stem);
+          if (cp >= 5 && cp >= stem.length - 1) out.push([v, 0.7]);
+        }
+      } else if (v.length >= 4) {
+        if (stem.startsWith(v) && stem.length - v.length <= 3) out.push([v, 0.75]);
+        else if (v.length >= 5) {
+          const cp = commonPrefix(v, stem);
+          if (cp >= 5 && cp >= v.length - 1 && cp >= stem.length - 1) out.push([v, 0.7]);
+        }
+      }
+    }
+  }
+  if (index.termCache.size > 2000) index.termCache.clear();
+  index.termCache.set(stem, out);
+  return out;
+}
+
+/** Основы для одного слова запроса: само слово, транслит/раскладка, узкие синонимы. */
+function termStems(word: string): [string, number][] {
+  const out = new Map<string, number>();
+  const put = (stem: string, q: number) => {
+    if (stem && (out.get(stem) ?? 0) < q) out.set(stem, q);
+  };
+  const variants = expandToken(word);
+  variants.forEach((v, i) => put(stemRu(v), i === 0 ? 1 : 0.9));
+  for (const syn of synonymsOf(word)) put(stemRu(syn), 0.85);
+  return [...out];
+}
+
+type TermMatch = Map<number, { score: number; stems: Set<string> }>;
+
+function matchTerm(index: SearchIndex, words: string[]): TermMatch {
+  const perCard: TermMatch = new Map();
+  for (const word of words) {
+    for (const [qStem, qQuality] of termStems(word)) {
+      for (const [stem, quality] of matchStem(index, qStem)) {
+        const row = index.postings.get(stem);
+        if (!row) continue;
+        const q = qQuality * quality;
+        for (const [idx, packed] of row) {
+          let fieldScore = 0;
+          if (packed & F_TITLE) fieldScore = W_TITLE;
+          else if (packed & F_META) fieldScore = W_META;
+          if (packed & F_BODY) {
+            const count = packed >> 3;
+            fieldScore = Math.max(fieldScore, W_BODY + Math.min(count, 6) * 0.25);
+          }
+          const s = fieldScore * q;
+          const prev = perCard.get(idx);
+          if (!prev) perCard.set(idx, { score: s, stems: new Set([stem]) });
+          else {
+            prev.stems.add(stem);
+            if (s > prev.score) prev.score = s;
+          }
+        }
+      }
+    }
+  }
+  return perCard;
+}
+
+/** Подсветка: слова заголовка, чья основа совпала с запросом. */
+export function highlightTitle(title: string, stems: ReadonlySet<string>) {
+  if (!stems.size) return [{ text: title, hit: false }];
+  const parts: { text: string; hit: boolean }[] = [];
+  let last = 0;
+  for (const m of title.matchAll(WORD_RE)) {
+    const at = m.index ?? 0;
+    if (at > last) parts.push({ text: title.slice(last, at), hit: false });
+    parts.push({ text: m[0], hit: stems.has(stemRu(norm(m[0]))) });
+    last = at + m[0].length;
+  }
+  if (last < title.length) parts.push({ text: title.slice(last), hit: false });
+  // склеиваем соседние куски без подсветки
+  return parts.reduce<{ text: string; hit: boolean }[]>((acc, part) => {
+    const prev = acc[acc.length - 1];
+    if (prev && !prev.hit && !part.hit) prev.text += part.text;
+    else acc.push({ ...part });
+    return acc;
+  }, []);
+}
+
+export function applyKnowledgeFilters(cards: readonly KnowledgeCard[], filters: KnowledgeSearchFilters) {
   return cards.filter((card) => {
     if (card.tone === 'placeholder') return false;
     // visibility/departments уже отфильтрованы на сервере (/api/knowledge)
@@ -241,51 +441,93 @@ export function applyKnowledgeFilters(cards: KnowledgeCard[], filters: Knowledge
   });
 }
 
+const byDate = (a: KnowledgeCard, b: KnowledgeCard) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? '');
+
 export function searchKnowledgeArticles(
-  cards: KnowledgeCard[],
+  cards: readonly KnowledgeCard[],
   rawQuery: string,
   filters: KnowledgeSearchFilters
 ): KnowledgeHit[] {
   const pool = applyKnowledgeFilters(cards, filters);
-  const query = rawQuery.trim();
-  if (!query) {
+  const parsed = parseKnowledgeQuery(rawQuery.trim());
+  const termGroups: string[][] = [...parsed.soft.map((w) => [w]), ...parsed.orGroups];
+  const hasRequired = parsed.phrases.length + parsed.exact.length > 0;
+
+  // Пустой запрос или только служебные слова — обычный список по дате
+  if (!termGroups.length && !hasRequired) {
     return pool
       .slice()
-      .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
-      .map((card) => ({ card, score: 0, titleParts: [{ text: card.title, hit: false }] }));
+      .sort(byDate)
+      .map((card) => ({ card, score: 0, matched: 0, termCount: 0, titleParts: [{ text: card.title, hit: false }] }));
   }
 
-  const parsed = parseKnowledgeQuery(query);
-  const hasRequired = parsed.phrases.length + parsed.exact.length + parsed.orGroups.length > 0;
+  const index = getIndex(cards);
+  const inPool = new Set(pool.map((c) => c.id));
+  const termCount = termGroups.length;
+  const matches = termGroups.map((words) => matchTerm(index, words));
+  // Частичные совпадения допускаем, но для длинных запросов — хотя бы половина слов
+  const minMatched = termCount <= 2 ? 1 : Math.ceil(termCount / 2);
+  const phraseNorm = parsed.phrases.map((p) => expandToken(p));
+  const phraseStems = parsed.phrases.flatMap((p) => meaningfulQueryWords(p).map((w) => stemRu(w)));
+  const exactStems = parsed.exact.map((w) => stemRu(norm(w)));
+
   const hits: KnowledgeHit[] = [];
+  index.cards.forEach((card, idx) => {
+    if (!inPool.has(card.id)) return;
+    const text = index.texts[idx]!;
+    const titleNorm = norm(card.title);
 
-  for (const card of pool) {
-    if (!matchesRequired(card, parsed)) continue;
-    const score = scoreCard(card, parsed);
-    if (!hasRequired && parsed.soft.length && score <= 0) continue;
-    hits.push({
-      card,
-      score,
-      titleParts: highlightTitle(card.title, parsed)
-    });
-  }
+    let score = 0;
+    for (const variants of phraseNorm) {
+      if (variants.some((v) => titleNorm.includes(v))) score += 12;
+      else if (variants.some((v) => text.includes(v))) score += 6;
+      else return;
+    }
+    for (const word of parsed.exact) {
+      if (!expandToken(word).some((v) => hasExactWord(text, v))) return;
+      score += expandToken(word).some((v) => hasExactWord(titleNorm, v)) ? 10 : 5;
+    }
+
+    let matched = 0;
+    let inTitle = 0;
+    const stems = new Set<string>([...phraseStems, ...exactStems]);
+    for (const m of matches) {
+      const hit = m.get(idx);
+      if (!hit) continue;
+      matched += 1;
+      score += hit.score;
+      if (hit.score >= W_TITLE * 0.7) inTitle += 1;
+      for (const s of hit.stems) stems.add(s);
+    }
+    if (termCount && matched < minMatched) return;
+    if (!termCount && !hasRequired) return;
+    // Все слова запроса в заголовке — почти наверняка та самая статья
+    if (termCount > 1 && inTitle === termCount) score += 6;
+
+    hits.push({ card, score, matched, termCount, titleParts: highlightTitle(card.title, stems) });
+  });
 
   return hits.sort((a, b) => {
+    if (b.matched !== a.matched) return b.matched - a.matched;
     if (b.score !== a.score) return b.score - a.score;
-    return (b.card.publishedAt ?? '').localeCompare(a.card.publishedAt ?? '');
+    return byDate(a.card, b.card);
   });
 }
 
-const AI_SOFT_STOP = new Set(['и', 'в', 'на', 'по', 'для', 'как', 'что', 'это', 'или', 'из', 'к', 'о', 'об', 'а', 'но']);
+const AI_SOFT_STOP = KNOWLEDGE_STOP_WORDS;
 
-/** Сколько «смысловых» слов запроса реально встречаются в статье (с учётом транслита/раскладки). */
+/** Сколько «смысловых» слов запроса реально встречаются в статье (с учётом словоформ/транслита). */
 export function countSoftTokenMatches(card: KnowledgeCard, softTokens: string[]): number {
-  const hayLower = articleText(card).toLowerCase();
+  let index = indexCache.get(card);
+  if (!index) {
+    index = buildIndex([card]);
+    indexCache.set(card, index);
+  }
   let n = 0;
   for (const raw of softTokens) {
-    const token = raw.trim().toLowerCase();
+    const token = norm(raw.trim());
     if (!token || AI_SOFT_STOP.has(token) || token.length < 2) continue;
-    if (hayIncludesAny(hayLower, token)) n += 1;
+    if (matchTerm(index, [token]).size) n += 1;
   }
   return n;
 }
@@ -297,21 +539,14 @@ export function countSoftTokenMatches(card: KnowledgeCard, softTokens: string[])
  */
 export function pickKnowledgeCardsForAi(cards: KnowledgeCard[], question: string, limit = 3): KnowledgeCard[] {
   const ranked = searchKnowledgeArticles(cards, question, emptyKnowledgeFilters());
-  const parsed = parseKnowledgeQuery(question);
-  const softMeaningful = parsed.soft
-    .map((t) => t.trim().toLowerCase())
-    .filter((t) => t.length >= 2 && !AI_SOFT_STOP.has(t));
+  const softMeaningful = parseKnowledgeQuery(question).soft;
 
   const minTokenHits =
     softMeaningful.length <= 1 ? 1 : Math.min(softMeaningful.length, Math.max(2, Math.ceil(softMeaningful.length * 0.6)));
-  /** Одно «контакты» в теле даёт ~2; совпадение в заголовке ≥5. */
+  /** Одно слово в теле даёт ~2–3.5; совпадение в заголовке ≥ 7. */
   const minScore = softMeaningful.length <= 1 ? 2 : 5;
 
-  const strict = ranked.filter((hit) => {
-    if (hit.score < minScore) return false;
-    if (softMeaningful.length <= 1) return true;
-    return countSoftTokenMatches(hit.card, softMeaningful) >= minTokenHits;
-  });
+  const strict = ranked.filter((hit) => hit.score >= minScore && hit.matched >= minTokenHits);
 
   if (strict.length) {
     return strict.slice(0, limit).map((hit) => hit.card);

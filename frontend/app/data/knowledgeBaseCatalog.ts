@@ -12,6 +12,8 @@ export type KnowledgeCard = {
   category: string;
   title: string;
   description: string;
+  /** Все теги статьи (category = первый) — участвуют в поиске */
+  tags?: string[];
   author?: string;
   tone: KnowledgeCardTone;
   /** Для tone=doc — пункты превью оглавления */

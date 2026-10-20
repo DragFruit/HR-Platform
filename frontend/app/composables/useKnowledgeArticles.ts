@@ -34,6 +34,7 @@ const decodeEscapedArticleHtml = (src: string) => {
 const toCard = (a: ApiArticle): KnowledgeCard => ({
   id: a.id,
   category: a.tags[0] ?? '',
+  tags: a.tags ?? [],
   title: a.title,
   description: a.summary,
   author: a.authorName,

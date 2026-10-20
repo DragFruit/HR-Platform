@@ -1,5 +1,6 @@
 import {
   emptyKnowledgeFilters,
+  isStopWordsOnlyQuery,
   KNOWLEDGE_PAGE_SIZE,
   searchKnowledgeArticles,
   type KnowledgeSearchFilters
@@ -19,6 +20,9 @@ export function useKnowledgeSearch() {
     if (!hasSearched.value) return [];
     return searchKnowledgeArticles(articles.value, committedQuery.value, committedFilters.value);
   });
+
+  /** Запрос только из предлогов/союзов — показываем весь список и подсказку. */
+  const stopWordsOnly = computed(() => hasSearched.value && isStopWordsOnlyQuery(committedQuery.value));
 
   const visibleHits = computed(() => hits.value.slice(0, visibleCount.value));
   const hasMore = computed(() => visibleCount.value < hits.value.length);
@@ -40,6 +44,7 @@ export function useKnowledgeSearch() {
     draftFilters,
     hasSearched,
     hits,
+    stopWordsOnly,
     visibleHits,
     hasMore,
     runSearch,

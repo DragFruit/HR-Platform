@@ -18706,6 +18706,14 @@ button.button {
   text-align: left;
 }
 
+/* Подсказка над выдачей: запрос только из предлогов/союзов */
+.kb-results__hint {
+  margin: 0 0 6px;
+  max-width: 42rem;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
 .kb-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
