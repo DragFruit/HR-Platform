@@ -4,6 +4,14 @@
 
 ## 2026-10-20
 
+### Визитка: день рождения из Bitrix
+
+- Синк сотрудников (вход через Bitrix, не чаще раза в 5 минут, и `POST /api/bitrix/sync-employees`) теперь читает `PERSONAL_BIRTHDAY` из `user.get` и пишет в поле `birthday` сотрудника (колонка `employees.birthday`, миграций нет). Хранение: `YYYY-MM-DD`, а если год скрыт или заглушка (`0000`/`1900`/нет года) — только `MM-DD`. Bitrix главный: дату убрали в профиле, у нас станет пусто.
+- Визитка: строка «День рождения» показывает только день и месяц, «🎂 12 марта» (год и возраст никогда). В день рождения строка подсвечена лаймом и есть плашка «сегодня». Даты нет: строки нет (раньше было «—» и дата с годом).
+- `GET /api/employees`: год рождения только для admin/hr, остальным `MM-DD`.
+- Файлы: `frontend/server/utils/bitrixBirthday.ts` (новый), `bitrixSync.ts`, `bitrixClient.ts`, `server/api/employees/index.get.ts`, `app/utils/tenureAnniversary.ts` (`formatBirthdayCard`, `isBirthdayToday`; `formatBirthdayDot` удалён), `app/components/EmployeeVisitingCard.vue`; тест `tests/unit/employeeBirthday.test.ts`.
+- Как проверить (:8080): после входа через Bitrix (синк) открыть визитку коллеги с датой рождения в Bitrix → «🎂 12 марта» без года; у коллеги без даты строки нет.
+
 ### Настройки профиля: лаймовая рамка только у вишлиста
 
 - Праздничная лаймовая тень-рамка окна «Настройки профиля» показывается только в разделе «Вишлист»; «Вход в Вайб» и «Аватар» — обычное окно (чёрная рамка без цветной тени). Размер окна прежний. Файл: `frontend/app/components/ProfileSettingsDialog.vue` (`.profile-settings--wishlist`).

@@ -568,6 +568,10 @@ sudo systemctl restart vbi-hr           # production
 | `select[3]` | `EMAIL` |
 | `select[4]` | `WORK_POSITION` |
 | `select[5]` | `UF_DEPARTMENT` |
+| `select[6]` | `DATE_REGISTER` |
+| `select[7]` | `PERSONAL_BIRTHDAY` |
+
+`PERSONAL_BIRTHDAY` (день рождения для визитки) приходит только при полном скоупе `user` (с `user_basic` поля нет). Форматы: ISO со временем (`1990-03-12T03:00:00+03:00`), `dd.mm.yyyy`, без года или с годом-заглушкой (`0000`, `1900`). Нормализация в `server/utils/bitrixBirthday.ts` → `YYYY-MM-DD` или `MM-DD`; дата берётся строкой, без сдвига по часовому поясу.
 
 `department.get`: `select[0]=ID`, `select[1]=NAME`, `select[2]=UF_HEAD`, `select[3]=PARENT`.
 

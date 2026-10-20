@@ -56,9 +56,16 @@
                   <dt>Стаж</dt>
                   <dd>{{ tenureLabel }}</dd>
                 </div>
-                <div class="emp-card__field">
+                <div
+                  v-if="birthdayLabel"
+                  class="emp-card__field emp-card__field--birthday"
+                  :class="{ 'emp-card__field--birthday-today': birthdayToday }"
+                >
                   <dt>День рождения</dt>
-                  <dd>{{ birthdayLabel }}</dd>
+                  <dd>
+                    <span v-if="birthdayToday" class="emp-card__bday-today">сегодня</span>
+                    <span aria-hidden="true">🎂</span> {{ birthdayLabel }}
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -154,8 +161,9 @@
 
 <script setup lang="ts">
 import {
-  formatBirthdayDot,
+  formatBirthdayCard,
   formatHiredAtDot,
+  isBirthdayToday,
   tenureCardLabel
 } from '~/utils/tenureAnniversary';
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
@@ -198,10 +206,9 @@ const tenureLabel = computed(() =>
   employee.value?.hired_at ? tenureCardLabel(employee.value.hired_at) : '—'
 );
 
-const birthdayLabel = computed(() => {
-  const b = employee.value?.birthday?.trim();
-  return b ? formatBirthdayDot(b) : '—';
-});
+/** Только день и месяц («12 марта»); пусто — строку не показываем. */
+const birthdayLabel = computed(() => formatBirthdayCard(employee.value?.birthday));
+const birthdayToday = computed(() => isBirthdayToday(employee.value?.birthday));
 
 const ideasCount = computed(() => {
   const emp = employee.value;
@@ -504,6 +511,31 @@ onMounted(() => {
   letter-spacing: 0.02em;
   color: var(--ink);
   word-break: break-word;
+}
+
+/* Месяц строчными: «12 марта», а не «12 МАРТА». */
+.emp-card__field--birthday dd {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.emp-card__field--birthday-today {
+  background: linear-gradient(90deg, transparent, rgba(221, 243, 101, 0.55));
+}
+
+.emp-card__bday-today {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  font-size: 8px;
+  line-height: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--lime);
+  border: 1px solid var(--ink);
+  vertical-align: 1px;
 }
 
 .emp-card__rail {

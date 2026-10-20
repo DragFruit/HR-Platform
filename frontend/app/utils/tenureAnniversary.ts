@@ -200,12 +200,47 @@ export const formatBirthdayRu = (birthday: string): string => {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 };
 
-/** Визитка: `17.08.1995` или `17.08` без года. */
-export const formatBirthdayDot = (birthday: string): string => {
-  const raw = birthday.trim();
-  const full = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (full) return `${full[3]}.${full[2]}.${full[1]}`;
-  const short = raw.match(/^(\d{2})-(\d{2})$/);
-  if (short) return `${short[2]}.${short[1]}`;
-  return raw || '—';
+const BIRTHDAY_MONTHS_GEN = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря'
+];
+
+/** `YYYY-MM-DD` / `MM-DD` → { month, day } или null. */
+const birthdayDayMonth = (birthday?: string | null): { month: number; day: number } | null => {
+  const raw = (birthday || '').trim();
+  const m = raw.match(/^(?:\d{4}-)?(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { month, day };
+};
+
+/** Визитка: только день и месяц, «12 марта». Год и возраст не показываем. Пусто — ''. */
+export const formatBirthdayCard = (birthday?: string | null): string => {
+  const dm = birthdayDayMonth(birthday);
+  if (!dm) return '';
+  return `${dm.day} ${BIRTHDAY_MONTHS_GEN[dm.month - 1]}`;
+};
+
+/** День рождения сегодня (по локальной дате; 29 февраля в невисокосный год — 28-го). */
+export const isBirthdayToday = (birthday?: string | null, asOf: Date = new Date()): boolean => {
+  const dm = birthdayDayMonth(birthday);
+  if (!dm) return false;
+  const month = asOf.getMonth() + 1;
+  const day = asOf.getDate();
+  if (dm.month === month && dm.day === day) return true;
+  const y = asOf.getFullYear();
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  return !leap && dm.month === 2 && dm.day === 29 && month === 2 && day === 28;
 };

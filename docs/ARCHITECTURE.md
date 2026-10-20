@@ -76,6 +76,7 @@ flowchart TB
 - OAuth 2.0 локального приложения: `GET /api/auth/bitrix` → портал → `GET /api/auth/bitrix/callback`.
 - Вход разрешён **только** если Bitrix user id есть в `employees.json`; иначе 403 (экстранет/гости).
 - Синк при входе: `bitrixSync.ts` → обновляет уже заведённых, `importNew` по умолчанию **false**.
+- День рождения: `user.get` select `PERSONAL_BIRTHDAY` → `normalizeBitrixBirthday` (`server/utils/bitrixBirthday.ts`) → поле `birthday` сотрудника (колонка `employees.birthday` в Postgres, `YYYY-MM-DD` или `MM-DD`; Bitrix перезаписывает, пусто → `null`). Визитка: `formatBirthdayCard` / `isBirthdayToday` в `app/utils/tenureAnniversary.ts`.
 - Сессия: подписанная cookie (`sessionToken.ts`), TTL 8ч, Secure на staging/prod, sliding refresh в `requireVbiSession`.
 - Сессия: cookie `vbi-session`, `auth_source: 'bitrix'`, `id` = `bitrix_user_id`.
 - Env (сервер): `BITRIX_PORTAL_URL`, `BITRIX_CLIENT_ID`, `BITRIX_CLIENT_SECRET` — см. [BITRIX.md](BITRIX.md).
@@ -251,7 +252,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 
 | Endpoint | Назначение |
 |----------|------------|
-| `GET /api/employees` | Список (сессия) — источник для адаптации |
+| `GET /api/employees` | Список (сессия) — источник для адаптации. `birthday` с годом только для admin/hr, остальным `MM-DD` (`birthdayWithoutYear`) |
 | `PUT /api/employees` | Сохранение справочника (admin/hr) |
 
 Клиент: `useEmployees` — `localStorage` + синхронизация через `persist()` → `PUT`.
