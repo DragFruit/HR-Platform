@@ -58,7 +58,7 @@ const employeeTabs: Tab[] = [
 const adminTabs: Tab[] = [
   { to: '/admin/knowledge', label: 'Знания', icon: 'knowledge' },
   { to: '/admin/vacations', label: 'Отпуск', icon: 'vacation' },
-  { to: '/admin/quest-dashboard', label: 'Pit Stop', icon: 'home', center: true },
+  { to: '/admin', label: 'Панель', icon: 'home', center: true },
   { to: '/admin/ideas', label: 'Идеи', icon: 'ideas' },
   { to: '/admin/employees', label: 'Люди', icon: 'store' }
 ];
@@ -77,11 +77,7 @@ const isActive = (to: string) => {
       route.path.startsWith('/wallet/')
     );
   }
-  if (to === '/admin/quest-dashboard') {
-    return (
-      route.path.startsWith('/admin/quest-dashboard') || route.path.startsWith('/event/pit-stop')
-    );
-  }
+  if (to === '/admin') return route.path === '/admin';
   return route.path === to || route.path.startsWith(`${to}/`);
 };
 

@@ -1,47 +1,14 @@
-# Pit Stop 14 — корпоратив 9 октября 2026
+# Pit Stop 14 — ивент закрыт (2026-10-20)
 
-Временный ивент платформы Vibe. **Удалить целиком после закрытия** (папка + API + data + страницы).
+Корпоративный квест + гонка (28.09–10.10.2026). Интерфейс удалён: страницы `/event/pit-stop/**`
+(редирект на `/` в `nuxt.config.ts` → `routeRules`), `/admin/quest-dashboard`, API `/api/event/pit-stop/*`,
+cron `pit-stop-finalize`, ассеты `public/events/pit-stop-14/`.
 
-## Маршруты
+## Что осталось и зачем
 
-| URL | Кто |
-|-----|-----|
-| `/event/pit-stop` | хаб 8 чек-поинтов |
-| `/event/pit-stop/:id` | точка 1…8 |
-| `/admin/quest-dashboard` | мониторинг + аппрув кофе |
-
-## Таймлайн (Europe/Moscow)
-
-Порядок точек на трассе:
-
-1. Ключ от гаража (28.09)
-2. Скоростной Пит-стоп (29.09)
-3. Синхронное зажигание (01.10)
-4. Слепой пилот (02.10)
-5. Дозаправка пилотов (05.10)
-6. Пасхалка на трассе (06.10)
-7. Общий пазл (08.10)
-8. Клетчатый флаг / финиш (09.10)
-
-- Чек-поинт N открывается в **09:00** в свою дату.
-- **10.10 03:00** — стоп игры.
-- **10.10 10:00** — финализация: ачивка + скин `neon_race_14` для 8/8.
-
-Буферные дни (доигрывание): 30.09, 03.10, 04.10, 07.10.
-
-## UI
-
-У каждой точки свой интерактив и свой арт (общего каркаса нет).
-
-Эталон one-screen: точка 1 «Ключ от гаража» — иллюстрации в `public/events/pit-stop-14/cp1/` (`garage-locked`, `garage-open`, `key-tags`).
-
-## Стек
-
-- Состояние: `server/data/pit-stop-14.json` + `pitStopStore.ts`.
-- Пары и синхрон (точки 2–4, 7): пока **polling** `/api/event/pit-stop/pair-state` (WebSocket — следующий слой).
-- Награды в каталог ачивок — только после ответа заказчика по секции/публичности.
-- **Стейдж QA:** все точки открыты; автопара Драго (2684) ↔ Музыка (2353) — `ensureStagingQaPair`.
-
-## Mobile
-
-Мини-игры: тач ≥48×48, gap ≥12px, `touch-action: manipulation`, `overscroll-behavior-y: contain`; точка 1 — без скролла страницы (`100%` рабочей зоны).
+- `types.ts`, `copy.ts`, `timeline.ts`, `trackDrive.ts` — типы/константы, на которые опираются
+  хранилища `server/utils/pitStopStore.ts` и `pitStopRaceStore.ts` (данные, миграция в БД `engagement`,
+  `db-migrate`, `db-health`, тесты этапа 8).
+- `rewards.ts` — id ачивки `pit-stop-14` «Легенда трека — 14». Ачивка у победителей остаётся:
+  `usePitStopWinners` → `GET /api/achievements/pit-stop-14-winners` (топ-3 из `pit-stop-race.json` / `engagement`).
+- Данные (`server/data/pit-stop-14.json`, `pit-stop-race.json`, фото кофе) и таблицы `engagement.*` не трогаем.

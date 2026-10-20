@@ -29,7 +29,6 @@ const adminNav: NavItem[] = [
   { to: '/admin/employees', label: 'Сотрудники' },
   { to: '/admin/tasks', label: 'Задачи' },
   { to: '/admin/vacations', label: 'График отпусков' },
-  { to: '/admin/quest-dashboard', label: 'Pit Stop' },
   { to: '/admin/how-it-looks', label: 'Как выглядит' },
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
@@ -138,12 +137,6 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/admin/surveys')) {
       return 'Опросы';
-    }
-    if (route.path.startsWith('/event/pit-stop')) {
-      return 'Pit Stop 14';
-    }
-    if (route.path.startsWith('/admin/quest-dashboard')) {
-      return 'Pit Stop';
     }
     if (route.path === '/admin/how-it-looks') {
       return 'Как выглядит';

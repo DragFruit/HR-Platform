@@ -4,6 +4,17 @@
 
 ## 2026-10-20
 
+### Pit Stop 14: ивент окончен — гонка, победители и статистика убраны из интерфейса
+
+- Удалены страницы `/event/pit-stop` (хаб гонки, экран итогов с подиумом) и `/event/pit-stop/:id` (чек-поинты квеста), админ-статистика `/admin/quest-dashboard` (+ пункт «Pit Stop» в админ-меню, центральная кнопка «Pit Stop» в мобильном доке админа → теперь «Панель» `/admin`).
+- Убран клетчатый флаг у «Профиль» в сайдбаре (`app.vue`, стили `.nav-profile*` в `main.css`) и бейдж-флаг на аватаре в мобильной шапке (`AppMobileTop.vue`), пасхалка-флаг на `/knowledge` (`PitStopEasterFlag`).
+- Whitelist пилота (`useLaunchScope.ts`): убраны `/event/pit-stop` и `/admin/quest-dashboard`.
+- Редирект: `/event/pit-stop`, `/event/pit-stop/**`, `/admin/quest-dashboard` → `/` (`nuxt.config.ts` → `routeRules`), чтобы старые ссылки не вели на 404.
+- Удалены API `/api/event/pit-stop/*` (join, me, pair-state, checkpoint/1–8, race/lap|leaderboard|visit|winners), `/api/admin/quest-dashboard` (+ `cheat-review`, `coffee-approve`), cron `POST /api/cron/pit-stop-finalize`; утилиты `pitStopAntiCheat.ts`, `pitStopRaceToken.ts`, `pitStopRacePilot.ts`; компоненты `components/pit-stop/*`; ассеты `public/events/pit-stop-14/` (трасса, болиды, енот, флаги, подиум); модули `raccoonLines`, `raceAudio`, `raceTelemetry`, `pixelFont`, `index` в `app/events/pit-stop-14/`.
+- **Оставлено:** данные (`server/data/pit-stop-14.json`, `pit-stop-race.json`, фото кофе), таблицы `engagement.*` и миграции, `DB_ENGAGEMENT`, сторы `pitStopStore.ts` / `pitStopRaceStore.ts` (нужны `db-migrate`, `db-health`, тестам). Ачивка `pit-stop-14` у победителей не отзывается: `usePitStopWinners` теперь читает `GET /api/achievements/pit-stop-14-winners` (новый, только топ‑3 для ачивки).
+- Если на сервере в crontab остался вызов `pit-stop-finalize` — он теперь получает 404 (безвредно), строку можно убрать.
+- Проверка: стейдж → сайдбар/мобильная шапка без флага; `/event/pit-stop` и `/admin/quest-dashboard` → главная; у победителя гонки в профиле и на визитке ачивка «Легенда трека — 14» на месте.
+
 ### Отпуска: скруглённые углы таблицы отпусков
 
 - Вкладка «Общий» на `/vacations` (десктоп): у белой рамки правые углы были прямыми (`border-radius: r 0 0 r`, без правой линии). Теперь все четыре угла скруглены радиусом `--vac-frame-radius` (16px), правая линия рамки на месте, как у «Мой календарь»; активный ярлык справа заходит на линию на 1px и выглядит пришитым. Содержимое таблицы обрезается по скруглению (`overflow: hidden`).

@@ -2,9 +2,6 @@
 defineProps<{
   displayName: string;
   userId?: number | null;
-  showEvent?: boolean;
-  eventTo?: string;
-  eventAdmin?: boolean;
   showBell?: boolean;
   adminBell?: boolean;
   canSwitchRole?: boolean;
@@ -66,26 +63,6 @@ const emit = defineEmits<{
       <VacationNotificationsBell v-else-if="showBell" />
 
       <div class="mob-top__profile-stack">
-        <NuxtLink
-          v-if="showEvent && eventTo"
-          :to="eventTo"
-          class="mob-top__event-badge"
-          :aria-label="eventAdmin ? 'Pit Stop — статистика' : 'Pit Stop 14'"
-          title="Pit Stop 14"
-        >
-          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-            <rect width="16" height="16" fill="#111" />
-            <rect x="0" y="0" width="4" height="4" fill="#fff" />
-            <rect x="8" y="0" width="4" height="4" fill="#fff" />
-            <rect x="4" y="4" width="4" height="4" fill="#fff" />
-            <rect x="12" y="4" width="4" height="4" fill="#fff" />
-            <rect x="0" y="8" width="4" height="4" fill="#fff" />
-            <rect x="8" y="8" width="4" height="4" fill="#fff" />
-            <rect x="4" y="12" width="4" height="4" fill="#fff" />
-            <rect x="12" y="12" width="4" height="4" fill="#fff" />
-          </svg>
-        </NuxtLink>
-
         <NuxtLink
           to="/profile"
           class="mob-top__profile"
@@ -204,20 +181,5 @@ const emit = defineEmits<{
     box-shadow: none !important;
   }
 
-  /* Флаг ивента — бейдж на аватаре (не третий круг в ряду) */
-  .mob-top__event-badge {
-    position: absolute;
-    top: -4px;
-    right: -6px;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    border: 2px solid #111;
-    background: #fff;
-    box-shadow: 1px 1px 0 #111;
-  }
 }
 </style>

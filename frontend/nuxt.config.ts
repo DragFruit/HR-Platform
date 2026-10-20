@@ -48,7 +48,11 @@ export default defineNuxtConfig({
         'Referrer-Policy': 'strict-origin-when-cross-origin',
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), clipboard-read=(self), clipboard-write=(self)'
       }
-    }
+    },
+    // Ивент Pit Stop 14 закрыт (2026-10-20): старые ссылки на гонку/квест — на главную, не 404.
+    '/event/pit-stop': { redirect: '/' },
+    '/event/pit-stop/**': { redirect: '/' },
+    '/admin/quest-dashboard': { redirect: '/' }
   },
   app: {
     head: {
