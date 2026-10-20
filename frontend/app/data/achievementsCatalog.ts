@@ -75,7 +75,7 @@ export const ACHIEVEMENTS_CATALOG: AchievementDef[] = [
   {
     id: 'tenure-1y',
     title: '1 год с VBI',
-    subtitle: 'Первый юбилей — ачивка без купона',
+    subtitle: 'Первый юбилей',
     emoji: '1',
     section: 'tenure-career',
     sortOrder: 10
