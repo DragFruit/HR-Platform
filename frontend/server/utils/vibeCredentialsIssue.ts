@@ -69,8 +69,8 @@ export function vibeLoginEmail(email: unknown): string | null {
 /** Текст сообщения сотруднику (утверждён заказчиком дословно). */
 export function vibeCredentialsMessage(login: string, password: string): string {
   return [
-    'Хорошего тебе дня!',
-    'В Вайбе доступен вход не только через Битрикс, но и по логину паролю',
+    'Привет!',
+    'А ты знаешь, что теперь в Вайбе http://45.12.74.25/profile доступен вход не только через Битрикс, но и по логину паролю?',
     '',
     'Твои доступы:',
     `Логин: ${login}`,
