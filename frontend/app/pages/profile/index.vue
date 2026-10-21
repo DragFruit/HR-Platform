@@ -256,8 +256,8 @@
                 :src="VACATION_TRAINING_ART.src"
                 alt=""
                 aria-hidden="true"
-                width="440"
-                height="388"
+                width="360"
+                height="210"
                 loading="lazy"
               />
             </picture>

@@ -16,8 +16,8 @@ export const VACATION_SOON_ART: ProfileTileArt = {
   src: '/images/profile/vacation-soon.png?v=1'
 };
 
-/** «График отпусков / Пройти обучение»: календарь, книга, шапочка (справа-внизу). */
+/** «График отпусков / Пройти обучение»: шапочка и настольный календарь (крупно, выглядывает из правого нижнего угла). */
 export const VACATION_TRAINING_ART: ProfileTileArt = {
-  webp: '/images/profile/vacation-training.webp?v=1',
-  src: '/images/profile/vacation-training.png?v=1'
+  webp: '/images/profile/vacation-training.webp?v=2',
+  src: '/images/profile/vacation-training.png?v=2'
 };

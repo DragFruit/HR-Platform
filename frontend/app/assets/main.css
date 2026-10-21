@@ -4064,25 +4064,25 @@ button.org-unit-head--link:hover {
     linear-gradient(145deg, #ddf365 0%, #eef9c8 52%, #fff 100%) !important;
 }
 
-/* «Скоро в отпуск»: стикер слева-снизу (≤ 40% ширины, целиком, без обрезки), справа «Скоро в отпуск»
-   и дата ДД.ММ.ГГ. Картинка — VACATION_SOON_ART в utils/profileTileArt.ts. */
+/* «Скоро в отпуск»: слева сверху «Скоро в отпуск» в одну строку (кегль от ширины плитки, без переноса),
+   под ним дата ДД.ММ.ГГ; картинка (VACATION_SOON_ART) крупно справа-снизу, слегка выходит за край. */
 .profile-screen-hero .profile-stat-tile--secondary.profile-stat-tile--vacation-soon {
-  justify-content: center;
-  padding: 12px 8px 12px 41%;
-  /* шрифт текста считается от ширины плитки (cqi): 150px → 13.5px, 254px → 19px */
+  justify-content: flex-start;
+  min-height: 92px; /* на телефоне строка не схлопывается — картинке есть место */
+  padding: 16px 10px 10px 14px;
   container-type: inline-size;
 }
 
 .profile-stat-tile--vacation-soon .profile-stat-tile__soon-art {
-  left: 4px;
-  right: auto;
-  bottom: 4px;
+  left: auto;
+  right: -8px;
+  bottom: -8px;
   width: auto;
   height: auto;
-  max-width: 40%;
-  max-height: 88%;
+  max-width: 62%;
+  max-height: 80%;
   object-fit: contain;
-  object-position: left bottom;
+  object-position: right bottom;
   opacity: 1;
   transform: none;
   filter: none;
@@ -4090,16 +4090,23 @@ button.org-unit-head--link:hover {
 }
 
 .profile-stat-tile--vacation-soon .profile-stat-tile__value--soon {
-  font-size: clamp(0.82rem, 9cqi, 1.2rem) !important;
+  /* 14 знаков в одну строку: ширина текста ≈ 9.6 × кегль */
+  font-size: clamp(0.7rem, calc((100cqi - 28px) / 9.6), 1.2rem) !important;
   line-height: 1.08;
+  white-space: nowrap;
 }
 
 .profile-stat-tile--vacation-soon .profile-stat-tile__label--soon {
   max-width: none;
-  margin-top: 6px;
-  font-size: clamp(0.72rem, 7.5cqi, 1rem);
+  margin-top: 5px;
+  font-size: clamp(0.72rem, 7cqi, 0.95rem);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+}
+
+/* Нижний правый квадратик лёг бы на картинку */
+.profile-stat-tile--vacation-soon .profile-stat-tile__soon-sq--br {
+  display: none;
 }
 
 .profile-stat-tile--idea-tease {
@@ -4390,19 +4397,17 @@ button.org-unit-head--link:hover {
 }
 
 .profile-stat-tile__quest-reward {
-  /* Иллюстрация обучения (VACATION_TRAINING_ART): небольшая, заправлена в правый нижний угол,
-     под заголовком и подписью — текст на неё не заходит. */
+  /* Иллюстрация обучения (VACATION_TRAINING_ART): шапочка + календарь, крупно, выглядывает из
+     правого нижнего угла (обрезается скруглённой рамкой), под заголовком и подписью. */
   position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: auto;
+  right: -12px;
+  bottom: -10px;
+  width: min(60%, 104px);
   height: auto;
-  max-width: 42%;
-  max-height: 52%;
   object-fit: contain;
   pointer-events: none;
   z-index: 0;
-  transform: rotate(-4deg);
+  transform: rotate(-6deg);
   transform-origin: bottom right;
   transition: transform 0.16s ease;
 }
@@ -4418,8 +4423,15 @@ button.org-unit-head--link:hover {
 
 @container (min-width: 220px) {
   .profile-stat-tile__quest-reward {
-    max-width: 36%;
-    max-height: 80%;
+    width: min(44%, 118px);
+  }
+}
+
+/* Узкая плитка (1280, телефон ~150px): картинка чуть уже и правее — шапочка не наезжает на «обучение» */
+@container (max-width: 165px) {
+  .profile-stat-tile__quest-reward {
+    width: 54%;
+    right: -16px;
   }
 }
 
