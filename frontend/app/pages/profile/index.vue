@@ -157,7 +157,52 @@
           </span>
         </NuxtLink>
 
-        <NuxtLink to="/ideas" class="profile-stat-tile profile-stat-tile--ideas">
+        <button
+          v-if="showWishlistReminder"
+          type="button"
+          class="profile-stat-tile profile-stat-tile--wish-reminder"
+          :class="{ 'profile-stat-tile--wish-reminder-art': WISHLIST_REMINDER_ART_ENABLED }"
+          aria-label="Хочешь подарок? Заполни вишлист — откроются настройки профиля"
+          @click="openSettings('wishlist')"
+        >
+          <template v-if="!WISHLIST_REMINDER_ART_ENABLED">
+            <svg
+              class="profile-stat-tile__wish-bunting"
+              viewBox="0 0 120 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path d="M2 3 Q60 15 118 3" stroke="#202020" stroke-width="1.3" />
+              <g stroke="#202020" stroke-width="1.1" stroke-linejoin="round">
+                <path d="M8 4.6 L20 7 L12.4 17 Z" fill="#ddf365" />
+                <path d="M30 8.6 L42 10.2 L35.2 20 Z" fill="#fd81ff" />
+                <path d="M54 10.6 L66 10.6 L60 21 Z" fill="#f3b33e" />
+                <path d="M78 10.2 L90 8.6 L84.8 20 Z" fill="#9fd6c9" />
+                <path d="M100 7 L112 4.6 L107.6 17 Z" fill="#ddf365" />
+              </g>
+            </svg>
+            <svg
+              class="profile-stat-tile__wish-gift"
+              viewBox="0 0 64 64"
+              fill="none"
+              aria-hidden="true"
+            >
+              <g stroke="#202020" stroke-width="2.4" stroke-linejoin="round">
+                <rect x="10" y="28" width="44" height="30" rx="4" fill="#fd81ff" />
+                <rect x="6" y="18" width="52" height="12" rx="3" fill="#ffb3ff" />
+                <path d="M28 18v40M36 18v40" />
+                <rect x="28" y="18" width="8" height="40" fill="#ddf365" />
+                <path d="M32 18c-6-10-18-10-16-2 1 4 10 3 16 2Z" fill="#ddf365" />
+                <path d="M32 18c6-10 18-10 16-2-1 4-10 3-16 2Z" fill="#ddf365" />
+              </g>
+            </svg>
+            <span class="profile-stat-tile__wish-dot profile-stat-tile__wish-dot--a" aria-hidden="true" />
+            <span class="profile-stat-tile__wish-dot profile-stat-tile__wish-dot--b" aria-hidden="true" />
+          </template>
+          <span class="profile-stat-tile__value profile-stat-tile__value--wish">Хочешь подарок?</span>
+          <span class="profile-stat-tile__label profile-stat-tile__label--wish">Заполни вишлист</span>
+        </button>
+        <NuxtLink v-else to="/ideas" class="profile-stat-tile profile-stat-tile--ideas">
           <span class="profile-stat-tile__value">{{ ideasProfileCount }}</span>
           <span class="profile-stat-tile__label">{{ isOwnProfile ? 'мои идеи' : 'идеи' }}</span>
         </NuxtLink>
@@ -539,6 +584,10 @@ import {
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
 import type { Employee } from '~/composables/useEmployees';
+import {
+  WISHLIST_REMINDER_ART_ENABLED,
+  shouldShowWishlistReminder
+} from '~/utils/profileWishlistReminder';
 
 const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
 const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
@@ -589,6 +638,29 @@ watch(
   },
   { immediate: true }
 );
+/** Свой вишлист пуст → вместо «мои идеи» плитка «Хочешь подарок?» (клик = настройки → Вишлист). */
+const ownWishlistCount = ref(0);
+const ownWishlistLoaded = ref(false);
+const loadOwnWishlistCount = async () => {
+  try {
+    const data = await $fetch<{ items?: unknown[] }>('/api/profile/wishlist');
+    ownWishlistCount.value = Array.isArray(data.items) ? data.items.length : 0;
+    ownWishlistLoaded.value = true;
+  } catch {
+    ownWishlistLoaded.value = false;
+  }
+};
+const showWishlistReminder = computed(() =>
+  shouldShowWishlistReminder({
+    isOwnProfile: isOwnProfile.value,
+    loaded: ownWishlistLoaded.value,
+    itemsCount: ownWishlistCount.value
+  })
+);
+/** После закрытия настроек (могли сохранить вишлист) — пересчитать плитку. */
+watch(vibeCredsOpen, (open, wasOpen) => {
+  if (!open && wasOpen && isOwnProfile.value) void loadOwnWishlistCount();
+});
 const achievementsOpen = ref(false);
 const achievementsPreviewRef = ref<HTMLElement | null>(null);
 const achievementsVisibleCount = ref(8);
@@ -968,6 +1040,7 @@ const pickAvatar = (characterId: AvatarCharacterId) => {
 onMounted(() => {
   if (isOwnProfile.value) {
     hydrateCoupons();
+    void loadOwnWishlistCount();
     const emp = user.value ? findByUserId(user.value.id) : null;
     hydrateActivity({
       employeeId: emp?.id,
