@@ -20191,3 +20191,42 @@ button.button {
 .vac-mob-balance__hint .vac-info-hint__btn[aria-expanded='true'] {
   opacity: 1;
 }
+
+
+/* Плитки профиля как цельные баннеры: картинка на всю плитку, текст поверх (2026-10-21) */
+.profile-stat-tile.profile-stat-tile--banner {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.profile-stat-tile.profile-stat-tile--banner picture {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0;
+  display: block;
+}
+.profile-stat-tile.profile-stat-tile--banner picture img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: right center !important;
+  transform: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  border-radius: inherit;
+}
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__wish-corner-bunting,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__quest-sq,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__quest-spark,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__soon-sq {
+  display: none !important;
+}
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__value,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__label {
+  position: relative;
+  z-index: 1;
+}

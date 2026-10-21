@@ -12,12 +12,12 @@ export type ProfileTileArt = {
 
 /** «Скоро в отпуск»: кот в шезлонге и капибара в панамке (слева в плитке). */
 export const VACATION_SOON_ART: ProfileTileArt = {
-  webp: '/images/profile/vacation-soon.webp?v=1',
-  src: '/images/profile/vacation-soon.png?v=1'
+  webp: '/images/profile/vacation-soon-banner.webp?v=1',
+  src: '/images/profile/vacation-soon-banner.webp?v=1'
 };
 
 /** «График отпусков / Пройти обучение»: шапочка и настольный календарь (крупно, выглядывает из правого нижнего угла). */
 export const VACATION_TRAINING_ART: ProfileTileArt = {
-  webp: '/images/profile/vacation-training.webp?v=2',
-  src: '/images/profile/vacation-training.png?v=2'
+  webp: '/images/profile/vacation-training-banner.webp?v=1',
+  src: '/images/profile/vacation-training-banner.webp?v=1'
 };

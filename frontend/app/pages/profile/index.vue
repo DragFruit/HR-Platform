@@ -161,7 +161,7 @@
           v-if="showWishlistReminder"
           type="button"
           class="profile-stat-tile profile-stat-tile--wish-reminder"
-          :class="{ 'profile-stat-tile--wish-reminder-art': WISHLIST_REMINDER_ART_ENABLED }"
+          :class="{ 'profile-stat-tile--wish-reminder-art': WISHLIST_REMINDER_ART_ENABLED, 'profile-stat-tile--banner': WISHLIST_REMINDER_ART_ENABLED }"
           aria-label="Хочешь подарок? Заполни вишлист — откроются настройки профиля"
           @click="openSettings('wishlist')"
         >
@@ -185,10 +185,10 @@
             </g>
           </svg>
           <picture v-if="WISHLIST_REMINDER_ART_ENABLED">
-            <source srcset="/images/profile/wishlist-reminder.webp?v=2" type="image/webp" />
+            <source srcset="/images/profile/wishlist-reminder-banner.webp?v=1" type="image/webp" />
             <img
               class="profile-stat-tile__wish-art-img"
-              src="/images/profile/wishlist-reminder.jpg?v=2"
+              src="/images/profile/wishlist-reminder-banner.webp?v=1"
               alt=""
               aria-hidden="true"
               width="300"
@@ -245,6 +245,7 @@
             spotlightStat.tone ? `profile-stat-tile--${spotlightStat.tone}` : undefined,
             spotlightStat.kind === 'vacation-soon' ? 'profile-stat-tile--vacation-soon' : undefined,
             spotlightStat.kind === 'vacation-quest' ? 'profile-stat-tile--vacation-quest' : undefined,
+            spotlightStat.kind === 'vacation-quest' || spotlightStat.kind === 'vacation-soon' ? 'profile-stat-tile--banner' : undefined,
             spotlightStat.kind === 'idea-tease' ? 'profile-stat-tile--idea-tease' : undefined
           ]"
         >
