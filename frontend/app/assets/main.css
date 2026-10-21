@@ -20230,3 +20230,18 @@ button.button {
   position: relative;
   z-index: 1;
 }
+
+/* Баннеры плиток: картинка целиком, прижата вправо-вниз, фон плитки = фон картинки (плитка бывает уже 2:1) */
+.profile-stat-tile.profile-stat-tile--banner picture img {
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--wish-reminder {
+  background: #fbf3e1 !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--vacation-soon {
+  background: linear-gradient(90deg, #ffe1c9 0%, #ffeedd 100%) !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--vacation-quest {
+  background: #6e4cf2 !important;
+}
