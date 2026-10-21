@@ -165,6 +165,34 @@
           aria-label="Хочешь подарок? Заполни вишлист — откроются настройки профиля"
           @click="openSettings('wishlist')"
         >
+          <!-- Гирлянда привязана к краям плитки: левый конец — верхний край, правый — правый край -->
+          <svg
+            v-if="WISHLIST_REMINDER_ART_ENABLED"
+            class="profile-stat-tile__wish-corner-bunting"
+            viewBox="0 0 58 32"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path d="M0 0.8 Q22 19 58 22" stroke="#202020" stroke-width="1.3" />
+            <g stroke="#202020" stroke-width="1.1" stroke-linejoin="round">
+              <path d="M16.6 11.4 L23.2 14.3 L20.4 22.4 Z" fill="#7451f4" />
+              <path d="M26.1 15.4 L33.3 17.7 L30.2 26.1 Z" fill="#fd81ff" />
+              <path d="M36.4 18.5 L44.2 20.2 L40.8 28.9 Z" fill="#9fd6c9" />
+              <path d="M47.5 20.8 L55.9 21.8 L52.2 30.8 Z" fill="#ee815a" />
+            </g>
+          </svg>
+          <picture v-if="WISHLIST_REMINDER_ART_ENABLED">
+            <source srcset="/images/profile/wishlist-reminder.webp?v=2" type="image/webp" />
+            <img
+              class="profile-stat-tile__wish-art-img"
+              src="/images/profile/wishlist-reminder.jpg?v=2"
+              alt=""
+              aria-hidden="true"
+              width="300"
+              height="277"
+              decoding="async"
+            />
+          </picture>
           <template v-if="!WISHLIST_REMINDER_ART_ENABLED">
             <svg
               class="profile-stat-tile__wish-bunting"
