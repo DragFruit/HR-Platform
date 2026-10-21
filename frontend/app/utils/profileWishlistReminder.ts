@@ -4,11 +4,11 @@
  */
 
 /**
- * Иллюстрация плитки (Gemini). Пока false — фон рисуется CSS (крем, круги, флажки, подарок-SVG).
- * Когда файлы лягут в public/images/profile/wishlist-reminder.webp (+ .png фолбэк) — поставить true:
- * класс .profile-stat-tile--wish-reminder-art в main.css подставит их фоном (cover, справа).
+ * Иллюстрация плитки (Gemini): public/images/profile/wishlist-reminder.webp (+ .jpg фолбэк),
+ * класс .profile-stat-tile--wish-reminder-art в main.css. false — фон целиком на CSS
+ * (крем, круги, флажки и подарок inline-SVG).
  */
-export const WISHLIST_REMINDER_ART_ENABLED = false;
+export const WISHLIST_REMINDER_ART_ENABLED = true;
 
 export type WishlistReminderState = {
   isOwnProfile: boolean;

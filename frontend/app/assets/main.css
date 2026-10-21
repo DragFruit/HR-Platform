@@ -4214,18 +4214,35 @@ button.org-unit-head--link:hover {
   outline-offset: 3px;
 }
 
-/* Готовая иллюстрация (WISHLIST_REMINDER_ART_ENABLED в utils/profileWishlistReminder.ts).
-   Ожидаемый размер файла — см. docs/CHANGELOG.md (плитка ×2 для retina). */
+/* Иллюстрация из Gemini (WISHLIST_REMINDER_ART_ENABLED в utils/profileWishlistReminder.ts).
+   Файл — правая часть арта (подарок + флажки, 336×318, левый край растушёван в крем #fcf3e2).
+   Картинка ≤ 42% ширины плитки, прижата вправо-вниз: слева остаётся чистый крем под текст. Под картинкой — мягкие
+   CSS-круги и крем: если файл не загрузится, плитка всё равно «уютная». */
 .profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art {
-  background-color: #fff6e8;
-  background-image: url('/images/profile/wishlist-reminder.png');
-  background-image: image-set(
-    url('/images/profile/wishlist-reminder.webp') type('image/webp'),
-    url('/images/profile/wishlist-reminder.png') type('image/png')
-  );
-  background-size: cover;
-  background-position: right center;
-  background-repeat: no-repeat;
+  padding-top: 16px;
+  background:
+    url('/images/profile/wishlist-reminder.jpg') right bottom / min(42%, 108px) auto no-repeat,
+    radial-gradient(circle at 44% -12%, rgba(221, 243, 101, 0.5) 0 30px, transparent 31px),
+    radial-gradient(circle at -2% 108%, rgba(253, 129, 255, 0.2) 0 28px, transparent 29px),
+    #fcf3e2;
+  background-image:
+    image-set(
+      url('/images/profile/wishlist-reminder.webp') type('image/webp'),
+      url('/images/profile/wishlist-reminder.jpg') type('image/jpeg')
+    ),
+    radial-gradient(circle at 44% -12%, rgba(221, 243, 101, 0.5) 0 30px, transparent 31px),
+    radial-gradient(circle at -2% 108%, rgba(253, 129, 255, 0.2) 0 28px, transparent 29px);
+}
+
+.profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art .profile-stat-tile__value--wish {
+  max-width: 58%;
+  font-size: 1rem;
+}
+
+/* «Заполни / вишлист» в две строки — текст не заходит на подарок */
+.profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art .profile-stat-tile__label--wish {
+  max-width: 52%;
+  margin-top: 4px;
 }
 
 .profile-stat-tile__wish-bunting {
