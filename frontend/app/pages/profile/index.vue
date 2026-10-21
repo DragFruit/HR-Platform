@@ -169,16 +169,19 @@
           <svg
             v-if="WISHLIST_REMINDER_ART_ENABLED"
             class="profile-stat-tile__wish-corner-bunting"
-            viewBox="0 0 58 32"
+            viewBox="0 0 64 34"
             fill="none"
             aria-hidden="true"
           >
-            <path d="M0 0.8 Q22 19 58 22" stroke="#202020" stroke-width="1.3" />
-            <g stroke="#202020" stroke-width="1.1" stroke-linejoin="round">
-              <path d="M16.6 11.4 L23.2 14.3 L20.4 22.4 Z" fill="#7451f4" />
-              <path d="M26.1 15.4 L33.3 17.7 L30.2 26.1 Z" fill="#fd81ff" />
-              <path d="M36.4 18.5 L44.2 20.2 L40.8 28.9 Z" fill="#9fd6c9" />
-              <path d="M47.5 20.8 L55.9 21.8 L52.2 30.8 Z" fill="#ee815a" />
+            <path d="M0 0.6 Q26 22 64 26" stroke="#202020" stroke-width="1.2" />
+            <g stroke="#202020" stroke-width="1" stroke-linejoin="round">
+              <path d="M1.5 1.9 L6.8 5.8 L1.9 11.5 Z" fill="#ddf365" />
+              <path d="M9.3 7.5 L14.9 10.9 L10.2 17 Z" fill="#7451f4" />
+              <path d="M17.6 12.4 L23.5 15.3 L18.9 21.7 Z" fill="#fd81ff" />
+              <path d="M26.4 16.6 L32.5 19 L28.1 25.7 Z" fill="#f3b33e" />
+              <path d="M35.7 20.1 L42 22 L37.8 29 Z" fill="#9fd6c9" />
+              <path d="M45.5 22.9 L52 24.3 L48 31.6 Z" fill="#ee815a" />
+              <path d="M55.9 25 L62.4 25.9 L58.7 33.4 Z" fill="#ddf365" />
             </g>
           </svg>
           <picture v-if="WISHLIST_REMINDER_ART_ENABLED">
@@ -246,15 +249,18 @@
           ]"
         >
           <template v-if="spotlightStat.kind === 'vacation-quest'">
-            <img
-              class="profile-stat-tile__quest-reward"
-              :src="vacationQuestRewardSrc"
-              alt=""
-              aria-hidden="true"
-              width="80"
-              height="80"
-              loading="lazy"
-            />
+            <picture>
+              <source v-if="VACATION_TRAINING_ART.webp" :srcset="VACATION_TRAINING_ART.webp" type="image/webp" />
+              <img
+                class="profile-stat-tile__quest-reward"
+                :src="VACATION_TRAINING_ART.src"
+                alt=""
+                aria-hidden="true"
+                width="440"
+                height="388"
+                loading="lazy"
+              />
+            </picture>
             <span class="profile-stat-tile__quest-sq profile-stat-tile__quest-sq--tl" aria-hidden="true" />
             <span class="profile-stat-tile__quest-sq profile-stat-tile__quest-sq--br" aria-hidden="true" />
             <span class="profile-stat-tile__value profile-stat-tile__value--quest">{{ spotlightStat.value }}</span>
@@ -262,15 +268,18 @@
             <span class="profile-stat-tile__quest-spark" aria-hidden="true">✦</span>
           </template>
           <template v-else-if="spotlightStat.kind === 'vacation-soon'">
-            <img
-              class="profile-stat-tile__soon-art"
-              :src="VACATION_SOON_ART_SRC"
-              alt=""
-              aria-hidden="true"
-              width="108"
-              height="108"
-              loading="lazy"
-            />
+            <picture>
+              <source v-if="VACATION_SOON_ART.webp" :srcset="VACATION_SOON_ART.webp" type="image/webp" />
+              <img
+                class="profile-stat-tile__soon-art"
+                :src="VACATION_SOON_ART.src"
+                alt=""
+                aria-hidden="true"
+                width="440"
+                height="377"
+                loading="lazy"
+              />
+            </picture>
             <span class="profile-stat-tile__soon-sq profile-stat-tile__soon-sq--tl" aria-hidden="true" />
             <span class="profile-stat-tile__soon-sq profile-stat-tile__soon-sq--br" aria-hidden="true" />
             <span class="profile-stat-tile__value profile-stat-tile__value--soon">{{ spotlightStat.value }}</span>
@@ -607,18 +616,17 @@ import { calcEmployeeBalance } from '~/utils/vacationBalance';
 import { profileTeamHeading } from '~/utils/profileTeamTitle';
 import {
   findUpcomingVacationWithinDays,
-  formatVacationStartShort
+  formatVacationStartDdMmYy
 } from '~/utils/profileSpotlight';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import { VACATION_SOON_ART, VACATION_TRAINING_ART } from '~/utils/profileTileArt';
 import type { Employee } from '~/composables/useEmployees';
 import {
   WISHLIST_REMINDER_ART_ENABLED,
   shouldShowWishlistReminder
 } from '~/utils/profileWishlistReminder';
 
-const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-palm-tease.svg';
-const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
 const IDEA_TEASE_ART_SRC = '/images/profile/idea-tease.png?v=4';
 
 type TeamMemberView = Employee & { isManager: boolean };
@@ -947,7 +955,6 @@ const ideasProfileCount = computed(() => {
   return ideas.value.filter((idea) => idea.authorUserId === uid).length;
 });
 
-const vacationQuestRewardSrc = VACATION_QUEST_TEASE_SRC;
 
 type ProfileSpotlightStat = {
   kind: 'vacation-soon' | 'vacation-quest' | 'idea-tease' | 'default';
@@ -991,8 +998,8 @@ const spotlightStat = computed((): ProfileSpotlightStat => {
   if (soon) {
     return {
       kind: 'vacation-soon',
-      value: formatVacationStartShort(soon.start),
-      label: 'отпуск начнётся',
+      value: 'Скоро в отпуск',
+      label: formatVacationStartDdMmYy(soon.start),
       to: '/vacations'
     };
   }

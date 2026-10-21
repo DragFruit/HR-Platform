@@ -4064,6 +4064,44 @@ button.org-unit-head--link:hover {
     linear-gradient(145deg, #ddf365 0%, #eef9c8 52%, #fff 100%) !important;
 }
 
+/* «Скоро в отпуск»: стикер слева-снизу (≤ 40% ширины, целиком, без обрезки), справа «Скоро в отпуск»
+   и дата ДД.ММ.ГГ. Картинка — VACATION_SOON_ART в utils/profileTileArt.ts. */
+.profile-screen-hero .profile-stat-tile--secondary.profile-stat-tile--vacation-soon {
+  justify-content: center;
+  padding: 12px 8px 12px 41%;
+  /* шрифт текста считается от ширины плитки (cqi): 150px → 13.5px, 254px → 19px */
+  container-type: inline-size;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__soon-art {
+  left: 4px;
+  right: auto;
+  bottom: 4px;
+  width: auto;
+  height: auto;
+  max-width: 40%;
+  max-height: 88%;
+  object-fit: contain;
+  object-position: left bottom;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  z-index: 1;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__value--soon {
+  font-size: clamp(0.82rem, 9cqi, 1.2rem) !important;
+  line-height: 1.08;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__label--soon {
+  max-width: none;
+  margin-top: 6px;
+  font-size: clamp(0.72rem, 7.5cqi, 1rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .profile-stat-tile--idea-tease {
   position: relative;
   overflow: hidden;
@@ -4254,7 +4292,7 @@ button.org-unit-head--link:hover {
   position: absolute;
   top: 0;
   right: 0;
-  width: 58px;
+  width: 60px;
   height: 32px;
   pointer-events: none;
   z-index: 1;
@@ -4352,23 +4390,42 @@ button.org-unit-head--link:hover {
 }
 
 .profile-stat-tile__quest-reward {
+  /* Иллюстрация обучения (VACATION_TRAINING_ART): небольшая, заправлена в правый нижний угол,
+     под заголовком и подписью — текст на неё не заходит. */
   position: absolute;
-  right: -20px;
-  bottom: -16px;
-  width: 96px;
-  height: 96px;
+  right: -4px;
+  bottom: -4px;
+  width: auto;
+  height: auto;
+  max-width: 42%;
+  max-height: 52%;
   object-fit: contain;
-  opacity: 0.55;
   pointer-events: none;
   z-index: 0;
-  transform: rotate(-10deg);
-  filter: drop-shadow(2px 3px 0 rgba(17, 17, 17, 0.22));
-  transition: transform 0.16s ease, opacity 0.16s ease;
+  transform: rotate(-4deg);
+  transform-origin: bottom right;
+  transition: transform 0.16s ease;
 }
 
 .profile-stat-tile--vacation-quest:hover .profile-stat-tile__quest-reward {
-  transform: rotate(-8deg) scale(1.03);
-  opacity: 0.62;
+  transform: rotate(-2deg) scale(1.03);
+}
+
+/* Плитка обучения — контейнер: на широкой низкой плитке (1920) картинка крупнее, текст слева ей не мешает */
+.profile-stat-tile.profile-stat-tile--vacation-quest {
+  container-type: inline-size;
+}
+
+@container (min-width: 220px) {
+  .profile-stat-tile__quest-reward {
+    max-width: 36%;
+    max-height: 80%;
+  }
+}
+
+/* Нижний правый квадратик лёг бы на картинку — в плитке обучения его нет */
+.profile-stat-tile--vacation-quest .profile-stat-tile__quest-sq--br {
+  display: none;
 }
 
 .profile-stat-tile__value--quest {
