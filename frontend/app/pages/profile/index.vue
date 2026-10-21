@@ -617,7 +617,7 @@ import {
   shouldShowWishlistReminder
 } from '~/utils/profileWishlistReminder';
 
-const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
+const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-palm-tease.svg';
 const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
 const IDEA_TEASE_ART_SRC = '/images/profile/idea-tease.png?v=4';
 
@@ -1005,8 +1005,8 @@ const spotlightStat = computed((): ProfileSpotlightStat => {
   if (vacationTrainingEnabled.value && !isCompletedForCurrentUser.value) {
     return {
       kind: 'vacation-quest',
-      value: 'Начать квест',
-      label: 'график отпусков',
+      value: 'График отпусков',
+      label: 'Пройти обучение',
       to: '/vacations'
     };
   }
