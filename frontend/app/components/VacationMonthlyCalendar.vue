@@ -70,10 +70,10 @@
             :class="employeeHighlightClass(emp.name)"
           >
             <td class="sticky-col-name">
-              <span class="emp-name emp-name--inline">{{ formatEmployeeShortName(emp.name) }}</span>
+              <span class="emp-name emp-name--inline" :title="emp.name">{{ formatEmployeeShortName(emp.name) }}</span>
             </td>
             <td v-if="showTitleColumn" class="sticky-col-title">
-              <span class="emp-title emp-title--col">{{ emp.title || '—' }}</span>
+              <span class="emp-title emp-title--col" :title="emp.title || undefined">{{ emp.title || '—' }}</span>
             </td>
             <td
               v-for="monthIndex in 12"
