@@ -259,29 +259,45 @@
               :get-month-entries="getMonthEntries"
               :year="props.viewYear"
             />
-            <EmployeeYearCalendar
+            <!-- Мобилка: учётный и следующий год одной лентой (на десктопе обёртки — display: contents, всегда один год) -->
+            <div
               v-else-if="employeeName"
-              compact
-              :employee-name="employeeName"
-              :year="props.viewYear"
-              :requests="displayRequests"
-              :reservations="employeeReservationsList"
-              :highlight-month-index="highlightMonthIndex"
-              :focused-month-index="focusedMonthIndex"
-              :range-pick-start="isHistoricalYear ? null : rangePickStart"
-              :range-pick-hover="isHistoricalYear ? null : rangePickHover"
-              :selected-range-start="isHistoricalYear ? null : form.start || null"
-              :selected-range-end="isHistoricalYear ? null : form.end || null"
-              :min-selectable-iso="minIso"
-              :read-only="isHistoricalYear"
-              :reservation-control-override="isHistoricalYear ? null : reservationControlOverride"
-              :reservation-cap-blocked-months="isHistoricalYear ? [] : reservationCapBlockedMonths"
-              @day-click="onCalendarDayClick"
-              @day-hover="onCalendarDayHover"
-              @month-focus="onMonthFocus"
-              @reservation-month-click="openReservationDialog"
-              @reservation-cap-blocked="openReservationCapNotice"
-            />
+              ref="yearStackRef"
+              class="vac-emp-year-stack"
+              :class="{ 'vac-emp-year-stack--multi': stackYears.length > 1 }"
+              @scroll.passive="onYearStackScroll"
+            >
+              <div
+                v-for="(stackYear, stackIndex) in stackYears"
+                :key="stackYear"
+                class="vac-emp-year-stack__year"
+                :data-year="stackYear"
+              >
+                <p v-if="stackIndex > 0" class="vac-emp-year-stack__label">{{ stackYear }}</p>
+                <EmployeeYearCalendar
+                  compact
+                  :employee-name="employeeName"
+                  :year="stackYear"
+                  :requests="displayRequests"
+                  :reservations="stackYear === props.viewYear ? employeeReservationsList : reservationsForStackYear(stackYear)"
+                  :highlight-month-index="stackYear === props.viewYear ? highlightMonthIndex : null"
+                  :focused-month-index="focusedMonthIndex"
+                  :range-pick-start="isHistoricalYear ? null : rangePickStart"
+                  :range-pick-hover="isHistoricalYear ? null : rangePickHover"
+                  :selected-range-start="isHistoricalYear ? null : form.start || null"
+                  :selected-range-end="isHistoricalYear ? null : form.end || null"
+                  :min-selectable-iso="minIso"
+                  :read-only="isHistoricalYear"
+                  :reservation-control-override="isHistoricalYear || stackYear !== props.viewYear ? null : reservationControlOverride"
+                  :reservation-cap-blocked-months="isHistoricalYear ? [] : stackYear === props.viewYear ? reservationCapBlockedMonths : capBlockedMonthsForYear(stackYear)"
+                  @day-click="onStackDayClick(stackYear, $event)"
+                  @day-hover="onCalendarDayHover"
+                  @month-focus="onStackMonthFocus(stackYear, $event)"
+                  @reservation-month-click="onStackReservationClick(stackYear, $event)"
+                  @reservation-cap-blocked="onStackCapBlocked(stackYear, $event)"
+                />
+              </div>
+            </div>
             <p v-else class="vac-emp-empty">
               Нет записи в справочнике сотрудников для вашего аккаунта. Попросите HR добавить вас в справочник с
               вашим email.
@@ -558,7 +574,7 @@ const reservationCapContext = computed(() => {
   });
 });
 
-const reservationCapBlockedMonths = computed(() => {
+const capBlockedMonthsForYear = (year: number): number[] => {
   const ctx = reservationCapContext.value;
   if (!ctx) return [] as number[];
   const blocked: number[] = [];
@@ -580,7 +596,7 @@ const reservationCapBlockedMonths = computed(() => {
     if (
       getReservationMonthBlockReason({
         context: capContext,
-        year: props.viewYear,
+        year,
         month: monthIndex + 1,
         reservations,
         requests: capRequests.value,
@@ -592,7 +608,9 @@ const reservationCapBlockedMonths = computed(() => {
     }
   }
   return blocked;
-});
+};
+
+const reservationCapBlockedMonths = computed(() => capBlockedMonthsForYear(props.viewYear));
 
 const showTeamCalendar = computed(
   () => hasTeamCalendar.value && calendarScope.value === 'team' && Boolean(employeeName.value)
@@ -702,14 +720,38 @@ const formGroupLeadOverlapDetails = computed(() => {
   });
 });
 
+/** Мобилка ≤900: тап по месяцу/дате приближает месяц. */
+const isMobileCal = ref(false);
+const focusedMonthIndex = ref<number | null>(null);
+
+/**
+ * Мобилка, «Мой», весь год: учётный и следующий год одной лентой — после декабря сразу январь.
+ * Других лет в ленте нет (бронировать можно только primaryYear и primaryYear + 1).
+ */
+const stackYears = computed<number[]>(() => {
+  const year = props.viewYear;
+  const primary = state.value.primaryYear;
+  if (!isMobileCal.value || showTeamCalendar.value || focusedMonthIndex.value != null) return [year];
+  if (year !== primary && year !== primary + 1) return [year];
+  const years = [primary, primary + 1].filter((y) => yearOptions.value.includes(y));
+  return years.length ? years : [year];
+});
+
+const reservationsForStackYear = (year: number) => {
+  if (!employeeName.value) return [];
+  return mergeReservationsForDisplay(year, employeeReservations(employeeName.value, year));
+};
+
 const blockedDays = computed(() => {
   if (!employeeName.value) return new Set<string>();
-  const { approved, pending } = buildDaySetsForEmployee(
-    employeeName.value,
-    props.viewYear,
-    displayRequests.value
-  );
-  return new Set([...approved, ...pending]);
+  const days = new Set<string>();
+  // Лента из двух лет на мобилке: отпуск через Новый год проверяется по обоим годам
+  for (const year of stackYears.value) {
+    const { approved, pending } = buildDaySetsForEmployee(employeeName.value, year, displayRequests.value);
+    for (const iso of approved) days.add(iso);
+    for (const iso of pending) days.add(iso);
+  }
+  return days;
 });
 
 const {
@@ -735,10 +777,7 @@ const {
   }
 });
 
-/** Мобилка ≤900: тап по месяцу/дате приближает месяц. */
 const MOBILE_CAL_MQ = '(max-width: 900px)';
-const isMobileCal = ref(false);
-const focusedMonthIndex = ref<number | null>(null);
 /** calendar | requests — вкладки эскиза */
 const mobChromeTab = ref<'calendar' | 'requests'>('calendar');
 let mobileCalMq: MediaQueryList | null = null;
@@ -751,7 +790,56 @@ const syncMobileCal = () => {
   }
 };
 
+const yearStackRef = ref<HTMLElement | null>(null);
+/** Год сменился изнутри ленты (прокрутка, тап по дню другого года) — выбранные даты не сбрасываем. */
+let yearChangeFromStack = false;
+/** Куда прокрутить ленту, когда она снова соберётся (выход из месяца, первый показ). */
+let stackScrollTarget: { year: number; month: number | null } | null = null;
+
+const setYearFromStack = (year: number) => {
+  if (year === props.viewYear) return;
+  yearChangeFromStack = true;
+  emit('update:viewYear', year);
+};
+
+const scrollStackTo = (year: number, monthIndex: number | null = null) => {
+  const stack = yearStackRef.value;
+  if (!stack || stackYears.value.length < 2) return;
+  const section = stack.querySelector<HTMLElement>(`.vac-emp-year-stack__year[data-year="${year}"]`);
+  if (!section) return;
+  const month = monthIndex != null ? section.querySelectorAll<HTMLElement>('.emp-cal-month')[monthIndex] : null;
+  const target = month ?? section;
+  const delta = target.getBoundingClientRect().top - stack.getBoundingClientRect().top;
+  stack.scrollTop = Math.max(0, stack.scrollTop + delta - (month ? 8 : 0));
+};
+
+/** Год в селекте = год, который сейчас занимает верх ленты. */
+const onYearStackScroll = () => {
+  const stack = yearStackRef.value;
+  if (!stack || stackYears.value.length < 2) return;
+  const line = stack.getBoundingClientRect().top + stack.clientHeight * 0.35;
+  let visible = stackYears.value[0]!;
+  for (const section of stack.querySelectorAll<HTMLElement>('.vac-emp-year-stack__year')) {
+    if (section.getBoundingClientRect().top <= line) visible = Number(section.dataset.year);
+  }
+  setYearFromStack(visible);
+};
+
+watch(
+  () => stackYears.value.length > 1,
+  (multi) => {
+    if (!multi) return;
+    const target = stackScrollTarget ?? { year: props.viewYear, month: null };
+    stackScrollTarget = null;
+    scrollStackTo(target.year, target.month);
+  },
+  { flush: 'post' }
+);
+
 const exitMonthFocus = () => {
+  if (focusedMonthIndex.value != null) {
+    stackScrollTarget = { year: props.viewYear, month: focusedMonthIndex.value };
+  }
   focusedMonthIndex.value = null;
 };
 
@@ -791,6 +879,32 @@ const onCalendarDayClick = (...args: Parameters<typeof handleDayClick>) => {
   handleDayClick(...args);
 };
 
+const onStackDayClick = (year: number, cell: Parameters<typeof handleDayClick>[0]) => {
+  setYearFromStack(year);
+  onCalendarDayClick(cell);
+};
+
+const onStackMonthFocus = (year: number, monthIndex: number) => {
+  setYearFromStack(year);
+  onMonthFocus(monthIndex);
+};
+
+const onStackReservationClick = async (year: number, monthIndex: number) => {
+  if (year !== props.viewYear) {
+    setYearFromStack(year);
+    await nextTick();
+  }
+  openReservationDialog(monthIndex);
+};
+
+const onStackCapBlocked = async (year: number, monthIndex: number) => {
+  if (year !== props.viewYear) {
+    setYearFromStack(year);
+    await nextTick();
+  }
+  openReservationCapNotice(monthIndex);
+};
+
 const onCalendarDayHover = (...args: Parameters<typeof handleDayHover>) => {
   if (isHistoricalYear.value) return;
   handleDayHover(...args);
@@ -807,14 +921,22 @@ watch(isHistoricalYear, (historical) => {
 
 watch(
   () => props.viewYear,
-  () => {
+  (year) => {
+    if (yearChangeFromStack) {
+      yearChangeFromStack = false;
+      return;
+    }
     clearSelection();
     form.start = '';
     form.end = '';
     formError.value = null;
     clarifyHint.value = '';
     dismissRequestCreatedToast();
+    const wasFocused = focusedMonthIndex.value != null;
     focusedMonthIndex.value = null;
+    // Год выбран в селекте, лента уже собрана — прыгаем к этому году
+    if (!wasFocused) void nextTick(() => scrollStackTo(year));
+    else stackScrollTarget = { year, month: null };
   }
 );
 
@@ -1046,3 +1168,15 @@ watch(
   }
 );
 </script>
+
+<style scoped>
+/* Десктоп: обёртки ленты не влияют на раскладку (один год, как раньше). Мобилка — mobile.css. */
+.vac-emp-year-stack,
+.vac-emp-year-stack__year {
+  display: contents;
+}
+
+.vac-emp-year-stack__label {
+  display: none;
+}
+</style>

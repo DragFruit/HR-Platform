@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   displayName: string;
   userId?: number | null;
   showBell?: boolean;
@@ -14,12 +14,37 @@ const emit = defineEmits<{
   switchRole: [role: 'employee' | 'admin'];
   switchManagerMode: [mode: 'manager' | 'employee'];
 }>();
+
+/** Имя целиком: 15px в строку; не влезает — 13px в две строки по словам, без «…». */
+const helloRef = ref<HTMLElement | null>(null);
+const helloLong = ref(false);
+
+const measureHello = async () => {
+  helloLong.value = false;
+  await nextTick();
+  const el = helloRef.value;
+  if (!el) return;
+  helloLong.value = el.scrollWidth > el.clientWidth + 1;
+};
+
+watch(() => props.displayName, measureHello);
+
+onMounted(() => {
+  void measureHello();
+  window.addEventListener('resize', measureHello);
+  // Шрифт мог догрузиться после первого замера
+  void document.fonts?.ready.then(measureHello);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', measureHello);
+});
 </script>
 
 <template>
   <header class="mob-top" aria-label="Шапка">
     <div class="mob-top__left">
-      <p class="mob-top__hello">{{ displayName }}</p>
+      <p ref="helloRef" class="mob-top__hello" :class="{ 'mob-top__hello--long': helloLong }">{{ displayName }}</p>
       <div v-if="canSwitchRole" class="mob-top__roles" role="group" aria-label="Режим">
         <button
           type="button"
@@ -68,7 +93,7 @@ const emit = defineEmits<{
           class="mob-top__profile"
           :aria-label="`Профиль: ${displayName}`"
         >
-          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="32" />
+          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="30" />
         </NuxtLink>
       </div>
     </div>
@@ -115,20 +140,34 @@ const emit = defineEmits<{
     flex: 0 1 auto;
     margin: 0;
     font-family: var(--font-body);
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 600;
-    line-height: 22px;
+    line-height: 20px;
     letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  /* Длинное имя: 13px, до двух строк по словам — целиком, без «…» */
+  .mob-top__hello--long {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 16px;
+    letter-spacing: 0;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .mob-top__roles {
     flex: 0 0 auto;
     display: inline-flex;
     gap: 2px;
-    height: 28px;
+    height: 26px;
     padding: 2px;
     box-sizing: border-box;
     border-radius: 9px;
@@ -138,23 +177,23 @@ const emit = defineEmits<{
   .mob-top__role {
     position: relative;
     min-height: 0;
-    height: 24px;
-    padding: 0 8px;
+    height: 22px;
+    padding: 0 7px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 6px;
     background: transparent;
     color: rgba(255, 255, 255, 0.85);
     font: inherit;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    line-height: 24px;
+    line-height: 22px;
   }
 
-  /* Зона нажатия 44pt по высоте при визуальных 24 */
+  /* Зона нажатия 44pt по высоте при визуальных 22 */
   .mob-top__role::after {
     content: '';
     position: absolute;
-    inset: -10px 0;
+    inset: -11px 0;
   }
 
   .mob-top__role.is-on {
@@ -170,20 +209,26 @@ const emit = defineEmits<{
     flex-shrink: 0;
   }
 
-  /* Колокольчик: 36 визуально, 44 — зона нажатия (поля 4px) */
+  /* Колокольчик: 32 визуально, 44 — зона нажатия (поля 6px) */
   .mob-top__actions :deep(.admin-notifications-bell__btn),
   .mob-top__actions :deep(.vac-notifications-bell__btn) {
-    width: 36px;
-    height: 36px;
-    margin: 4px;
+    width: 32px;
+    height: 32px;
+    margin: 6px;
     border-width: 1.5px;
+  }
+
+  .mob-top__actions :deep(.admin-notifications-bell__btn) svg,
+  .mob-top__actions :deep(.vac-notifications-bell__btn) svg {
+    width: 18px;
+    height: 18px;
   }
 
   .mob-top__actions :deep(.admin-notifications-bell__btn)::after,
   .mob-top__actions :deep(.vac-notifications-bell__btn)::after {
     content: '';
     position: absolute;
-    inset: -5px;
+    inset: -7px;
   }
 
   .mob-top__actions :deep(.admin-notifications-bell__badge) {

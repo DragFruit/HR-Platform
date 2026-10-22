@@ -12,7 +12,7 @@
 @media (max-width: 900px) {
   :root {
     /* iOS HIG: таббар 49pt (+ тень 2px + отступ 6px) + safe-area; навбар 44pt + safe-area */
-    --mobile-nav-clearance: calc(57px + max(6px, calc(env(safe-area-inset-bottom, 0px) - 10px)));
+    --mobile-nav-clearance: calc(60px + max(6px, calc(env(safe-area-inset-bottom, 0px) - 10px)));
     --mobile-top-total: calc(44px + env(safe-area-inset-top, 0px));
   }
 
@@ -1841,5 +1841,508 @@
   /* --- Выбор аватара --- */
   .onboarding-avatar-card h2 {
     font-size: 20px;
+  }
+}
+
+/* ——— 9. Раунд с iPhone (iOS 15, 375pt): компактный профиль, шторка уведомлений,
+ * список базы знаний, календарь отпуска лентой через Новый год, месяц крупно без наложений.
+ */
+@media (max-width: 900px) {
+  /* --- Профиль: герой в первый экран --- */
+  #__nuxt .profile-screen-hero {
+    padding: 12px;
+  }
+
+  #__nuxt .profile-screen-hero__grid {
+    gap: 12px;
+  }
+
+  #__nuxt .profile-screen-hero__identity .profile-identity__main {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+  }
+
+  #__nuxt .profile-screen-hero :is(.profile-identity__avatar-btn, .profile-identity__avatar-static) {
+    width: 72px;
+    height: 88px;
+  }
+
+  /* Имя: 20/700, перенос только по словам, без дефисов */
+  #__nuxt .profile-screen-hero .profile-identity__name-row h2 {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+    -webkit-hyphens: manual;
+  }
+
+  #__nuxt .profile-identity__badges {
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  #__nuxt .profile-screen-hero .profile-achievement-chip {
+    width: 24px;
+    height: 24px;
+    min-width: 0;
+    min-height: 0;
+    font-size: 12px;
+  }
+
+  #__nuxt .profile-screen-hero .profile-achievement-chip .profile-achievement-chip__img {
+    width: 20px;
+    height: 20px;
+  }
+
+  #__nuxt .profile-identity__meta {
+    gap: 4px 6px;
+    margin-top: 4px;
+  }
+
+  #__nuxt .profile-identity__title-pill,
+  #__nuxt .profile-identity__department {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  #__nuxt .profile-identity__title-pill {
+    padding: 2px 8px;
+  }
+
+  /* Плитки: календарь слева = две плитки справа по высоте */
+  #__nuxt .profile-stat-collage {
+    grid-template-rows: none;
+    grid-auto-rows: 92px;
+    gap: 8px;
+  }
+
+  #__nuxt .profile-stat-tile {
+    min-height: 0;
+    padding: 10px;
+  }
+
+  #__nuxt .profile-vacation-calendar__shell {
+    padding: 10px 6px 6px;
+    border-radius: 14px;
+    box-shadow: 3px 3px 0 #111, inset 0 -4px 0 rgba(0, 0, 0, 0.12);
+  }
+
+  #__nuxt .profile-vacation-calendar__rings {
+    top: -7px;
+  }
+
+  #__nuxt .profile-vacation-calendar__ring {
+    width: 12px;
+    height: 18px;
+    border-width: 2px;
+  }
+
+  #__nuxt .profile-vacation-calendar__binder {
+    height: 16px;
+    border-radius: 8px;
+  }
+
+  #__nuxt .profile-vacation-calendar__hole {
+    width: 7px;
+    height: 7px;
+    border-width: 1.5px;
+  }
+
+  #__nuxt .profile-vacation-calendar__page {
+    gap: 2px;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  #__nuxt .profile-vacation-calendar .profile-stat-tile__value {
+    font-size: 28px !important;
+    line-height: 1;
+  }
+
+  #__nuxt .profile-vacation-calendar .profile-stat-tile__label {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  #__nuxt .profile-vacation-calendar .profile-stat-tile__hint {
+    font-size: 12px;
+  }
+
+  /* Баннеры «Хочешь подарок?» / «Скоро в отпуск»: 15/700, без дефисов, до 2 строк */
+  #__nuxt .profile-screen-hero .profile-stat-tile.profile-stat-tile--banner :is(.profile-stat-tile__value, .profile-stat-tile__label) {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+    -webkit-hyphens: manual;
+    white-space: normal !important;
+  }
+
+  #__nuxt .profile-screen-hero .profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__value {
+    max-width: 100%;
+    font-size: 15px !important;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  #__nuxt .profile-screen-hero .profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__label {
+    margin-top: 2px;
+    font-size: 13px !important;
+    line-height: 1.2;
+  }
+
+  /* Картинка — маленькая в правом нижнем углу, под текстом не лежит */
+  #__nuxt .profile-stat-tile.profile-stat-tile--banner picture {
+    width: 40%;
+    height: 36%;
+  }
+
+  /* Ачивки: заголовок 17, «Все» 28 */
+  #__nuxt .profile-achievements-preview.card {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  #__nuxt .profile-achievements-preview .profile-itmo-panel__title {
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
+  #__nuxt .profile-achievements-preview__all {
+    min-height: 28px;
+    height: 28px;
+    padding: 0 12px;
+    border-width: 1.5px;
+    font-size: 13px;
+    line-height: 25px;
+  }
+
+  /* --- Шторка уведомлений: компактная, до 65% экрана --- */
+  #__nuxt .admin-notifications-bell__panel {
+    max-height: min(65vh, calc(100dvh - var(--mobile-top-total) - var(--mobile-nav-clearance) - 12px));
+    padding: 12px;
+  }
+
+  #__nuxt .admin-notifications-bell__head {
+    min-height: 28px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  #__nuxt .admin-notifications-bell__head > strong {
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  #__nuxt .admin-notifications-bell__mark-all {
+    min-height: 28px;
+    height: 28px;
+    padding: 0 4px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  #__nuxt .admin-notifications-bell__item {
+    position: relative;
+    padding: 10px 34px 10px 12px;
+    border-radius: 12px;
+  }
+
+  #__nuxt .admin-notifications-bell__title {
+    margin: 0 0 2px;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  #__nuxt .admin-notifications-bell__body {
+    margin: 0 0 4px;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  #__nuxt .admin-notifications-bell__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  #__nuxt .admin-notifications-bell__meta .soft {
+    font-size: 12px;
+  }
+
+  #__nuxt .admin-notifications-bell__link {
+    min-height: 24px;
+    padding: 0;
+    font-size: 13px;
+    line-height: 24px;
+  }
+
+  #__nuxt .admin-notifications-bell__dismiss {
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+  }
+
+  #__nuxt .admin-notifications-bell__footer {
+    min-height: 40px;
+    margin-top: 8px;
+    padding: 0;
+    font-size: 15px;
+  }
+
+  /* --- База знаний: результаты поиска --- */
+  #__nuxt .kb-results {
+    gap: 0;
+  }
+
+  #__nuxt .kb-hit {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.14);
+  }
+
+  #__nuxt .kb-hit__depts {
+    gap: 4px;
+    margin: 0 0 6px;
+  }
+
+  #__nuxt .kb-hit .kb-dept {
+    min-height: 20px;
+    padding: 0 6px;
+    border-width: 1px;
+    border-radius: 4px;
+    box-shadow: none;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 18px;
+  }
+
+  #__nuxt .kb-hit__title {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0;
+  }
+
+  #__nuxt .kb-hit mark {
+    font-weight: 600;
+    padding: 0 2px;
+    border-radius: 3px;
+  }
+
+  #__nuxt .kb-write-fab {
+    width: 48px;
+    height: 48px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  /* --- Настройки профиля: одна высота для всех разделов, но без полэкрана пустоты --- */
+  .profile-settings-overlay .card.profile-settings {
+    height: min(600px, calc(100dvh - 32px));
+  }
+
+  /* --- Выбор аватара: 4 в ряд — больше персонажей на экране --- */
+  .profile-avatar-picker-panel .avatar-picker-grid,
+  .onboarding-avatar-card .avatar-picker-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  /* --- Админка: «Быстрые действия» в две колонки, а не столбик из 10 кнопок --- */
+  #__nuxt .admin-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #__nuxt .admin-actions > .button {
+    min-width: 0;
+    min-height: 40px;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  /* «Связи модулей»: текст упирался в рамку списка — строки с разделителями без рамки */
+  #__nuxt .card > .list-reset.soft-links {
+    border: 0;
+    border-radius: 0;
+  }
+
+  #__nuxt .card > .list-reset.soft-links > li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.12);
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  #__nuxt .card > .list-reset.soft-links > li:last-child {
+    border-bottom: 0;
+  }
+
+  /* --- Магазин: кнопка товара компактнее («Недостаточно валюты» не раздувает карточку) --- */
+  #__nuxt .store-page__item .button {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  /* --- Отпуск «Мой»: два года одной лентой, прокрутка у ленты --- */
+  #__nuxt .vac-emp-page--fit .vac-emp-year-stack--multi {
+    position: relative;
+    display: block;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #__nuxt .vac-emp-page--fit .vac-emp-year-stack--multi .vac-emp-year-stack__year {
+    display: block;
+  }
+
+  #__nuxt .vac-emp-page--fit .vac-emp-year-stack--multi .emp-cal-grid--compact:not(.emp-cal-grid--month-focus) {
+    height: auto;
+    overflow: visible;
+  }
+
+  #__nuxt .vac-emp-page--fit .vac-emp-year-stack--multi .vac-emp-year-stack__label {
+    display: block;
+    margin: 14px 0 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(17, 17, 17, 0.18);
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* Подсветка отпуска и выбора: общее мобильное правило `td { background: transparent }`
+   * (0,5,1) перебивало заливку — одобренные, на согласовании и выбранные даты были не видны */
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-approved {
+    background: #14b8a6;
+    color: #fff;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-pending,
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview {
+    background: #f59e0b;
+    color: #fff;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview {
+    background: #7451f4;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td:is(.emp-day-approved, .emp-day-pending, .emp-day-range-preview) .hr-day-num {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.weekend {
+    background: #7451f4;
+  }
+
+  /* Выбор — сплошной полосой: скругляем только края диапазона */
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview {
+    border-radius: 0;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-start {
+    border-radius: 6px 0 0 6px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-end {
+    border-radius: 0 6px 6px 0;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-range-preview.emp-range-seg-single {
+    border-radius: 6px;
+  }
+
+  /* --- Месяц крупно: заголовок + «← Весь год» в одной строке, дни недели ниже, ячейки 40 --- */
+  #__nuxt .vac-emp-page--fit .vac-emp-cal-back-year {
+    top: 9px;
+    right: 9px;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--primary-strong, #5a3ad4);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 32px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus {
+    grid-template-rows: auto;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .emp-cal-month--focused {
+    height: auto;
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    margin: 0 0 4px;
+    /* место под «← Весь год» справа */
+    padding: 0 104px 0 4px;
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-grid {
+    height: auto;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-grid th {
+    height: 24px;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-month-grid td {
+    height: 40px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-day-num {
+    padding: 0;
+    font-size: 15px;
+    line-height: 1;
   }
 }

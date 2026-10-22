@@ -96,7 +96,7 @@ const updateOrb = () => {
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
   const target = icon?.getBoundingClientRect() ?? itemRect;
 
-  const size = tab.center ? 44 : 32;
+  const size = tab.center ? 40 : 30;
   const orbCssTop = 4;
   const targetCenterY = target.top + target.height / 2 - barRect.top;
 
@@ -216,10 +216,12 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    height: 49px;
+    /* 49pt HIG + 3: подписи не прижаты к нижней кромке пилюли */
+    height: 52px;
     min-height: 0;
     box-sizing: border-box;
-    padding: 0 4px;
+    /* Подписи крайних пунктов не упираются в скругление пилюли */
+    padding: 0 10px;
     align-items: center;
     border: 1.5px solid #111;
     border-radius: 22px;
@@ -273,11 +275,11 @@ watch(
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    height: 46px;
+    gap: 3px;
+    height: 48px;
     min-height: 44px;
     min-width: 0;
-    padding: 0 1px;
+    padding: 0;
     border-radius: 14px;
     color: #555;
     text-decoration: none;
@@ -294,31 +296,29 @@ watch(
     box-shadow: none;
   }
 
-  .mob-dock__item.is-center {
-    margin-top: -6px;
-  }
-
+  /* Центр — той же высоты, что соседи: подпись «Главная» целиком внутри дока,
+   * крупнее только кружок (40) вокруг иконки */
   .mob-dock__icon {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     color: inherit;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
+  /* Иконка центра приподнята (кружок чуть выступает над доком), подпись — на одной линии с соседями */
   .mob-dock__item.is-center .mob-dock__icon {
-    width: 40px;
-    height: 40px;
+    margin: -8px 0 8px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
 
   .mob-dock__item.is-on {
@@ -342,7 +342,13 @@ watch(
     opacity: 0.9;
   }
 
+  .mob-dock__item.is-on.is-center .mob-dock__label {
+    color: #111;
+  }
+
   .mob-dock__label {
+    position: relative;
+    z-index: 1;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0;
