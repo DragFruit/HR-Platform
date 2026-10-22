@@ -77,7 +77,7 @@
                   :aria-pressed="currentAvatarId === characterId"
                   @click="pickAvatar(characterId)"
                 >
-                  <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" loading="lazy" />
+                  <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" width="181" height="250" decoding="async" />
                 </button>
               </div>
             </section>

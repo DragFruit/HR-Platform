@@ -35,7 +35,7 @@ export type KnowledgeAiIntent =
  * Без `\b` для кириллицы; не цеплять куски внутри других слов.
  */
 const CASE_STUDY_RE =
-  /(?<![а-яёa-z0-9])кейс(?:а|у|ом|е|ы|ов|ам|ами|ах)?(?![а-яёa-z0-9])|(?<![a-z0-9])case[\s-]*stud(?:y|ies)(?![a-z0-9])/iu;
+  /(?:^|[^а-яёa-z0-9])кейс(?:а|у|ом|е|ы|ов|ам|ами|ах)?(?![а-яёa-z0-9])|(?:^|[^a-z0-9])case[\s-]*stud(?:y|ies)(?![a-z0-9])/iu;
 
 /** Вопрос про клиентские кейсы / case studies. */
 export function detectKbAiCasesQuestion(raw: string): boolean {
@@ -46,7 +46,7 @@ export function detectKbAiCasesQuestion(raw: string): boolean {
 
 /** E-com / ecommerce / еком в вопросе (для буста статей кейсов). */
 const ECOM_TOPIC_RE =
-  /(?<![а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс|эком)(?![а-яёa-z0-9])/iu;
+  /(?:^|[^а-яёa-z0-9])(e-?com(?:merce)?|еком(?:мерс|ерс)?|екомерс|эком)(?![а-яёa-z0-9])/iu;
 
 export function detectKbAiEcomTopic(raw: string): boolean {
   return ECOM_TOPIC_RE.test(String(raw || '').trim());
@@ -54,7 +54,7 @@ export function detectKbAiEcomTopic(raw: string): boolean {
 
 /** Корпоративные шрифты VBI / TT Hoves. */
 const CORP_FONTS_TOPIC_RE =
-  /шрифт[а-яё]*\s+компан|компан[а-яё]*\s+шрифт|(?<![а-яёa-z0-9])(?:шрифт[а-яё]*|типограф[а-яё]*|hoves|tt\s*hoves|брендбук|фирменн[а-яё]*\s+шрифт|корпоративн[а-яё]*\s+шрифт)(?![а-яёa-z0-9])/iu;
+  /шрифт[а-яё]*\s+компан|компан[а-яё]*\s+шрифт|(?:^|[^а-яёa-z0-9])(?:шрифт[а-яё]*|типограф[а-яё]*|hoves|tt\s*hoves|брендбук|фирменн[а-яё]*\s+шрифт|корпоративн[а-яё]*\s+шрифт)(?![а-яёa-z0-9])/iu;
 
 export function detectKbAiCorpFontsQuestion(raw: string): boolean {
   return CORP_FONTS_TOPIC_RE.test(String(raw || '').trim());
@@ -62,7 +62,7 @@ export function detectKbAiCorpFontsQuestion(raw: string): boolean {
 
 /** Канал / формат в вопросе про кейсы (SMM, таргет, посевы…). */
 const CASE_CHANNEL_TOPIC_RE =
-  /(?<![а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет|медиа)(?![а-яёa-z0-9])/iu;
+  /(?:^|[^а-яёa-z0-9])(smm|смм|таргет|посев|контекстн|перфоманс|programmatic|influence|вконтакт|вк\b|соцсет|медиа)(?![а-яёa-z0-9])/iu;
 
 export function detectKbAiCaseChannelTopic(raw: string): boolean {
   return CASE_CHANNEL_TOPIC_RE.test(String(raw || '').trim());
@@ -233,7 +233,7 @@ export function historySuggestsCaseEcomTopic(
     return (
       detectKbAiCasesQuestion(text) ||
       detectKbAiEcomTopic(text) ||
-      /(?<![а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(text)
+      /(?:^|[^а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(text)
     );
   });
 }
@@ -254,7 +254,7 @@ export function isKbCaseOrChannelFollowUp(
   if (detectKbAiCaseChannelTopic(q)) return true;
   const words = q.split(/\s+/).length;
   if (words <= 12 && (detectKbAiEcomTopic(q) || detectKbAiCasesQuestion(q))) return true;
-  if (words <= 10 && /(?<![а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(q)) return true;
+  if (words <= 10 && /(?:^|[^а-яёa-z0-9])клиент(?![а-яёa-z0-9])/iu.test(q)) return true;
   return false;
 }
 

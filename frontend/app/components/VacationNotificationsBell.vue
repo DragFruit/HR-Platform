@@ -21,8 +21,13 @@
     </button>
 
     <div v-if="open" class="admin-notifications-bell__panel card" role="dialog" aria-label="Уведомления">
-      <div v-if="unseenCount > 0" class="admin-notifications-bell__head">
+      <div
+        class="admin-notifications-bell__head"
+        :class="{ 'admin-notifications-bell__head--mobile-only': unseenCount === 0 }"
+      >
+        <strong class="admin-notifications-bell__head-title">Уведомления</strong>
         <button
+          v-if="unseenCount > 0"
           type="button"
           class="button ghost admin-notifications-bell__mark-all"
           @click.stop="handleMarkAll"
@@ -150,3 +155,16 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
 });
 </script>
+
+<style>
+/* Десктоп как раньше: без заголовка, шапка только при непрочитанных. На телефоне — заголовок всегда (mobile.css). */
+@media (min-width: 901px) {
+  .admin-notifications-bell__head-title {
+    display: none;
+  }
+
+  .admin-notifications-bell__head--mobile-only {
+    display: none;
+  }
+}
+</style>

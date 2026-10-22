@@ -100,8 +100,7 @@ let confettiFn: ConfettiFn | null = null;
 const loadConfetti = async (): Promise<ConfettiFn | null> => {
   if (!import.meta.client) return null;
   if (!confettiFn) {
-    const mod = await import('@hiseb/confetti');
-    confettiFn = mod.default as ConfettiFn;
+    confettiFn = await importConfetti();
   }
   return confettiFn;
 };

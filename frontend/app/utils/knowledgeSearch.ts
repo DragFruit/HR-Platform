@@ -191,7 +191,7 @@ const synonymsOf = (() => {
 })();
 
 const hasExactWord = (hay: string, word: string) => {
-  const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(word)}(?![\\p{L}\\p{N}_])`, 'iu');
+  const re = new RegExp(`(?:^|[^\\p{L}\\p{N}_])${escapeRegExp(word)}(?![\\p{L}\\p{N}_])`, 'iu');
   return re.test(hay);
 };
 

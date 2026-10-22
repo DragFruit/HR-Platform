@@ -149,9 +149,9 @@ const emit = defineEmits<{
     flex-shrink: 0;
   }
 
+  /* Только кнопка-колокольчик: раньше :deep(button) делал 40×40 и кнопки внутри панели уведомлений */
   .mob-top__actions :deep(.admin-notifications-bell__btn),
-  .mob-top__actions :deep(.vac-notifications-bell__btn),
-  .mob-top__actions :deep(button) {
+  .mob-top__actions :deep(.vac-notifications-bell__btn) {
     width: 40px;
     height: 40px;
   }

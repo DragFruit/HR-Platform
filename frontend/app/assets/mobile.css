@@ -828,3 +828,701 @@
     line-height: 1.1;
   }
 }
+
+/* ——— 5. Плотность (этап 3): «коэффициент полезности пикселя» ———
+ * Ориентиры для 375pt: поля 12–16px, промежутки 10–14px, карточки 12–14px,
+ * заголовки страниц 20–22px, герои ≤ 24px, текст ≥ 14px, цифры в плитках 22–26px, тап ≥ 40px.
+ */
+@media (max-width: 900px) {
+  /* --- Герои страниц (админка, адаптация и т.п.) --- */
+  #__nuxt .creative-hero:not(.dashboard-hero) {
+    padding: 14px;
+    gap: 6px;
+  }
+
+  #__nuxt .creative-hero:not(.dashboard-hero) h2 {
+    margin: 2px 0 4px;
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  #__nuxt .creative-hero .eyebrow {
+    margin: 0;
+    font-size: 11px;
+  }
+
+  #__nuxt .creative-hero:not(.dashboard-hero) :is(p.muted, p.soft) {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  /* Админ: три цифры — одной строкой */
+  #__nuxt .content .grid-three:has(> .admin-stat) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  #__nuxt .admin-stat {
+    min-width: 0;
+    padding: 10px 12px;
+  }
+
+  #__nuxt .admin-stat .soft {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  #__nuxt .admin-stat .stat-value {
+    margin: 4px 0 0;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  /* Обычные карточки и их заголовки — без «воздуха ради воздуха» */
+  #__nuxt .content .card:not(.creative-hero):not(.admin-stat) {
+    padding: 14px;
+  }
+
+  #__nuxt .content .section-title {
+    margin-bottom: 10px;
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  /* --- Главная: компактный герой, кнопки и задачи в первом экране --- */
+  #__nuxt .dashboard-hero {
+    padding: 14px 14px 12px;
+  }
+
+  #__nuxt .dashboard-hero .eyebrow {
+    margin: 0 0 4px;
+  }
+
+  #__nuxt .dashboard-hero h2 {
+    margin: 0 0 4px;
+    padding-right: 32px;
+    font-size: 24px;
+    line-height: 1.12;
+  }
+
+  #__nuxt .dashboard-hero__copy > :is(p.muted, p.soft, .gift-error) {
+    margin: 0 0 4px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  #__nuxt .hero-stat-tags {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  #__nuxt .hero-pill--stat {
+    min-height: 52px;
+    padding: 6px 10px;
+    gap: 1px;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  #__nuxt .hero-pill--stat .hero-pill__label {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  #__nuxt .hero-pill--stat .hero-pill__value {
+    font-size: 22px;
+    line-height: 1.05;
+  }
+
+  #__nuxt .dashboard-hero .hero-actions {
+    margin-top: 10px;
+  }
+
+  #__nuxt .dashboard-hero .hero-actions .button {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  /* --- Банк идей --- */
+  #__nuxt .ideas-bank-page {
+    gap: 10px;
+  }
+
+  #__nuxt .ideas-bank-header {
+    gap: 8px;
+  }
+
+  #__nuxt .ideas-bank-header__lead {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  #__nuxt .ideas-bank-create-btn {
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  #__nuxt .ideas-bank-layout,
+  #__nuxt .ideas-bank-main {
+    gap: 10px;
+  }
+
+  /* Плитки-счётчики: сетка 3 колонки, ~58px высотой; цифра крупно, подпись под ней */
+  #__nuxt .ideas-bank-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  #__nuxt .ideas-bank-stat {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: 2px 4px;
+    min-height: 58px;
+    height: auto;
+    padding: 7px 9px;
+    border-radius: 12px;
+  }
+
+  #__nuxt .ideas-bank-stat--rejected {
+    grid-column: auto;
+  }
+
+  #__nuxt .ideas-bank-stat__value {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    font-size: 22px;
+  }
+
+  #__nuxt .ideas-bank-stat__icon {
+    grid-column: 2;
+    grid-row: 1;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border-width: 1.5px;
+  }
+
+  #__nuxt .ideas-bank-stat__icon :is(svg) {
+    width: 12px;
+    height: 12px;
+  }
+
+  #__nuxt .ideas-bank-stat__label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+    font-size: 12px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  /* Панель фильтров: сортировка + категория + статус в одну строку, поиск под ними */
+  #__nuxt .ideas-bank-toolbar {
+    padding: 12px;
+  }
+
+  #__nuxt .ideas-bank-toolbar__controls {
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 8px;
+  }
+
+  #__nuxt .ideas-bank-toolbar__controls .ideas-bank-select {
+    grid-column: auto;
+  }
+
+  #__nuxt .ideas-bank-toolbar__controls .ideas-bank-search {
+    grid-column: 1 / -1;
+  }
+
+  #__nuxt .ideas-bank-toolbar__controls :is(.ideas-bank-select, .ideas-bank-search) .soft {
+    font-size: 12px;
+  }
+
+  #__nuxt .ideas-bank-sort__btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Топ-авторы: одна лента вбок вместо столбика */
+  #__nuxt .ideas-bank-authors {
+    padding: 10px 12px;
+  }
+
+  #__nuxt .ideas-bank-authors__title {
+    margin: 0 0 6px;
+    font-size: 14px;
+  }
+
+  #__nuxt .ideas-bank-authors__list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    margin: 0 -12px;
+    padding: 0 12px 4px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  #__nuxt .ideas-bank-authors__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  #__nuxt .ideas-bank-authors__item {
+    flex: 0 0 auto;
+    max-width: 210px;
+    padding: 5px 8px;
+  }
+
+  #__nuxt .ideas-bank-authors__name {
+    font-size: 13px;
+  }
+
+  #__nuxt .ideas-bank-authors__empty {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  /* --- Магазин --- */
+  #__nuxt .store-page__catalog-head {
+    margin-bottom: 8px;
+  }
+
+  #__nuxt .store-page__catalog-title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  #__nuxt .store-page__catalog-lead {
+    margin: 2px 0 0;
+    font-size: 14px;
+  }
+
+  #__nuxt .store-wallet-entry {
+    gap: 10px;
+    min-height: 48px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    box-shadow: 2px 2px 0 #111;
+  }
+
+  #__nuxt .store-wallet-entry__badge {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  #__nuxt .store-wallet-entry__title {
+    font-size: 15px;
+  }
+
+  #__nuxt .store-wallet-entry__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  #__nuxt .store-page__filters {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  #__nuxt .store-page__filters-label {
+    flex: 0 0 auto;
+    font-size: 12px;
+  }
+
+  #__nuxt .store-page__filters .filters {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  #__nuxt .store-page__filters .filter-btn {
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  #__nuxt .store-page__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  /* Товар: слева название/категория/лимит, справа цена и кнопка */
+  #__nuxt .store-page__item:not(.store-page__item--tenure) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head price'
+      'limit buy';
+    align-items: center;
+    gap: 4px 12px;
+    padding: 12px;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) > .row {
+    grid-area: head;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) h3 {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) .tag {
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) > p.muted {
+    grid-area: limit;
+    font-size: 13px;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) .store-page__price {
+    grid-area: price;
+    justify-self: end;
+    margin: 0;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  #__nuxt .store-page__item:not(.store-page__item--tenure) > .button {
+    grid-area: buy;
+    justify-self: end;
+    max-width: 150px;
+    min-height: 40px;
+    margin: 0;
+    padding: 6px 14px;
+    font-size: 14px;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* --- Колокольчик: панель — шторка во всю ширину под шапкой, внутри экрана --- */
+  #__nuxt .admin-notifications-bell__panel {
+    position: fixed;
+    top: calc(var(--mobile-top-total) + 6px);
+    left: 10px;
+    right: 10px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - var(--mobile-top-total) - var(--mobile-nav-clearance) - 12px);
+    padding: 12px;
+    box-shadow: 4px 4px 0 rgba(32, 32, 32, 0.16);
+    overflow: hidden;
+  }
+
+  #__nuxt .admin-notifications-bell__head {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    min-height: 32px;
+    margin-bottom: 8px;
+  }
+
+  #__nuxt .admin-notifications-bell__head > strong {
+    font-size: 16px;
+  }
+
+  #__nuxt .admin-notifications-bell__mark-all {
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--primary-strong);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  #__nuxt .admin-notifications-bell__list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #__nuxt .admin-notifications-bell__title {
+    font-size: 15px;
+  }
+
+  #__nuxt .admin-notifications-bell__body {
+    font-size: 14px;
+  }
+
+  #__nuxt .admin-notifications-bell__meta {
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  #__nuxt .admin-notifications-bell__link {
+    min-height: 32px;
+  }
+
+  #__nuxt .admin-notifications-bell__dismiss {
+    top: 4px;
+    right: 4px;
+    width: 32px;
+    height: 32px;
+  }
+
+  #__nuxt .admin-notifications-bell__footer {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+}
+
+/* ——— 6. Выбор аватара: окно в пределах экрана (с учётом выреза), сетка 3 колонки ——— */
+@media (max-width: 900px) {
+  .welcome-overlay.onboarding-overlay {
+    place-items: center;
+    padding:
+      max(12px, env(safe-area-inset-top, 0px)) 12px
+      max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .onboarding-avatar-card,
+  .profile-avatar-picker-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 480px;
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)) - 12px);
+    padding: 16px 14px 14px;
+    overflow: hidden;
+  }
+
+  .onboarding-avatar-card h2 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  .onboarding-avatar-card :is(.eyebrow, .muted) {
+    margin: 0;
+  }
+
+  .onboarding-avatar-card > .button,
+  .profile-avatar-picker-panel > :is(.profile-avatar-picker-panel__head, .org-confirm-actions) {
+    flex: 0 0 auto;
+  }
+
+  .avatar-picker-grid,
+  .onboarding-avatar-card .avatar-picker-grid,
+  .profile-avatar-picker-panel .avatar-picker-grid {
+    flex: 1 1 auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Пропорции задаёт сам файл (181×250): плитка не схлопывается до загрузки картинки */
+  .avatar-picker-item img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 181 / 250;
+    object-fit: contain;
+  }
+}
+
+/* ——— 7. Отпуск сотрудника: даты в одну строку, сегменты, год — 2 месяца в ряд ——— */
+@media (max-width: 900px) {
+  #__nuxt .vac-mob-chrome {
+    gap: 8px;
+    margin-bottom: 0;
+  }
+
+  #__nuxt .vac-mob-chrome__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #__nuxt .vac-mob-dates {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
+    grid-template-rows: 44px;
+    gap: 6px;
+  }
+
+  #__nuxt .vac-mob-dates__field {
+    grid-column: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 3px;
+    font-size: 12px;
+  }
+
+  #__nuxt .vac-mob-dates .vac-mob-dates__field input {
+    height: 40px;
+    padding: 0 6px;
+    line-height: 38px;
+    border-radius: 10px;
+  }
+
+  #__nuxt .vac-mob-dates__ph {
+    left: 7px;
+    font-size: 14px;
+  }
+
+  #__nuxt .vac-mob-dates__ok {
+    grid-column: auto;
+    grid-row: auto;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  #__nuxt .vac-mob-balance {
+    position: relative;
+    min-width: 52px;
+    height: 40px;
+    padding: 0 18px 0 10px;
+    border-radius: 999px;
+    border-width: 1.5px;
+    box-shadow: 2px 2px 0 #ddf365;
+  }
+
+  #__nuxt .vac-mob-balance__num {
+    font-size: 18px;
+  }
+
+  #__nuxt .vac-mob-balance .vac-mob-balance__hint {
+    top: 50%;
+    right: 3px;
+    transform: translateY(-50%);
+  }
+
+  /* Вкладки «год / Мой / Общий / Заявки» — сегмент-переключатель */
+  #__nuxt .vac-mob-tabs {
+    align-items: stretch;
+    gap: 2px;
+    padding: 3px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-soft);
+  }
+
+  #__nuxt .vac-mob-tabs__btn,
+  #__nuxt .vac-mob-tabs__btn.is-on {
+    height: 34px;
+    margin: 0;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 9px;
+    font-size: 14px;
+  }
+
+  #__nuxt .vac-mob-tabs__btn.is-on {
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  #__nuxt .vac-mob-tabs__btn.is-on::before {
+    display: none;
+  }
+
+  #__nuxt .vac-mob-tabs__year {
+    margin: 0 !important;
+  }
+
+  #__nuxt .vac-mob-tabs__year .vac-year-tab__btn {
+    height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--bg-surface);
+    box-shadow: 0 0 0 1px var(--border);
+    font-size: 14px;
+  }
+
+  /* Рамка календаря и заявок — обычная карточка (не «папка» под вкладками) */
+  #__nuxt .vacations-employee-shell .vac-emp-calendar-slot .vac-emp-calendar-pane,
+  #__nuxt .vac-emp-page--fit .vac-emp-calendar-pane {
+    padding: 8px;
+    border: 1px solid var(--border-strong, var(--border));
+    border-radius: 12px;
+  }
+
+  #__nuxt .vacations-employee-shell .vac-emp-aside-host--requests.employee-aside-shell {
+    border: 1px solid var(--border-strong, var(--border));
+    border-radius: 12px;
+  }
+
+  /* Год: 2 месяца в ряд, прокрутка внутри рамки; цифры 13px, ячейка 26px */
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact:not(.emp-cal-grid--month-focus) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    /* max-content: строки не ужимаются под высоту рамки (иначе месяцы наезжают друг на друга) */
+    grid-auto-rows: max-content;
+    align-content: start;
+    gap: 14px 12px;
+    align-items: start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact:not(.emp-cal-grid--month-focus) .emp-cal-month {
+    height: auto;
+    min-height: max-content;
+    grid-template-rows: auto auto;
+    overflow: visible;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact :is(.emp-reservation-add-label, .emp-reservation-badge--wide) {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact:not(.emp-cal-grid--month-focus) .hr-month-grid {
+    height: auto;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid th {
+    padding: 0 0 2px;
+    font-size: 10px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact:not(.emp-cal-grid--month-focus) .hr-month-grid td {
+    height: 26px;
+  }
+
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact .hr-day-num {
+    font-size: 13px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Месяц крупно (тап по месяцу): цифры ещё крупнее */
+  #__nuxt .vac-emp-page--fit .emp-cal-grid--compact.emp-cal-grid--month-focus .hr-day-num {
+    font-size: 17px;
+  }
+}
