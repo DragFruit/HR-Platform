@@ -67,23 +67,12 @@ const tabs = computed(() => (props.mode === 'admin' ? adminTabs : employeeTabs))
 
 const lockedHint = 'Раздел скоро откроется';
 
-const isActive = (to: string) => {
-  if (to === '/') return route.path === '/';
-  if (to === '/store') {
-    return (
-      route.path === '/store' ||
-      route.path.startsWith('/store/') ||
-      route.path === '/wallet' ||
-      route.path.startsWith('/wallet/')
-    );
-  }
-  if (to === '/admin') return route.path === '/admin';
-  return route.path === to || route.path.startsWith(`${to}/`);
-};
+const isActive = (to: string) => isDockItemActive(to, route.path);
 
 const isLocked = (to: string) => !isNavPathUnlocked(to);
 
-const activeTab = computed(() => tabs.value.find((tab) => isActive(tab.to)) ?? tabs.value[0]);
+/** null — текущего раздела нет в доке: ничего не подсвечиваем (раньше падало на первый пункт). */
+const activeTab = computed(() => findActiveDockItem(tabs.value, route.path));
 
 const orbStyle = computed(() => ({
   transform: `translate3d(calc(${orbX.value}px - 50%), ${orbLift.value}px, 0)`,
@@ -94,7 +83,11 @@ const orbStyle = computed(() => ({
 const updateOrb = () => {
   const bar = barRef.value;
   const tab = activeTab.value;
-  if (!bar || !tab) return;
+  if (!bar) return;
+  if (!tab) {
+    orbReady.value = false;
+    return;
+  }
   const el = itemRefs.get(tab.to);
   if (!el) return;
 
@@ -158,7 +151,7 @@ watch(
     <div ref="barRef" class="mob-dock__bar">
       <div
         class="mob-dock__orb"
-        :class="{ 'is-ready': orbReady, 'is-center': !!activeTab?.center, 'is-locked-target': activeTab && isLocked(activeTab.to) }"
+        :class="{ 'is-ready': orbReady && !!activeTab, 'is-center': !!activeTab?.center, 'is-locked-target': activeTab && isLocked(activeTab.to) }"
         :style="orbStyle"
         aria-hidden="true"
       />
@@ -170,6 +163,7 @@ watch(
           :to="tab.to"
           class="mob-dock__item"
           :class="{ 'is-on': isActive(tab.to), 'is-center': !!tab.center }"
+          :aria-current="isActive(tab.to) ? 'page' : undefined"
         >
           <span class="mob-dock__icon">
             <AppMobileNavIcon :name="tab.icon" />

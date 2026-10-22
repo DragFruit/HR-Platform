@@ -485,7 +485,9 @@ OrgLink        // from/to ports + optional mid
 - Единый файл: `app/assets/main.css` (~15 000 строк).
 - Токены: neo-brutalist light UI (`--page-bg`, `--border-brutal`), фиолетовый topbar (`--hero-purple`), лайм (`--accent-lime`), vacation-pill (см. раздел «Отпуска»).
 
-Подключение: `nuxt.config.ts` → `css: ['~/assets/main.css']`.
+- Мобилка (≤ 900px): `app/assets/mobile.css` — одна прокрутка документа, стопка тулбара графика отпусков, лёгкая анимация (с `prefers-reduced-motion`). Только внутри `@media (max-width: 900px)`, десктоп не трогает. Подсветка нижнего меню — `app/utils/mobileDockActive.ts`.
+
+Подключение: `nuxt.config.ts` → `css: ['~/assets/main.css', '~/assets/mobile.css']` (порядок важен: mobile.css перебивает старые мобильные правила).
 
 ---
 

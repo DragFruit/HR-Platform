@@ -1,0 +1,349 @@
+/*
+ * Мобильная версия (≤ 900px, тот же брейкпоинт, что у .mob-dock / .mob-top).
+ * Десктоп этот файл НЕ трогает: всё внутри @media (max-width: 900px).
+ * Подключается после main.css (nuxt.config → css), поэтому перебивает старые
+ * мобильные правила; #__nuxt даёт специфичность выше цепочек :has().
+ *
+ * 1. Одна прокрутка — документ (адресная строка iOS сворачивается, нативная инерция).
+ * 2. График отпусков (админ / руководитель без aside): стопка тулбара + таблица.
+ * 3. Лёгкая анимация: вход страницы, нажатия, появление шторок; reduced-motion — выкл.
+ */
+
+@media (max-width: 900px) {
+  :root {
+    /* Док: бар 60px + обводка/тень + внешний отступ + safe-area */
+    --mobile-nav-clearance: calc(76px + max(6px, env(safe-area-inset-bottom, 0px)));
+    --mobile-top-total: calc(52px + env(safe-area-inset-top, 0px));
+  }
+
+  html {
+    scroll-padding-top: calc(var(--mobile-top-total) + 8px);
+    scroll-padding-bottom: var(--mobile-nav-clearance);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    height: auto;
+    overflow-x: clip;
+    overscroll-behavior-y: auto;
+  }
+
+  /* ——— 1. Документ — единственный вертикальный скролл ———
+   * Исключение: экран отпусков сотрудника (.vac-emp-page--fit) — задуман
+   * «одним экраном без прокрутки», там оставляем фиксированную высоту.
+   */
+  #__nuxt .app-viewport {
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  #__nuxt .app-viewport > .app-shell:not(:has(.vac-emp-page--fit)) {
+    display: block;
+    height: auto !important;
+    min-height: 100dvh;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #__nuxt .shell-main:not(:has(.vac-emp-page--fit)) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: calc(var(--mobile-nav-clearance) + 8px) !important;
+  }
+
+  #__nuxt .shell-main:not(:has(.vac-emp-page--fit)) > .content {
+    display: block !important;
+    flex: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    overscroll-behavior: auto;
+  }
+
+  #__nuxt .shell-main:not(:has(.vac-emp-page--fit)) > .content > .page-root {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Шапка липнет к верху документа и не просвечивает контент */
+  #__nuxt .mob-top {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  /* Экран «одним окном» (отпуска сотрудника): ровно в высоту экрана, без двойного скролла */
+  #__nuxt .app-viewport:has(.vac-emp-page--fit) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Блокировка фона, пока открыта модалка / шторка */
+  html:has(
+      .org-confirm-overlay,
+      .ideas-create-overlay,
+      .kb-link-dialog,
+      .kb-reject-modal,
+      .onboarding-overlay,
+      .profile-achievements-overlay,
+      .profile-avatar-picker-overlay,
+      .profile-settings-overlay,
+      .pvm-overlay,
+      .vac-cap-notice-backdrop,
+      .vac-reservation-overlay,
+      .vac-training-reward__backdrop,
+      .welcome-overlay,
+      .wish-panel-overlay,
+      .tenure-celeb__scrim,
+      [aria-modal='true']:not([style*='display: none'])
+    ) {
+    overflow: hidden;
+  }
+
+  /* ——— 2. График отпусков: админ/руководитель без правого меню ———
+   * Было: вкладки «Детально / По месяцам», год, «+ Добавить отпуск» и колонка ФИО
+   * налезали друг на друга, таблица сжималась до 170px.
+   * Стало: сегмент-переключатель на всю ширину → строка «год + добавить» →
+   * таблица в рамке со своим 2-осевым скроллом (липкие шапка месяцев и колонка ФИО).
+   */
+  #__nuxt .vac-team-calendar--with-side-tabs {
+    display: block;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__main {
+    display: block;
+    height: auto;
+    max-height: none;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: auto;
+    max-height: none;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__body {
+    display: contents;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-cal-side-tabs {
+    order: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    margin: 0;
+    padding: 3px;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-soft);
+    align-self: stretch;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-cal-side-tab {
+    writing-mode: horizontal-tb;
+    width: auto;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-cal-side-tab--active {
+    background: var(--bg-surface);
+    color: var(--text);
+    box-shadow: 0 1px 0 var(--border), 0 0 0 1px var(--border);
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-cal-side-tab::before,
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-cal-side-tab::after {
+    display: none;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__chrome {
+    order: 1;
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__chrome .vac-admin-add-btn {
+    flex: 1 1 auto;
+    min-height: 40px;
+    margin: 0;
+    border-radius: 12px;
+    font-size: 0.86rem;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__chrome .vac-year-tab {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__chrome .vac-year-tab__btn {
+    height: 40px;
+    min-width: 92px;
+    padding: 0 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    font-size: 0.86rem;
+  }
+
+  /* Рамка таблицы: своя прокрутка по двум осям — намеренно (как у широких таблиц) */
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__frame {
+    order: 2;
+    position: relative;
+    top: auto;
+    flex: none;
+    width: 100%;
+    height: calc(100dvh - var(--mobile-top-total) - var(--mobile-nav-clearance) - 148px);
+    min-height: 340px;
+    max-height: none !important;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    overflow: hidden;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__frame > .vacation-calendar-wrap {
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__frame .vac-table-scroll,
+  #__nuxt .vac-team-calendar--with-side-tabs .vac-team-calendar__frame .timeline-scroll-x {
+    height: 100%;
+    max-height: none;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Колонка ФИО уже, должность и остаток уезжают вместе с днями (липкая только ФИО) */
+  #__nuxt .vac-team-calendar .vac-detailed-timeline {
+    --vac-name-col-w: 118px !important;
+  }
+
+  #__nuxt .vac-team-calendar .vac-detailed-timeline .sticky-col-name .emp-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #__nuxt .vac-team-calendar .vac-detailed-timeline .sticky-col-title,
+  #__nuxt .vac-team-calendar .vac-detailed-timeline .sticky-col-balance,
+  #__nuxt .vac-team-calendar .vacation-timeline .sticky-col-title {
+    position: static;
+  }
+
+  #__nuxt .vac-team-calendar .vac-detailed-timeline .vac-employee-head-label {
+    font-size: 0.7rem;
+  }
+
+  /* Широкие таблицы: только горизонтальная прокрутка внутри, без «прыжка» страницы */
+  #__nuxt .content :is(.table-wrap, .mini-table-wrap, .timeline-scroll-x) {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* ——— 3. Анимация (только мобилка и только если система не просит меньше движения) ——— */
+@media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
+  /* Вход страницы: fade + 6px снизу, 180ms. Уходящая страница исчезает сразу — без наложения двух экранов. */
+  #__nuxt .page-enter-active {
+    transition:
+      opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  #__nuxt .page-leave-active {
+    display: none;
+    transition: none;
+  }
+
+  #__nuxt .page-enter-from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+
+  /* Нажатие: лёгкое «вдавливание» (свойство scale не конфликтует с transform hover-эффектов) */
+  #__nuxt :is(button, .button, [role='button'], [role='tab'], a.card, .card--link, .mob-top__role):not(:disabled):active {
+    scale: 0.97;
+  }
+
+  #__nuxt .mob-dock__item .mob-dock__icon {
+    transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  #__nuxt .mob-dock__item:active .mob-dock__icon {
+    scale: 0.88;
+  }
+
+  /* Модалки и шторки: фон проявляется, карточка выезжает снизу */
+  :is(
+      .org-confirm-overlay,
+      .ideas-create-overlay,
+      .profile-settings-overlay,
+      .profile-avatar-picker-overlay,
+      .profile-achievements-overlay,
+      .vac-reservation-overlay,
+      .vac-cap-notice-backdrop,
+      .wish-panel-overlay,
+      .kb-reject-modal
+    ) {
+    animation: mob-fade-in 0.16s ease-out both;
+  }
+
+  :is(
+      .org-confirm-overlay,
+      .ideas-create-overlay,
+      .profile-settings-overlay,
+      .profile-avatar-picker-overlay,
+      .profile-achievements-overlay,
+      .vac-reservation-overlay,
+      .vac-cap-notice-backdrop,
+      .wish-panel-overlay,
+      .kb-reject-modal
+    )
+    > * {
+    animation: mob-sheet-up 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes mob-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes mob-sheet-up {
+    from {
+      opacity: 0;
+      translate: 0 24px;
+    }
+  }
+}

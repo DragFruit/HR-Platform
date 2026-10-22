@@ -16,7 +16,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   sourcemap: false,
-  css: ['~/assets/main.css'],
+  // mobile.css — только @media (max-width: 900px), после main.css: десктоп не меняется
+  css: ['~/assets/main.css', '~/assets/mobile.css'],
   vite: {
     build: {
       sourcemap: false,
