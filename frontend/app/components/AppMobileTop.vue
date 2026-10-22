@@ -68,7 +68,7 @@ const emit = defineEmits<{
           class="mob-top__profile"
           :aria-label="`Профиль: ${displayName}`"
         >
-          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="36" />
+          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="32" />
         </NuxtLink>
       </div>
     </div>
@@ -81,6 +81,7 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 900px) {
+  /* iOS HIG: навбар 44pt + safe-area; имя — Headline 17, режим — сегмент 28pt, кнопки 44×44 (визуально 32–36) */
   .mob-top {
     position: sticky;
     top: 0;
@@ -88,11 +89,12 @@ const emit = defineEmits<{
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    min-height: 52px;
+    gap: 8px;
+    box-sizing: border-box;
+    height: calc(44px + env(safe-area-inset-top, 0px));
     /* Ниже Dynamic Island / шторки */
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
-    border-bottom: 2px solid #111;
+    padding: env(safe-area-inset-top, 0px) 8px 0 16px;
+    border-bottom: 1px solid #111;
     background-color: #7451f4;
     background-image: var(--noise-url);
     background-size: 180px 180px;
@@ -101,72 +103,110 @@ const emit = defineEmits<{
 
   .mob-top__left {
     min-width: 0;
+    flex: 1 1 auto;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-self: stretch;
-    gap: 3px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 
   .mob-top__hello {
+    min-width: 0;
+    flex: 0 1 auto;
     margin: 0;
-    font-family: Unbounded, 'Golos Text', sans-serif;
-    font-size: 0.92rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .mob-top__roles {
+    flex: 0 0 auto;
     display: inline-flex;
-    gap: 3px;
+    gap: 2px;
+    height: 28px;
+    padding: 2px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    background: rgba(17, 17, 17, 0.22);
   }
 
   .mob-top__role {
-    min-height: 22px;
-    padding: 1px 7px;
-    border: 1px solid rgba(255, 255, 255, 0.45);
-    border-radius: 999px;
+    position: relative;
+    min-height: 0;
+    height: 24px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 7px;
     background: transparent;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.85);
     font: inherit;
-    font-size: 0.64rem;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  /* Зона нажатия 44pt по высоте при визуальных 24 */
+  .mob-top__role::after {
+    content: '';
+    position: absolute;
+    inset: -10px 0;
   }
 
   .mob-top__role.is-on {
     background: #ddf365;
-    border-color: #111;
     color: #111;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
 
   .mob-top__actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0;
     flex-shrink: 0;
   }
 
-  /* Только кнопка-колокольчик: раньше :deep(button) делал 40×40 и кнопки внутри панели уведомлений */
+  /* Колокольчик: 36 визуально, 44 — зона нажатия (поля 4px) */
   .mob-top__actions :deep(.admin-notifications-bell__btn),
   .mob-top__actions :deep(.vac-notifications-bell__btn) {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+    margin: 4px;
+    border-width: 1.5px;
+  }
+
+  .mob-top__actions :deep(.admin-notifications-bell__btn)::after,
+  .mob-top__actions :deep(.vac-notifications-bell__btn)::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+  }
+
+  .mob-top__actions :deep(.admin-notifications-bell__badge) {
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
   }
 
   .mob-top__profile-stack {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
 
   .mob-top__profile {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     border: none;
     background: transparent;
@@ -180,6 +220,5 @@ const emit = defineEmits<{
     border: none !important;
     box-shadow: none !important;
   }
-
 }
 </style>

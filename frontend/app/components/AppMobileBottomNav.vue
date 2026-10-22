@@ -96,7 +96,7 @@ const updateOrb = () => {
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
   const target = icon?.getBoundingClientRect() ?? itemRect;
 
-  const size = tab.center ? 52 : 40;
+  const size = tab.center ? 44 : 32;
   const orbCssTop = 4;
   const targetCenterY = target.top + target.height / 2 - barRect.top;
 
@@ -204,7 +204,8 @@ watch(
     right: 0;
     bottom: 0;
     z-index: 50;
-    padding: 0 8px max(6px, env(safe-area-inset-bottom));
+    /* iOS HIG: таббар 49pt + safe-area; пилюля чуть заходит в зону home-индикатора */
+    padding: 0 8px max(6px, calc(env(safe-area-inset-bottom, 0px) - 10px));
     pointer-events: none;
   }
 
@@ -215,14 +216,17 @@ watch(
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: end;
     gap: 0;
-    min-height: 60px;
-    padding: 5px 4px 7px;
-    border: 2px solid #111;
-    border-radius: 24px;
+    height: 49px;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 0 4px;
+    align-items: center;
+    border: 1.5px solid #111;
+    border-radius: 22px;
     /* Серый внутри пилюли; снаружи .mob-dock без фона */
     background-color: #d8d8d4;
     background-image: none;
-    box-shadow: 3px 3px 0 #111;
+    box-shadow: 2px 2px 0 #111;
     overflow: visible;
   }
 
@@ -268,11 +272,12 @@ watch(
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-end;
-    gap: 2px;
+    justify-content: center;
+    gap: 1px;
+    height: 46px;
     min-height: 44px;
     min-width: 0;
-    padding: 2px 1px 0;
+    padding: 0 1px;
     border-radius: 14px;
     color: #555;
     text-decoration: none;
@@ -290,30 +295,30 @@ watch(
   }
 
   .mob-dock__item.is-center {
-    margin-top: -8px;
+    margin-top: -6px;
   }
 
   .mob-dock__icon {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     color: inherit;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
   }
 
   .mob-dock__item.is-on {
@@ -338,15 +343,15 @@ watch(
   }
 
   .mob-dock__label {
-    font-size: 0.52rem;
-    letter-spacing: 0.01em;
-    line-height: 1.1;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 12px;
     text-align: center;
     max-width: 100%;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 </style>
