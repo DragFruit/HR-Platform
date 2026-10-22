@@ -32,9 +32,13 @@ const syncDockSlot = () => {
 const barRef = ref<HTMLElement | null>(null);
 const itemRefs = new Map<string, HTMLElement>();
 const orbReady = ref(false);
+/** Первое появление — без анимации (кружок не «прилетает» из угла). */
+const orbInstant = ref(true);
 const orbX = ref(0);
-const orbSize = ref(44);
-const orbLift = ref(0);
+const orbY = ref(0);
+const orbScale = ref(1);
+/** Кружок одного размера (40), меньшие пункты — scale: анимируется только transform. */
+const ORB_SIZE = 40;
 
 const setItemRef = (to: string, el: unknown) => {
   const node =
@@ -67,19 +71,38 @@ const tabs = computed(() => (props.mode === 'admin' ? adminTabs : employeeTabs))
 
 const lockedHint = 'Раздел скоро откроется';
 
-const isActive = (to: string) => isDockItemActive(to, route.path);
-
 const isLocked = (to: string) => !isNavPathUnlocked(to);
 
+/**
+ * Пункт, по которому только что тапнули: подсветка и кружок едут сразу, не дожидаясь
+ * загрузки страницы (иначе анимация запаздывала и накладывалась на переход страницы).
+ */
+const pendingTo = ref<string | null>(null);
+let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
 /** null — текущего раздела нет в доке: ничего не подсвечиваем (раньше падало на первый пункт). */
-const activeTab = computed(() => findActiveDockItem(tabs.value, route.path));
+const routeTab = computed(() => findActiveDockItem(tabs.value, route.path));
+const activeTab = computed(
+  () => (pendingTo.value ? tabs.value.find((t) => t.to === pendingTo.value) : null) ?? routeTab.value
+);
+
+const isActive = (to: string) => (activeTab.value ? activeTab.value.to === to : isDockItemActive(to, route.path));
+
+const onItemTap = (to: string) => {
+  if (activeTab.value?.to === to) return;
+  pendingTo.value = to;
+  if (pendingTimer) clearTimeout(pendingTimer);
+  // Переход не состоялся (ошибка, отмена) — вернёмся к фактическому разделу
+  pendingTimer = setTimeout(() => {
+    pendingTo.value = null;
+  }, 2500);
+};
 
 const orbStyle = computed(() => ({
-  transform: `translate3d(calc(${orbX.value}px - 50%), ${orbLift.value}px, 0)`,
-  width: `${orbSize.value}px`,
-  height: `${orbSize.value}px`
+  transform: `translate3d(${orbX.value - ORB_SIZE / 2}px, ${orbY.value - ORB_SIZE / 2}px, 0) scale(${orbScale.value})`
 }));
 
+/** Позиция по layout (offset*), а не getBoundingClientRect: transform иконки не сбивает расчёт. */
 const updateOrb = () => {
   const bar = barRef.value;
   const tab = activeTab.value;
@@ -90,21 +113,17 @@ const updateOrb = () => {
   }
   const el = itemRefs.get(tab.to);
   if (!el) return;
-
-  const barRect = bar.getBoundingClientRect();
-  const itemRect = el.getBoundingClientRect();
   const icon = el.querySelector('.mob-dock__icon') as HTMLElement | null;
-  const target = icon?.getBoundingClientRect() ?? itemRect;
+  if (!icon || !el.offsetWidth) return;
 
-  const size = tab.center ? 40 : 30;
-  const orbCssTop = 4;
-  const targetCenterY = target.top + target.height / 2 - barRect.top;
-
-  orbX.value = target.left + target.width / 2 - barRect.left;
-  orbSize.value = size;
-  // Центр кружка = центр иконки (не «висит» над подписью)
-  orbLift.value = targetCenterY - orbCssTop - size / 2;
-  orbReady.value = true;
+  orbX.value = el.offsetLeft + icon.offsetLeft + icon.offsetWidth / 2;
+  orbY.value = el.offsetTop + icon.offsetTop + icon.offsetHeight / 2;
+  orbScale.value = tab.center ? 1 : 0.75;
+  if (!orbReady.value) {
+    orbInstant.value = true;
+    orbReady.value = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => (orbInstant.value = false)));
+  }
 };
 
 let resizeObs: ResizeObserver | null = null;
@@ -129,11 +148,14 @@ onBeforeUnmount(() => {
   release(BOTTOM_RIGHT_SLOT.mobileDock);
   resizeObs?.disconnect();
   window.removeEventListener('resize', updateOrb);
+  if (pendingTimer) clearTimeout(pendingTimer);
 });
 
 watch(
   () => [route.path, props.mode] as const,
   async () => {
+    pendingTo.value = null;
+    if (pendingTimer) clearTimeout(pendingTimer);
     await nextTick();
     if (typeof document !== 'undefined') {
       const ae = document.activeElement;
@@ -141,7 +163,15 @@ watch(
         ae.blur();
       }
     }
-    requestAnimationFrame(updateOrb);
+    updateOrb();
+  }
+);
+
+// Тап — кружок едет сразу (активный пункт сменился раньше маршрута)
+watch(
+  () => activeTab.value?.to,
+  () => {
+    void nextTick(updateOrb);
   }
 );
 </script>
@@ -151,7 +181,7 @@ watch(
     <div ref="barRef" class="mob-dock__bar">
       <div
         class="mob-dock__orb"
-        :class="{ 'is-ready': orbReady && !!activeTab, 'is-center': !!activeTab?.center, 'is-locked-target': activeTab && isLocked(activeTab.to) }"
+        :class="{ 'is-ready': orbReady && !!activeTab, 'is-instant': orbInstant, 'is-center': !!activeTab?.center, 'is-locked-target': activeTab && isLocked(activeTab.to) }"
         :style="orbStyle"
         aria-hidden="true"
       />
@@ -164,6 +194,7 @@ watch(
           class="mob-dock__item"
           :class="{ 'is-on': isActive(tab.to), 'is-center': !!tab.center }"
           :aria-current="isActive(tab.to) ? 'page' : undefined"
+          @click="onItemTap(tab.to)"
         >
           <span class="mob-dock__icon">
             <AppMobileNavIcon :name="tab.icon" />
@@ -232,24 +263,34 @@ watch(
     overflow: visible;
   }
 
+  /* Один кружок 40×40 едет между пунктами: только transform (translate + scale) —
+   * композитится на GPU, без пересчёта раскладки; пружинистый ease без «отскока» назад. */
   .mob-dock__orb {
     position: absolute;
-    top: 4px;
+    top: 0;
     left: 0;
     z-index: 0;
+    width: 40px;
+    height: 40px;
+    box-sizing: border-box;
     border-radius: 999px;
     border: 2px solid #111;
-    background: #7451f4;
+    background-color: #7451f4;
     box-shadow: 2px 2px 0 #111;
     opacity: 0;
     pointer-events: none;
-    will-change: transform, width, height;
+    transform-origin: 50% 50%;
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
     transition:
-      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      background 0.2s ease,
-      opacity 0.15s ease;
+      transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
+      background-color 0.2s ease,
+      opacity 0.16s ease;
+  }
+
+  .mob-dock__orb.is-instant {
+    transition: none;
   }
 
   .mob-dock__orb.is-ready {
@@ -284,6 +325,7 @@ watch(
     color: #555;
     text-decoration: none;
     font-weight: 700;
+    transition: color 0.2s ease;
     background: transparent;
     outline: none;
     -webkit-tap-highlight-color: transparent;
@@ -304,6 +346,10 @@ watch(
     width: 24px;
     height: 24px;
     color: inherit;
+    transform: translate3d(0, 0, 0);
+    transition:
+      transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
+      color 0.2s ease;
   }
 
   .mob-dock__icon :deep(.mob-nav-ico) {
@@ -314,6 +360,21 @@ watch(
   /* Иконка центра приподнята (кружок чуть выступает над доком), подпись — на одной линии с соседями */
   .mob-dock__item.is-center .mob-dock__icon {
     margin: -8px 0 8px;
+  }
+
+  /* Активная иконка чуть крупнее и приподнята — вместе с кружком, одной кривой */
+  .mob-dock__item.is-on .mob-dock__icon {
+    transform: translate3d(0, -1px, 0) scale(1.08);
+  }
+
+  .mob-dock__item.is-on.is-center .mob-dock__icon {
+    transform: translate3d(0, -1px, 0) scale(1.04);
+  }
+
+  /* Нажатие: короткий отклик только у иконки (без второго «прыжка» всего пункта) */
+  .mob-dock__item:active .mob-dock__icon {
+    transform: translate3d(0, 0, 0) scale(0.92);
+    transition-duration: 0.1s;
   }
 
   .mob-dock__item.is-center .mob-dock__icon :deep(.mob-nav-ico) {
@@ -349,6 +410,7 @@ watch(
   .mob-dock__label {
     position: relative;
     z-index: 1;
+    transition: color 0.2s ease;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0;
@@ -358,6 +420,21 @@ watch(
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  .mob-dock__orb,
+  .mob-dock__icon,
+  .mob-dock__item,
+  .mob-dock__label {
+    transition: none !important;
+  }
+
+  .mob-dock__item.is-on .mob-dock__icon,
+  .mob-dock__item.is-on.is-center .mob-dock__icon,
+  .mob-dock__item:active .mob-dock__icon {
+    transform: none;
   }
 }
 </style>

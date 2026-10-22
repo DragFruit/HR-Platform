@@ -111,7 +111,10 @@
             aria-label="Создать заявку"
             :disabled="isHistoricalYear || submitting || !form.start || !form.end"
           >
-            ✓
+            <!-- SVG, а не символ «✓»: у глифа своя метрика шрифта, и он съезжал от центра -->
+            <svg class="vac-mob-dates__ok-icon" viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true">
+              <path d="M4.5 10.5l3.5 3.5 7.5-8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </button>
         </form>
         <div class="vac-mob-balance" data-tour="vac-balance" aria-label="Доступно дней отпуска">

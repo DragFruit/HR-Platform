@@ -712,10 +712,9 @@
 /* ——— 3. Анимация (только мобилка и только если система не просит меньше движения) ——— */
 @media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
   /* Вход страницы: fade + 6px снизу, 180ms. Уходящая страница исчезает сразу — без наложения двух экранов. */
+  /* Только прозрачность: сдвиг дают блоки страницы («лесенка» ниже), двойного движения нет */
   #__nuxt .page-enter-active {
-    transition:
-      opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.18s ease-out;
   }
 
   #__nuxt .page-leave-active {
@@ -725,7 +724,6 @@
 
   #__nuxt .page-enter-from {
     opacity: 0;
-    transform: translate3d(0, 6px, 0);
   }
 
   /* Нажатие: лёгкое «вдавливание» (свойство scale не конфликтует с transform hover-эффектов) */
@@ -733,13 +731,7 @@
     scale: 0.97;
   }
 
-  #__nuxt .mob-dock__item .mob-dock__icon {
-    transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  #__nuxt .mob-dock__item:active .mob-dock__icon {
-    scale: 0.88;
-  }
+  /* Док анимируется сам (AppMobileBottomNav.vue): общее «вдавливание» на нём не нужно */
 
   /* Модалки и шторки: фон проявляется, карточка выезжает снизу */
   :is(
@@ -2344,5 +2336,159 @@
     padding: 0;
     font-size: 15px;
     line-height: 1;
+  }
+}
+
+/* ——— 10. Раунд 6: галочка по центру, остаток как на десктопе, вкладка «Общий» ——— */
+@media (max-width: 900px) {
+  /* «✓ Создать заявку»: SVG-галочка точно по центру в любом состоянии */
+  #__nuxt .vac-mob-dates__ok {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+  }
+
+  #__nuxt .vac-mob-dates__ok-icon {
+    display: block;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Остаток дней — цвета десктопной карточки «Доступно дней отпуска» (мятная) */
+  #__nuxt .vac-mob-balance {
+    height: 36px;
+    min-width: 0;
+    padding: 0 22px 0 10px;
+    border: 1px solid rgba(20, 184, 166, 0.28);
+    border-radius: 10px;
+    background: linear-gradient(165deg, rgba(20, 184, 166, 0.12) 0%, rgba(52, 211, 153, 0.08) 100%);
+    box-shadow: none;
+  }
+
+  #__nuxt .vac-mob-balance .vac-mob-balance__num {
+    font-family: var(--font-body);
+    font-size: 17px;
+    font-weight: 800;
+    color: #0d9488;
+  }
+
+  #__nuxt .vac-mob-balance .vac-mob-balance__hint {
+    right: 4px;
+  }
+
+  #__nuxt .vac-mob-balance .vac-info-hint__btn {
+    color: #0d9488;
+    opacity: 0.75;
+  }
+
+  /* «Общий»: таблица листается вбок, имя слева и шапка месяцев закреплены */
+  /* Цепочка обёрток не растягивается по ширине таблицы — листается только .vac-table-scroll */
+  #__nuxt .vac-emp-page--fit .vac-emp-calendar-pane--team,
+  #__nuxt .vac-team-calendar--employee-team,
+  #__nuxt .vac-team-calendar--employee-team :is(.vac-team-calendar__main, .vac-team-calendar__pane, .vac-team-calendar__body, .vac-team-calendar__frame, .vacation-calendar-wrap) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vac-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline {
+    --vac-team-name-col-w: 116px !important;
+    width: max-content;
+    min-width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline :is(th, td).sticky-col-name {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    width: 116px;
+    min-width: 116px;
+    max-width: 116px;
+    padding: 0 8px;
+    background: var(--bg-surface, #fff);
+    box-shadow: 1px 0 0 rgba(17, 17, 17, 0.14);
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    height: 32px;
+    padding: 0 4px;
+    background: var(--bg-surface, #fff);
+    border-bottom: 1px solid rgba(17, 17, 17, 0.2);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline thead th.sticky-col-name {
+    z-index: 4;
+    text-align: left;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline .vac-employee-head-label {
+    font-size: 11px;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline thead th:not(.sticky-col-name),
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline td.vac-cell {
+    width: 76px;
+    min-width: 76px;
+    max-width: 76px;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline tbody td {
+    height: 36px;
+    border-bottom: 1px solid rgba(17, 17, 17, 0.1);
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline td.vac-cell {
+    padding: 4px 3px;
+    border-left: 1px solid rgba(17, 17, 17, 0.06);
+    vertical-align: middle;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vacation-timeline .emp-name {
+    display: block;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vac-cell--compact .vac-block {
+    padding: 3px 4px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vac-cell--compact .vac-block.approved {
+    background: #14b8a6;
+    color: #fff;
+  }
+
+  #__nuxt .vac-team-calendar--employee-team .vac-cell--compact .vac-block.pending {
+    background: #f59e0b;
+    color: #fff;
   }
 }

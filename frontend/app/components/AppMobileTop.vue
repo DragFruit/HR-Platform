@@ -215,13 +215,16 @@ onBeforeUnmount(() => {
     width: 32px;
     height: 32px;
     margin: 6px;
-    border-width: 1.5px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
+  /* Колокольчик без кольца, глиф 22 — чуть меньше аватара (30) */
   .mob-top__actions :deep(.admin-notifications-bell__btn) svg,
   .mob-top__actions :deep(.vac-notifications-bell__btn) svg {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
   }
 
   .mob-top__actions :deep(.admin-notifications-bell__btn)::after,
@@ -232,8 +235,9 @@ onBeforeUnmount(() => {
   }
 
   .mob-top__actions :deep(.admin-notifications-bell__badge) {
-    top: -3px;
-    right: -3px;
+    top: 0;
+    right: -1px;
+    box-shadow: 0 0 0 1.5px #7451f4;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
