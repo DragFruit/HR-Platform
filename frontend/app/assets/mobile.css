@@ -817,3 +817,14 @@
     }
   }
 }
+
+/* Имя в профиле: переносим только по словам, без разрыва посреди слова */
+@media (max-width: 900px) {
+  .profile-identity__name-row h2 {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: manual;
+    font-size: clamp(19px, 5.6vw, 24px);
+    line-height: 1.1;
+  }
+}
