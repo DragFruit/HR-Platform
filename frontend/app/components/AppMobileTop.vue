@@ -215,16 +215,18 @@ onBeforeUnmount(() => {
     width: 32px;
     height: 32px;
     margin: 6px;
+    padding: 0;
     border: 0;
     background: transparent;
     box-shadow: none;
   }
 
-  /* Колокольчик без кольца, глиф 22 — чуть меньше аватара (30) */
-  .mob-top__actions :deep(.admin-notifications-bell__btn) svg,
-  .mob-top__actions :deep(.vac-notifications-bell__btn) svg {
-    width: 22px;
-    height: 22px;
+  /* Колокольчик без кольца, глиф 27 — на глаз чуть меньше аватара (30) */
+  .mob-top__actions :deep(.admin-notifications-bell__btn svg),
+  .mob-top__actions :deep(.vac-notifications-bell__btn svg) {
+    flex: 0 0 auto;
+    width: 27px;
+    height: 27px;
   }
 
   .mob-top__actions :deep(.admin-notifications-bell__btn)::after,

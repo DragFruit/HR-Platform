@@ -2492,3 +2492,43 @@
     color: #fff;
   }
 }
+
+/* ——— 11. Раунд 7: фон не уезжает, белый календарь, без легенды в «Заявках» ——— */
+@media (max-width: 900px) {
+  /* Серая текстура — на фиксированном слое под всем экраном: при оттягивании (overscroll)
+   * и на коротких страницах снизу не проступает белое. background-attachment: fixed
+   * iOS Safari игнорирует, поэтому отдельный position: fixed слой. */
+  /* html — серый «холст» (запасной цвет), body и #__nuxt прозрачные:
+   * иначе их фон рисуется поверх слоя с z-index: -1 */
+  html {
+    background-color: var(--page-bg, #eeeee8);
+    background-image: none;
+  }
+
+  body,
+  #__nuxt {
+    background-color: transparent;
+    background-image: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--page-bg, #eeeee8);
+    background-image: var(--noise-url);
+    background-size: 200px 200px;
+  }
+
+  /* Подложка календаря («Мой», месяц крупно, «Общий») — белая, как на десктопе */
+  #__nuxt .vac-emp-page--fit .vac-emp-calendar-pane {
+    background: #fff;
+  }
+
+  /* «Заявки»: легенда цветов на телефоне не нужна */
+  #__nuxt .vac-emp-aside-host :is(.employee-legend-title, .hr-legend-item) {
+    display: none;
+  }
+}
