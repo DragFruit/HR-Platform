@@ -84,7 +84,12 @@ export const NOKTURN_INVESTIGATOR = {
 export const NOKTURN_ART = {
   cork: '/events/nokturn/board-cork.jpg',
   pinRed: '/events/nokturn/prop-pin-red.png',
-  evidenceBag: '/events/nokturn/prop-evidence-bag.png',
+  /*
+    Накладка пакета для улик пока заглушка с надписью «полоса под бирку»,
+    и на готовых фото-вырезках она читается как брак. До появления настоящего
+    пакета оставляем пустую строку: карточка рисуется без накладки.
+  */
+  evidenceBag: '',
   tape: '/events/nokturn/prop-tape.png',
   clip: '/events/nokturn/prop-clip.png',
   caseIcon: '/events/nokturn/icon-case.png',

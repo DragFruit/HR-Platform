@@ -20297,8 +20297,17 @@ button.button {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 14px;
+}
+
+/* Баллы квеста: заголовок страницы убран, счёт переехал в строку действий. */
+.nk-page__points {
+  align-self: center;
+  margin-right: 4px;
+  color: var(--nk-ink);
+  font-size: 0.82rem;
+  opacity: 0.75;
 }
 
 .nk-page__title {
@@ -20564,7 +20573,7 @@ body.nk-body-locked {
   position: absolute;
   left: 0;
   top: 8px;
-  width: 152px;
+  width: 118px;
   transform: translateX(-50%);
   cursor: grab;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
@@ -20609,9 +20618,22 @@ body.nk-body-locked {
   overflow: hidden;
 }
 
-.nk-card--prop .nk-card__frame {
+/*
+  Карточка улики квадратная во всех видах: и в сейфе, и на доске, и в полном
+  размере. Так улики одного размера независимо от того, предмет это, бумага
+  или снимок, и доска не рассыпается на разноформатные прямоугольники.
+*/
+.nk-card--prop .nk-card__frame,
+.nk-card--board .nk-card__frame,
+.nk-card--safe .nk-card__frame,
+.nk-card--full .nk-card__frame {
   aspect-ratio: 1 / 1;
   background: var(--nk-paper);
+}
+
+/* В полном размере улику изучают, поэтому кадр не режем. */
+.nk-card--full .nk-card__img {
+  object-fit: contain;
 }
 
 .nk-card__img {
@@ -20653,6 +20675,14 @@ body.nk-body-locked {
   margin: 0;
   max-height: 17%;
   overflow: hidden;
+  padding: 3px 6px;
+  border-radius: 2px;
+  /*
+    Бирка лежит поверх фотографии улики, а фото тёмное: без подложки текст
+    не читается. Подложка светлая и полупрозрачная, чтобы предмет под ней
+    оставался виден.
+  */
+  background: rgba(239, 233, 223, 0.88);
   color: var(--nk-ink);
   font-size: 0.56rem;
   line-height: 1.2;
@@ -20728,7 +20758,7 @@ body.nk-body-locked {
 }
 
 .nk-card--full {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
 }
 

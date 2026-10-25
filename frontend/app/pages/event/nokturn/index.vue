@@ -5,13 +5,8 @@
 
     <template v-else-if="state">
       <header class="nk-page__head">
-        <div>
-          <h1 class="nk-page__title">Синий Ноктюрн</h1>
-          <p class="nk-page__sub">
-            Внештатная аналитическая группа · дело Костелова · ваши баллы: {{ state.player.points }}
-          </p>
-        </div>
         <div class="nk-page__actions">
+          <span class="nk-page__points">Баллы: {{ state.player.points }}</span>
           <button type="button" class="nk-btn nk-btn--ghost" @click="modal = 'brief'">
             Бриф следователя
           </button>
