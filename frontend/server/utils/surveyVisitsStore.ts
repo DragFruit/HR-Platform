@@ -10,3 +10,6 @@ const store = createSurveyCounterStore('survey-visits.json', 'visited');
 export const readSurveyVisits = store.read;
 export const visitsForSurvey = store.countFor;
 export const recordSurveyVisit = store.record;
+
+/** Этап 8: файл/репозиторий для импорта и db-health. */
+export const surveyVisitsFile = store.file;

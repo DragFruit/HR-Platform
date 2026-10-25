@@ -6,6 +6,7 @@ import {
 import { normalizeDepartmentList } from '../../../utils/knowledgeAudience';
 import { findEmployeeForSession } from '../../../utils/employeesStore';
 import { notifyKnowledgeArticleEvent } from '../../../utils/knowledgeNotifications';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 type CreateBody = {
   title?: string;
@@ -69,7 +70,7 @@ export default defineEventHandler(async (event) => {
       articles: [article, ...state.articles],
       nextId: state.nextId + 1
     };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:create' });
 
   if (!created) throw createError({ statusCode: 500, statusMessage: 'Не удалось создать статью' });
 

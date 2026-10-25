@@ -7,7 +7,7 @@ type PitStopWinnerRow = {
   bestMs: number;
 };
 
-/** Топ-3 Pit Stop после финализации (10.10 03:00 МСК). */
+/** Топ-3 Pit Stop после финализации (10.10 03:00 МСК) — источник ачивки pit-stop-14. Ивент закрыт. */
 export function usePitStopWinners() {
   const winners = useState<PitStopWinnerRow[]>('pit-stop-race-winners', () => []);
   const finalizedAt = useState<string | null>('pit-stop-race-finalized-at', () => null);
@@ -17,7 +17,7 @@ export function usePitStopWinners() {
     if (!import.meta.client) return;
     try {
       const data = await $fetch<{ winners: PitStopWinnerRow[]; finalizedAt: string | null }>(
-        '/api/event/pit-stop/race/winners'
+        '/api/achievements/pit-stop-14-winners'
       );
       winners.value = Array.isArray(data.winners) ? data.winners : [];
       finalizedAt.value = data.finalizedAt;

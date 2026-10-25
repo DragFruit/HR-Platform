@@ -75,7 +75,7 @@ export const ACHIEVEMENTS_CATALOG: AchievementDef[] = [
   {
     id: 'tenure-1y',
     title: '1 год с VBI',
-    subtitle: 'Первый юбилей — ачивка без купона',
+    subtitle: 'Первый юбилей',
     emoji: '1',
     section: 'tenure-career',
     sortOrder: 10
@@ -340,3 +340,12 @@ export const groupAchievementsBySection = (
     };
   }).filter((group) => group.items.length > 0);
 };
+
+/**
+ * Витрина для сотрудника: только полученные ачивки, разделы без полученных
+ * не возвращаются вовсе (без заголовка). Общих счётчиков «N из M» нет.
+ */
+export const earnedAchievementSections = (
+  items: AchievementCatalogItem[]
+): AchievementCatalogSection[] =>
+  groupAchievementsBySection(items.filter((item) => item.earned));

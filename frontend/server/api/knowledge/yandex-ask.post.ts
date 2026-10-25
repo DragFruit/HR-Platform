@@ -23,6 +23,7 @@ import {
   retrieveKnowledgeDetailed,
   retrieveKnowledgeLexicalFallback
 } from '../../utils/knowledgeRag';
+import { resolveKnowledgeViewer } from '../../utils/knowledgeViewer';
 import { tryAnswerFromOrgStructure } from '../../utils/knowledgeOrgAnswer';
 
 type HistoryItem = { role?: string; text?: string };
@@ -138,7 +139,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const history = normalizeHistory(payload.history);
-  const viewer = { role: session.role, department: session.department };
+  const viewer = await resolveKnowledgeViewer(session);
   const normalizedQuestion = normalizeKbAiQueryTypos(question);
   /** Для RAG: уточнение + предыдущий рабочий вопрос. */
   const retrievalQuestion = expandQuestionFromHistory(normalizedQuestion, history);

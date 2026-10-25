@@ -1,23 +1,16 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import seed from '../data/profile-activity.json';
+import { normalizeProfileActivityKind, type ProfileActivityKind, type ProfileActivityRaw } from '../profile/domains';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import { profileActivityRepo, profileActivitySeedItems } from './profileStore';
 
-/** Канонические типы ленты «Недавняя активность». */
-export type ProfileActivityKind =
-  | 'store'
-  | 'talk'
-  | 'learning'
-  | 'idea'
-  | 'achievement'
-  | 'promotion'
-  | 'mentor'
-  | 'practice'
-  | 'recognition'
-  | 'welcome'
-  | 'other';
+export { PROFILE_ACTIVITY_KINDS, normalizeProfileActivityKind } from '../profile/domains';
+export type { ProfileActivityKind } from '../profile/domains';
 
+/**
+ * Лента «Недавняя активность» в профиле. Этап 6: DB_PROFILE=1 → profile.activity,
+ * иначе server/data/profile-activity.json. Логика (нормализация kind, пустая лента → сид из git)
+ * — здесь, одна на оба бэкенда; все правки через repo().mutate (по очереди, атомарно).
+ */
 export type ProfileActivitySource = 'manual' | 'seed' | 'auto';
 
 export type ProfileActivity = {
@@ -33,84 +26,38 @@ export type ProfileActivity = {
   created_by_name?: string;
 };
 
-type ActivityState = {
-  items: ProfileActivity[];
-};
-
-const DATA_FILE = join(process.cwd(), 'server/data/profile-activity.json');
-
-export const PROFILE_ACTIVITY_KINDS: { id: ProfileActivityKind; label: string }[] = [
-  { id: 'store', label: 'Магазин' },
-  { id: 'talk', label: 'Выступление' },
-  { id: 'learning', label: 'Обучение' },
-  { id: 'idea', label: 'Идея' },
-  { id: 'achievement', label: 'Достижение' },
-  { id: 'promotion', label: 'Повышение' },
-  { id: 'mentor', label: 'Наставник' },
-  { id: 'practice', label: 'Практика' },
-  { id: 'recognition', label: 'Признание' },
-  { id: 'welcome', label: 'Велком' },
-  { id: 'other', label: 'Другое' }
-];
-
-const KIND_IDS = new Set(PROFILE_ACTIVITY_KINDS.map((k) => k.id));
-
-/** Старые id → канон (для сидов и уже сохранённых записей). */
-export const normalizeProfileActivityKind = (raw: string): ProfileActivityKind => {
-  const value = String(raw || '').trim();
-  if (KIND_IDS.has(value as ProfileActivityKind)) return value as ProfileActivityKind;
-  if (value === 'conference') return 'talk';
-  if (value === 'tenure') return 'achievement';
-  if (value === 'custom') return 'other';
-  if (value === 'vacation') return 'other';
-  return 'other';
-};
-
-const emptyState = (): ActivityState => ({ items: [] });
-
-const seedItems = (): ProfileActivity[] =>
-  ((seed as { items?: ProfileActivity[] }).items || []).map((row) => ({
+/** Как readState до этапа 6: пусто → сид, kind приводится к канону. */
+function normalizeItems(items: ProfileActivityRaw[]): ProfileActivity[] {
+  return (items.length ? items : profileActivitySeedItems()).map((row) => ({
     ...row,
-    kind: normalizeProfileActivityKind(row.kind),
-    source: row.source === 'manual' ? 'manual' : 'seed'
-  }));
-
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, { items: seedItems() });
-  }
+    kind: normalizeProfileActivityKind(row.kind as string)
+  })) as unknown as ProfileActivity[];
 }
 
-async function readState(): Promise<ActivityState> {
-  await ensureFile();
-  try {
-    const raw = await readFile(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<ActivityState>;
-    const items = Array.isArray(parsed.items) ? parsed.items : [];
-    const normalized = (items.length ? items : seedItems()).map((row) => ({
-      ...row,
-      kind: normalizeProfileActivityKind(row.kind)
-    }));
-    return { items: normalized };
-  } catch {
-    return { items: seedItems() };
-  }
+async function readItems(): Promise<ProfileActivity[]> {
+  return normalizeItems(await (await profileActivityRepo()).read());
 }
 
-async function writeState(state: ActivityState) {
-  await ensureFile();
-  await writeJsonAtomic(DATA_FILE, state);
+/**
+ * Прочитать (нормализовать) → изменить → записать, строго по очереди. Как до этапа 6:
+ * ничего не поменялось → ничего не пишем; поменялось → пишется весь нормализованный список
+ * (в том числе сид, если лента была пуста).
+ */
+async function mutateItems<R>(fn: (items: ProfileActivity[]) => R, ctx: KeyedListWriteContext): Promise<R> {
+  return (await profileActivityRepo()).mutate((raw) => {
+    const items = normalizeItems(raw);
+    const before = JSON.stringify(items);
+    const result = fn(items);
+    if (JSON.stringify(items) !== before) raw.splice(0, raw.length, ...(items as unknown as ProfileActivityRaw[]));
+    return result;
+  }, ctx);
 }
 
 export async function listProfileActivity(filters?: {
   employee_id?: number;
   platform_user_id?: number;
 }): Promise<ProfileActivity[]> {
-  const state = await readState();
-  let list = [...state.items];
+  let list = await readItems();
   if (filters?.employee_id) {
     list = list.filter((row) => row.employee_id === filters.employee_id);
   }
@@ -126,15 +73,18 @@ export async function listProfileActivity(filters?: {
   );
 }
 
-export async function createProfileActivity(input: {
-  employee_id: number;
-  platform_user_id?: number | null;
-  kind: string;
-  text: string;
-  occurred_at?: string;
-  created_by_user_id: number;
-  created_by_name: string;
-}): Promise<ProfileActivity> {
+export async function createProfileActivity(
+  input: {
+    employee_id: number;
+    platform_user_id?: number | null;
+    kind: string;
+    text: string;
+    occurred_at?: string;
+    created_by_user_id: number;
+    created_by_name: string;
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<ProfileActivity> {
   const text = String(input.text || '').trim();
   if (text.length < 3) {
     throw createError({ statusCode: 400, statusMessage: 'Текст — минимум 3 символа' });
@@ -159,21 +109,22 @@ export async function createProfileActivity(input: {
     created_by_name: input.created_by_name
   };
 
-  const state = await readState();
-  state.items.push(item);
-  await writeState(state);
+  await mutateItems((items) => items.push(item), { reason: 'profile-activity-create', ...ctx });
   return item;
 }
 
 /** Идемпотентная авто-запись (например reveal ачивки) — по стабильному id. */
-export async function upsertAutoProfileActivity(input: {
-  id: string;
-  employee_id: number;
-  platform_user_id?: number | null;
-  kind: string;
-  text: string;
-  occurred_at: string;
-}): Promise<ProfileActivity> {
+export async function upsertAutoProfileActivity(
+  input: {
+    id: string;
+    employee_id: number;
+    platform_user_id?: number | null;
+    kind: string;
+    text: string;
+    occurred_at: string;
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<ProfileActivity> {
   const text = String(input.text || '').trim();
   if (text.length < 3) {
     throw createError({ statusCode: 400, statusMessage: 'Текст — минимум 3 символа' });
@@ -181,59 +132,66 @@ export async function upsertAutoProfileActivity(input: {
   let occurred = new Date(input.occurred_at.includes('T') ? input.occurred_at : `${input.occurred_at}T12:00:00`);
   if (Number.isNaN(occurred.getTime())) occurred = new Date();
 
-  const state = await readState();
-  const existingIdx = state.items.findIndex((row) => row.id === input.id);
-  const item: ProfileActivity = {
-    id: input.id,
-    employee_id: input.employee_id,
-    platform_user_id: input.platform_user_id ?? null,
-    kind: normalizeProfileActivityKind(input.kind),
-    text,
-    occurred_at: occurred.toISOString(),
-    source: 'auto',
-    created_at:
-      existingIdx >= 0 ? state.items[existingIdx]!.created_at : new Date().toISOString(),
-    created_by_name: 'system'
-  };
-
-  if (existingIdx >= 0) {
-    state.items[existingIdx] = item;
-  } else {
-    state.items.push(item);
-  }
-  await writeState(state);
-  return item;
+  return mutateItems(
+    (items) => {
+      const existingIdx = items.findIndex((row) => row.id === input.id);
+      const item: ProfileActivity = {
+        id: input.id,
+        employee_id: input.employee_id,
+        platform_user_id: input.platform_user_id ?? null,
+        kind: normalizeProfileActivityKind(input.kind),
+        text,
+        occurred_at: occurred.toISOString(),
+        source: 'auto',
+        created_at: existingIdx >= 0 ? items[existingIdx]!.created_at : new Date().toISOString(),
+        created_by_name: 'system'
+      };
+      if (existingIdx >= 0) items[existingIdx] = item;
+      else items.push(item);
+      return item;
+    },
+    { reason: 'profile-activity-auto', ...ctx }
+  );
 }
 
-export async function deleteProfileActivity(id: string): Promise<boolean> {
-  const state = await readState();
-  const next = state.items.filter((row) => row.id !== id);
-  if (next.length === state.items.length) return false;
-  state.items = next;
-  await writeState(state);
-  return true;
+export async function deleteProfileActivity(id: string, ctx: KeyedListWriteContext = {}): Promise<boolean> {
+  return mutateItems(
+    (items) => {
+      const next = items.filter((row) => row.id !== id);
+      if (next.length === items.length) return false;
+      items.splice(0, items.length, ...next);
+      return true;
+    },
+    { reason: 'profile-activity-delete', ...ctx }
+  );
 }
 
 /** Удалить всю ленту профиля сотрудника (офбординг). */
-export async function deleteProfileActivityForEmployee(ids: {
-  employee_id?: number;
-  platform_user_ids?: number[];
-}): Promise<number> {
+export async function deleteProfileActivityForEmployee(
+  ids: {
+    employee_id?: number;
+    platform_user_ids?: number[];
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<number> {
   const employeeId = ids.employee_id;
   const platformIds = new Set(
     (ids.platform_user_ids || []).filter((id) => Number.isFinite(id) && id > 0)
   );
   if (employeeId && employeeId > 0) platformIds.add(employeeId);
 
-  const state = await readState();
-  const before = state.items.length;
-  state.items = state.items.filter((row) => {
-    if (employeeId && row.employee_id === employeeId) return false;
-    if (row.platform_user_id && platformIds.has(row.platform_user_id)) return false;
-    if (platformIds.has(row.employee_id)) return false;
-    return true;
-  });
-  const removed = before - state.items.length;
-  if (removed) await writeState(state);
-  return removed;
+  return mutateItems(
+    (items) => {
+      const next = items.filter((row) => {
+        if (employeeId && row.employee_id === employeeId) return false;
+        if (row.platform_user_id && platformIds.has(row.platform_user_id)) return false;
+        if (platformIds.has(row.employee_id)) return false;
+        return true;
+      });
+      const removed = items.length - next.length;
+      if (removed) items.splice(0, items.length, ...next);
+      return removed;
+    },
+    { reason: 'access-revoked', ...ctx }
+  );
 }

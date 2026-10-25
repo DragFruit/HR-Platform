@@ -181,6 +181,9 @@
         aria-label="Результаты поиска"
       >
         <template v-if="hasSearched">
+          <p v-if="stopWordsOnly" class="kb-results__hint muted" role="status">
+            В запросе только служебные слова — показываем все статьи. Добавь ключевое слово, например «отпуск».
+          </p>
           <NuxtLink
             v-for="hit in visibleHits"
             :key="hit.card.id"
@@ -285,7 +288,6 @@
         <path d="M13.2 6.8 17.2 10.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
     </NuxtLink>
-    <PitStopEasterFlag />
   </div>
 </template>
 
@@ -304,6 +306,7 @@ const {
   draftFilters,
   hasSearched,
   hits,
+  stopWordsOnly,
   visibleHits,
   hasMore,
   runSearch,

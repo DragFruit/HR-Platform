@@ -25,7 +25,7 @@
           role="option"
           @click="selectedId = characterId"
         >
-          <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" loading="lazy" />
+          <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" width="181" height="250" decoding="async" />
         </button>
       </div>
 
@@ -59,8 +59,7 @@ let confettiFn: ConfettiFn | null = null;
 const loadConfetti = async (): Promise<ConfettiFn | null> => {
   if (!import.meta.client) return null;
   if (!confettiFn) {
-    const mod = await import('@hiseb/confetti');
-    confettiFn = mod.default as ConfettiFn;
+    confettiFn = await importConfetti();
   }
   return confettiFn;
 };

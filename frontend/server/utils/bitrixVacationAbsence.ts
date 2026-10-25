@@ -9,6 +9,7 @@ import {
   bitrixWritesBlockedMessage,
   bitrixWritesBlockedNow,
   currentBitrixStand,
+  isBitrixWriteBlockedError,
   isBitrixWritesBlockedMessage
 } from './bitrixWriteGuard';
 
@@ -102,12 +103,6 @@ const updateRequestInState = (
   return state;
 };
 
-export const toBitrixDateTime = (isoDate: string, endOfDay = false): string => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d)}.${pad(m)}.${y} ${endOfDay ? '23:59:59' : '00:00:00'}`;
-};
-
 const absenceIblockTypeId = () =>
   String(process.env.BITRIX_ABSENCE_IBLOCK_TYPE_ID || 'structure').trim();
 
@@ -138,12 +133,28 @@ const optionalAbsenceProperty = (key: string): string | null => {
 /** Инфоблок «График отсутствий» на crm.vbi.ru (IBLOCK_TYPE_ID=structure, CODE=absence). */
 export const DEFAULT_ABSENCE_IBLOCK_ID = 3;
 
-/** ДД.ММ.ГГГГ для FILTER ACTIVE_FROM (без времени — иначе lists может не найти). */
-const toBitrixDate = (isoDate: string): string => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d)}.${pad(m)}.${y}`;
+/**
+ * Календарная дата отпуска → «ДД.ММ.ГГГГ» (только перестановка строки, без Date/UTC,
+ * результат одинаков в любом часовом поясе сервера). Сама по себе нужна для FILTER ACTIVE_FROM;
+ * в FIELDS идёт через toBitrixDateTime с явным временем.
+ */
+export const toBitrixDate = (isoDate: string): string => {
+  const m = String(isoDate || '')
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) throw new Error(`toBitrixDate: ожидалась дата YYYY-MM-DD, получено «${isoDate}»`);
+  return `${m[3]}.${m[2]}.${m[1]}`;
 };
+
+/**
+ * ACTIVE_FROM/ACTIVE_TO для графика отсутствий: «ДД.ММ.ГГГГ 00:00:00» и «ДД.ММ.ГГГГ 23:59:59».
+ * Время литералом в строке, без Date/UTC: Bitrix читает его в поясе пользователя токена,
+ * поэтому получается ровно 00:00–23:59:59 нужных суток (как у корректных элементов вида 33212).
+ * Дата без времени в ACTIVE_TO НЕ годится: Bitrix ставит 00:00:00 последнего дня,
+ * и последний день отпуска в график не попадает (так было 19.10.2026 после d7b8911).
+ */
+export const toBitrixDateTime = (isoDate: string, endOfDay = false): string =>
+  `${toBitrixDate(isoDate)} ${endOfDay ? '23:59:59' : '00:00:00'}`;
 
 const isElementAlreadyExistsError = (message: string): boolean =>
   /element already exists/i.test(message);
@@ -236,12 +247,28 @@ const bitrixDateToIso = (value: string | undefined): string => {
   return `${m[3]}-${m[2]}-${m[1]}`;
 };
 
-const elementMatchesDates = (
-  el: AbsenceListElement,
+/** Время из «ДД.ММ.ГГГГ ЧЧ:ММ[:СС]»; для даты без времени '' (Bitrix трактует как 00:00:00). */
+const bitrixTimePart = (value: string | undefined): string => {
+  const m = String(value || '')
+    .trim()
+    .match(/^\d{2}\.\d{2}\.\d{4}[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return '';
+  return `${m[1]}:${m[2]}:${m[3] ?? '00'}`;
+};
+
+/**
+ * Элемент актуален, только если начало в нужный день, а конец в нужный день в 23:59:59.
+ * Конец «ДД.ММ.ГГГГ» без времени или «… 00:00:00» = отпуск обрывается в начале последнего дня
+ * → считаем расхождением, сверка перезапишет элемент.
+ */
+export const elementMatchesDates = (
+  el: Pick<AbsenceListElement, 'ACTIVE_FROM' | 'ACTIVE_TO'>,
   start: string,
   end: string
 ): boolean =>
-  bitrixDateToIso(el.ACTIVE_FROM) === start && bitrixDateToIso(el.ACTIVE_TO) === end;
+  bitrixDateToIso(el.ACTIVE_FROM) === start &&
+  bitrixDateToIso(el.ACTIVE_TO) === end &&
+  bitrixTimePart(el.ACTIVE_TO) === '23:59:59';
 
 const pickAbsenceHit = (
   rows: AbsenceListElement[] | undefined,
@@ -398,6 +425,83 @@ const absenceFields = (params: {
   return fields;
 };
 
+/** CODE наших элементов: vbi-hr-vac-<id заявки>. */
+const ABSENCE_CODE_RE = /^vbi-hr-vac-(\d+)$/;
+
+/**
+ * Что знает платформа о своих заявках — нужно, чтобы отличить «сироту» (элемент с нашим CODE,
+ * заявки которого больше нет) от элемента живой заявки.
+ */
+export type AbsenceAdoptionContext = {
+  /** id всех заявок в vacations.json (любой статус). */
+  knownRequestIds: Set<number>;
+  /** bitrix_absence_id, уже привязанные к какой-либо заявке. */
+  linkedAbsenceIds: Set<number>;
+};
+
+export const absenceAdoptionContext = (state: VacationStoreState): AbsenceAdoptionContext => {
+  const knownRequestIds = new Set<number>();
+  const linkedAbsenceIds = new Set<number>();
+  for (const r of flattenRequests(state)) {
+    knownRequestIds.add(Number(r.id));
+    const absenceId = Number(r.bitrix_absence_id);
+    if (absenceId > 0) linkedAbsenceIds.add(absenceId);
+  }
+  return { knownRequestIds, linkedAbsenceIds };
+};
+
+/**
+ * Сирота того же сотрудника, которую можно взять вместо нового элемента (без дубля в графике):
+ * CODE vbi-hr-vac-<id>, заявки <id> в vacations.json нет, элемент ни к одной заявке не привязан,
+ * даты (только дата, без времени) пересекаются с новой заявкой. Берём только если такая ровно одна.
+ * Пример: 32167 (vbi-hr-vac-1147, 16.11–23.11 02:59) у Трифонова и его новая заявка 16–22.11.
+ */
+const findAdoptableOrphanElement = async (
+  params: { bitrixUserId: number; start: string; end: string; requestId: number },
+  ctx: AbsenceAdoptionContext
+): Promise<AbsenceListElement | null> => {
+  const { id: iblockId } = await resolveAbsenceIblockId();
+  if (!iblockId) return null;
+  let rows: AbsenceListElement[] = [];
+  try {
+    const { result } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      FILTER: { [absenceUserProperty()]: params.bitrixUserId },
+      // Bitrix отдаёт ≤50 строк: свежие сироты — среди последних ID.
+      ELEMENT_ORDER: { ID: 'DESC' }
+    });
+    rows = result || [];
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by user (orphan check) failed:', errorMessage(err));
+    return null;
+  }
+
+  const candidates = rows.filter((el) => {
+    const id = Number(el.ID);
+    if (!(id > 0) || ctx.linkedAbsenceIds.has(id)) return false;
+    if (absenceElementUserId(el) !== params.bitrixUserId) return false;
+    const m = String(el.CODE || '').match(ABSENCE_CODE_RE);
+    if (!m) return false;
+    const codeRequestId = Number(m[1]);
+    if (codeRequestId === params.requestId || ctx.knownRequestIds.has(codeRequestId)) return false;
+    const from = bitrixDateToIso(el.ACTIVE_FROM);
+    const to = bitrixDateToIso(el.ACTIVE_TO);
+    if (!from || !to) return false;
+    return from <= params.end && to >= params.start;
+  });
+  if (candidates.length !== 1) {
+    if (candidates.length > 1) {
+      console.warn(
+        `[bitrix-vacation] #${params.requestId}: несколько сирот (${candidates.map((el) => el.ID).join(', ')}) — ` +
+          'не выбираем, создаём новый элемент'
+      );
+    }
+    return null;
+  }
+  return candidates[0];
+};
+
 /** lists.element.update/get по ID, которого нет в этом инфоблоке (проверено на crm.vbi.ru: ERROR_ELEMENT_NOT_FOUND). */
 export const isElementNotFoundError = (message: string): boolean =>
   /element_not_found|element not found/i.test(message);
@@ -436,7 +540,7 @@ const updateViaAbsenceIblock = async (params: {
   comment: string;
   requestId: number;
   employeeName: string;
-}): Promise<{ absenceId: number; auth: AuthMode }> => {
+}): Promise<{ absenceId: number; auth: AuthMode; codeSet: boolean }> => {
   const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
   if (!iblockId) {
     throw new Error(
@@ -445,17 +549,67 @@ const updateViaAbsenceIblock = async (params: {
     );
   }
 
-  const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
+  // codeSet: update прошёл с ELEMENT_CODE (код у элемента есть). false: обновили только по ELEMENT_ID,
+  // CODE не установлен (19.10.2026 на бою: пустой CODE update не восстанавливает ни так, ни руками в форме).
+  const code = `vbi-hr-vac-${params.requestId}`;
+  const base = {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
     ELEMENT_ID: params.absenceId,
-    // CODE иначе стирается после update — следующий перенос не найдёт элемент по ELEMENT_CODE.
-    FIELDS: {
-      ...absenceFields(params),
-      CODE: `vbi-hr-vac-${params.requestId}`
-    }
-  });
-  return { absenceId: params.absenceId, auth };
+    // FIELDS.CODE Bitrix игнорирует (19.10.2026 на crm.vbi.ru: update с FIELDS.CODE и только ELEMENT_ID
+    // стёр CODE «vbi-hr-vac-3» у 32095). Оставляем как безвредную подстраховку.
+    FIELDS: { ...absenceFields(params), CODE: code }
+  };
+
+  // lists.element.update «перезаписывает элемент полностью»; символьный код, как и в lists.element.add,
+  // берётся из параметра ELEMENT_CODE, поэтому без него CODE очищается. Но ELEMENT_CODE ещё и
+  // идентифицирует элемент, и документация не говорит, что главнее при ELEMENT_ID + ELEMENT_CODE.
+  // Поэтому сначала читаем, кому принадлежит код: чужой элемент никогда не адресуем по коду.
+  const holder = await findAbsenceIdByCode(iblockId, code);
+  if (holder === undefined || (holder !== null && holder !== params.absenceId)) {
+    console.warn(
+      `[bitrix-vacation] #${params.requestId}: ` +
+        (holder === undefined ? `не удалось проверить владельца CODE ${code}` : `CODE ${code} уже у элемента ${holder}`) +
+        `, обновляем ${params.absenceId} только по ELEMENT_ID (CODE не трогаем)`
+    );
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', base);
+    return { absenceId: params.absenceId, auth, codeSet: false };
+  }
+
+  try {
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', {
+      ...base,
+      ELEMENT_CODE: code
+    });
+    return { absenceId: params.absenceId, auth, codeSet: true };
+  } catch (err) {
+    // Код ещё ни у кого (стёрт прошлым update), и Bitrix ищет элемент по ELEMENT_CODE → not found.
+    // Не уходим в add (был бы дубль), повторяем по одному ELEMENT_ID. CODE так не ставится (факт с боя
+    // 19.10.2026), элемент остаётся с пустым кодом; платформа опирается на bitrix_absence_id.
+    if (holder !== null || !isElementNotFoundError(errorMessage(err))) throw err;
+    console.warn(
+      `[bitrix-vacation] #${params.requestId}: update с ELEMENT_CODE ${code} → not found, повтор только по ELEMENT_ID ${params.absenceId}, ` +
+        `CODE не установлен (Bitrix не меняет код через update)`
+    );
+    const { auth } = await bitrixVacationRest<boolean>('lists.element.update', base);
+    return { absenceId: params.absenceId, auth, codeSet: false };
+  }
+};
+
+/** ID элемента с символьным кодом code (lists.element.get + ELEMENT_CODE); null: нет, undefined: ошибка чтения. */
+const findAbsenceIdByCode = async (iblockId: number, code: string): Promise<number | null | undefined> => {
+  try {
+    const { result } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+      IBLOCK_TYPE_ID: absenceIblockTypeId(),
+      IBLOCK_ID: iblockId,
+      ELEMENT_CODE: code
+    });
+    const hit = (result || []).find((el) => Number(el.ID) > 0 && String(el.CODE || '') === code);
+    return hit ? Number(hit.ID) : null;
+  } catch (err) {
+    console.warn('[bitrix-vacation] lists.element.get by ELEMENT_CODE (update) failed:', errorMessage(err));
+    return undefined;
+  }
 };
 
 /**
@@ -466,21 +620,32 @@ const updateOrAddAbsence = async (
   absenceId: number,
   payload: Parameters<typeof createViaAbsenceIblock>[0],
   tag: string
-): Promise<{ absenceId: number; method: string }> => {
+): Promise<{ absenceId: number; method: string; codeSet: boolean }> => {
   try {
     const updated = await updateViaAbsenceIblock({ absenceId, ...payload });
-    return { absenceId: updated.absenceId, method: `lists.element.update${tag}:${updated.auth}` };
+    return {
+      absenceId: updated.absenceId,
+      method: `lists.element.update${tag}:${updated.auth}`,
+      codeSet: updated.codeSet
+    };
   } catch (err) {
     if (!isElementNotFoundError(errorMessage(err))) throw err;
     console.warn(
       `[bitrix-vacation] #${payload.requestId}: элемент ${absenceId} не найден в графике отсутствий — создаём заново`
     );
     const created = await createViaAbsenceIblock(payload);
-    return { absenceId: created.absenceId, method: `lists.element.add-after-not-found:${created.auth}` };
+    return {
+      absenceId: created.absenceId,
+      method: `lists.element.add-after-not-found:${created.auth}`,
+      codeSet: true
+    };
   }
 };
 
-export const pushVacationToBitrixAbsence = async (request: VacationRequest): Promise<{
+export const pushVacationToBitrixAbsence = async (
+  request: VacationRequest,
+  ctx?: AbsenceAdoptionContext
+): Promise<{
   absenceId: number;
   method: string;
   iblockId: number | null;
@@ -538,6 +703,15 @@ export const pushVacationToBitrixAbsence = async (request: VacationRequest): Pro
       ({ absenceId, method } = await updateOrAddAbsence(existing.absenceId, payload, ''));
     }
   } else {
+    const orphan = ctx ? await findAdoptableOrphanElement(payload, ctx) : null;
+    if (orphan) {
+      console.info(
+        `[bitrix-vacation] #${request.id}: берём сироту ${orphan.ID} (CODE ${orphan.CODE}, ` +
+          `${orphan.ACTIVE_FROM} – ${orphan.ACTIVE_TO}) вместо нового элемента`
+      );
+      const adopted = await updateOrAddAbsence(Number(orphan.ID), payload, '-adopted');
+      return { absenceId: adopted.absenceId, method: adopted.method, iblockId: targetIblockId };
+    }
     try {
       const iblock = await createViaAbsenceIblock(payload);
       absenceId = iblock.absenceId;
@@ -791,6 +965,7 @@ export const relocateAbsencesToTargetIblock = async (
     : new Set<number>();
 
   await readEmployees();
+  const ctx = absenceAdoptionContext(state);
   let next = state;
   let stamped = 0;
   let relocated = 0;
@@ -809,7 +984,7 @@ export const relocateAbsencesToTargetIblock = async (
     }
 
     try {
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request);
+      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
       next = updateRequestInState(next, request.id, {
         bitrix_absence_id: absenceId,
         bitrix_absence_iblock_id: iblockId ?? undefined,
@@ -869,6 +1044,7 @@ export const retryFailedBitrixVacationSyncs = async (
   const relocateFailed = new Set(relocation.failedIds);
 
   await readEmployees();
+  const ctx = absenceAdoptionContext(relocation.state);
   let next = relocation.state;
 
   for (const request of flattenRequests(relocation.state)) {
@@ -879,9 +1055,8 @@ export const retryFailedBitrixVacationSyncs = async (
       continue;
     }
 
-    const employee = await findEmployeeByName(request.employee);
     try {
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request);
+      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
       next = updateRequestInState(next, request.id, {
         bitrix_absence_id: absenceId,
         bitrix_absence_iblock_id: iblockId ?? undefined,
@@ -921,6 +1096,7 @@ export const syncApprovedVacationsToBitrix = async (
   }
 
   await readEmployees();
+  const ctx = absenceAdoptionContext(next);
 
   let state = next;
 
@@ -931,7 +1107,7 @@ export const syncApprovedVacationsToBitrix = async (
     const employee = await findEmployeeByName(request.employee);
 
     try {
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request);
+      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
       state = updateRequestInState(state, request.id, {
         bitrix_absence_id: absenceId,
         bitrix_absence_iblock_id: iblockId ?? undefined,
@@ -969,4 +1145,293 @@ export const syncApprovedVacationsToBitrix = async (
   }
 
   return state;
+};
+
+/** Элементы инфоблока по ID (FILTER ID массивом, по 50 — одна страница на пачку). null — чтение не удалось. */
+const fetchAbsenceElementsByIds = async (
+  iblockId: number,
+  ids: number[]
+): Promise<Map<number, AbsenceListElement> | null> => {
+  const found = new Map<number, AbsenceListElement>();
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    try {
+      const { result } = await bitrixVacationRest<AbsenceListElement[]>('lists.element.get', {
+        IBLOCK_TYPE_ID: absenceIblockTypeId(),
+        IBLOCK_ID: iblockId,
+        FILTER: { ID: chunk }
+      });
+      for (const el of result || []) {
+        const id = Number(el.ID);
+        if (id > 0) found.set(id, el);
+      }
+    } catch (err) {
+      console.warn('[bitrix-vacation] reconcile: lists.element.get by ID batch failed:', errorMessage(err));
+      return null;
+    }
+  }
+  return found;
+};
+
+export type ReconcileAbsencesResult = {
+  state: VacationStoreState;
+  checked: number;
+  fixed: number;
+  readded: number;
+  adopted: number;
+  failed: number;
+  /** Стенд не пишет в Bitrix: только посчитали и залогировали, что сделали бы. */
+  dryRun: boolean;
+};
+
+/** Небольшой пул: не больше `limit` запросов к порталу одновременно. */
+const runWithConcurrency = async <T>(items: T[], limit: number, fn: (item: T) => Promise<void>) => {
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const item = items[cursor++] as T;
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+};
+
+type ReconcileAction =
+  | { kind: 'ok' }
+  | { kind: 'fix'; absenceId: number; reasons: string[]; codeMismatch: boolean; expectedCode: string }
+  | { kind: 'readd' }
+  | { kind: 'conflict'; reason: string };
+
+const RECONCILE_CONCURRENCY = 2;
+
+/**
+ * Ежедневная сверка: согласованные и синкнутые заявки, которые ещё не закончились (end >= сегодня),
+ * против их элементов в графике отсутствий (инфоблок 3). Читаем пачками по ID.
+ * - начало не тот день, конец не «последний день 23:59:59» (дата без времени и 00:00:00 тоже расхождение),
+ *   пользователь не совпадает → update тем же путём, что и перенос дат
+ *   (00:00:00 – 23:59:59, ELEMENT_CODE vbi-hr-vac-<id>, если получится);
+ * - расхождение одного CODE (пустой или другой) поводом для update НЕ является: Bitrix не меняет код
+ *   через update (бой, 19.10.2026), иначе сверка переписывала бы такие элементы каждую ночь;
+ * - элемента нет → как «не найден»: обычная логика синка (поиск по CODE/датам, сирота, иначе add);
+ * - CODE элемента принадлежит другой заявке → не трогаем, только лог.
+ * Ничего не удаляет; элементы, не привязанные к заявкам, не трогает (кроме усыновления сироты
+ * в pushVacationToBitrixAbsence). Стейдж/локалка: только чтение + лог «что сделали бы», state не меняется,
+ * статусы failed и алерты админу не появляются.
+ */
+export const reconcileFutureAbsences = async (
+  state: VacationStoreState
+): Promise<ReconcileAbsencesResult> => {
+  const dryRun = bitrixWritesBlockedNow();
+  const result: ReconcileAbsencesResult = {
+    state,
+    checked: 0,
+    fixed: 0,
+    readded: 0,
+    adopted: 0,
+    failed: 0,
+    dryRun
+  };
+  const summary = (note = '') =>
+    console.info(
+      `[bitrix-vacation] reconcile: checked=${result.checked} fixed=${result.fixed} readded=${result.readded} ` +
+        `adopted=${result.adopted} failed=${result.failed}` +
+        (dryRun ? ` (dry-run: ${bitrixWritesBlockedMessage()})` : '') +
+        note
+    );
+
+  const hasWebhook = isBitrixWebhookConfigured();
+  const hasOAuth = hasWebhook ? true : await hasBitrixOAuthServiceToken();
+  if (!hasWebhook && !hasOAuth) {
+    summary('; нет доступа к Bitrix, пропуск');
+    return result;
+  }
+
+  const { id: targetIblockId, error } = await resolveAbsenceIblockId();
+  if (!targetIblockId) {
+    summary(`; инфоблок не определён: ${error || 'неизвестно'}`);
+    return result;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const candidates = flattenRequests(state).filter(
+    (r) =>
+      isListsSynced(r) &&
+      Number(r.bitrix_absence_iblock_id) === targetIblockId &&
+      String(r.end || '') >= today
+  );
+  if (!candidates.length) {
+    summary();
+    return result;
+  }
+
+  const elements = await fetchAbsenceElementsByIds(
+    targetIblockId,
+    candidates.map((r) => Number(r.bitrix_absence_id))
+  );
+  if (!elements) {
+    // Не смогли прочитать — ничего не решаем (иначе всё ушло бы в «re-add» с дублями).
+    summary('; чтение графика не удалось, пропуск');
+    return result;
+  }
+
+  await readEmployees();
+  const ctx = absenceAdoptionContext(state);
+
+  const plan: Array<{ request: VacationRequest; action: ReconcileAction }> = [];
+  for (const request of candidates) {
+    result.checked += 1;
+    const absenceId = Number(request.bitrix_absence_id);
+    const el = elements.get(absenceId);
+    if (!el) {
+      plan.push({ request, action: { kind: 'readd' } });
+      continue;
+    }
+    const expectedCode = `vbi-hr-vac-${request.id}`;
+    const code = String(el.CODE || '').trim();
+    const codeMatch = code.match(ABSENCE_CODE_RE);
+    if (code && code !== expectedCode && codeMatch && ctx.knownRequestIds.has(Number(codeMatch[1]))) {
+      plan.push({
+        request,
+        action: { kind: 'conflict', reason: `элемент ${absenceId} с CODE ${code} принадлежит другой заявке` }
+      });
+      continue;
+    }
+    const reasons: string[] = [];
+    if (!elementMatchesDates(el, request.start, request.end)) {
+      reasons.push(`даты ${el.ACTIVE_FROM ?? '?'} – ${el.ACTIVE_TO ?? '?'} ≠ ${request.start} – ${request.end}`);
+    }
+    const employee = await findEmployeeByName(request.employee);
+    const expectedUser = employee?.bitrix_user_id ?? null;
+    const actualUser = absenceElementUserId(el);
+    if (expectedUser && actualUser !== expectedUser) {
+      reasons.push(`пользователь ${actualUser ?? 'пусто'} ≠ ${expectedUser}`);
+    }
+    // CODE сам по себе не повод для update: Bitrix его так не ставит (см. updateViaAbsenceIblock).
+    plan.push({
+      request,
+      action: reasons.length
+        ? { kind: 'fix', absenceId, reasons, codeMismatch: code !== expectedCode, expectedCode }
+        : { kind: 'ok' }
+    });
+  }
+
+  if (dryRun) {
+    for (const { request, action } of plan) {
+      if (action.kind === 'fix') {
+        result.fixed += 1;
+        console.info(
+          `[bitrix-vacation] reconcile dry-run #${request.id}: обновили бы ${action.absenceId} (${action.reasons.join('; ')})`
+        );
+      } else if (action.kind === 'readd') {
+        result.readded += 1;
+        console.info(
+          `[bitrix-vacation] reconcile dry-run #${request.id}: элемента ${request.bitrix_absence_id} нет в графике, создали бы заново`
+        );
+      } else if (action.kind === 'conflict') {
+        result.failed += 1;
+        console.warn(`[bitrix-vacation] reconcile dry-run #${request.id}: ${action.reason}`);
+      }
+    }
+    summary();
+    return result;
+  }
+
+  const patches = new Map<number, Partial<VacationRequest>>();
+  const work = plan.filter((p) => p.action.kind !== 'ok');
+  await runWithConcurrency(work, RECONCILE_CONCURRENCY, async ({ request, action }) => {
+    if (action.kind === 'ok') return;
+    if (action.kind === 'conflict') {
+      result.failed += 1;
+      console.warn(`[bitrix-vacation] reconcile #${request.id}: ${action.reason}, не трогаем`);
+      return;
+    }
+    try {
+      if (action.kind === 'fix') {
+        const employee = await findEmployeeByName(request.employee);
+        const bitrixUserId = employee?.bitrix_user_id ?? null;
+        if (!bitrixUserId) {
+          throw new Error(`У сотрудника «${request.employee}» нет bitrix_user_id — не обновляем отсутствие`);
+        }
+        const { absenceId, method, codeSet } = await updateOrAddAbsence(
+          action.absenceId,
+          {
+            bitrixUserId,
+            start: request.start,
+            end: request.end,
+            comment: request.comment,
+            requestId: request.id,
+            employeeName: request.employee
+          },
+          '-reconcile'
+        );
+        patches.set(request.id, {
+          bitrix_absence_id: absenceId,
+          bitrix_absence_iblock_id: targetIblockId,
+          bitrix_sync_status: 'synced',
+          bitrix_sync_method: method,
+          bitrix_synced_at: new Date().toISOString(),
+          bitrix_sync_error: undefined
+        });
+        if (method.includes('add-after-not-found')) result.readded += 1;
+        else result.fixed += 1;
+        const codeNote = !action.codeMismatch
+          ? ''
+          : codeSet
+            ? `; CODE ${action.expectedCode} установлен`
+            : '; CODE не установлен (Bitrix не меняет код через update)';
+        console.info(
+          `[bitrix-vacation] reconcile #${request.id}: ${action.absenceId} обновлён (${action.reasons.join('; ')})${codeNote}`
+        );
+        return;
+      }
+      // readd: элемента нет в графике — обычный путь синка (найдёт по CODE/датам, сироту или создаст).
+      console.warn(
+        `[bitrix-vacation] reconcile #${request.id}: элемента ${request.bitrix_absence_id} нет в графике отсутствий, восстанавливаем`
+      );
+      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
+      patches.set(request.id, {
+        bitrix_absence_id: absenceId,
+        bitrix_absence_iblock_id: iblockId ?? undefined,
+        bitrix_sync_status: 'synced',
+        bitrix_sync_method: method,
+        bitrix_synced_at: new Date().toISOString(),
+        bitrix_sync_error: undefined
+      });
+      if (method.includes('-adopted')) result.adopted += 1;
+      else result.readded += 1;
+    } catch (err) {
+      const message = errorMessage(err);
+      if (isBitrixWriteBlockedError(err) || isBitrixWritesBlockedMessage(message)) {
+        // Гвард стенда — не ошибка заявки: статус не трогаем.
+        console.warn(`[bitrix-vacation] reconcile #${request.id}: ${message}`);
+        return;
+      }
+      result.failed += 1;
+      console.error(`[bitrix-vacation] reconcile failed for request #${request.id}:`, message);
+      // failed → подхватит обычный повтор; bitrix_absence_id не трогаем. Без алерта админу.
+      patches.set(request.id, {
+        bitrix_sync_status: 'failed',
+        bitrix_sync_error: message,
+        bitrix_synced_at: new Date().toISOString()
+      });
+    }
+  });
+
+  let next = state;
+  for (const [requestId, patch] of patches) next = updateRequestInState(next, requestId, patch);
+  result.state = next;
+  summary();
+  return result;
+};
+
+/**
+ * Полный проход обслуживания (старт процесса, раз в сутки, POST /api/bitrix/sync-vacations):
+ * повтор failed/skipped + перенос из чужого инфоблока, затем сверка будущих отпусков.
+ */
+export const runBitrixVacationMaintenance = async (
+  state: VacationStoreState
+): Promise<{ state: VacationStoreState; reconcile: Omit<ReconcileAbsencesResult, 'state'> }> => {
+  const afterRetry = await retryFailedBitrixVacationSyncs(state);
+  const { state: reconciled, ...reconcile } = await reconcileFutureAbsences(afterRetry);
+  return { state: reconciled, reconcile };
 };

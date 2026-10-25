@@ -26,11 +26,10 @@ export const PAGE_RATING_SECTIONS: PageRatingSection[] = [
   { id: 'admin-employees', path: '/admin/employees', label: 'Админ · сотрудники' }
 ];
 
-/** Ивенты (гонки и т.п.) — кот не показывается. */
+/** Ивенты (`/event/*`) — кот не показывается. */
 export function isPageRatingExcludedPath(path: string): boolean {
   const p = path.split('?')[0] || '/';
   if (p === '/event' || p.startsWith('/event/')) return true;
-  if (p === '/admin/quest-dashboard' || p.startsWith('/admin/quest-dashboard/')) return true;
   return false;
 }
 

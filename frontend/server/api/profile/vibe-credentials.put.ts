@@ -37,11 +37,11 @@ export default defineEventHandler(async (event) => {
 
   const updated =
     login !== (emp.email || '').trim().toLowerCase()
-      ? await patchEmployeeEmail(emp.id, login)
+      ? await patchEmployeeEmail(emp.id, login, { actorEmployeeId: emp.id })
       : emp;
 
   if (password) {
-    await setVibePassword(emp.id, password);
+    await setVibePassword(emp.id, password, { actorEmployeeId: emp.id, reason: 'self-vibe-password-set' });
   }
 
   const nextUser = {

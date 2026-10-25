@@ -1,6 +1,7 @@
-import { mkdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { writeJsonAtomic } from './atomicJson';
+import { isDbEnabled } from '../db/client';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import { createJsonStateRepo, createStateGate, type KeyedStateDef, type RawState } from '../db/repositories/keyedState';
+import { KNOWLEDGE_STATE_DEF, knowledgeJsonIo } from '../knowledge/domain';
 import { resolveArticleDepartments } from './knowledgeAudience';
 import { normalizeKnowledgeArticleBody } from './knowledgeArticleHtml';
 
@@ -73,8 +74,6 @@ export type KnowledgeArticlesState = {
   articles: KnowledgeArticle[];
   nextId: number;
 };
-
-const DATA_FILE = join(process.cwd(), 'server/data/knowledge-articles.json');
 
 export const defaultKnowledgeArticlesState = (): KnowledgeArticlesState => ({
   articles: [],
@@ -187,40 +186,61 @@ export function normalizeKnowledgeArticlesState(raw: Partial<KnowledgeArticlesSt
   };
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultKnowledgeArticlesState());
-  }
+/**
+ * Этап 7: DB_KNOWLEDGE=1 и задан DATABASE_URL → Postgres (схема knowledge), иначе
+ * server/data/knowledge-articles.json. Флаг стоит только на стейдже. Чтение — из кэша процесса
+ * (сбрасывается и обновляется при записи), чтобы GET /api/knowledge и RAG-фолбэк не ходили в базу
+ * за ~1 МБ на каждый запрос. Публичный API не менялся; RAG-индекс остаётся файлом.
+ */
+export function knowledgeDbFlag(): boolean {
+  return String(process.env.DB_KNOWLEDGE || '').trim() === '1' && isDbEnabled();
+}
+
+export const KNOWLEDGE_STATE_FULL_DEF: KeyedStateDef = {
+  ...KNOWLEDGE_STATE_DEF,
+  normalize: (raw) => normalizeKnowledgeArticlesState(raw as Partial<KnowledgeArticlesState>)
+};
+
+const gate = createStateGate({
+  label: 'база знаний',
+  logTag: 'knowledge',
+  flag: knowledgeDbFlag,
+  def: KNOWLEDGE_STATE_FULL_DEF,
+  makeJson: () => createJsonStateRepo(knowledgeJsonIo())
+});
+
+/** Вызывает плагин db-migrate после разового импорта knowledge-articles.json. */
+export const setKnowledgePgReady = gate.setReady;
+
+/** Postgres-репозиторий стора (тот же кэш) — для слияния сида при старте, до setKnowledgePgReady. */
+export const knowledgePgRepo = gate.pg;
+
+export async function getKnowledgeBackend(): Promise<'json' | 'postgres'> {
+  return (await gate.repo()).backend;
 }
 
 export async function readKnowledgeArticles(): Promise<KnowledgeArticlesState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeKnowledgeArticlesState(JSON.parse(raw) as Partial<KnowledgeArticlesState>);
+  const raw = await (await gate.repo()).read();
+  return normalizeKnowledgeArticlesState(raw as Partial<KnowledgeArticlesState>);
 }
 
-export async function writeKnowledgeArticles(state: KnowledgeArticlesState): Promise<KnowledgeArticlesState> {
-  await ensureFile();
-  const normalized = normalizeKnowledgeArticlesState(state);
-  await writeJsonAtomic(DATA_FILE, normalized);
-  return normalized;
-}
-
-let mutationQueue: Promise<unknown> = Promise.resolve();
-
-export async function mutateKnowledgeArticles(
-  mutator: (state: KnowledgeArticlesState) => KnowledgeArticlesState | Promise<KnowledgeArticlesState>
+export async function writeKnowledgeArticles(
+  state: KnowledgeArticlesState,
+  ctx: KeyedListWriteContext = {}
 ): Promise<KnowledgeArticlesState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readKnowledgeArticles();
-    const next = await mutator(current);
-    return writeKnowledgeArticles(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  return mutateKnowledgeArticles(() => state, ctx);
+}
+
+/** Правки строго по очереди (в Postgres — транзакция под advisory lock). ctx — кто и почему (аудит). */
+export async function mutateKnowledgeArticles(
+  mutator: (state: KnowledgeArticlesState) => KnowledgeArticlesState | Promise<KnowledgeArticlesState>,
+  ctx: KeyedListWriteContext = {}
+): Promise<KnowledgeArticlesState> {
+  return (await gate.repo()).mutate(async (raw) => {
+    const current = normalizeKnowledgeArticlesState(raw as Partial<KnowledgeArticlesState>);
+    const next = normalizeKnowledgeArticlesState(await mutator(current));
+    return { next: next as unknown as RawState, result: next };
+  }, ctx);
 }
 
 /** Статья ждёт проверки руководителя (новая или правка опубликованной). */

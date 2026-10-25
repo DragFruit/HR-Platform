@@ -1,6 +1,7 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
+import { isDbEnabled } from '../db/client';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import { createJsonStateRepo, createStateGate, type KeyedStateDef, type RawState } from '../db/repositories/keyedState';
+import { IDEAS_STATE_DEF, ideasJsonIo } from '../ideas/domain';
 import { normalizeIdeaCategory, type Idea } from '../../app/composables/useIdeasBank';
 
 export type IdeaVoteDirection = 'up' | 'down';
@@ -12,8 +13,6 @@ export type IdeasStoreState = {
   /** userId → ideaId → vote */
   votesByUserId: Record<string, IdeaVotesByUser>;
 };
-
-const DATA_FILE = join(process.cwd(), 'server/data/ideas.json');
 
 export const defaultIdeasState = (): IdeasStoreState => ({
   ideas: [],
@@ -77,19 +76,36 @@ export function normalizeIdeasStoreState(raw: Partial<IdeasStoreState>): IdeasSt
   };
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultIdeasState());
-  }
+/**
+ * Этап 7: DB_IDEAS=1 и задан DATABASE_URL → Postgres (схема ideas), иначе server/data/ideas.json.
+ * Флаг стоит только на стейдже; на проде DATABASE_URL есть, но флага нет → JSON.
+ * Вложения остаются на диске (server/data/idea-attachments/<id>/). Публичный API не менялся.
+ */
+export function ideasDbFlag(): boolean {
+  return String(process.env.DB_IDEAS || '').trim() === '1' && isDbEnabled();
 }
 
-export async function readIdeas(): Promise<IdeasStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  const state = normalizeIdeasStoreState(JSON.parse(raw) as Partial<IdeasStoreState>);
+export const IDEAS_STATE_FULL_DEF: KeyedStateDef = {
+  ...IDEAS_STATE_DEF,
+  normalize: (raw) => normalizeIdeasStoreState(raw as Partial<IdeasStoreState>)
+};
+
+const gate = createStateGate({
+  label: 'банк идей',
+  logTag: 'ideas',
+  flag: ideasDbFlag,
+  def: IDEAS_STATE_FULL_DEF,
+  makeJson: () => createJsonStateRepo(ideasJsonIo())
+});
+
+/** Вызывает плагин db-migrate после разового импорта ideas.json. */
+export const setIdeasPgReady = gate.setReady;
+
+export async function getIdeasBackend(): Promise<'json' | 'postgres'> {
+  return (await gate.repo()).backend;
+}
+
+async function withAttachmentFlags(state: IdeasStoreState): Promise<IdeasStoreState> {
   const { ideaAttachmentExists } = await import('./ideaAttachments');
   for (const idea of state.ideas) {
     if (idea.attachmentName && !idea.attachmentStored) {
@@ -99,26 +115,28 @@ export async function readIdeas(): Promise<IdeasStoreState> {
   return state;
 }
 
-export async function writeIdeas(state: IdeasStoreState): Promise<IdeasStoreState> {
-  await ensureFile();
-  const normalized = normalizeIdeasStoreState(state);
-  await writeJsonAtomic(DATA_FILE, normalized);
-  return normalized;
+export async function readIdeas(): Promise<IdeasStoreState> {
+  const raw = await (await gate.repo()).read();
+  return withAttachmentFlags(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>));
 }
 
-/** Сериализует все правки идей — без гонок при параллельных POST/PATCH. */
-let mutationQueue: Promise<unknown> = Promise.resolve();
+export async function writeIdeas(state: IdeasStoreState, ctx: KeyedListWriteContext = {}): Promise<IdeasStoreState> {
+  return mutateIdeas(() => state, ctx);
+}
 
+/**
+ * Сериализует все правки идей — без гонок при параллельных POST/PATCH (очередь репозитория;
+ * в Postgres ещё и транзакция под advisory lock). ctx — кто и почему (аудит).
+ */
 export async function mutateIdeas(
-  mutator: (state: IdeasStoreState) => IdeasStoreState | Promise<IdeasStoreState>
+  mutator: (state: IdeasStoreState) => IdeasStoreState | Promise<IdeasStoreState>,
+  ctx: KeyedListWriteContext = {}
 ): Promise<IdeasStoreState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readIdeas();
-    const next = await mutator(current);
-    return writeIdeas(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  return (await gate.repo()).mutate(async (raw) => {
+    const current = await withAttachmentFlags(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>));
+    const next = normalizeIdeasStoreState(await mutator(current));
+    return { next: next as unknown as RawState, result: next };
+  }, ctx);
 }
 
 export function votesForUser(state: IdeasStoreState, userId: number): IdeaVotesByUser {

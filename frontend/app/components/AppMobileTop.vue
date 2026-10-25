@@ -1,10 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   displayName: string;
   userId?: number | null;
-  showEvent?: boolean;
-  eventTo?: string;
-  eventAdmin?: boolean;
   showBell?: boolean;
   adminBell?: boolean;
   canSwitchRole?: boolean;
@@ -17,12 +14,37 @@ const emit = defineEmits<{
   switchRole: [role: 'employee' | 'admin'];
   switchManagerMode: [mode: 'manager' | 'employee'];
 }>();
+
+/** Имя целиком: 15px в строку; не влезает — 13px в две строки по словам, без «…». */
+const helloRef = ref<HTMLElement | null>(null);
+const helloLong = ref(false);
+
+const measureHello = async () => {
+  helloLong.value = false;
+  await nextTick();
+  const el = helloRef.value;
+  if (!el) return;
+  helloLong.value = el.scrollWidth > el.clientWidth + 1;
+};
+
+watch(() => props.displayName, measureHello);
+
+onMounted(() => {
+  void measureHello();
+  window.addEventListener('resize', measureHello);
+  // Шрифт мог догрузиться после первого замера
+  void document.fonts?.ready.then(measureHello);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', measureHello);
+});
 </script>
 
 <template>
   <header class="mob-top" aria-label="Шапка">
     <div class="mob-top__left">
-      <p class="mob-top__hello">{{ displayName }}</p>
+      <p ref="helloRef" class="mob-top__hello" :class="{ 'mob-top__hello--long': helloLong }">{{ displayName }}</p>
       <div v-if="canSwitchRole" class="mob-top__roles" role="group" aria-label="Режим">
         <button
           type="button"
@@ -67,31 +89,11 @@ const emit = defineEmits<{
 
       <div class="mob-top__profile-stack">
         <NuxtLink
-          v-if="showEvent && eventTo"
-          :to="eventTo"
-          class="mob-top__event-badge"
-          :aria-label="eventAdmin ? 'Pit Stop — статистика' : 'Pit Stop 14'"
-          title="Pit Stop 14"
-        >
-          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-            <rect width="16" height="16" fill="#111" />
-            <rect x="0" y="0" width="4" height="4" fill="#fff" />
-            <rect x="8" y="0" width="4" height="4" fill="#fff" />
-            <rect x="4" y="4" width="4" height="4" fill="#fff" />
-            <rect x="12" y="4" width="4" height="4" fill="#fff" />
-            <rect x="0" y="8" width="4" height="4" fill="#fff" />
-            <rect x="8" y="8" width="4" height="4" fill="#fff" />
-            <rect x="4" y="12" width="4" height="4" fill="#fff" />
-            <rect x="12" y="12" width="4" height="4" fill="#fff" />
-          </svg>
-        </NuxtLink>
-
-        <NuxtLink
           to="/profile"
           class="mob-top__profile"
           :aria-label="`Профиль: ${displayName}`"
         >
-          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="36" />
+          <UserAvatar :user-id="userId ?? 0" :name="displayName" :size="30" />
         </NuxtLink>
       </div>
     </div>
@@ -104,6 +106,7 @@ const emit = defineEmits<{
 }
 
 @media (max-width: 900px) {
+  /* iOS HIG: навбар 44pt + safe-area; имя — Headline 17, режим — сегмент 28pt, кнопки 44×44 (визуально 32–36) */
   .mob-top {
     position: sticky;
     top: 0;
@@ -111,11 +114,12 @@ const emit = defineEmits<{
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    min-height: 52px;
+    gap: 8px;
+    box-sizing: border-box;
+    height: calc(44px + env(safe-area-inset-top, 0px));
     /* Ниже Dynamic Island / шторки */
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px;
-    border-bottom: 2px solid #111;
+    padding: env(safe-area-inset-top, 0px) 8px 0 16px;
+    border-bottom: 1px solid #111;
     background-color: #7451f4;
     background-image: var(--noise-url);
     background-size: 180px 180px;
@@ -124,72 +128,136 @@ const emit = defineEmits<{
 
   .mob-top__left {
     min-width: 0;
+    flex: 1 1 auto;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-self: stretch;
-    gap: 3px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 
   .mob-top__hello {
+    min-width: 0;
+    flex: 0 1 auto;
     margin: 0;
-    font-family: Unbounded, 'Golos Text', sans-serif;
-    font-size: 0.92rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    letter-spacing: -0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  /* Длинное имя: 13px, до двух строк по словам — целиком, без «…» */
+  .mob-top__hello--long {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 16px;
+    letter-spacing: 0;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .mob-top__roles {
+    flex: 0 0 auto;
     display: inline-flex;
-    gap: 3px;
+    gap: 2px;
+    height: 26px;
+    padding: 2px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    background: rgba(17, 17, 17, 0.22);
   }
 
   .mob-top__role {
-    min-height: 22px;
-    padding: 1px 7px;
-    border: 1px solid rgba(255, 255, 255, 0.45);
-    border-radius: 999px;
+    position: relative;
+    min-height: 0;
+    height: 22px;
+    padding: 0 7px;
+    border: 0;
+    border-radius: 6px;
     background: transparent;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.85);
     font: inherit;
-    font-size: 0.64rem;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  /* Зона нажатия 44pt по высоте при визуальных 22 */
+  .mob-top__role::after {
+    content: '';
+    position: absolute;
+    inset: -11px 0;
   }
 
   .mob-top__role.is-on {
     background: #ddf365;
-    border-color: #111;
     color: #111;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   }
 
   .mob-top__actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0;
     flex-shrink: 0;
   }
 
+  /* Колокольчик: 32 визуально, 44 — зона нажатия (поля 6px) */
   .mob-top__actions :deep(.admin-notifications-bell__btn),
-  .mob-top__actions :deep(.vac-notifications-bell__btn),
-  .mob-top__actions :deep(button) {
-    width: 40px;
-    height: 40px;
+  .mob-top__actions :deep(.vac-notifications-bell__btn) {
+    width: 32px;
+    height: 32px;
+    margin: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* Колокольчик без кольца, глиф 27 — на глаз чуть меньше аватара (30) */
+  .mob-top__actions :deep(.admin-notifications-bell__btn svg),
+  .mob-top__actions :deep(.vac-notifications-bell__btn svg) {
+    flex: 0 0 auto;
+    width: 27px;
+    height: 27px;
+  }
+
+  .mob-top__actions :deep(.admin-notifications-bell__btn)::after,
+  .mob-top__actions :deep(.vac-notifications-bell__btn)::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+  }
+
+  .mob-top__actions :deep(.admin-notifications-bell__badge) {
+    top: 0;
+    right: -1px;
+    box-shadow: 0 0 0 1.5px #7451f4;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
   }
 
   .mob-top__profile-stack {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
 
   .mob-top__profile {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     border: none;
     background: transparent;
@@ -202,22 +270,6 @@ const emit = defineEmits<{
   .mob-top__profile :deep(.user-avatar__img) {
     border: none !important;
     box-shadow: none !important;
-  }
-
-  /* Флаг ивента — бейдж на аватаре (не третий круг в ряду) */
-  .mob-top__event-badge {
-    position: absolute;
-    top: -4px;
-    right: -6px;
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    border: 2px solid #111;
-    background: #fff;
-    box-shadow: 1px 1px 0 #111;
   }
 }
 </style>

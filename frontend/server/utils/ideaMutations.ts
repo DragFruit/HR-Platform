@@ -2,6 +2,7 @@ import type { SessionUser } from './credentials';
 import type { CreateIdeaInput, Idea, IdeaStatus } from '../../app/composables/useIdeasBank';
 import { createIdeaSubmittedNotification } from './adminNotificationsStore';
 import { notifyIdeaAuthorStatusChanged } from './ideaNotifications';
+import { sessionActorEmployeeId } from './employeesStore';
 import { deleteIdeaAttachment, saveIdeaAttachment, type IdeaAttachmentFile } from './ideaAttachments';
 import {
   mutateIdeas,
@@ -84,7 +85,7 @@ export async function createIdeaForUser(
     createdId = idea.id;
     createdTitle = idea.title;
     return next;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'idea:create' });
 
   if (createdId && attachment) {
     await saveIdeaAttachment(createdId, attachment);
@@ -140,7 +141,7 @@ export async function voteIdeaForUser(
 
     next.votesByUserId[userKey] = userVotes;
     return next;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'idea:vote' });
 
   return toClientPayload(state, session.id);
 }
@@ -194,7 +195,7 @@ export async function setIdeaStatusForUser(
     idea.statusChangedAt = new Date().toISOString();
     notifiedIdea = { ...idea };
     return next;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'idea:status' });
 
   if (notifiedIdea && previousStatus && previousStatus !== status) {
     await notifyIdeaAuthorStatusChanged({
@@ -239,7 +240,7 @@ export async function deleteIdeaForUser(
       }
     }
     return next;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'idea:delete' });
 
   await deleteIdeaAttachment(id).catch(() => {});
 

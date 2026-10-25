@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     list.push(response);
     current.responses[survey.id] = list;
     return current;
-  });
+  }, { reason: 'surveys:public-submit' }); // без actor: ответ не связываем с сотрудником
 
   return { ok: true };
 });

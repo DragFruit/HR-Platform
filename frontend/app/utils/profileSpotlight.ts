@@ -30,9 +30,9 @@ export function findUpcomingVacationWithinDays(
   return upcoming[0] ?? null;
 }
 
-export function formatVacationStartShort(startIso: string): string {
-  return new Date(`${startIso}T12:00:00`).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long'
-  });
+/** Дата начала отпуска для плитки «Скоро в отпуск»: «2026-02-23» → «23.02.26». */
+export function formatVacationStartDdMmYy(startIso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startIso);
+  if (!m) return startIso;
+  return `${m[3]}.${m[2]}.${m[1]!.slice(2)}`;
 }

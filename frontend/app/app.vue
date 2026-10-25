@@ -42,49 +42,8 @@
 
       <ul class="nav-list">
         <li v-for="item in navItems" :key="item.to">
-          <div
-            v-if="item.to === '/profile' && !item.locked"
-            class="nav-profile"
-            :class="{
-              'is-lit':
-                isNavItemActive('/profile') ||
-                route.path.startsWith('/event/pit-stop') ||
-                route.path.startsWith('/admin/quest-dashboard')
-            }"
-          >
-            <NuxtLink
-              to="/profile"
-              class="nav-profile__link"
-              :class="{ 'router-link-active': isNavItemActive('/profile') }"
-            >
-              Профиль
-            </NuxtLink>
-            <NuxtLink
-              v-if="showPitStopFlag"
-              :to="pitStopFlagTo"
-              class="nav-profile__flag"
-              :aria-label="
-                isAdmin
-                  ? 'Pit Stop 14 — статистика'
-                  : 'Pit Stop 14 — корпоративный квест'
-              "
-              title="Pit Stop 14"
-            >
-              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                <rect width="16" height="16" fill="#111" />
-                <rect x="0" y="0" width="4" height="4" fill="#fff" />
-                <rect x="8" y="0" width="4" height="4" fill="#fff" />
-                <rect x="4" y="4" width="4" height="4" fill="#fff" />
-                <rect x="12" y="4" width="4" height="4" fill="#fff" />
-                <rect x="0" y="8" width="4" height="4" fill="#fff" />
-                <rect x="8" y="8" width="4" height="4" fill="#fff" />
-                <rect x="4" y="12" width="4" height="4" fill="#fff" />
-                <rect x="12" y="12" width="4" height="4" fill="#fff" />
-              </svg>
-            </NuxtLink>
-          </div>
           <NuxtLink
-            v-else-if="!item.locked"
+            v-if="!item.locked"
             :to="item.to"
             class="nav-link"
             :class="{ 'router-link-active': isNavItemActive(item.to) }"
@@ -128,9 +87,6 @@
       <AppMobileTop
         :display-name="topbarDisplayName"
         :user-id="user?.id"
-        :show-event="showPitStopFlag"
-        :event-to="pitStopFlagTo"
-        :event-admin="isAdmin"
         :show-bell="true"
         :admin-bell="showAdminNotificationsBell"
         :can-switch-role="canSwitchRole"
@@ -199,7 +155,6 @@
 import { PLATFORM_NAME } from '~/data/platformBrand';
 import { isPostVacationMemoPreview } from '~/utils/postVacationMemoPreview';
 import { formatEmployeeShortName } from '~/utils/employeeName';
-import { isPitStopGameStopped, isPitStopResultsPageVisible } from '~/events/pit-stop-14/timeline';
 import type { ManagerVacationUiMode } from '~/composables/useManagerVacationMode';
 
 const { balance } = useWallet();
@@ -210,18 +165,7 @@ const { isActive: tenureCelebrationActive } = useTenureCelebration();
 const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
-const { homePath, isPathAllowed } = useLaunchScope();
-/**
- * Режим UI: админ → статистика; сотрудник (в т.ч. admin, переключившийся) → игра.
- * После стопа гонки (`isPitStopGameStopped`) флаг не прятать совсем — хаб переключается
- * на статику с подиумом топ-3 (`isPitStopResultsPageVisible`), и вход к ней нужен как раньше.
- */
-const showPitStopFlag = computed(
-  () => isPathAllowed('/event/pit-stop') && (!isPitStopGameStopped() || isPitStopResultsPageVisible())
-);
-const pitStopFlagTo = computed(() =>
-  isAdmin.value ? '/admin/quest-dashboard' : '/event/pit-stop'
-);
+const { homePath } = useLaunchScope();
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';

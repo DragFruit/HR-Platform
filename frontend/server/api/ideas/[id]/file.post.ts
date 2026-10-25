@@ -3,6 +3,7 @@ import { sessionNotificationRecipientIds } from '../../../utils/notificationReci
 import { assertIdeaAttachment, saveIdeaAttachment } from '../../../utils/ideaAttachments';
 import { mutateIdeas } from '../../../utils/ideasStore';
 import { toClientPayload } from '../../../utils/ideaMutations';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 /** Прикрепить / заменить файл у существующей идеи (автор или admin/HR). */
 export default defineEventHandler(async (event) => {
@@ -35,7 +36,7 @@ export default defineEventHandler(async (event) => {
     idea.attachmentName = attachment.originalName;
     idea.attachmentStored = true;
     return current;
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'idea:attach-file' });
 
   await saveIdeaAttachment(id, attachment);
   return toClientPayload(state, session.id);

@@ -56,16 +56,23 @@
                   <dt>Стаж</dt>
                   <dd>{{ tenureLabel }}</dd>
                 </div>
-                <div class="emp-card__field">
+                <div
+                  v-if="birthdayLabel"
+                  class="emp-card__field emp-card__field--birthday"
+                  :class="{ 'emp-card__field--birthday-today': birthdayToday }"
+                >
                   <dt>День рождения</dt>
-                  <dd>{{ birthdayLabel }}</dd>
+                  <dd>
+                    <span v-if="birthdayToday" class="emp-card__bday-today">сегодня</span>
+                    <span aria-hidden="true">🎂</span> {{ birthdayLabel }}
+                  </dd>
                 </div>
               </dl>
             </div>
           </div>
 
           <div class="emp-card__rail">
-            <div class="emp-card__rail-achs">
+            <div v-if="displayAchievements.length" class="emp-card__rail-achs">
               <span class="emp-card__rail-label">Достижения</span>
               <ul class="emp-card__achs" aria-label="Достижения">
                 <li
@@ -90,17 +97,21 @@
               </ul>
             </div>
 
-            <span class="emp-card__rail-sep" aria-hidden="true" />
+            <span v-if="displayAchievements.length" class="emp-card__rail-sep" aria-hidden="true" />
             <span class="emp-card__rail-ideas">Идеи: {{ ideasCount }}</span>
-            <span class="emp-card__rail-sep" aria-hidden="true" />
-            <button
-              type="button"
-              class="emp-card__rail-link"
-              title="Скоро"
-              disabled
-            >
-              Вишлист
-            </button>
+            <template v-if="wishlistChipVisible">
+              <span class="emp-card__rail-sep" aria-hidden="true" />
+              <button
+                type="button"
+                class="emp-card__wish-chip"
+                :class="{ 'emp-card__wish-chip--empty': !wishlistItems.length }"
+                :title="wishlistItems.length ? 'Открыть вишлист' : 'Заполнить вишлист'"
+                @click="wishlistOpen = true"
+              >
+                <span aria-hidden="true">🎁</span>
+                Вишлист<template v-if="wishlistItems.length"> · {{ wishlistItems.length }}</template>
+              </button>
+            </template>
             <span class="emp-card__rail-sep" aria-hidden="true" />
             <a
               v-if="bitrixUrl"
@@ -137,19 +148,28 @@
           />
         </div>
       </article>
+      <EmployeeWishlistPanel
+        :open="wishlistOpen"
+        :name="employee.name"
+        :items="wishlistItems"
+        :own="wishlistOwn"
+        @close="onWishlistClose"
+      />
     </template>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import {
-  formatBirthdayDot,
+  formatBirthdayCard,
   formatHiredAtDot,
+  isBirthdayToday,
   tenureCardLabel
 } from '~/utils/tenureAnniversary';
 import { publicAchievementsForEmployee } from '~/utils/employeePublicCard';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import type { WishlistItem } from '~/utils/wishlist';
 
 const { openEmployeeId, anchor, closeEmployeeVisitingCard } = useEmployeeVisitingCard();
 const { findById, employees } = useEmployees();
@@ -186,10 +206,9 @@ const tenureLabel = computed(() =>
   employee.value?.hired_at ? tenureCardLabel(employee.value.hired_at) : '—'
 );
 
-const birthdayLabel = computed(() => {
-  const b = employee.value?.birthday?.trim();
-  return b ? formatBirthdayDot(b) : '—';
-});
+/** Только день и месяц («12 марта»); пусто — строку не показываем. */
+const birthdayLabel = computed(() => formatBirthdayCard(employee.value?.birthday));
+const birthdayToday = computed(() => isBirthdayToday(employee.value?.birthday));
 
 const ideasCount = computed(() => {
   const emp = employee.value;
@@ -221,25 +240,8 @@ const achievements = computed(() => {
   return publicAchievementsForEmployee(emp, ideasDone.value, { pitStopWinnerUserIds }).slice(0, 5);
 });
 
-/** Плитки как на эскизе (ровно 5 слотов). */
-const displayAchievements = computed(() => {
-  const real = achievements.value.slice(0, 5);
-  const slots: Array<{
-    id: string;
-    title: string;
-    imageSrc?: string;
-    emoji?: string;
-  }> = real.map((a) => ({
-    id: a.id,
-    title: a.title,
-    imageSrc: a.imageSrc,
-    emoji: a.emoji
-  }));
-  while (slots.length < 5) {
-    slots.push({ id: `empty-${slots.length}`, title: '' });
-  }
-  return slots;
-});
+/** Только полученные публичные ачивки (до 5), без пустых слотов. */
+const displayAchievements = computed(() => achievements.value.slice(0, 5));
 
 const bitrixUrl = computed(() => {
   const emp = employee.value;
@@ -287,6 +289,40 @@ watch(
     await placeCard();
   }
 );
+
+/* ---------- вишлист: чип в рейле + праздничная панель ---------- */
+const wishlistItems = ref<WishlistItem[]>([]);
+const wishlistOwn = ref(false);
+const wishlistOpen = ref(false);
+/** У чужих пустой вишлист не показываем; у себя — «заполнить». */
+const wishlistChipVisible = computed(() => wishlistItems.value.length > 0 || wishlistOwn.value);
+
+let wishlistRequest = 0;
+watch(
+  openEmployeeId,
+  async (id) => {
+    const req = ++wishlistRequest;
+    wishlistOpen.value = false;
+    wishlistItems.value = [];
+    wishlistOwn.value = false;
+    if (id == null || !import.meta.client) return;
+    try {
+      const data = await $fetch<{ items: WishlistItem[]; own: boolean }>(`/api/employees/${id}/wishlist`);
+      if (req !== wishlistRequest) return;
+      wishlistItems.value = Array.isArray(data.items) ? data.items : [];
+      wishlistOwn.value = Boolean(data.own);
+    } catch {
+      /* нет вишлиста / нет доступа — чип просто не покажем */
+    }
+    if (req === wishlistRequest) void placeCard();
+  },
+  { immediate: true }
+);
+
+const onWishlistClose = (closeAll?: boolean) => {
+  wishlistOpen.value = false;
+  if (closeAll) closeEmployeeVisitingCard();
+};
 
 onMounted(() => {
   const onKey = (e: KeyboardEvent) => {
@@ -477,6 +513,31 @@ onMounted(() => {
   word-break: break-word;
 }
 
+/* Месяц строчными: «12 марта», а не «12 МАРТА». */
+.emp-card__field--birthday dd {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.emp-card__field--birthday-today {
+  background: linear-gradient(90deg, transparent, rgba(221, 243, 101, 0.55));
+}
+
+.emp-card__bday-today {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  font-size: 8px;
+  line-height: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--lime);
+  border: 1px solid var(--ink);
+  vertical-align: 1px;
+}
+
 .emp-card__rail {
   margin-top: 10px;
   padding-top: 8px;
@@ -609,11 +670,42 @@ onMounted(() => {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-button.emp-card__rail-link:disabled {
+/* Вишлист: тихий вторичный чип (контур, без заливки), как остальные ссылки рейла */
+.emp-card__wish-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 5px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
   color: var(--purple);
-  opacity: 1;
-  cursor: default;
-  text-decoration: underline;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid rgba(17, 17, 17, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.emp-card__wish-chip > span {
+  font-size: 10px;
+}
+
+.emp-card__wish-chip:hover {
+  background: rgba(221, 243, 101, 0.55);
+  border-color: var(--ink);
+}
+
+.emp-card__wish-chip:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.emp-card__wish-chip--empty {
+  border-style: dashed;
+  color: #565656;
 }
 
 .emp-card__rail-link--off {

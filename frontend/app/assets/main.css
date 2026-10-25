@@ -190,7 +190,6 @@ a {
   }
 
   /* Fit-страницы: тот же shell-pad, без сброса padding контента в 16px */
-  .shell-main:has(.ps-hub) .content,
   .shell-main:has(.kb-page--search) .content,
   .shell-main:has(.vpn-page) .content {
     padding: 12px !important;
@@ -425,71 +424,6 @@ a {
   border-color: var(--border-brutal);
   color: var(--text);
   box-shadow: none;
-}
-
-.nav-profile {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 40px;
-  padding: 4px 6px 4px 12px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  transition: var(--transition-brutal);
-}
-
-.nav-profile:hover {
-  background: var(--bg-elevated);
-  color: var(--text);
-  border-color: var(--border-brutal);
-  transform: translateY(-1px);
-}
-
-.nav-profile.is-lit {
-  background: var(--accent-lime);
-  border-color: var(--border-brutal);
-  color: var(--text);
-}
-
-.nav-profile__link {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 4px 6px 0;
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.nav-profile__flag {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid #111;
-  background: #fff;
-  color: #111;
-  line-height: 0;
-  transition: transform 0.12s ease;
-}
-
-.nav-profile__flag:hover {
-  transform: scale(1.06);
-  background: #111;
-  color: #ddf365;
-}
-
-.nav-profile__flag:hover :deep(rect[fill='#fff']),
-.nav-profile__flag:hover rect:not(:first-child) {
-  fill: #ddf365;
-}
-
-.nav-profile__flag:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary) 65%, white 35%);
-  outline-offset: 2px;
 }
 
 .shell-main {
@@ -785,162 +719,6 @@ a {
   max-height: 100%;
   max-width: none;
   width: 100%;
-  overflow: hidden;
-}
-
-/* Pit Stop: как VPN — один экран, без скролла, на всю ширину */
-.app-viewport:has(.ps-hub) {
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
-}
-
-.app-viewport:has(.ps-hub) > .app-shell {
-  flex: 1 1 0;
-  min-height: 0;
-  height: auto;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-.app-viewport:has(.ps-hub) > .app-site-footer {
-  display: none;
-}
-
-.app-shell:has(.ps-hub) {
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  align-items: stretch;
-}
-
-.app-shell:has(.ps-hub) > .sidebar,
-.app-shell:has(.ps-hub) > .shell-main {
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-.shell-main:has(.ps-hub) {
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-.shell-main:has(.ps-hub) .content {
-  padding: 0;
-  background: #1d1d1f;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-}
-
-.shell-main:has(.ps-hub) .content > * {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.shell-main:has(.ps-hub) .content .page-root {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  gap: 0;
-  max-width: none;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.shell-main:has(.ps-hub) .content .page-root > .ps-hub,
-.shell-main:has(.ps-hub) .content > .ps-hub {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  width: 100%;
-  max-width: none;
-  overflow: hidden;
-}
-
-/* Мобилка: хаб скроллится (гараж + рейтинг), десктоп остаётся без скролла */
-@media (max-width: 960px) {
-  .shell-main:has(.ps-hub) .content .page-root > .ps-hub,
-  .shell-main:has(.ps-hub) .content > .ps-hub {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-  }
-}
-
-.shell-main:has(.pit-cp) .content {
-  padding: 0;
-  background: #1d1d1f;
-}
-
-.shell-main:has(.pit-cp) .content .page-root {
-  gap: 0;
-  max-width: none;
-  width: 100%;
-}
-
-.shell-main:has(.pit-cp) .content .page-root > .pit-cp,
-.shell-main:has(.pit-cp) .content > .pit-cp {
-  width: 100%;
-  max-width: none;
-}
-
-/* Мини-игра на одном экране (свой layout на точку, без общего каркаса) */
-.shell-main:has(.pit-cp--onescreen) {
-  grid-template-rows: auto minmax(0, 1fr);
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-.shell-main:has(.pit-cp--onescreen) .content {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-}
-
-.shell-main:has(.pit-cp--onescreen) .content > * {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.shell-main:has(.pit-cp--onescreen) .content .page-root {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.shell-main:has(.pit-cp--onescreen) .content .page-root > .pit-cp--onescreen,
-.shell-main:has(.pit-cp--onescreen) .content > .pit-cp--onescreen {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
   overflow: hidden;
 }
 
@@ -3898,7 +3676,7 @@ button.org-unit-head--link:hover {
   box-shadow: 4px 4px 0 var(--accent-lime);
 }
 
-.profile-screen-hero .profile-stat-tile:hover:not(.profile-vacation-calendar):not(.profile-stat-tile--vacation-quest):not(.profile-stat-tile--vacation-soon):not(.profile-stat-tile--idea-tease) {
+.profile-screen-hero .profile-stat-tile:hover:not(.profile-vacation-calendar):not(.profile-stat-tile--vacation-quest):not(.profile-stat-tile--vacation-soon):not(.profile-stat-tile--idea-tease):not(.profile-stat-tile--wish-reminder) {
   transform: translate(-1px, -1px);
 }
 
@@ -4144,7 +3922,7 @@ button.org-unit-head--link:hover {
   line-height: 1;
 }
 
-.profile-stat-tile:hover:not(.profile-vacation-calendar):not(.profile-stat-tile--vacation-quest):not(.profile-stat-tile--vacation-soon):not(.profile-stat-tile--idea-tease) {
+.profile-stat-tile:hover:not(.profile-vacation-calendar):not(.profile-stat-tile--vacation-quest):not(.profile-stat-tile--vacation-soon):not(.profile-stat-tile--idea-tease):not(.profile-stat-tile--wish-reminder) {
   background: #eeeee8;
   transform: translateY(-1px);
 }
@@ -4162,7 +3940,8 @@ button.org-unit-head--link:hover {
 }
 
 .profile-stat-tile--vibe,
-.profile-stat-tile--ideas {
+.profile-stat-tile--ideas,
+.profile-stat-tile--wish-reminder {
   grid-column: 2;
   grid-row: 1;
   background: rgba(116, 81, 244, 0.08);
@@ -4285,6 +4064,51 @@ button.org-unit-head--link:hover {
     linear-gradient(145deg, #ddf365 0%, #eef9c8 52%, #fff 100%) !important;
 }
 
+/* «Скоро в отпуск»: слева сверху «Скоро в отпуск» в одну строку (кегль от ширины плитки, без переноса),
+   под ним дата ДД.ММ.ГГ; картинка (VACATION_SOON_ART) крупно справа-снизу, слегка выходит за край. */
+.profile-screen-hero .profile-stat-tile--secondary.profile-stat-tile--vacation-soon {
+  justify-content: flex-start;
+  min-height: 92px; /* на телефоне строка не схлопывается — картинке есть место */
+  padding: 16px 10px 10px 14px;
+  container-type: inline-size;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__soon-art {
+  left: auto;
+  right: -8px;
+  bottom: -8px;
+  width: auto;
+  height: auto;
+  max-width: 62%;
+  max-height: 80%;
+  object-fit: contain;
+  object-position: right bottom;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  z-index: 1;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__value--soon {
+  /* 14 знаков в одну строку: ширина текста ≈ 9.6 × кегль */
+  font-size: clamp(0.7rem, calc((100cqi - 28px) / 9.6), 1.2rem) !important;
+  line-height: 1.08;
+  white-space: nowrap;
+}
+
+.profile-stat-tile--vacation-soon .profile-stat-tile__label--soon {
+  max-width: none;
+  margin-top: 5px;
+  font-size: clamp(0.72rem, 7cqi, 0.95rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Нижний правый квадратик лёг бы на картинку */
+.profile-stat-tile--vacation-soon .profile-stat-tile__soon-sq--br {
+  display: none;
+}
+
 .profile-stat-tile--idea-tease {
   position: relative;
   overflow: hidden;
@@ -4401,6 +4225,155 @@ button.org-unit-head--link:hover {
     linear-gradient(145deg, #f4f0ff 0%, #fff 55%, #f7fbee 100%) !important;
 }
 
+/* «Хочешь подарок? / Заполни вишлист» — на месте «мои идеи», пока свой вишлист пуст.
+   Фон как у раздела «Вишлист» в настройках: крем, пастельные лайм/розовый круги, флажки. */
+.profile-stat-tile--wish-reminder {
+  position: relative;
+  overflow: hidden;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 20px 14px 10px;
+  font: inherit;
+  text-align: left;
+  color: #111;
+  cursor: pointer;
+  border: 2px solid #111;
+  background:
+    radial-gradient(circle at 96% 92%, rgba(221, 243, 101, 0.62) 0 34px, transparent 35px),
+    radial-gradient(circle at 4% 100%, rgba(253, 129, 255, 0.2) 0 26px, transparent 27px),
+    #fff6e8;
+  box-shadow: 4px 4px 0 #f3b33e;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.profile-stat-tile--wish-reminder:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #f3b33e;
+}
+
+.profile-stat-tile--wish-reminder:focus-visible {
+  outline: 2px solid #7451f4;
+  outline-offset: 3px;
+}
+
+/* Иллюстрация из Gemini (WISHLIST_REMINDER_ART_ENABLED в utils/profileWishlistReminder.ts).
+   Картинка — только подарок с конфетти (300×277, края растушёваны в крем #fcf3e2), отдельный <img>
+   справа-внизу: не шире 40% и не выше 72% плитки (на широкой низкой плитке 1920 не упирается в верх
+   и не залезает под гирлянду). Гирлянда — отдельный SVG, привязанный к верхнему и правому краю.
+   Фон — крем и мягкие CSS-круги: если файл не загрузится, плитка всё равно оформлена. */
+.profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art {
+  padding-top: 16px;
+  background:
+    radial-gradient(circle at 44% -12%, rgba(221, 243, 101, 0.5) 0 30px, transparent 31px),
+    radial-gradient(circle at -2% 108%, rgba(253, 129, 255, 0.2) 0 28px, transparent 29px),
+    #fcf3e2;
+}
+
+.profile-stat-tile__wish-art-img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  max-width: 40%;
+  max-height: 72%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art .profile-stat-tile__value--wish {
+  max-width: 58%;
+  font-size: 1rem;
+}
+
+/* «Заполни / вишлист» в две строки — текст не заходит на подарок */
+.profile-stat-tile--wish-reminder.profile-stat-tile--wish-reminder-art .profile-stat-tile__label--wish {
+  max-width: 52%;
+  margin-top: 4px;
+}
+
+.profile-stat-tile__wish-corner-bunting {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 32px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.profile-stat-tile__wish-bunting {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  width: calc(100% - 16px);
+  height: 18px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.profile-stat-tile__wish-gift {
+  position: absolute;
+  right: -8px;
+  bottom: -12px;
+  width: 50px;
+  height: 50px;
+  opacity: 0.5;
+  transform: rotate(10deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.profile-stat-tile__wish-dot {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid #111;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.profile-stat-tile__wish-dot--a {
+  top: 26px;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  background: #fd81ff;
+}
+
+.profile-stat-tile__wish-dot--b {
+  top: 44px;
+  right: 30px;
+  width: 5px;
+  height: 5px;
+  background: #ddf365;
+}
+
+.profile-stat-tile--wish-reminder .profile-stat-tile__value--wish {
+  position: relative;
+  z-index: 2;
+  margin-top: 0;
+  max-width: 82%;
+  color: #111;
+  font-size: clamp(1.02rem, 2.1vw, 1.22rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.profile-stat-tile--wish-reminder .profile-stat-tile__label--wish {
+  position: relative;
+  z-index: 2;
+  margin-top: 7px;
+  max-width: 100%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: rgba(17, 17, 17, 0.72);
+}
+
 .profile-stat-tile--vacation-quest {
   position: relative;
   overflow: hidden;
@@ -4424,29 +4397,55 @@ button.org-unit-head--link:hover {
 }
 
 .profile-stat-tile__quest-reward {
+  /* Иллюстрация обучения (VACATION_TRAINING_ART): шапочка + календарь, крупно, выглядывает из
+     правого нижнего угла (обрезается скруглённой рамкой), под заголовком и подписью. */
   position: absolute;
-  right: -24px;
-  bottom: -16px;
-  width: 108px;
-  height: 108px;
+  right: -12px;
+  bottom: -10px;
+  width: min(60%, 104px);
+  height: auto;
   object-fit: contain;
-  opacity: 0.55;
   pointer-events: none;
   z-index: 0;
-  transform: rotate(-10deg);
-  filter: drop-shadow(2px 3px 0 rgba(17, 17, 17, 0.22));
-  transition: transform 0.16s ease, opacity 0.16s ease;
+  transform: rotate(-6deg);
+  transform-origin: bottom right;
+  transition: transform 0.16s ease;
 }
 
 .profile-stat-tile--vacation-quest:hover .profile-stat-tile__quest-reward {
-  transform: rotate(-8deg) scale(1.03);
-  opacity: 0.62;
+  transform: rotate(-2deg) scale(1.03);
+}
+
+/* Плитка обучения — контейнер: на широкой низкой плитке (1920) картинка крупнее, текст слева ей не мешает */
+.profile-stat-tile.profile-stat-tile--vacation-quest {
+  container-type: inline-size;
+}
+
+@container (min-width: 220px) {
+  .profile-stat-tile__quest-reward {
+    width: min(44%, 118px);
+  }
+}
+
+/* Узкая плитка (1280, телефон ~150px): картинка чуть уже и правее — шапочка не наезжает на «обучение» */
+@container (max-width: 165px) {
+  .profile-stat-tile__quest-reward {
+    width: 54%;
+    right: -16px;
+  }
+}
+
+/* Нижний правый квадратик лёг бы на картинку — в плитке обучения его нет */
+.profile-stat-tile--vacation-quest .profile-stat-tile__quest-sq--br {
+  display: none;
 }
 
 .profile-stat-tile__value--quest {
   position: relative;
   z-index: 1;
   margin-top: 0;
+  /* «График / отпусков» в две строки и на широкой плитке — не наезжает на ✦ и пальму */
+  max-width: 72%;
   color: #fff;
   font-size: clamp(0.98rem, 2.1vw, 1.18rem) !important;
   line-height: 1.1;
@@ -4659,6 +4658,18 @@ button.org-unit-head--link:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Нет полученных ачивок — блока нет, левая колонка занимает всю высоту */
+@media (min-width: 721px) {
+  .profile-grid-2--own.profile-grid-2--no-achievements {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .profile-grid-2--own.profile-grid-2--no-achievements.profile-grid-2--compact-team > .profile-slot,
+  .profile-grid-2--own.profile-grid-2--no-achievements > .profile-slot {
+    grid-row: 1;
+  }
 }
 
 .profile-left-stack {
@@ -5575,7 +5586,8 @@ button.org-unit-head--link:hover {
   }
 
   .profile-stat-tile--vibe,
-  .profile-stat-tile--ideas {
+  .profile-stat-tile--ideas,
+  .profile-stat-tile--wish-reminder {
     grid-column: 2;
     grid-row: 1;
   }
@@ -5650,6 +5662,32 @@ button.org-unit-head--link:hover {
 
   .profile-meta-strip__item:last-child {
     border-bottom: 0;
+  }
+}
+
+/* Узкий телефон: три плитки в ряд обрезают текст («Хочешь подарок?», «График отпусков») —
+   возвращаем коллаж 2×2: календарь слева на две строки, справа две плитки стопкой. */
+@media (max-width: 560px) {
+  .profile-stat-collage {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .profile-stat-tile--hero {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .profile-stat-tile--vibe,
+  .profile-stat-tile--ideas,
+  .profile-stat-tile--wish-reminder {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .profile-stat-tile--secondary {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -12841,7 +12879,8 @@ button.emp-name--card:hover {
 .vac-year-tab.vac-emp-calendar-yeartab {
   position: absolute;
   top: 0;
-  right: 12px;
+  /* Ярлык года на прямом участке верхней линии, правее дуги угла не заходит */
+  right: calc(var(--vac-frame-radius) + 2px);
   left: auto;
   z-index: 6;
   transform: translateY(calc(-100% + 1px));
@@ -12990,10 +13029,17 @@ button.emp-name--card:hover {
   max-height: none;
 }
 
-/* «Общий»: левые углы скруглены, правый край ровный под ярлыки */
+/* «Общий»: верхние и нижний левый углы скруглены, нижний правый прямой, как было до скругления:
+   активный ярлык «Общий» стоит внизу справа и вливается в рамку (margin-left: -1px). */
 .vacations-employee-shell .vac-emp-calendar-slot--with-tabs .vac-emp-calendar-pane--team {
-  border-radius: var(--vac-frame-radius) 0 0 var(--vac-frame-radius);
-  border-right: none;
+  border-radius: var(--vac-frame-radius) var(--vac-frame-radius) 0 var(--vac-frame-radius);
+  overflow: hidden;
+  background-clip: padding-box;
+}
+
+/* Ярлыки справа начинаются под скруглением верхнего правого угла, а не на дуге */
+.vac-emp-calendar-slot--with-tabs > .vac-cal-side-tabs {
+  padding-top: var(--vac-frame-radius);
 }
 
 /* «Мой календарь»: полная рамка со всеми скруглёнными углами */
@@ -18908,6 +18954,14 @@ button.button {
   text-align: left;
 }
 
+/* Подсказка над выдачей: запрос только из предлогов/союзов */
+.kb-results__hint {
+  margin: 0 0 6px;
+  max-width: 42rem;
+  font-size: 0.86rem;
+  text-align: left;
+}
+
 .kb-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -20008,6 +20062,188 @@ button.button {
   }
 }
 
+/* Кружок «?» с подсказкой к цифрам отпуска (VacInfoHint.vue) */
+.vac-info-hint {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 4px;
+  line-height: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.vac-info-hint__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.vac-info-hint__btn:hover,
+.vac-info-hint__btn[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.vac-info-hint__btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent, #57a3d9);
+  outline-offset: 2px;
+}
+
+.vac-info-hint__pop {
+  position: fixed;
+  z-index: 200;
+  width: max-content;
+  max-width: min(280px, 88vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.vac-info-hint__title {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vac-info-hint__text {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.vac-info-hint__note {
+  margin-top: 8px;
+  color: var(--text-muted);
+}
+
+.vac-info-hint__sample {
+  vertical-align: 1px;
+  margin: 0 2px;
+  font-size: 0.68rem;
+}
+
+.vac-mob-balance {
+  position: relative;
+}
+
+.vac-mob-balance__hint {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  margin: 0;
+}
+
+/* Подсказки: «?» справа от слова в заголовке таблицы, без переноса */
+.employee-mini-stat th.vac-info-th {
+  white-space: nowrap;
+}
+
+.employee-mini-stat th.vac-info-th .vac-info-hint {
+  margin-left: 3px;
+}
+
+.employee-mini-stat th.vac-info-th .vac-info-hint__btn {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+}
+
+/* Контраст на тонированных плашках: цвет крупной цифры, а не бледной подписи */
+.emp-balance-card-label .vac-info-hint__btn {
+  color: #0d9488;
+  opacity: 0.75;
+}
+
+.vac-mob-balance__hint .vac-info-hint__btn {
+  color: #1d1d1f;
+  opacity: 0.6;
+}
+
+.emp-balance-card-label .vac-info-hint__btn:hover,
+.emp-balance-card-label .vac-info-hint__btn[aria-expanded='true'],
+.vac-mob-balance__hint .vac-info-hint__btn:hover,
+.vac-mob-balance__hint .vac-info-hint__btn[aria-expanded='true'] {
+  opacity: 1;
+}
+
+
+/* Плитки профиля как цельные баннеры: картинка на всю плитку, текст поверх (2026-10-21) */
+.profile-stat-tile.profile-stat-tile--banner {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.profile-stat-tile.profile-stat-tile--banner picture {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0;
+  display: block;
+}
+.profile-stat-tile.profile-stat-tile--banner picture img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: right center !important;
+  transform: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  border-radius: inherit;
+}
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__wish-corner-bunting,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__quest-sq,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__quest-spark,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__soon-sq {
+  display: none !important;
+}
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__value,
+.profile-stat-tile.profile-stat-tile--banner .profile-stat-tile__label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Баннеры плиток: картинка целиком, прижата вправо-вниз, фон плитки = фон картинки (плитка бывает уже 2:1) */
+.profile-stat-tile.profile-stat-tile--banner picture img {
+  object-fit: contain !important;
+  object-position: right bottom !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--wish-reminder {
+  background: #fbf3e1 !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--vacation-soon {
+  background: linear-gradient(90deg, #ffe1c9 0%, #ffeedd 100%) !important;
+}
+.profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--vacation-quest {
+  background: #6e4cf2 !important;
 /* ============================================================================
    Квест «Синий Ноктюрн» (/event/nokturn)
    Доска, сейф улик, нити, полный экран. См. docs/quests/sinij-nokturn.md

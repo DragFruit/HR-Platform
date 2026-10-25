@@ -38,9 +38,9 @@
                 v-if="isOwnProfile"
                 type="button"
                 class="profile-identity__settings-btn"
-                aria-label="Логин и пароль Vibe"
-                title="Логин и пароль Vibe"
-                @click="vibeCredsOpen = true"
+                aria-label="Настройки профиля"
+                title="Настройки: вход, вишлист, аватар"
+                @click="openSettings('login')"
               >
                 <img
                   class="profile-identity__settings-gear"
@@ -72,7 +72,7 @@
               </a>
             </div>
             <ul
-              v-if="isOwnProfile && !achievementsLocked && profileBadges.length"
+              v-if="isOwnProfile && profileBadges.length"
               class="profile-identity__badges"
               :aria-label="`Достижения: ${profileBadges.length}`"
             >
@@ -157,7 +157,83 @@
           </span>
         </NuxtLink>
 
-        <NuxtLink to="/ideas" class="profile-stat-tile profile-stat-tile--ideas">
+        <button
+          v-if="showWishlistReminder"
+          type="button"
+          class="profile-stat-tile profile-stat-tile--wish-reminder"
+          :class="{ 'profile-stat-tile--wish-reminder-art': WISHLIST_REMINDER_ART_ENABLED, 'profile-stat-tile--banner': WISHLIST_REMINDER_ART_ENABLED }"
+          aria-label="Хочешь подарок? Заполни вишлист — откроются настройки профиля"
+          @click="openSettings('wishlist')"
+        >
+          <!-- Гирлянда привязана к краям плитки: левый конец — верхний край, правый — правый край -->
+          <svg
+            v-if="WISHLIST_REMINDER_ART_ENABLED"
+            class="profile-stat-tile__wish-corner-bunting"
+            viewBox="0 0 64 34"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path d="M0 0.6 Q26 22 64 26" stroke="#202020" stroke-width="1.2" />
+            <g stroke="#202020" stroke-width="1" stroke-linejoin="round">
+              <path d="M1.5 1.9 L6.8 5.8 L1.9 11.5 Z" fill="#ddf365" />
+              <path d="M9.3 7.5 L14.9 10.9 L10.2 17 Z" fill="#7451f4" />
+              <path d="M17.6 12.4 L23.5 15.3 L18.9 21.7 Z" fill="#fd81ff" />
+              <path d="M26.4 16.6 L32.5 19 L28.1 25.7 Z" fill="#f3b33e" />
+              <path d="M35.7 20.1 L42 22 L37.8 29 Z" fill="#9fd6c9" />
+              <path d="M45.5 22.9 L52 24.3 L48 31.6 Z" fill="#ee815a" />
+              <path d="M55.9 25 L62.4 25.9 L58.7 33.4 Z" fill="#ddf365" />
+            </g>
+          </svg>
+          <picture v-if="WISHLIST_REMINDER_ART_ENABLED">
+            <source srcset="/images/profile/wishlist-reminder-banner.webp?v=1" type="image/webp" />
+            <img
+              class="profile-stat-tile__wish-art-img"
+              src="/images/profile/wishlist-reminder-banner.webp?v=1"
+              alt=""
+              aria-hidden="true"
+              width="300"
+              height="277"
+              decoding="async"
+            />
+          </picture>
+          <template v-if="!WISHLIST_REMINDER_ART_ENABLED">
+            <svg
+              class="profile-stat-tile__wish-bunting"
+              viewBox="0 0 120 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path d="M2 3 Q60 15 118 3" stroke="#202020" stroke-width="1.3" />
+              <g stroke="#202020" stroke-width="1.1" stroke-linejoin="round">
+                <path d="M8 4.6 L20 7 L12.4 17 Z" fill="#ddf365" />
+                <path d="M30 8.6 L42 10.2 L35.2 20 Z" fill="#fd81ff" />
+                <path d="M54 10.6 L66 10.6 L60 21 Z" fill="#f3b33e" />
+                <path d="M78 10.2 L90 8.6 L84.8 20 Z" fill="#9fd6c9" />
+                <path d="M100 7 L112 4.6 L107.6 17 Z" fill="#ddf365" />
+              </g>
+            </svg>
+            <svg
+              class="profile-stat-tile__wish-gift"
+              viewBox="0 0 64 64"
+              fill="none"
+              aria-hidden="true"
+            >
+              <g stroke="#202020" stroke-width="2.4" stroke-linejoin="round">
+                <rect x="10" y="28" width="44" height="30" rx="4" fill="#fd81ff" />
+                <rect x="6" y="18" width="52" height="12" rx="3" fill="#ffb3ff" />
+                <path d="M28 18v40M36 18v40" />
+                <rect x="28" y="18" width="8" height="40" fill="#ddf365" />
+                <path d="M32 18c-6-10-18-10-16-2 1 4 10 3 16 2Z" fill="#ddf365" />
+                <path d="M32 18c6-10 18-10 16-2-1 4-10 3-16 2Z" fill="#ddf365" />
+              </g>
+            </svg>
+            <span class="profile-stat-tile__wish-dot profile-stat-tile__wish-dot--a" aria-hidden="true" />
+            <span class="profile-stat-tile__wish-dot profile-stat-tile__wish-dot--b" aria-hidden="true" />
+          </template>
+          <span class="profile-stat-tile__value profile-stat-tile__value--wish">Хочешь подарок?</span>
+          <span class="profile-stat-tile__label profile-stat-tile__label--wish">Заполни вишлист</span>
+        </button>
+        <NuxtLink v-else to="/ideas" class="profile-stat-tile profile-stat-tile--ideas">
           <span class="profile-stat-tile__value">{{ ideasProfileCount }}</span>
           <span class="profile-stat-tile__label">{{ isOwnProfile ? 'мои идеи' : 'идеи' }}</span>
         </NuxtLink>
@@ -169,19 +245,23 @@
             spotlightStat.tone ? `profile-stat-tile--${spotlightStat.tone}` : undefined,
             spotlightStat.kind === 'vacation-soon' ? 'profile-stat-tile--vacation-soon' : undefined,
             spotlightStat.kind === 'vacation-quest' ? 'profile-stat-tile--vacation-quest' : undefined,
+            spotlightStat.kind === 'vacation-quest' || spotlightStat.kind === 'vacation-soon' ? 'profile-stat-tile--banner' : undefined,
             spotlightStat.kind === 'idea-tease' ? 'profile-stat-tile--idea-tease' : undefined
           ]"
         >
           <template v-if="spotlightStat.kind === 'vacation-quest'">
-            <img
-              class="profile-stat-tile__quest-reward"
-              :src="vacationQuestRewardSrc"
-              alt=""
-              aria-hidden="true"
-              width="80"
-              height="80"
-              loading="lazy"
-            />
+            <picture>
+              <source v-if="VACATION_TRAINING_ART.webp" :srcset="VACATION_TRAINING_ART.webp" type="image/webp" />
+              <img
+                class="profile-stat-tile__quest-reward"
+                :src="VACATION_TRAINING_ART.src"
+                alt=""
+                aria-hidden="true"
+                width="360"
+                height="210"
+                loading="lazy"
+              />
+            </picture>
             <span class="profile-stat-tile__quest-sq profile-stat-tile__quest-sq--tl" aria-hidden="true" />
             <span class="profile-stat-tile__quest-sq profile-stat-tile__quest-sq--br" aria-hidden="true" />
             <span class="profile-stat-tile__value profile-stat-tile__value--quest">{{ spotlightStat.value }}</span>
@@ -189,15 +269,18 @@
             <span class="profile-stat-tile__quest-spark" aria-hidden="true">✦</span>
           </template>
           <template v-else-if="spotlightStat.kind === 'vacation-soon'">
-            <img
-              class="profile-stat-tile__soon-art"
-              :src="VACATION_SOON_ART_SRC"
-              alt=""
-              aria-hidden="true"
-              width="108"
-              height="108"
-              loading="lazy"
-            />
+            <picture>
+              <source v-if="VACATION_SOON_ART.webp" :srcset="VACATION_SOON_ART.webp" type="image/webp" />
+              <img
+                class="profile-stat-tile__soon-art"
+                :src="VACATION_SOON_ART.src"
+                alt=""
+                aria-hidden="true"
+                width="440"
+                height="377"
+                loading="lazy"
+              />
+            </picture>
             <span class="profile-stat-tile__soon-sq profile-stat-tile__soon-sq--tl" aria-hidden="true" />
             <span class="profile-stat-tile__soon-sq profile-stat-tile__soon-sq--br" aria-hidden="true" />
             <span class="profile-stat-tile__value profile-stat-tile__value--soon">{{ spotlightStat.value }}</span>
@@ -243,14 +326,15 @@
     class="profile-grid-2"
     :class="{
       'profile-grid-2--own': isOwnProfile,
-      'profile-grid-2--compact-team': isCompactTeamLayout
+      'profile-grid-2--compact-team': isCompactTeamLayout,
+      'profile-grid-2--no-achievements': isOwnProfile && !hasEarnedAchievements
     }"
   >
+    <!-- Только полученные ачивки; нет ни одной — блока нет совсем -->
     <section
-      v-if="isOwnProfile"
+      v-if="isOwnProfile && hasEarnedAchievements"
       class="card profile-itmo-panel profile-achievements-preview profile-slot profile-slot--achievements"
-      :class="{ 'profile-achievements-preview--locked': achievementsLocked }"
-      :aria-label="achievementsLocked ? 'Ачивки — скоро откроются' : 'Ачивки'"
+      aria-label="Ачивки"
     >
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tl" aria-hidden="true" />
       <span class="profile-itmo-panel__sq profile-itmo-panel__sq--tr" aria-hidden="true" />
@@ -259,29 +343,15 @@
 
       <div class="profile-achievements-preview__head">
         <h3 class="profile-itmo-panel__title">Ачивки</h3>
-        <p v-if="achievementsLocked" class="profile-achievements-preview__soon">
-          <svg class="profile-achievements-preview__lock" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <rect x="3.5" y="7" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-            <path
-              d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-          <span>Скоро откроются</span>
-        </p>
         <button
-          v-else
           type="button"
           class="profile-achievements-preview__all"
           @click="achievementsOpen = true"
         >
-          {{ `Все · ${catalogForProfile.length}` }}
+          Все
         </button>
       </div>
       <div
-        v-if="!achievementsLocked"
         ref="achievementsPreviewRef"
         class="profile-achievements-preview__track"
       >
@@ -309,16 +379,6 @@
             {{ item.emoji ?? '🏆' }}
           </span>
         </button>
-        <p v-if="!previewAchievements.length" class="muted profile-achievements-preview__empty">
-          Пока нет полученных — открой «Все», чтобы посмотреть каталог
-        </p>
-      </div>
-      <div v-else class="profile-achievements-preview__locked-body" aria-hidden="true">
-        <span
-          v-for="n in 6"
-          :key="n"
-          class="profile-achievements-preview__ghost"
-        />
       </div>
     </section>
 
@@ -418,7 +478,7 @@
 
   <Teleport to="body">
     <div
-      v-if="achievementsOpen && isOwnProfile && !achievementsLocked"
+      v-if="achievementsOpen && isOwnProfile && hasEarnedAchievements"
       class="org-confirm-overlay profile-achievements-overlay"
       role="presentation"
       @click.self="achievementsOpen = false"
@@ -431,12 +491,7 @@
         @click.stop
       >
         <div class="profile-achievements-overlay__head">
-          <div>
-            <h3 class="org-confirm-title">Ачивки</h3>
-            <p class="muted soft">
-              Получено {{ earnedCount }} из {{ catalogForProfile.length }}
-            </p>
-          </div>
+          <h3 class="org-confirm-title">Ачивки</h3>
           <button
             type="button"
             class="admin-notifications-bell__dismiss"
@@ -455,7 +510,7 @@
         </div>
         <div class="profile-achievements-overlay__body">
           <section
-            v-for="group in catalogSectionsForProfile"
+            v-for="group in earnedSectionsForProfile"
             :key="group.section"
             class="profile-achievements-overlay__section"
             :aria-labelledby="`ach-section-${group.section}`"
@@ -464,19 +519,13 @@
               <h4 :id="`ach-section-${group.section}`" class="profile-achievements-overlay__section-title">
                 {{ group.title }}
               </h4>
-              <span class="profile-achievements-overlay__section-count muted">
-                {{ group.earnedCount }} / {{ group.items.length }}
-              </span>
             </div>
             <ul class="list-reset profile-achievements-overlay__grid">
               <li
                 v-for="item in group.items"
                 :key="item.id"
                 class="profile-achievements-overlay__card"
-                :class="{
-                  'is-locked': !item.earned,
-                  'is-ack': item.earned && isAchievementAcked(item.id)
-                }"
+                :class="{ 'is-ack': isAchievementAcked(item.id) }"
               >
                 <div class="profile-achievements-overlay__art">
                   <img
@@ -498,21 +547,12 @@
                   </p>
                 </div>
                 <button
-                  v-if="item.earned"
                   type="button"
                   class="profile-achievements-overlay__cta"
                   :class="{ 'is-done': isAchievementAcked(item.id) }"
                   @click="ackAchievement(item.id)"
                 >
                   {{ isAchievementAcked(item.id) ? 'Получена' : 'Понятно!' }}
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  class="profile-achievements-overlay__cta is-locked"
-                  disabled
-                >
-                  Ещё впереди
                 </button>
               </li>
             </ul>
@@ -558,7 +598,7 @@
             :class="{ selected: currentAvatarId === characterId }"
             @click="pickAvatar(characterId)"
           >
-            <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" loading="lazy" />
+            <img :src="avatarImageUrl(characterId)" :alt="`Персонаж ${characterId}`" width="181" height="250" decoding="async" />
           </button>
         </div>
         <div class="org-confirm-actions row">
@@ -568,24 +608,26 @@
     </div>
   </Teleport>
 
-  <ProfileVibeCredentialsDialog v-model:open="vibeCredsOpen" />
+  <ProfileSettingsDialog v-model:open="vibeCredsOpen" v-model:tab="settingsTab" />
 </template>
 
 <script setup lang="ts">
 import type { AvatarCharacterId } from '~/composables/useAvatars';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
-import type { VacationRequest } from '~/composables/useVacations';
 import { profileTeamHeading } from '~/utils/profileTeamTitle';
 import {
   findUpcomingVacationWithinDays,
-  formatVacationStartShort
+  formatVacationStartDdMmYy
 } from '~/utils/profileSpotlight';
 import { bitrixEmployeeProfileUrl } from '~/utils/bitrixProfileUrl';
 import { formatEmployeeShortName } from '~/utils/employeeName';
+import { VACATION_SOON_ART, VACATION_TRAINING_ART } from '~/utils/profileTileArt';
 import type { Employee } from '~/composables/useEmployees';
+import {
+  WISHLIST_REMINDER_ART_ENABLED,
+  shouldShowWishlistReminder
+} from '~/utils/profileWishlistReminder';
 
-const VACATION_QUEST_TEASE_SRC = '/images/profile/quest-gift-tease.svg';
-const VACATION_SOON_ART_SRC = '/images/profile/vacation-soon-palm.png?v=4';
 const IDEA_TEASE_ART_SRC = '/images/profile/idea-tease.png?v=4';
 
 type TeamMemberView = Employee & { isManager: boolean };
@@ -599,20 +641,63 @@ const { AVATAR_CHARACTER_IDS, avatarImageUrl, getAvatarId, setAvatarId } = useAv
 const { ideas, hydrate: hydrateIdeasBank } = useIdeasBank();
 const { isProduction } = useAppEnv();
 const { myCoupons, hydrate: hydrateCoupons } = useTenureCoupons();
-const { employeeRequests, hydrate: hydrateVacations } = useVacations();
-const { profileBadges, catalogForProfile, catalogSectionsForProfile, catalogForProfilePreview, earnedCount } =
-  useAchievements();
+const { employeeRequests, hydrate: hydrateVacations, state: vacationsState } = useVacations();
+const { profileBadges, earnedSectionsForProfile, catalogForProfilePreview } = useAchievements();
 const { isEnabled: vacationTrainingEnabled, isCompletedForCurrentUser } = useVacationTraining();
 const {
   hydrate: hydrateActivity,
   activityFor
 } = useProfileActivity();
 
-/** На бое ачивки пока закрыты — открываем только по явной команде. */
-const achievementsLocked = computed(() => isProduction.value);
+/**
+ * Ачивки открыты и на бое (явное «ок» заказчика 2026-10-20): показываем только
+ * полученные; нет ни одной — блока нет.
+ */
+const hasEarnedAchievements = computed(() => catalogForProfilePreview.value.length > 0);
 
 const showPicker = ref(false);
 const vibeCredsOpen = ref(false);
+/** Раздел настроек профиля: вход, вишлист, аватар (?settings=wishlist открывает сразу). */
+type SettingsTab = 'login' | 'wishlist' | 'avatar';
+const settingsTab = ref<SettingsTab>('login');
+const openSettings = (tab: SettingsTab) => {
+  settingsTab.value = tab;
+  vibeCredsOpen.value = true;
+};
+watch(
+  () => route.query.settings,
+  (raw) => {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value !== 'login' && value !== 'wishlist' && value !== 'avatar') return;
+    openSettings(value);
+    const { settings: _drop, ...rest } = route.query;
+    void navigateTo({ path: route.path, query: rest }, { replace: true });
+  },
+  { immediate: true }
+);
+/** Свой вишлист пуст → вместо «мои идеи» плитка «Хочешь подарок?» (клик = настройки → Вишлист). */
+const ownWishlistCount = ref(0);
+const ownWishlistLoaded = ref(false);
+const loadOwnWishlistCount = async () => {
+  try {
+    const data = await $fetch<{ items?: unknown[] }>('/api/profile/wishlist');
+    ownWishlistCount.value = Array.isArray(data.items) ? data.items.length : 0;
+    ownWishlistLoaded.value = true;
+  } catch {
+    ownWishlistLoaded.value = false;
+  }
+};
+const showWishlistReminder = computed(() =>
+  shouldShowWishlistReminder({
+    isOwnProfile: isOwnProfile.value,
+    loaded: ownWishlistLoaded.value,
+    itemsCount: ownWishlistCount.value
+  })
+);
+/** После закрытия настроек (могли сохранить вишлист) — пересчитать плитку. */
+watch(vibeCredsOpen, (open, wasOpen) => {
+  if (!open && wasOpen && isOwnProfile.value) void loadOwnWishlistCount();
+});
 const achievementsOpen = ref(false);
 const achievementsPreviewRef = ref<HTMLElement | null>(null);
 const achievementsVisibleCount = ref(8);
@@ -685,6 +770,16 @@ const measureAchievementsPreview = () => {
 
 let achievementsResizeObserver: ResizeObserver | null = null;
 let activityResizeObserver: ResizeObserver | null = null;
+
+/* Блок ачивок появляется только когда есть полученные (данные могут прийти позже) */
+watch(achievementsPreviewRef, (el) => {
+  achievementsResizeObserver?.disconnect();
+  achievementsResizeObserver = null;
+  if (!el || typeof ResizeObserver === 'undefined') return;
+  achievementsResizeObserver = new ResizeObserver(() => measureAchievementsPreview());
+  achievementsResizeObserver.observe(el);
+  measureAchievementsPreview();
+});
 
 const onAchievementsKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && achievementsOpen.value) achievementsOpen.value = false;
@@ -861,7 +956,6 @@ const ideasProfileCount = computed(() => {
   return ideas.value.filter((idea) => idea.authorUserId === uid).length;
 });
 
-const vacationQuestRewardSrc = VACATION_QUEST_TEASE_SRC;
 
 type ProfileSpotlightStat = {
   kind: 'vacation-soon' | 'vacation-quest' | 'idea-tease' | 'default';
@@ -905,8 +999,8 @@ const spotlightStat = computed((): ProfileSpotlightStat => {
   if (soon) {
     return {
       kind: 'vacation-soon',
-      value: formatVacationStartShort(soon.start),
-      label: 'отпуск начнётся',
+      value: 'Скоро в отпуск',
+      label: formatVacationStartDdMmYy(soon.start),
       to: '/vacations'
     };
   }
@@ -919,8 +1013,8 @@ const spotlightStat = computed((): ProfileSpotlightStat => {
   if (vacationTrainingEnabled.value && !isCompletedForCurrentUser.value) {
     return {
       kind: 'vacation-quest',
-      value: 'Начать квест',
-      label: 'график отпусков',
+      value: 'График отпусков',
+      label: 'Пройти обучение',
       to: '/vacations'
     };
   }
@@ -948,21 +1042,16 @@ const vacationStat = computed(() => {
   if (!name || !emp?.hired_at) {
     return { value: '—', planned: 0 };
   }
-  const year = new Date().getFullYear();
-  const byId = new Map<number, VacationRequest>();
-  for (const yr of [year - 1, year, year + 1]) {
-    for (const req of employeeRequests(name, yr)) {
-      byId.set(req.id, req);
-    }
-  }
-  const requests = [...byId.values()];
+  // Один непрерывный остаток: все заявки всех лет, учётный год из данных (не календарный).
+  const requests = Object.values(vacationsState.value.requestsByYear).flat();
   const result = calcEmployeeBalance(
     name,
     emp.hired_at,
     requests,
     new Date(),
-    year,
-    emp.vacation_opening_balance
+    vacationsState.value.primaryYear,
+    emp.vacation_opening_balance,
+    emp.id
   );
   return { value: result.remain, planned: result.planned };
 });
@@ -987,6 +1076,7 @@ const pickAvatar = (characterId: AvatarCharacterId) => {
 onMounted(() => {
   if (isOwnProfile.value) {
     hydrateCoupons();
+    void loadOwnWishlistCount();
     const emp = user.value ? findByUserId(user.value.id) : null;
     hydrateActivity({
       employeeId: emp?.id,
@@ -1002,11 +1092,6 @@ onMounted(() => {
     nextTick(() => {
       measureAchievementsPreview();
       measureActivityScroll();
-      const el = achievementsPreviewRef.value;
-      if (el && typeof ResizeObserver !== 'undefined') {
-        achievementsResizeObserver = new ResizeObserver(() => measureAchievementsPreview());
-        achievementsResizeObserver.observe(el);
-      }
       const list = activityListRef.value;
       if (list && typeof ResizeObserver !== 'undefined') {
         activityResizeObserver = new ResizeObserver(() => measureActivityScroll());

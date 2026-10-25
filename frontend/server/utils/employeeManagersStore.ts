@@ -1,7 +1,6 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import type { ServerEmployee } from './employeesStore';
+import { coreRepo } from './coreStore';
+import type { CoreWriteContext } from '../core/types';
 import { ensureEmployeeManagerIds } from '../../app/utils/employeeManagerRef';
 
 export type ManagerAssignments = {
@@ -9,8 +8,7 @@ export type ManagerAssignments = {
   byName: Record<string, string>;
 };
 
-const MANAGERS_FILE = join(process.cwd(), 'server/data/employee-managers.json');
-
+/** Хранилище: server/data/employee-managers.json или core.manager_assignments* (DB_CORE=1). */
 const emptyAssignments = (): ManagerAssignments => ({ byId: {}, byName: {} });
 
 export function normalizeManagerNameKey(name: string): string {
@@ -21,31 +19,14 @@ export function normalizeManagerNameKey(name: string): string {
     .replace(/\s+/g, ' ');
 }
 
-async function ensureManagersFile() {
-  await mkdir(dirname(MANAGERS_FILE), { recursive: true });
-  try {
-    await readFile(MANAGERS_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(MANAGERS_FILE, emptyAssignments());
-  }
-}
-
 export async function readManagerAssignments(): Promise<ManagerAssignments> {
-  await ensureManagersFile();
-  try {
-    const raw = await readFile(MANAGERS_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<ManagerAssignments>;
-    return {
-      byId: parsed.byId && typeof parsed.byId === 'object' ? parsed.byId : {},
-      byName: parsed.byName && typeof parsed.byName === 'object' ? parsed.byName : {}
-    };
-  } catch {
-    return emptyAssignments();
-  }
+  return (await coreRepo()).readManagerAssignmentsRaw();
 }
 
-export async function writeManagerAssignments(assignments: ManagerAssignments): Promise<void> {
-  await ensureManagersFile();
+export async function writeManagerAssignments(
+  assignments: ManagerAssignments,
+  ctx: CoreWriteContext = {}
+): Promise<void> {
   const normalized: ManagerAssignments = { byId: {}, byName: {} };
   for (const [id, manager] of Object.entries(assignments.byId)) {
     const value = String(manager || '').trim();
@@ -56,7 +37,7 @@ export async function writeManagerAssignments(assignments: ManagerAssignments): 
     const value = String(manager || '').trim();
     if (key && value) normalized.byName[key] = value;
   }
-  await writeJsonAtomic(MANAGERS_FILE, normalized);
+  await (await coreRepo()).writeManagerAssignmentsRaw(normalized, ctx);
 }
 
 export function extractManagerAssignments(list: ServerEmployee[]): ManagerAssignments {

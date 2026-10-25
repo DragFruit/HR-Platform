@@ -1,5 +1,5 @@
 import { requireVbiSession } from '../../utils/session';
-import { findEmployeeById } from '../../utils/employeesStore';
+import { findEmployeeById, sessionActorEmployeeId } from '../../utils/employeesStore';
 import { assignAdaptationScenario } from '../../utils/adaptationScenarios';
 
 export default defineEventHandler(async (event) => {
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     scenario_id: scenarioId,
     assigned_by_user_id: session.id,
     assigned_by_name: session.name
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'adaptation:assign' });
 
   return { ok: true, assignment };
 });

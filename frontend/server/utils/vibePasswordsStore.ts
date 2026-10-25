@@ -6,23 +6,18 @@ import {
   scryptSync,
   timingSafeEqual
 } from 'node:crypto';
-import { mkdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { createMutationQueue, writeJsonAtomic } from './atomicJson';
 import { getDeployAppEnv } from './appEnv';
+import type { VibePasswordEntry } from '../profile/domains';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import { vibePasswordsRepo } from './profileStore';
 
 /**
  * Локальные пароли Vibe (не пароли Bitrix).
- * Хеш scrypt для входа + sealed plaintext, чтобы владелец мог увидеть пароль в профиле.
+ * Хеш scrypt для входа (scrypt$N$r$p$saltB64$hashB64) + sealed plaintext
+ * (aes-256-gcm: v1$iv$tag$cipher), чтобы владелец мог увидеть пароль в профиле.
+ * Этап 6: DB_PROFILE=1 → profile.vibe_passwords (те же хеш и seal, без открытого текста),
+ * иначе server/data/vibe-passwords.json. Аудит — только «пароль задан / снят» и кто.
  */
-type VibePasswordEntry = {
-  employee_id: number;
-  /** scrypt$N$r$p$saltB64$hashB64 */
-  password_hash: string;
-  /** aes-256-gcm: v1$iv$tag$cipher — только для показа себе в профиле */
-  password_seal?: string;
-  updated_at: string;
-};
 
 function sealSecret(): string {
   const dedicated = String(process.env.VBI_SESSION_SECRET || '').trim();
@@ -71,32 +66,13 @@ function openPassword(sealed: string | undefined): string | null {
   }
 }
 
-type VibePasswordsState = {
-  entries: VibePasswordEntry[];
-};
-
-const FILE = join(process.cwd(), 'server/data/vibe-passwords.json');
-const queue = createMutationQueue();
-
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEYLEN = 32;
 
-async function readState(): Promise<VibePasswordsState> {
-  try {
-    const raw = await readFile(FILE, 'utf8');
-    const parsed = JSON.parse(raw) as VibePasswordsState;
-    if (!parsed || !Array.isArray(parsed.entries)) return { entries: [] };
-    return { entries: parsed.entries };
-  } catch {
-    return { entries: [] };
-  }
-}
-
-async function writeState(state: VibePasswordsState): Promise<void> {
-  await mkdir(dirname(FILE), { recursive: true });
-  await writeJsonAtomic(FILE, state);
+async function readEntries(): Promise<VibePasswordEntry[]> {
+  return (await vibePasswordsRepo()).read();
 }
 
 function hashPassword(password: string, salt?: Buffer): string {
@@ -134,11 +110,16 @@ export function verifyVibePassword(password: string, stored: string): boolean {
 }
 
 export async function hasVibePassword(employeeId: number): Promise<boolean> {
-  const state = await readState();
-  return state.entries.some((e) => e.employee_id === employeeId && e.password_hash);
+  const entries = await readEntries();
+  return entries.some((e) => e.employee_id === employeeId && e.password_hash);
 }
 
-export async function setVibePassword(employeeId: number, password: string): Promise<void> {
+export async function setVibePassword(
+  employeeId: number,
+  password: string,
+  ctx: KeyedListWriteContext = {},
+  meta: Pick<VibePasswordEntry, 'credentials_issued_at'> = {}
+): Promise<void> {
   const trimmed = String(password || '');
   if (trimmed.length < 8) {
     throw createError({
@@ -150,25 +131,28 @@ export async function setVibePassword(employeeId: number, password: string): Pro
     throw createError({ statusCode: 400, statusMessage: 'Некорректный employee_id' });
   }
 
-  await queue(async () => {
-    const state = await readState();
-    const next: VibePasswordEntry = {
-      employee_id: employeeId,
-      password_hash: hashPassword(trimmed),
-      password_seal: sealPassword(trimmed),
-      updated_at: new Date().toISOString()
-    };
-    const idx = state.entries.findIndex((e) => e.employee_id === employeeId);
-    if (idx >= 0) state.entries[idx] = next;
-    else state.entries.push(next);
-    await writeState(state);
-  });
+  const password_hash = hashPassword(trimmed);
+  const password_seal = sealPassword(trimmed);
+  await (await vibePasswordsRepo()).mutate(
+    (entries) => {
+      const next: VibePasswordEntry = {
+        employee_id: employeeId,
+        password_hash,
+        password_seal,
+        updated_at: new Date().toISOString(),
+        ...(meta.credentials_issued_at ? { credentials_issued_at: meta.credentials_issued_at } : {})
+      };
+      const idx = entries.findIndex((e) => e.employee_id === employeeId);
+      if (idx >= 0) entries[idx] = next;
+      else entries.push(next);
+    },
+    { reason: 'vibe-password-set', ...ctx }
+  );
 }
 
 /** Plaintext для показа владельцу в профиле; null если пароля нет или старая запись без seal. */
 export async function getVibePasswordPlain(employeeId: number): Promise<string | null> {
-  const state = await readState();
-  const entry = state.entries.find((e) => e.employee_id === employeeId);
+  const entry = (await readEntries()).find((e) => e.employee_id === employeeId);
   if (!entry?.password_hash) return null;
   return openPassword(entry.password_seal);
 }
@@ -179,29 +163,33 @@ export async function getVibePasswordPlain(employeeId: number): Promise<string |
  */
 export async function ensureVibePasswordSeal(
   employeeId: number,
-  password: string
+  password: string,
+  ctx: KeyedListWriteContext = {}
 ): Promise<void> {
   const trimmed = String(password || '');
   if (!trimmed || !Number.isFinite(employeeId) || employeeId <= 0) return;
 
-  await queue(async () => {
-    const state = await readState();
-    const entry = state.entries.find((e) => e.employee_id === employeeId);
-    if (!entry?.password_hash) return;
-    if (!verifyVibePassword(trimmed, entry.password_hash)) return;
-    if (openPassword(entry.password_seal) === trimmed) return;
-    entry.password_seal = sealPassword(trimmed);
-    entry.updated_at = new Date().toISOString();
-    await writeState(state);
-  });
+  await (await vibePasswordsRepo()).mutate(
+    (entries) => {
+      const entry = entries.find((e) => e.employee_id === employeeId);
+      if (!entry?.password_hash) return;
+      if (!verifyVibePassword(trimmed, entry.password_hash)) return;
+      if (openPassword(entry.password_seal) === trimmed) return;
+      entry.password_seal = sealPassword(trimmed);
+      entry.updated_at = new Date().toISOString();
+    },
+    { reason: 'vibe-login-seal', ...ctx }
+  );
 }
 
-export async function clearVibePassword(employeeId: number): Promise<void> {
-  await queue(async () => {
-    const state = await readState();
-    state.entries = state.entries.filter((e) => e.employee_id !== employeeId);
-    await writeState(state);
-  });
+export async function clearVibePassword(employeeId: number, ctx: KeyedListWriteContext = {}): Promise<void> {
+  await (await vibePasswordsRepo()).mutate(
+    (entries) => {
+      const kept = entries.filter((e) => e.employee_id !== employeeId);
+      if (kept.length !== entries.length) entries.splice(0, entries.length, ...kept);
+    },
+    { reason: 'vibe-password-clear', ...ctx }
+  );
 }
 
 /** Проверка пароля сотрудника; false если пароля нет или не совпал. */
@@ -209,13 +197,51 @@ export async function checkVibePassword(
   employeeId: number,
   password: string
 ): Promise<boolean> {
-  const state = await readState();
-  const entry = state.entries.find((e) => e.employee_id === employeeId);
+  const entry = (await readEntries()).find((e) => e.employee_id === employeeId);
   if (!entry?.password_hash) return false;
   return verifyVibePassword(password, entry.password_hash);
 }
 
+export type VibeCredentialsState = {
+  employee_id: number;
+  has_password: boolean;
+  /** seal открывается (глаз в профиле и повторная отправка работают). */
+  has_seal: boolean;
+  credentials_issued_at: string | null;
+  credentials_sent_at: string | null;
+};
+
+/** Статусы паролей для выдачи доступов: без хешей и текста. */
+export async function readVibeCredentialsStates(): Promise<Map<number, VibeCredentialsState>> {
+  const out = new Map<number, VibeCredentialsState>();
+  for (const e of await readEntries()) {
+    if (!e?.password_hash) continue;
+    out.set(e.employee_id, {
+      employee_id: e.employee_id,
+      has_password: true,
+      has_seal: openPassword(e.password_seal) !== null,
+      credentials_issued_at: e.credentials_issued_at || null,
+      credentials_sent_at: e.credentials_sent_at || null
+    });
+  }
+  return out;
+}
+
+/** Отметка «доступы доставлены ботом» (аудит: credentials_sent + actor, без значений). */
+export async function markVibeCredentialsSent(
+  employeeId: number,
+  ctx: KeyedListWriteContext = {}
+): Promise<void> {
+  await (await vibePasswordsRepo()).mutate(
+    (entries) => {
+      const entry = entries.find((e) => e.employee_id === employeeId);
+      if (!entry?.password_hash) return;
+      entry.credentials_sent_at = new Date().toISOString();
+    },
+    { ...ctx, reason: 'vibe-credentials-sent' }
+  );
+}
+
 export async function listVibePasswordEmployeeIds(): Promise<number[]> {
-  const state = await readState();
-  return state.entries.map((e) => e.employee_id);
+  return (await readEntries()).map((e) => e.employee_id);
 }

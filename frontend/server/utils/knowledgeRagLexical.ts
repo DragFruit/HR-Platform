@@ -1,5 +1,10 @@
 /** Словесный слой для гибридного RAG (сервер). */
 
+import { stemRu } from '../../app/utils/ruStem';
+
+/** Стеммер общий с обычным поиском по базе знаний (app/utils/ruStem.ts). */
+export { stemRu };
+
 const STOP = new Set([
   'и',
   'в',
@@ -336,193 +341,39 @@ export function tokenizeForRag(text: string): string[] {
     .filter((t) => t.length >= 2 && !STOP.has(t));
 }
 
-const RU_VOWELS = 'аеиоуыэюя';
+/**
+ * Кэши горячего пути лексического поиска (2026-10-19: фолбэк при сбое Yandex считал стеммер
+ * для каждого слова каждой статьи заново — ~40 с синхронного CPU, event loop стоял, стейдж отдавал 504).
+ * Результаты чистые (зависят только от входа) — кэшируем; при переполнении просто сбрасываем.
+ */
+const BLOB_WORDS_CACHE_MAX = 4_000;
+const blobWordsCache = new Map<string, readonly string[]>();
 
-const byLonger = (a: string, b: string) => b.length - a.length;
-
-/** Стеммер по мотивам Snowball Russian — только для матчинга словоформ в RAG. */
-export function stemRu(raw: string): string {
-  let w = String(raw || '')
-    .toLowerCase()
-    .replace(/ё/g, 'е');
-  if (w.length < 4 || !/[а-я]/.test(w)) return w;
-
-  let rvStart = -1;
-  for (let i = 0; i < w.length; i++) {
-    if (RU_VOWELS.includes(w[i])) {
-      rvStart = i + 1;
-      break;
-    }
-  }
-  if (rvStart < 0 || rvStart >= w.length) return w;
-  const head = w.slice(0, rvStart);
-  let rv = w.slice(rvStart);
-
-  const cut = (endings: string[]): boolean => {
-    for (const e of endings) {
-      if (rv.length > e.length && rv.endsWith(e)) {
-        rv = rv.slice(0, -e.length);
-        return true;
-      }
-    }
-    return false;
-  };
-
-  const cutAfterAYa = (endings: string[]): boolean => {
-    for (const e of endings) {
-      if (rv.length <= e.length + 1) continue;
-      if (!rv.endsWith(e)) continue;
-      const prev = rv[rv.length - e.length - 1];
-      if (prev === 'а' || prev === 'я') {
-        rv = rv.slice(0, -e.length);
-        return true;
-      }
-    }
-    return false;
-  };
-
-  if (
-    !cut(['ившись', 'ывшись', 'ивши', 'ывши', 'ив', 'ыв'].sort(byLonger))
-  ) {
-    cutAfterAYa(['вшись', 'вши', 'в']);
-  }
-  cut(['ся', 'сь']);
-
-  const adjectives = [
-    'ившими',
-    'ывшими',
-    'его',
-    'ого',
-    'ему',
-    'ому',
-    'ими',
-    'ыми',
-    'ее',
-    'ие',
-    'ые',
-    'ое',
-    'ей',
-    'ий',
-    'ый',
-    'ой',
-    'ем',
-    'им',
-    'ым',
-    'ом',
-    'их',
-    'ых',
-    'ую',
-    'юю',
-    'ая',
-    'яя',
-    'ою',
-    'ею'
-  ].sort(byLonger);
-  const partAfterAYa = ['ющ', 'вш', 'нн', 'ем', 'щ'].sort(byLonger);
-  const part2 = ['ивши', 'ывши', 'ующ'].sort(byLonger);
-  if (cut(adjectives)) {
-    if (!cutAfterAYa(partAfterAYa)) cut(part2);
-  } else if (!cutAfterAYa(partAfterAYa)) {
-    cut(part2);
-  }
-
-  const verbAfterAYa = [
-    'ете',
-    'йте',
-    'ешь',
-    'нно',
-    'ла',
-    'на',
-    'ли',
-    'ло',
-    'но',
-    'ет',
-    'ют',
-    'ны',
-    'ть',
-    'й',
-    'л',
-    'ем',
-    'н'
-  ].sort(byLonger);
-  // «уволится» → после снятия «ся» остаётся «уволит» (3 л. ед. ч.)
-  const verb2 = [
-    'ейте',
-    'уйте',
-    'ила',
-    'ыла',
-    'ена',
-    'ите',
-    'или',
-    'ыли',
-    'ено',
-    'уют',
-    'ены',
-    'ить',
-    'ыть',
-    'ишь',
-    'ит',
-    'ят',
-    'ат',
-    'ую',
-    'ю'
-  ].sort(byLonger);
-  if (!cutAfterAYa(verbAfterAYa)) cut(verb2);
-
-  cut(
-    [
-      'иями',
-      'ями',
-      'ами',
-      'иях',
-      'ях',
-      'иям',
-      'ям',
-      'ием',
-      'ией',
-      'ьев',
-      'иях',
-      'ей',
-      'ой',
-      'ий',
-      'ие',
-      'ье',
-      'еи',
-      'ии',
-      'ев',
-      'ов',
-      'ом',
-      'ем',
-      'ах',
-      'ию',
-      'ью',
-      'ия',
-      'ья',
-      'ам',
-      'ия',
-      'а',
-      'е',
-      'и',
-      'й',
-      'о',
-      'у',
-      'ы',
-      'ь',
-      'ю',
-      'я'
-    ].sort(byLonger)
-  );
-
-  cut(['ость', 'ост']);
-  cut(['ейше', 'ейш']);
-  if (rv.endsWith('нн') && rv.length > 2) rv = rv.slice(0, -1);
-  if ((rv.endsWith('ь') || rv.endsWith('й')) && rv.length > 1) rv = rv.slice(0, -1);
-
-  return `${head}${rv}`;
+/** Уникальные слова текста (tokenizeForRag без дублей) — для морфологического сравнения. */
+export function uniqueRagWords(blob: string): readonly string[] {
+  const hit = blobWordsCache.get(blob);
+  if (hit) return hit;
+  const words = [...new Set(tokenizeForRag(blob))];
+  if (blobWordsCache.size >= BLOB_WORDS_CACHE_MAX) blobWordsCache.clear();
+  blobWordsCache.set(blob, words);
+  return words;
 }
 
 /** Одна словоформа? Точное вхождение или общая основа (увол / увольн). */
+const MORPH_CACHE_MAX = 200_000;
+const morphCache = new Map<string, boolean>();
+
 export function tokensMatchMorph(a: string, b: string): boolean {
+  const key = `${a}\u0000${b}`;
+  const cached = morphCache.get(key);
+  if (cached !== undefined) return cached;
+  const out = tokensMatchMorphUncached(a, b);
+  if (morphCache.size >= MORPH_CACHE_MAX) morphCache.clear();
+  morphCache.set(key, out);
+  return out;
+}
+
+function tokensMatchMorphUncached(a: string, b: string): boolean {
   const x = a.toLowerCase().replace(/ё/g, 'е');
   const y = b.toLowerCase().replace(/ё/g, 'е');
   if (x === y) return true;
@@ -603,7 +454,7 @@ export function textCoversToken(text: string, token: string): boolean {
   }
 
   if (t.length < 4) return false;
-  if (tokenizeForRag(blob).some((w) => tokensMatchMorph(w, t))) return true;
+  if (uniqueRagWords(blob).some((w) => tokensMatchMorph(w, t))) return true;
   const group = synonymGroupForToken(t);
   if (!group) return false;
   return group.some((term) => {
@@ -611,7 +462,7 @@ export function textCoversToken(text: string, token: string): boolean {
     if (g === t) return false;
     if (hasWholeWordToken(blob, g)) return true;
     if (!PREFIX_AMBIGUOUS_TOKENS.has(g) && g.length >= 5 && blob.includes(g)) return true;
-    return tokenizeForRag(blob).some((w) => tokensMatchMorph(w, g));
+    return uniqueRagWords(blob).some((w) => tokensMatchMorph(w, g));
   });
 }
 

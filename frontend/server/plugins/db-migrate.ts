@@ -1,31 +1,368 @@
 /**
- * Миграции PostgreSQL при старте. Только если задан DATABASE_URL — иначе ничего не делает
- * (сегодня стенды на JSON). Ошибка миграции не роняет процесс: логируем и выключаем DB,
- * JSON-функции продолжают работать.
+ * Миграции PostgreSQL при старте. Только если задан DATABASE_URL — иначе ничего не делает.
+ * Ошибка миграции не роняет процесс: логируем и выключаем DB, JSON-функции продолжают работать.
+ * Этап 2: при DB_NOTIFICATIONS=1 после миграций — разовый импорт уведомлений из JSON.
+ * Этап 3: при DB_CORE=1 — разовый импорт сотрудников, overlay руководителей и оргструктуры.
+ * Этап 4: при DB_VACATIONS=1 — разовый импорт vacations.json (заявки, брони, счётчики id).
+ * Этап 5: DB_ADMIN_NOTIFICATIONS=1 — admin-notifications.json; DB_CORE=1 — стоп-лист доступа;
+ * DB_VACATIONS=1 — журналы напоминаний. У каждого своя готовность: сбой импорта нового домена
+ * не откатывает на файлы домены, которые уже живут в Postgres.
+ * Этап 6: DB_PROFILE=1 — аватары, лента активности, награды продаж, пароли Vibe (схема profile),
+ * у каждого файла свой импорт и своя готовность.
+ * Этап 7: DB_IDEAS=1 — банк идей (схема ideas), DB_KNOWLEDGE=1 — статьи базы знаний (схема knowledge),
+ * свой импорт и своя готовность у каждого.
+ * Этап 8: DB_ENGAGEMENT=1 — пит-стоп, DB_SURVEYS=1 — опросы, DB_ADAPTATION=1 — адаптация,
+ * DB_VPN=1 — учёт VPN-ключей; у каждого файла свой импорт и своя готовность. При DB_CORE=1 сид
+ * сотрудников из git сливается в базу (раз на версию сида) до того, как core объявлен готовым.
  */
 import { disableDb, getDatabaseUrl, getDb } from '../db/client';
 import { resolveMigrationsDir, runMigrations } from '../db/migrate';
+import { importUserNotificationsFromJson } from '../notifications/importJson';
+import { USER_NOTIFICATIONS_JSON_FILE } from '../notifications/jsonStore';
+import { notificationsDbFlag, setNotificationsPgReady } from '../utils/userNotificationsStore';
+import { importCoreFromJson } from '../core/importJson';
+import { defaultCoreJsonFiles } from '../core/jsonStore';
+import { coreDbFlag, setCorePgReady } from '../utils/coreStore';
+import { importVacationsFromJson } from '../vacations/importJson';
+import { VACATIONS_JSON_FILE } from '../vacations/jsonStore';
+import { setVacationsPgReady, vacationsDbFlag } from '../utils/vacationsStore';
+import { importAdminNotificationsFromJson } from '../adminNotifications/importJson';
+import { ADMIN_NOTIFICATIONS_JSON_FILE } from '../adminNotifications/jsonStore';
+import { adminNotificationsDbFlag, setAdminNotificationsPgReady } from '../utils/adminNotificationsStore';
+import { importAccessDenylistFromJson } from '../core/importDenylist';
+import { ACCESS_DENYLIST_JSON_FILE } from '../core/accessDenylistStore';
+import { setAccessDenylistPgReady } from '../utils/coreStore';
+import { importReminderLogFromJson, type ReminderLogImportResult } from '../vacations/reminderLogs';
+import { setVacationReminderLogsPgReady } from '../utils/vacationReminderLogsBackend';
+import { VACATION_PRE_REMINDER_FILE } from '../utils/vacationPreReminderStore';
+import { VACATION_MANAGER_MONTH_REMINDER_FILE } from '../utils/vacationManagerMonthReminderStore';
+import {
+  importProfileActivityFromJson,
+  importSalesBestAwardsFromJson,
+  importUserAvatarsFromJson,
+  importVibePasswordsFromJson,
+  importWishlistsFromJson
+} from '../profile/importJson';
+import {
+  profileDbFlag,
+  setAllProfilePgReady,
+  setProfileActivityPgReady,
+  setSalesBestAwardsPgReady,
+  setUserAvatarsPgReady,
+  setVibePasswordsPgReady,
+  setWishlistsPgReady
+} from '../utils/profileStore';
+import { importIdeasFromJson } from '../ideas/domain';
+import { IDEAS_STATE_FULL_DEF, ideasDbFlag, setIdeasPgReady } from '../utils/ideasStore';
+import { importKnowledgeArticlesFromJson } from '../knowledge/domain';
+import { KNOWLEDGE_STATE_FULL_DEF, knowledgeDbFlag, knowledgePgRepo, setKnowledgePgReady } from '../utils/knowledgeArticlesStore';
+import { applyKnowledgeSeedToDb } from '../knowledge/seedSync';
+import type { StateImportResult } from '../db/repositories/keyedState';
+import type { StateFile } from '../db/repositories/stateFile';
+import { pitStopFile } from '../utils/pitStopStore';
+import { pitStopRaceFile } from '../utils/pitStopRaceStore';
+import { surveysFile } from '../utils/surveysStore';
+import { surveyResponsesFile } from '../utils/surveyResponsesStore';
+import { surveyStartsFile } from '../utils/surveyStartsStore';
+import { surveyVisitsFile } from '../utils/surveyVisitsStore';
+import { adaptationStateFile } from '../utils/adaptationStore';
+import { adaptationAssignmentsFile, adaptationScenariosFile } from '../utils/adaptationScenarios';
+import { vpnKeysFile } from '../utils/vpnKeysStore';
+import { applyEmployeesSeedToDb } from '../core/seedSync';
+import { createPgCoreRepo } from '../db/repositories/core';
+import { createPgAccessDenylistRepo } from '../db/repositories/accessDenylist';
+import { readAccessDenylistJson } from '../core/accessDenylistStore';
+import type { Db } from '../db/client';
+import type { KeyedImportResult } from '../db/repositories/keyedList';
+
+function logPart(domain: string, p: ReminderLogImportResult | { source: string; status: string; [k: string]: unknown }) {
+  const r = p as Record<string, unknown>;
+  if (r.status === 'already') {
+    console.info(`[db] ${domain}: ${r.source} импорт уже был ${r.importedAt} (file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped})`);
+  } else {
+    console.info(`[db] ${domain}: ${r.source} импорт file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped} verified=${r.verified}`);
+  }
+}
+
+async function importAdminNotifications(): Promise<boolean> {
+  if (!adminNotificationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await importAdminNotificationsFromJson(db, ADMIN_NOTIFICATIONS_JSON_FILE);
+    logPart('admin-notifications', { source: 'admin-notifications.json', ...r });
+    console.info('[db] admin-notifications: уведомления админки на Postgres');
+    return true;
+  } catch (err: any) {
+    console.error('[db] admin-notifications: импорт из JSON упал — уведомления админки остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importAccessDenylist(coreOk: boolean): Promise<boolean> {
+  if (!coreOk || !coreDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('core', await importAccessDenylistFromJson(db, ACCESS_DENYLIST_JSON_FILE));
+    console.info('[db] core: стоп-лист доступа на Postgres (JSON-файл — зеркало)');
+    return true;
+  } catch (err: any) {
+    console.error('[db] core: импорт стоп-листа упал — стоп-лист остаётся на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importReminderLogs(): Promise<boolean> {
+  if (!vacationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('vacations', await importReminderLogFromJson(db, 'pre', VACATION_PRE_REMINDER_FILE()));
+    logPart('vacations', await importReminderLogFromJson(db, 'manager-month', VACATION_MANAGER_MONTH_REMINDER_FILE()));
+    console.info('[db] vacations: журналы напоминаний на Postgres');
+    return true;
+  } catch (err: any) {
+    console.error('[db] vacations: импорт журналов напоминаний упал — журналы остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importVacations(): Promise<boolean> {
+  if (!vacationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await importVacationsFromJson(db, VACATIONS_JSON_FILE);
+    if (r.status === 'already') {
+      console.info(
+        `[db] vacations: импорт из JSON уже был ${r.importedAt} (file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped}) — работаем на Postgres`
+      );
+    } else {
+      console.info(
+        `[db] vacations: импорт из JSON file=${r.fileCount} requests=${r.requests} reservations=${r.reservations} inserted=${r.inserted} skipped=${r.skipped} verified=${r.verified} — работаем на Postgres`
+      );
+    }
+    return true;
+  } catch (err: any) {
+    console.error('[db] vacations: импорт из JSON упал — отпуска остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+async function importCore(): Promise<boolean> {
+  if (!coreDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const parts = await importCoreFromJson(db, defaultCoreJsonFiles());
+    for (const p of parts) {
+      if (p.status === 'already') {
+        console.info(
+          `[db] core: ${p.source} импорт уже был ${p.importedAt} (file=${p.fileCount} inserted=${p.inserted} skipped=${p.skipped})`
+        );
+      } else {
+        console.info(
+          `[db] core: ${p.source} импорт file=${p.fileCount} inserted=${p.inserted} skipped=${p.skipped} verified=${p.verified}`
+        );
+      }
+    }
+    console.info('[db] core: сотрудники и оргструктура на Postgres');
+    return true;
+  } catch (err: any) {
+    console.error('[db] core: импорт из JSON упал — сотрудники и оргструктура остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
+
+/** Импорт одного файла профиля; true — домен работает на Postgres. В лог — только счётчики. */
+async function importProfilePart(label: string, run: (db: Db) => Promise<KeyedImportResult>): Promise<boolean> {
+  if (!profileDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    logPart('profile', await run(db));
+    console.info(`[db] profile: ${label} на Postgres`);
+    return true;
+  } catch (err: any) {
+    console.error(`[db] profile: импорт (${label}) упал — остаётся на JSON:`, err?.message || err);
+    return false;
+  }
+}
+
+/** Импорт файла-состояния этапа 7; true — домен работает на Postgres. В лог — только счётчики. */
+async function importStatePart(
+  domain: string,
+  label: string,
+  flag: () => boolean,
+  run: (db: Db) => Promise<StateImportResult>
+): Promise<boolean> {
+  if (!flag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await run(db);
+    logPart(domain, r);
+    if (r.status === 'imported') console.info(`[db] ${domain}: строк ${JSON.stringify(r.parts)}`);
+    console.info(`[db] ${domain}: ${label} на Postgres`);
+    return true;
+  } catch (err: any) {
+    console.error(`[db] ${domain}: импорт (${label}) упал — остаётся на JSON:`, err?.message || err);
+    return false;
+  }
+}
+
+/**
+ * Сид статей из git (сборка) → база, раз на версию сида. Раньше это делал деплой на файле.
+ * Сбой не уводит базу знаний на файл: статьи уже в Postgres, просто без свежего сида.
+ */
+async function syncKnowledgeSeed(): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const seed = ((await import('../data/knowledge-articles.json')) as { default?: unknown }).default;
+    const r = await applyKnowledgeSeedToDb(db, knowledgePgRepo(db), seed);
+    if (r.status === 'already') {
+      console.info(`[db] knowledge: сид из git уже применён (${r.marker})`);
+      return;
+    }
+    const s = r.stats;
+    console.info(
+      `[db] knowledge: сид из git применён (${r.marker}) added=${s.added} refreshedBody=${s.refreshedBody} platformOwned=${s.platformOwned} retired=${s.retired} prunedEmptyTitle=${s.prunedEmptyTitle} changed=${r.changed}`
+    );
+    if (r.changed) {
+      const { scheduleKnowledgeRagRebuild } = await import('../utils/knowledgeRag');
+      scheduleKnowledgeRagRebuild();
+    }
+  } catch (err: any) {
+    console.error('[db] knowledge: слияние сида из git упало — статьи без свежего сида:', err?.message || err);
+  }
+}
+
+/** Этап 8: все файлы-состояния по доменам (у каждого файла своя готовность). */
+const STAGE8_FILES: { domain: string; file: StateFile }[] = [
+  { domain: 'engagement', file: pitStopFile },
+  { domain: 'engagement', file: pitStopRaceFile },
+  { domain: 'surveys', file: surveysFile },
+  { domain: 'surveys', file: surveyResponsesFile },
+  { domain: 'surveys', file: surveyStartsFile },
+  { domain: 'surveys', file: surveyVisitsFile },
+  { domain: 'adaptation', file: adaptationStateFile },
+  { domain: 'adaptation', file: adaptationScenariosFile },
+  { domain: 'adaptation', file: adaptationAssignmentsFile },
+  { domain: 'vpn', file: vpnKeysFile }
+];
+
+/**
+ * Сид сотрудников из git (сборка) → база, раз на версию сида. Раньше это делал только деплой на
+ * файле (с DB_CORE=1 слияние доходило лишь до бэкапа). Сбой не уводит core на файлы: сотрудники уже
+ * в Postgres, просто без свежего сида; причина — в логе.
+ */
+async function syncEmployeesSeed(denylistOk: boolean): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const seed = ((await import('../data/employees.json')) as { default?: unknown }).default;
+    const readDenylist = denylistOk
+      ? () => createPgAccessDenylistRepo(db, { mirrorFile: null }).read()
+      : () => readAccessDenylistJson(ACCESS_DENYLIST_JSON_FILE);
+    const r = await applyEmployeesSeedToDb(db, createPgCoreRepo(db), readDenylist, seed);
+    if (r.status === 'already') {
+      console.info(`[db] core: сид сотрудников из git уже применён (${r.marker})`);
+      return;
+    }
+    const s = r.stats;
+    console.info(
+      `[db] core: сид сотрудников из git применён (${r.marker}) merged=${s.merged} server=${s.server} repo=${s.repo} both=${s.both} serverOnly=${s.serverOnly} repoOnly=${s.repoOnly} skippedDenied=${s.skippedDenied} employeesChanged=${r.employeesChanged} managersChanged=${r.managersChanged}`
+    );
+  } catch (err: any) {
+    console.error('[db] core: слияние сида сотрудников упало — сотрудники без свежего сида:', err?.message || err);
+  }
+}
+
+function setAllPgReady(ok: boolean) {
+  for (const { file } of STAGE8_FILES) file.setReady(ok);
+  setIdeasPgReady(ok);
+  setKnowledgePgReady(ok);
+  setAllProfilePgReady(ok);
+  setNotificationsPgReady(ok);
+  setCorePgReady(ok);
+  setVacationsPgReady(ok);
+  setAdminNotificationsPgReady(ok);
+  setAccessDenylistPgReady(ok);
+  setVacationReminderLogsPgReady(ok);
+}
+
+async function importNotifications(): Promise<boolean> {
+  if (!notificationsDbFlag()) return false;
+  const db = getDb();
+  if (!db) return false;
+  try {
+    const r = await importUserNotificationsFromJson(db, USER_NOTIFICATIONS_JSON_FILE);
+    if (r.status === 'already') {
+      console.info(
+        `[db] notifications: импорт из JSON уже был ${r.importedAt} (file=${r.fileCount} inserted=${r.inserted} skipped=${r.skipped}) — работаем на Postgres`
+      );
+    } else {
+      console.info(
+        `[db] notifications: импорт из JSON file=${r.fileCount} inserted=${r.inserted} existing=${r.existing} skipped=${r.skipped} verified=${r.verifiedInDb} — работаем на Postgres`
+      );
+    }
+    return true;
+  } catch (err: any) {
+    console.error('[db] notifications: импорт из JSON упал — уведомления остаются на JSON:', err?.message || err);
+    return false;
+  }
+}
 
 export default defineNitroPlugin(() => {
   // setTimeout: дать отработать load-bitrix-env (он может подложить DATABASE_URL из .env).
   setTimeout(() => {
-    if (!getDatabaseUrl()) return;
-    if (!getDb()) return; // отключено проверкой стенда — причина уже в логе
+    if (!getDatabaseUrl() || !getDb()) {
+      setAllPgReady(false);
+      return; // нет базы или отключено проверкой стенда — причина уже в логе
+    }
 
     const dir = resolveMigrationsDir();
     if (!dir) {
       disableDb('не найдена папка миграций');
+      setAllPgReady(false);
       console.error('[db] миграции не найдены (ожидалось .output/server/db/migrations) — DB выключена');
       return;
     }
 
     const startedAt = Date.now();
     void runMigrations(getDatabaseUrl(), dir)
-      .then((applied) => {
+      .then(async (applied) => {
         console.info(`[db] migrations ok applied=${applied} in ${Date.now() - startedAt}ms`);
+        setNotificationsPgReady(await importNotifications());
+        setAdminNotificationsPgReady(await importAdminNotifications());
+        const coreOk = await importCore();
+        const denylistOk = await importAccessDenylist(coreOk);
+        // сид до готовности core: запросы ждут и не пишут параллельно со слиянием
+        if (coreOk) await syncEmployeesSeed(denylistOk);
+        setCorePgReady(coreOk);
+        setAccessDenylistPgReady(denylistOk);
+        setVacationsPgReady(await importVacations());
+        setVacationReminderLogsPgReady(await importReminderLogs());
+        setUserAvatarsPgReady(await importProfilePart('аватары', (db) => importUserAvatarsFromJson(db)));
+        setProfileActivityPgReady(await importProfilePart('лента активности', (db) => importProfileActivityFromJson(db)));
+        setSalesBestAwardsPgReady(await importProfilePart('награды продаж', (db) => importSalesBestAwardsFromJson(db)));
+        setVibePasswordsPgReady(await importProfilePart('пароли Vibe', (db) => importVibePasswordsFromJson(db)));
+        setWishlistsPgReady(await importProfilePart('вишлисты', (db) => importWishlistsFromJson(db)));
+        setIdeasPgReady(await importStatePart('ideas', 'банк идей', ideasDbFlag, (db) => importIdeasFromJson(db, IDEAS_STATE_FULL_DEF)));
+        const knowledgeOk = await importStatePart('knowledge', 'статьи базы знаний', knowledgeDbFlag, (db) =>
+          importKnowledgeArticlesFromJson(db, KNOWLEDGE_STATE_FULL_DEF)
+        );
+        if (knowledgeOk) await syncKnowledgeSeed();
+        setKnowledgePgReady(knowledgeOk);
+        for (const { domain, file } of STAGE8_FILES) {
+          file.setReady(await importStatePart(domain, file.label, file.flag, (db) => file.importFromJson(db)));
+        }
       })
       .catch((err) => {
         disableDb('миграции упали');
+        setAllPgReady(false);
         console.error('[db] миграции упали — DB выключена до рестарта, JSON работает:', err?.message || err);
       });
   }, 0);

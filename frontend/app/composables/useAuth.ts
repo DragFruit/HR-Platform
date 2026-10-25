@@ -339,6 +339,7 @@ export function useAuth() {
       useTenureCelebration().resetSessionUi();
       useState<PlatformRole>('platform-role', () => 'employee').value = 'employee';
       localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem('vbi-platform-role');
       await $fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
 
       const router = useRouter();

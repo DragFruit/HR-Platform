@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { writeJsonAtomic, createMutationQueue } from './atomicJson';
 import { getDeployAppEnv } from './appEnv';
 import {
   MAX_LAP_MS,
@@ -9,9 +6,11 @@ import {
   type CarColorId
 } from '../../app/events/pit-stop-14/trackDrive';
 import { isPitStopGameStopped, PIT_STOP_STOP_AT } from '../../app/events/pit-stop-14/timeline';
-
-const DATA_FILE = join(process.cwd(), 'server/data/pit-stop-race.json');
-const enqueue = createMutationQueue();
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { engagementJsonImports } from '../db/schema';
+import { PIT_STOP_RACE_STATE_DEF, engagementDbFlag } from '../engagement/domain';
 
 /** Каждое улучшение личного рекорда — для срезов таблицы по расписанию. */
 type BestImprovement = { ms: number; at: string };
@@ -62,18 +61,55 @@ type PitStopRaceState = {
   finalizedAt?: string | null;
 };
 
+/** Нормализация стора (как до этапа 8), одна на оба бэкенда. */
+export function normalizeRaceState(raw: Partial<PitStopRaceState> | null | undefined): PitStopRaceState {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    records: Array.isArray(r.records) ? r.records : [],
+    visits: Array.isArray(r.visits) ? r.visits : [],
+    winners: Array.isArray(r.winners) ? r.winners : undefined,
+    finalizedAt: typeof r.finalizedAt === 'string' ? r.finalizedAt : null
+  };
+}
+
+const emptyRaceRaw = (): RawState => ({ records: [], visits: [], finalizedAt: null });
+
+export const PIT_STOP_RACE_STATE_FULL_DEF: KeyedStateDef = {
+  ...PIT_STOP_RACE_STATE_DEF,
+  normalize: (raw) => normalizeRaceState(raw as Partial<PitStopRaceState>)
+};
+
+/**
+ * Этап 8: DB_ENGAGEMENT=1 и задан DATABASE_URL → Postgres (схема engagement), иначе
+ * server/data/pit-stop-race.json. Как раньше: нет файла / битый файл → пустая гонка, файл
+ * при чтении не создаётся (появится при первой записи).
+ */
+export const pitStopRaceFile = defineStateFile({
+  fileName: 'pit-stop-race.json',
+  label: 'гонка пит-стопа',
+  logTag: 'pit-stop-race',
+  flag: engagementDbFlag,
+  def: PIT_STOP_RACE_STATE_FULL_DEF,
+  jsonImports: engagementJsonImports,
+  defaultRaw: emptyRaceRaw,
+  createIfMissing: false,
+  onBadJson: emptyRaceRaw
+});
+
 async function readState(): Promise<PitStopRaceState> {
-  try {
-    const raw = JSON.parse(await readFile(DATA_FILE, 'utf8')) as Partial<PitStopRaceState>;
-    return {
-      records: Array.isArray(raw.records) ? raw.records : [],
-      visits: Array.isArray(raw.visits) ? raw.visits : [],
-      winners: Array.isArray(raw.winners) ? raw.winners : undefined,
-      finalizedAt: typeof raw.finalizedAt === 'string' ? raw.finalizedAt : null
-    };
-  } catch {
-    return { records: [], visits: [], winners: undefined, finalizedAt: null };
-  }
+  return normalizeRaceState((await (await pitStopRaceFile.repo()).read()) as Partial<PitStopRaceState>);
+}
+
+/** Правка гонки: очередь репозитория (+ транзакция под advisory lock в Postgres). */
+async function mutateRace<R>(
+  fn: (state: PitStopRaceState) => R | Promise<R>,
+  ctx: KeyedListWriteContext
+): Promise<R> {
+  return (await pitStopRaceFile.repo()).mutate(async (raw) => {
+    const state = normalizeRaceState(raw as Partial<PitStopRaceState>);
+    const result = await fn(state);
+    return { next: state as unknown as RawState, result };
+  }, ctx);
 }
 
 export async function readRaceRecords(): Promise<PitStopRaceRecord[]> {
@@ -85,18 +121,19 @@ export async function readRaceVisits(): Promise<PitStopRaceVisit[]> {
 }
 
 /** Идемпотентно: первый заход на хаб. */
-export async function recordRaceVisit(input: {
-  userId: number;
-  name: string;
-}): Promise<{ visit: PitStopRaceVisit; created: boolean }> {
-  return enqueue(async () => {
-    const state = await readState();
+export async function recordRaceVisit(
+  input: {
+    userId: number;
+    name: string;
+  },
+  ctx: KeyedListWriteContext = {}
+): Promise<{ visit: PitStopRaceVisit; created: boolean }> {
+  return mutateRace((state) => {
     if (!state.visits) state.visits = [];
     const existing = state.visits.find((v) => v.userId === input.userId);
     if (existing) {
       existing.name = input.name;
-      await writeJsonAtomic(DATA_FILE, state);
-      return { visit: existing, created: false };
+      return { visit: { ...existing }, created: false };
     }
     const visit: PitStopRaceVisit = {
       userId: input.userId,
@@ -104,9 +141,8 @@ export async function recordRaceVisit(input: {
       at: new Date().toISOString()
     };
     state.visits.push(visit);
-    await writeJsonAtomic(DATA_FILE, state);
-    return { visit, created: true };
-  });
+    return { visit: { ...visit }, created: true };
+  }, { reason: 'pit-stop-race:visit', ...ctx });
 }
 
 /** QA-аккаунты стейджа — не показываем в таблице (тестовые заезды). */
@@ -184,8 +220,14 @@ export async function ensureRaceFinalized(
   if (!isPitStopGameStopped(now)) {
     return { winners: [], finalizedAt: null };
   }
-  return enqueue(async () => {
-    const state = await readState();
+  // уже зафиксировано — без очереди и транзакции (лидерборд дёргает это на каждый запрос)
+  if (!force) {
+    const current = await readState();
+    if (current.finalizedAt && Array.isArray(current.winners)) {
+      return { winners: current.winners, finalizedAt: current.finalizedAt };
+    }
+  }
+  return mutateRace((state) => {
     if (!force && state.finalizedAt && Array.isArray(state.winners)) {
       return { winners: state.winners, finalizedAt: state.finalizedAt };
     }
@@ -193,9 +235,8 @@ export async function ensureRaceFinalized(
     const finalizedAt = new Date().toISOString();
     state.winners = winners;
     state.finalizedAt = finalizedAt;
-    await writeJsonAtomic(DATA_FILE, state);
-    return { winners, finalizedAt };
-  });
+    return { winners: structuredClone(winners), finalizedAt };
+  }, { reason: force ? 'pit-stop-race:finalize-force' : 'pit-stop-race:finalize' });
 }
 
 export async function submitLap(input: {
@@ -208,9 +249,8 @@ export async function submitLap(input: {
   cheatFlag?: { score: number; reasons: string[] } | null;
   /** Только для QA-сида: подставить лог круга до стопа ивента, а не момент вызова. */
   at?: Date;
-}): Promise<{ record: PitStopRaceRecord; improved: boolean }> {
-  return enqueue(async () => {
-    const state = await readState();
+}, ctx: KeyedListWriteContext = {}): Promise<{ record: PitStopRaceRecord; improved: boolean }> {
+  return mutateRace((state) => {
     const now = (input.at ?? new Date()).toISOString();
     const ms = Math.round(input.ms);
     const color: CarColorId = isCarColorId(input.color) ? input.color : 'violet';
@@ -259,21 +299,19 @@ export async function submitLap(input: {
       }
     }
 
-    await writeJsonAtomic(DATA_FILE, state);
-    return { record: rec, improved };
-  });
+    return { record: structuredClone(rec), improved };
+  }, { reason: 'pit-stop-race:lap', ...ctx });
 }
 
 export async function setRaceCheatStatus(
   userId: number,
-  status: PitStopCheatStatus
+  status: PitStopCheatStatus,
+  ctx: KeyedListWriteContext = {}
 ): Promise<PitStopRaceRecord | null> {
-  return enqueue(async () => {
-    const state = await readState();
+  return mutateRace((state) => {
     const rec = state.records.find((r) => r.userId === userId);
     if (!rec?.cheat) return null;
     rec.cheat = { ...rec.cheat, status, at: new Date().toISOString() };
-    await writeJsonAtomic(DATA_FILE, state);
-    return rec;
-  });
+    return structuredClone(rec);
+  }, { reason: 'pit-stop-race:cheat-review', ...ctx });
 }

@@ -19,6 +19,19 @@ export const formatEmployeeShortName = (name: string): string => {
   return parts.join(' ');
 };
 
+/**
+ * «Имя Фамилия» без отчества из справочного «Фамилия Имя Отчество» (вишлист: «Анна Иванова точно обрадуется»).
+ * Одно слово — как есть.
+ */
+export const formatEmployeeFirstLastName = (name: string): string => {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length >= 2) return `${parts[1]} ${parts[0]}`;
+  return parts.join(' ');
+};
+
 /** Сопоставление ФИО: точное или по фамилии+имени (заявки/сессия vs полное ФИО в справочнике). */
 export const employeeNamesMatch = (a: string, b: string): boolean => {
   const left = normalizeEmployeeNameKey(a);

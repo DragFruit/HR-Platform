@@ -1,6 +1,3 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { writeJsonAtomic } from './atomicJson';
 import type { Survey, SurveyQuestion, SurveyQuestionType, SurveyStatus } from '../../app/composables/useSurveys';
 import {
   SURVEY_QUESTION_TYPES,
@@ -10,13 +7,16 @@ import {
   NPS_DEFAULT_HIGH_LABEL,
   slugify
 } from '../../app/composables/useSurveys';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { surveysJsonImports } from '../db/schema';
+import { SURVEYS_STATE_DEF, surveysDbFlag } from '../surveys/domain';
 
 export type SurveysStoreState = {
   surveys: Survey[];
   nextSurveyId: number;
 };
-
-const DATA_FILE = join(process.cwd(), 'server/data/surveys.json');
 
 export const defaultSurveysState = (): SurveysStoreState => ({
   surveys: [],
@@ -101,40 +101,44 @@ export function normalizeSurveysStoreState(raw: Partial<SurveysStoreState>): Sur
   };
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultSurveysState());
-  }
-}
+export const SURVEYS_STATE_FULL_DEF: KeyedStateDef = {
+  ...SURVEYS_STATE_DEF,
+  normalize: (raw) => normalizeSurveysStoreState(raw as Partial<SurveysStoreState>)
+};
+
+/**
+ * Этап 8: DB_SURVEYS=1 и задан DATABASE_URL → Postgres (схема surveys), иначе server/data/surveys.json.
+ * Флаг стоит только на стейдже. Публичный API не менялся. Чтение — из кэша процесса (публичные
+ * /api/public/surveys/* читают опрос на каждый запрос).
+ */
+export const surveysFile = defineStateFile({
+  fileName: 'surveys.json',
+  label: 'опросы',
+  logTag: 'surveys',
+  flag: surveysDbFlag,
+  def: SURVEYS_STATE_FULL_DEF,
+  jsonImports: surveysJsonImports,
+  defaultRaw: () => defaultSurveysState() as unknown as RawState
+});
 
 export async function readSurveys(): Promise<SurveysStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeSurveysStoreState(JSON.parse(raw) as Partial<SurveysStoreState>);
+  return normalizeSurveysStoreState((await (await surveysFile.repo()).read()) as Partial<SurveysStoreState>);
 }
 
-export async function writeSurveys(state: SurveysStoreState): Promise<SurveysStoreState> {
-  await ensureFile();
-  const normalized = normalizeSurveysStoreState(state);
-  await writeJsonAtomic(DATA_FILE, normalized);
-  return normalized;
+export async function writeSurveys(state: SurveysStoreState, ctx: KeyedListWriteContext = {}): Promise<SurveysStoreState> {
+  return mutateSurveys(() => state, ctx);
 }
 
-let mutationQueue: Promise<unknown> = Promise.resolve();
-
+/** Правки опросов строго по очереди (в Postgres ещё транзакция под advisory lock). ctx — кто и почему. */
 export async function mutateSurveys(
-  mutator: (state: SurveysStoreState) => SurveysStoreState | Promise<SurveysStoreState>
+  mutator: (state: SurveysStoreState) => SurveysStoreState | Promise<SurveysStoreState>,
+  ctx: KeyedListWriteContext = {}
 ): Promise<SurveysStoreState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readSurveys();
-    const next = await mutator(current);
-    return writeSurveys(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  return (await surveysFile.repo()).mutate(async (raw) => {
+    const current = normalizeSurveysStoreState(raw as Partial<SurveysStoreState>);
+    const next = normalizeSurveysStoreState(await mutator(current));
+    return { next: next as unknown as RawState, result: next };
+  }, ctx);
 }
 
 export function uniqueSlug(state: SurveysStoreState, base: string, excludeId?: string): string {

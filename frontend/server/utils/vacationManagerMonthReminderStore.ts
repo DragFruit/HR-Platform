@@ -1,7 +1,5 @@
-import { existsSync } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { vacationReminderLogRepo } from './vacationReminderLogsBackend';
 
 export type ManagerMonthReminderKind = 'mgr_next_month' | 'mgr_current_month';
 
@@ -18,36 +16,13 @@ export type ManagerMonthReminderRecord = {
   message_id?: number | string;
 };
 
-type StoreState = {
-  version: 1;
-  sent: ManagerMonthReminderRecord[];
-};
-
-const STORE_PATH = (): string =>
+/** JSON-файл журнала (прод и локалка; на стейдже с DB_VACATIONS=1 — бэкап до этапа 5). */
+export const VACATION_MANAGER_MONTH_REMINDER_FILE = (): string =>
   String(process.env.VACATION_MANAGER_MONTH_REMINDER_FILE || '').trim() ||
   join(process.cwd(), 'server/data/vacation-manager-month-reminders.json');
 
-const empty = (): StoreState => ({ version: 1, sent: [] });
-
-let writeChain: Promise<void> = Promise.resolve();
-
-const readStore = async (): Promise<StoreState> => {
-  const path = STORE_PATH();
-  if (!existsSync(path)) return empty();
-  try {
-    const raw = JSON.parse(await readFile(path, 'utf8')) as StoreState;
-    if (!raw || raw.version !== 1 || !Array.isArray(raw.sent)) return empty();
-    return raw;
-  } catch {
-    return empty();
-  }
-};
-
-const writeStore = async (state: StoreState): Promise<void> => {
-  const path = STORE_PATH();
-  await mkdir(dirname(path), { recursive: true });
-  await writeJsonAtomic(path, state);
-};
+const repo = () =>
+  vacationReminderLogRepo<ManagerMonthReminderRecord>('manager-month', VACATION_MANAGER_MONTH_REMINDER_FILE);
 
 export const managerMonthReminderKey = (
   kind: ManagerMonthReminderKind,
@@ -55,19 +30,7 @@ export const managerMonthReminderKey = (
   targetMonth: string
 ): string => `${kind}:${bitrixUserId}:${targetMonth}`;
 
-export const hasManagerMonthReminder = async (key: string): Promise<boolean> => {
-  const state = await readStore();
-  return state.sent.some((row) => row.key === key);
-};
+export const hasManagerMonthReminder = async (key: string): Promise<boolean> => (await repo()).has(key);
 
-export const recordManagerMonthReminder = async (
-  row: ManagerMonthReminderRecord
-): Promise<void> => {
-  writeChain = writeChain.then(async () => {
-    const state = await readStore();
-    if (state.sent.some((item) => item.key === row.key)) return;
-    state.sent.push(row);
-    await writeStore(state);
-  });
-  await writeChain;
-};
+export const recordManagerMonthReminder = async (row: ManagerMonthReminderRecord): Promise<void> =>
+  (await repo()).record(row, { reason: 'cron-manager-month-reminder' });

@@ -1,6 +1,6 @@
 import { requireVbiSession } from '../../utils/session';
 import { createProfileActivity } from '../../utils/profileActivityStore';
-import { findEmployeeById } from '../../utils/employeesStore';
+import { findEmployeeById, sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     occurred_at: body?.occurred_at ? String(body.occurred_at) : undefined,
     created_by_user_id: session.id,
     created_by_name: session.name
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session) });
 
   return { ok: true, item };
 });

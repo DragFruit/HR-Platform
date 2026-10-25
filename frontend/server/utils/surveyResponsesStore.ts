@@ -1,14 +1,14 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { writeJsonAtomic } from './atomicJson';
 import type { SurveyAnswerValue, SurveyResponse } from '../../app/composables/useSurveys';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { surveysJsonImports } from '../db/schema';
+import { SURVEY_RESPONSES_STATE_DEF, surveysDbFlag } from '../surveys/domain';
 
 export type SurveyResponsesStoreState = {
   /** surveyId → список ответов. */
   responses: Record<string, SurveyResponse[]>;
 };
-
-const DATA_FILE = join(process.cwd(), 'server/data/survey-responses.json');
 
 export const defaultSurveyResponsesState = (): SurveyResponsesStoreState => ({ responses: {} });
 
@@ -61,42 +61,46 @@ export function normalizeSurveyResponsesStoreState(
   return result;
 }
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultSurveyResponsesState());
-  }
-}
+export const SURVEY_RESPONSES_STATE_FULL_DEF: KeyedStateDef = {
+  ...SURVEY_RESPONSES_STATE_DEF,
+  normalize: (raw) => normalizeSurveyResponsesStoreState(raw as Partial<SurveyResponsesStoreState>)
+};
+
+/**
+ * Этап 8: DB_SURVEYS=1 → Postgres (surveys.responses), иначе server/data/survey-responses.json.
+ * Анонимность прежняя: в базе ровно то, что было бы в файле, без связи с сотрудником.
+ */
+export const surveyResponsesFile = defineStateFile({
+  fileName: 'survey-responses.json',
+  label: 'ответы опросов',
+  logTag: 'survey-responses',
+  flag: surveysDbFlag,
+  def: SURVEY_RESPONSES_STATE_FULL_DEF,
+  jsonImports: surveysJsonImports,
+  defaultRaw: () => defaultSurveyResponsesState() as unknown as RawState
+});
 
 export async function readSurveyResponses(): Promise<SurveyResponsesStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return normalizeSurveyResponsesStoreState(JSON.parse(raw) as Partial<SurveyResponsesStoreState>);
+  return normalizeSurveyResponsesStoreState((await (await surveyResponsesFile.repo()).read()) as Partial<SurveyResponsesStoreState>);
 }
 
 export async function writeSurveyResponses(
-  state: SurveyResponsesStoreState
+  state: SurveyResponsesStoreState,
+  ctx: KeyedListWriteContext = {}
 ): Promise<SurveyResponsesStoreState> {
-  await ensureFile();
-  const normalized = normalizeSurveyResponsesStoreState(state);
-  await writeJsonAtomic(DATA_FILE, normalized);
-  return normalized;
+  return mutateSurveyResponses(() => state, ctx);
 }
 
-let mutationQueue: Promise<unknown> = Promise.resolve();
-
+/** Публичная отправка ответа идёт без ctx: actor = null, как и раньше ничего о респонденте сверх файла. */
 export async function mutateSurveyResponses(
-  mutator: (state: SurveyResponsesStoreState) => SurveyResponsesStoreState | Promise<SurveyResponsesStoreState>
+  mutator: (state: SurveyResponsesStoreState) => SurveyResponsesStoreState | Promise<SurveyResponsesStoreState>,
+  ctx: KeyedListWriteContext = {}
 ): Promise<SurveyResponsesStoreState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readSurveyResponses();
-    const next = await mutator(current);
-    return writeSurveyResponses(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  return (await surveyResponsesFile.repo()).mutate(async (raw) => {
+    const current = normalizeSurveyResponsesStoreState(raw as Partial<SurveyResponsesStoreState>);
+    const next = normalizeSurveyResponsesStoreState(await mutator(current));
+    return { next: next as unknown as RawState, result: next };
+  }, ctx);
 }
 
 export function responsesForSurvey(

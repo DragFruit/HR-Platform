@@ -4,24 +4,11 @@ import { isAccessRevokedForIdentity } from '../../utils/employeeAccessDenylist';
 import { readEmployees, type ServerEmployee } from '../../utils/employeesStore';
 import { setVbiSession } from '../../utils/session';
 import { checkVibePassword, ensureVibePasswordSeal } from '../../utils/vibePasswordsStore';
+import { findEmployeeByVibeLogin } from '../../utils/vibeLogin';
 
 function sessionUserId(emp: ServerEmployee): number {
   const bitrix = Number(emp.bitrix_user_id || emp.platform_user_id || emp.id);
   return Number.isFinite(bitrix) && bitrix > 0 ? bitrix : emp.id;
-}
-
-function findEmployeeByLogin(list: ServerEmployee[], login: string): ServerEmployee | null {
-  const q = login.trim().toLowerCase();
-  if (!q) return null;
-  const byEmail = list.find((e) => (e.email || '').trim().toLowerCase() === q);
-  if (byEmail) return byEmail;
-  // логин без домена: ivanov → ivanov@…
-  const byLocal = list.find((e) => {
-    const email = (e.email || '').trim().toLowerCase();
-    if (!email.includes('@')) return false;
-    return email.split('@')[0] === q;
-  });
-  return byLocal ?? null;
 }
 
 /**
@@ -37,7 +24,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const employees = await readEmployees();
-  const emp = findEmployeeByLogin(employees, login);
+  const emp = findEmployeeByVibeLogin(employees, login);
   if (!emp) {
     throw createError({ statusCode: 401, statusMessage: 'Неверный логин или пароль' });
   }
@@ -52,7 +39,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Старые записи без seal — дописать при успешном входе, чтобы глаз в профиле открывал текст
-  await ensureVibePasswordSeal(emp.id, password).catch(() => {});
+  await ensureVibePasswordSeal(emp.id, password, { actorEmployeeId: emp.id }).catch(() => {});
 
   const userId = sessionUserId(emp);
   const email = String(emp.email || '').trim().toLowerCase();

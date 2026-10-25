@@ -22,7 +22,14 @@
     />
 
     <div class="emp-balance-card" data-tour="vac-balance">
-      <div class="emp-balance-card-label">Доступно дней отпуска</div>
+      <div class="emp-balance-card-label">
+        Доступно дней отпуска
+        <VacInfoHint
+          label="Доступно дней отпуска"
+          :text="VACATION_HINT_AVAILABLE"
+          reservations-note
+        />
+      </div>
       <div class="emp-balance-figures emp-balance-figures-single">
         <span class="emp-balance-big">{{ balance.remain }}</span>
       </div>
@@ -55,8 +62,19 @@
       <thead>
         <tr>
           <th>Тип отпуска</th>
-          <th>Отгулял</th>
-          <th>План</th>
+          <th class="vac-info-th">
+            Отгулял<VacInfoHint
+              label="Отгулял"
+              :text="VACATION_HINT_TAKEN"
+            />
+          </th>
+          <th class="vac-info-th">
+            План<VacInfoHint
+              label="План"
+              :text="VACATION_HINT_PLANNED"
+              reservations-note
+            />
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -256,6 +274,8 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
+import { requestsAroundYear } from '~/utils/vacationBookingYears';
+import { VACATION_HINT_AVAILABLE, VACATION_HINT_PLANNED, VACATION_HINT_TAKEN } from '~/utils/vacationBalanceHints';
 import { countVacationBillableDays, isPastApprovedVacationRequest, isVacationStartInPast, todayIso, toIso } from '~/utils/vacationCalendar';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { TrainingVacationRequest, TrainingVacationReservation } from '~/composables/useVacationTraining';
@@ -264,7 +284,7 @@ import {
   formatReservationPeriod,
   type VacationReservation
 } from '~/utils/vacationReservations';
-import { isLaborContractEmployee } from '~/data/employeeDirectoryOptions';
+import { vacationApplicationDenyReason } from '~/utils/vacationApplicationAccess';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { resolveVacationApprovalPath } from '~/utils/vacationApproval';
 
@@ -314,11 +334,15 @@ const isTrainingRequest = (req: VacationRequest): req is TrainingVacationRequest
 const canManageRequest = (req: VacationRequest) =>
   !isTrainingRequest(req) && !isPastApprovedVacationRequest(req);
 
+/** pending (любой шаг) и approved, ТД, до старта — см. vacationApplicationAccess. */
 const canDownloadVacationApplication = (req: VacationRequest) =>
   !isTrainingRequest(req) &&
-  req.status === 'approved' &&
-  isLaborContractEmployee(currentEmployee.value?.contract_form) &&
-  req.start > todayIso();
+  vacationApplicationDenyReason({
+    status: req.status,
+    start: req.start,
+    today: todayIso(),
+    contractForm: currentEmployee.value?.contract_form
+  }) === null;
 
 const canOpenRequestMenu = (req: VacationRequest) =>
   canManageRequest(req) || canDownloadVacationApplication(req);
@@ -358,14 +382,11 @@ const openingBalance = computed(() => currentEmployee.value?.vacation_opening_ba
 /** Цифры и списки aside всегда по текущему учётном году, даже если календарь смотрит прошлый. */
 const balanceYear = computed(() => state.value.primaryYear);
 
-/** Заявки соседних лет: отпуск через НГ лежит в папке года начала. */
+/** Все заявки всех лет: остаток один непрерывный, без привязки к году. */
 const balanceYearRequests = computed(() => {
-  const y = balanceYear.value;
   const byId = new Map<number, VacationRequest>();
-  for (const yr of [y - 1, y, y + 1]) {
-    for (const req of requestsForYear(yr)) {
-      byId.set(req.id, req);
-    }
+  for (const list of Object.values(state.value.requestsByYear)) {
+    for (const req of list) byId.set(req.id, req);
   }
   return [...byId.values()];
 });
@@ -376,11 +397,13 @@ const yearRequests = computed(() =>
 
 const myReservations = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeReservations(employeeName.value, balanceYear.value, employeeId.value);
-  const merged = mergeReservationsForDisplay(balanceYear.value, real);
+  // Брони текущего учётного и следующего года (бронь на 2027 видна, пока учётный 2026).
+  const y = balanceYear.value;
+  const real = [y, y + 1].flatMap((yr) => employeeReservations(employeeName.value, yr, employeeId.value));
+  const merged = mergeReservationsForDisplay(y, real);
   return merged
     .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
-    .sort((a, b) => a.month - b.month);
+    .sort((a, b) => a.year - b.year || a.month - b.month);
 });
 
 const formatReservationRow = (res: VacationReservation) =>
@@ -401,7 +424,10 @@ const removeReservation = async (id: number) => {
 
 const myRequests = computed(() => {
   if (!employeeName.value) return [];
-  const real = employeeRequests(employeeName.value, balanceYear.value, employeeId.value);
+  // Заявки прошлого, текущего учётного и следующего года: заявка на 2027 видна сразу после подачи.
+  const real = balanceYearRequests.value.filter((r) =>
+    vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value })
+  );
   const merged = mergeRequestsForDisplay(balanceYear.value, real);
   return merged
     .filter((r) => vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }))
@@ -514,7 +540,10 @@ const requestAdvance = (req: VacationRequest) =>
   );
 
 const hasConflict = (start: string, end: string, excludeId?: number) =>
-  yearRequests.value.some(
+  [
+    ...yearRequests.value,
+    ...requestsAroundYear(state.value.requestsByYear, Number(start.slice(0, 4)))
+  ].some(
     (r) =>
       r.id !== excludeId &&
       vacationBelongsToEmployee(r, { id: employeeId.value, name: employeeName.value }) &&

@@ -1,7 +1,5 @@
-import { existsSync } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { vacationReminderLogRepo } from './vacationReminderLogsBackend';
 
 export type VacationPreReminderKind = 'pre_3w';
 
@@ -18,36 +16,12 @@ export type VacationPreReminderRecord = {
   message_id?: number | string;
 };
 
-type StoreState = {
-  version: 1;
-  sent: VacationPreReminderRecord[];
-};
-
-const STORE_PATH = (): string =>
+/** JSON-файл журнала (прод и локалка; на стейдже с DB_VACATIONS=1 — бэкап до этапа 5). */
+export const VACATION_PRE_REMINDER_FILE = (): string =>
   String(process.env.VACATION_PRE_REMINDER_FILE || '').trim() ||
   join(process.cwd(), 'server/data/vacation-pre-reminders.json');
 
-const empty = (): StoreState => ({ version: 1, sent: [] });
-
-let writeChain: Promise<void> = Promise.resolve();
-
-const readStore = async (): Promise<StoreState> => {
-  const path = STORE_PATH();
-  if (!existsSync(path)) return empty();
-  try {
-    const raw = JSON.parse(await readFile(path, 'utf8')) as StoreState;
-    if (!raw || raw.version !== 1 || !Array.isArray(raw.sent)) return empty();
-    return raw;
-  } catch {
-    return empty();
-  }
-};
-
-const writeStore = async (state: StoreState): Promise<void> => {
-  const path = STORE_PATH();
-  await mkdir(dirname(path), { recursive: true });
-  await writeJsonAtomic(path, state);
-};
+const repo = () => vacationReminderLogRepo<VacationPreReminderRecord>('pre', VACATION_PRE_REMINDER_FILE);
 
 export const reminderKey = (
   kind: VacationPreReminderKind,
@@ -55,19 +29,7 @@ export const reminderKey = (
   start: string
 ): string => `${kind}:${requestId}:${start}`;
 
-export const hasPreReminder = async (key: string): Promise<boolean> => {
-  const state = await readStore();
-  return state.sent.some((row) => row.key === key);
-};
+export const hasPreReminder = async (key: string): Promise<boolean> => (await repo()).has(key);
 
-export const recordPreReminder = async (
-  row: VacationPreReminderRecord
-): Promise<void> => {
-  writeChain = writeChain.then(async () => {
-    const state = await readStore();
-    if (state.sent.some((item) => item.key === row.key)) return;
-    state.sent.push(row);
-    await writeStore(state);
-  });
-  await writeChain;
-};
+export const recordPreReminder = async (row: VacationPreReminderRecord): Promise<void> =>
+  (await repo()).record(row, { reason: 'cron-pre-reminder' });

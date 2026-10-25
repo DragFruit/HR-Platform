@@ -57,6 +57,7 @@ export type BitrixUser = {
   WORK_POSITION?: string;
   ACTIVE?: string | boolean;
   DATE_REGISTER?: string;
+  PERSONAL_BIRTHDAY?: string | null;
   UF_DEPARTMENT?: number[] | string[];
   IS_ONLINE?: string;
 };

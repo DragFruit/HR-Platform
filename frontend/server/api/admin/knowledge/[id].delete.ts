@@ -1,8 +1,9 @@
 import { requireRole } from '../../../utils/requireRole';
 import { mutateKnowledgeArticles } from '../../../utils/knowledgeArticlesStore';
+import { sessionActorEmployeeId } from '../../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
-  await requireRole(event, ['admin']);
+  const session = await requireRole(event, ['admin']);
   const articleId = getRouterParam(event, 'id');
   if (!articleId) throw createError({ statusCode: 400, statusMessage: 'Не указан id статьи' });
 
@@ -13,7 +14,7 @@ export default defineEventHandler(async (event) => {
       ...state,
       articles: state.articles.filter((item) => item.id !== articleId)
     };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:admin-delete' });
 
   const { scheduleKnowledgeRagRebuild } = await import('../../../utils/knowledgeRag');
   scheduleKnowledgeRagRebuild();

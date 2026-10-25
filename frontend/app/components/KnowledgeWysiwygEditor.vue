@@ -350,21 +350,7 @@ const copyCodeFromButton = async (copyBtn: HTMLButtonElement) => {
   const block = copyBtn.closest('[data-kb-code]');
   if (!block) return;
   const text = codeTextFromBlock(block);
-  let copied = false;
-  try {
-    await navigator.clipboard.writeText(text);
-    copied = true;
-  } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    copied = document.execCommand('copy');
-    ta.remove();
-  }
+  const copied = await copyToClipboard(text);
   copyBtn.innerHTML = copied ? COPY_DONE_ICON : COPY_ICON;
   copyBtn.setAttribute('aria-label', copied ? 'Скопировано' : 'Не вышло');
   window.setTimeout(() => {

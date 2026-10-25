@@ -1,5 +1,5 @@
 import { requireVbiSession } from '../../../utils/session';
-import { findEmployeeForSession } from '../../../utils/employeesStore';
+import { findEmployeeForSession, sessionActorEmployeeId } from '../../../utils/employeesStore';
 import { addStepCompletion } from '../../../utils/adaptationStore';
 import { loadTrackFull } from '../../../utils/trackLoader';
 
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     employee_id: employee.id,
     completed_at: new Date().toISOString(),
     completed_by_user_id: session.id
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'adaptation:step-complete' });
 
   return { ok: true, completion };
 });

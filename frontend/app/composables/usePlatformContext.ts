@@ -10,6 +10,28 @@ export type NavItem = {
 
 const profileNavItem: NavItem = { to: '/profile', label: 'Профиль' };
 
+/** Выбранный админом режим «Я / Админ» — переживает навигацию и перезагрузку. */
+export const PLATFORM_ROLE_STORAGE_KEY = 'vbi-platform-role';
+
+const readSavedPlatformRole = (): PlatformRole | null => {
+  if (!import.meta.client) return null;
+  try {
+    const raw = localStorage.getItem(PLATFORM_ROLE_STORAGE_KEY);
+    return raw === 'admin' || raw === 'employee' ? raw : null;
+  } catch {
+    return null;
+  }
+};
+
+const savePlatformRole = (next: PlatformRole) => {
+  if (!import.meta.client) return;
+  try {
+    localStorage.setItem(PLATFORM_ROLE_STORAGE_KEY, next);
+  } catch {
+    /* private mode — режим просто не запомнится */
+  }
+};
+
 const employeeNav: NavItem[] = [
   { to: '/', label: 'Главная' },
   { to: '/event/nokturn', label: 'Синий Ноктюрн' },
@@ -32,7 +54,6 @@ const adminNav: NavItem[] = [
   { to: '/admin/employees', label: 'Сотрудники' },
   { to: '/admin/tasks', label: 'Задачи' },
   { to: '/admin/vacations', label: 'График отпусков' },
-  { to: '/admin/quest-dashboard', label: 'Pit Stop' },
   { to: '/admin/how-it-looks', label: 'Как выглядит' },
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
@@ -71,13 +92,21 @@ export function usePlatformContext() {
 
   const syncRoleFromAuth = () => {
     if (!user.value) return;
-    role.value = user.value.role === 'admin' ? 'admin' : 'employee';
+    if (user.value.role !== 'admin') {
+      role.value = 'employee';
+      return;
+    }
+    // Админ: помним выбранный режим «Я / Админ» (десктоп и мобилка одинаково).
+    // Прямая ссылка в /admin всегда открывает админку.
+    const saved = readSavedPlatformRole();
+    role.value = route.path.startsWith('/admin') ? 'admin' : saved ?? 'admin';
   };
 
   const switchRole = (next: PlatformRole) => {
     if (!canSwitchRole.value && next === 'admin') return;
 
     role.value = next;
+    savePlatformRole(next);
     if (next === 'admin') {
       // Уже в админке — остаёмся на текущем экране
       if (route.path.startsWith('/admin')) return;
@@ -146,14 +175,8 @@ export function usePlatformContext() {
     if (route.path.startsWith('/admin/surveys')) {
       return 'Опросы';
     }
-    if (route.path.startsWith('/event/pit-stop')) {
-      return 'Pit Stop 14';
-    }
     if (route.path.startsWith('/event/nokturn')) {
       return 'Синий Ноктюрн';
-    }
-    if (route.path.startsWith('/admin/quest-dashboard')) {
-      return 'Pit Stop';
     }
     if (route.path === '/admin/how-it-looks') {
       return 'Как выглядит';

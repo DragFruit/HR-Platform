@@ -1,6 +1,6 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { createMutationQueue, writeJsonAtomic } from './atomicJson';
+import { createMutationQueue } from './atomicJson';
+import { coreRepo } from './coreStore';
+import type { CoreWriteContext } from '../core/types';
 import { dedupeEmployeeList, employeeIdentityKeys } from '../../app/utils/employeeDedupe';
 import {
   mergeQaTestEmployees,
@@ -46,18 +46,17 @@ export type ServerEmployee = {
   contract_form?: string;
 };
 
-const DATA_FILE = join(process.cwd(), 'server/data/employees.json');
+/** Хранилище: server/data/employees.json или core.employees (DB_CORE=1), см. coreStore.ts. */
 const enqueueEmployeesMutation = createMutationQueue();
 
 export const defaultEmployees = (): ServerEmployee[] => [];
 
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultEmployees());
-  }
+async function readRaw(): Promise<ServerEmployee[]> {
+  return (await coreRepo()).readEmployeesRaw();
+}
+
+async function writeRaw(list: ServerEmployee[], ctx?: CoreWriteContext): Promise<void> {
+  await (await coreRepo()).writeEmployeesRaw(list, ctx);
 }
 
 export function dedupeEmployees(list: ServerEmployee[]): ServerEmployee[] {
@@ -74,12 +73,10 @@ export function dedupeEmployees(list: ServerEmployee[]): ServerEmployee[] {
 export { employeeIdentityKeys };
 
 export async function readEmployees(): Promise<ServerEmployee[]> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  const parsed = JSON.parse(raw) as ServerEmployee[];
+  const parsed = await readRaw();
   const deduped = dedupeEmployees(parsed);
   if (deduped.length !== parsed.length) {
-    await writeJsonAtomic(DATA_FILE, deduped);
+    await writeRaw(deduped, { reason: 'dedupe' });
   }
   const assignments = await readManagerAssignments();
   const withManagers = applyManagerAssignments(deduped, assignments);
@@ -92,14 +89,14 @@ export async function readEmployees(): Promise<ServerEmployee[]> {
       const denylistNow = await readAccessDenylist();
       const cleaned = again.filter((row) => !isRosterEmployeeDenied(denylistNow, row));
       if (cleaned.length !== again.length) {
-        await writeJsonAtomic(DATA_FILE, cleaned);
+        await writeRaw(cleaned, { reason: 'denylist-heal' });
       }
     });
   }
   return ensureEmployeeManagerIds(mergeQaTestEmployees(withoutDenied));
 }
 
-export type WriteEmployeesOptions = {
+export type WriteEmployeesOptions = CoreWriteContext & {
   /** Не обновлять overlay руководителей (синк Bitrix, импорт). */
   preserveManagers?: boolean;
 };
@@ -108,20 +105,20 @@ export async function writeEmployees(
   list: ServerEmployee[],
   options: WriteEmployeesOptions = {}
 ): Promise<ServerEmployee[]> {
+  const ctx: CoreWriteContext = { actorEmployeeId: options.actorEmployeeId, reason: options.reason };
   return enqueueEmployeesMutation(async () => {
-    await ensureFile();
     const previous = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
     let normalized = dedupeEmployees(stripQaTestEmployees(list));
 
     const nextIds = new Set(normalized.map((row) => row.id));
     for (const prev of previous) {
       if (nextIds.has(prev.id)) continue;
-      await revokeEmployeeAccess(prev, 'removed-from-roster');
+      await revokeEmployeeAccess(prev, 'removed-from-roster', ctx);
     }
     const previousIds = new Set(previous.map((row) => row.id));
     for (const row of normalized) {
       if (previousIds.has(row.id)) continue;
-      await clearAccessRevocationForEmployee(row);
+      await clearAccessRevocationForEmployee(row, ctx);
     }
 
     // После clear: старые отзывы не пишем обратно в справочник
@@ -135,19 +132,17 @@ export async function writeEmployees(
     if (!options.preserveManagers) {
       const incomingAssignments = extractManagerAssignments(normalized);
       mergedAssignments = await mergeManagerAssignments(currentAssignments, incomingAssignments);
-      await writeManagerAssignments(mergedAssignments);
+      await writeManagerAssignments(mergedAssignments, ctx);
     }
     const withManagers = applyManagerAssignments(normalized, mergedAssignments);
-    await writeJsonAtomic(DATA_FILE, withManagers);
+    await writeRaw(withManagers, ctx);
     return withManagers;
   });
 }
 
 /** Сырой список без QA-слияния — для сравнения удалений. */
 async function readEmployeesRawWithoutQaMerge(): Promise<ServerEmployee[]> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  const parsed = JSON.parse(raw) as ServerEmployee[];
+  const parsed = await readRaw();
   const deduped = dedupeEmployees(parsed);
   const assignments = await readManagerAssignments();
   return applyManagerAssignments(deduped, assignments);
@@ -222,7 +217,8 @@ export async function findEmployeeByName(name: string): Promise<ServerEmployee |
 /** Точечное обновление email (вход Vibe) без полной перезаписи справочника. */
 export async function patchEmployeeEmail(
   employeeId: number,
-  email: string
+  email: string,
+  ctx: CoreWriteContext = {}
 ): Promise<ServerEmployee> {
   const nextEmail = email.trim().toLowerCase();
   if (!nextEmail || !nextEmail.includes('@')) {
@@ -230,7 +226,6 @@ export async function patchEmployeeEmail(
   }
 
   return enqueueEmployeesMutation(async () => {
-    await ensureFile();
     const list = stripQaTestEmployees(await readEmployeesRawWithoutQaMerge());
     const idx = list.findIndex((row) => row.id === employeeId);
     if (idx < 0) {
@@ -249,9 +244,18 @@ export async function patchEmployeeEmail(
     list[idx] = { ...list[idx], email: nextEmail };
     const currentAssignments = await readManagerAssignments();
     const withManagers = applyManagerAssignments(list, currentAssignments);
-    await writeJsonAtomic(DATA_FILE, withManagers);
+    await writeRaw(withManagers, { reason: 'vibe-login-email', ...ctx });
     return withManagers[idx]!;
   });
+}
+
+/** id сотрудника текущей сессии для аудита (actor_employee_id); null — не нашли. */
+export async function sessionActorEmployeeId(session: SessionUser): Promise<number | null> {
+  try {
+    return (await findEmployeeForSession(session))?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** id для user-notifications: как session.id у Bitrix (bitrix_user_id), иначе platform/id. */

@@ -1,6 +1,3 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { writeJsonAtomic } from './atomicJson';
-import { dirname, join } from 'node:path';
 import type {
   AdaptationPhaseId,
   AdaptationStepTemplate,
@@ -8,6 +5,15 @@ import type {
   StepOwner
 } from './adaptationTypes';
 import scenariosSeed from '../data/adaptation-scenarios.json';
+import type { KeyedListWriteContext } from '../db/repositories/keyedList';
+import type { KeyedStateDef, RawState } from '../db/repositories/keyedState';
+import { defineStateFile } from '../db/repositories/stateFile';
+import { adaptationJsonImports } from '../db/schema';
+import {
+  ADAPTATION_ASSIGNMENTS_STATE_DEF,
+  ADAPTATION_SCENARIOS_STATE_DEF,
+  adaptationDbFlag
+} from '../adaptation/domain';
 
 export type AdaptationScenario = {
   id: string;
@@ -35,9 +41,6 @@ type AssignmentsState = {
   assignments: AdaptationAssignment[];
 };
 
-const SCENARIOS_FILE = join(process.cwd(), 'server/data/adaptation-scenarios.json');
-const ASSIGNMENTS_FILE = join(process.cwd(), 'server/data/adaptation-assignments.json');
-
 const PHASE_IDS: AdaptationPhaseId[] = [
   'pre_start',
   'day_1',
@@ -50,58 +53,81 @@ const OWNERS: StepOwner[] = ['employee', 'manager', 'buddy', 'hr'];
 
 const emptyAssignments = (): AssignmentsState => ({ assignments: [] });
 
+/** Копия: правки стора не должны менять сид, загруженный в память модуля. */
 const seedScenarios = (): AdaptationScenario[] =>
-  (scenariosSeed as { scenarios: AdaptationScenario[] }).scenarios;
+  structuredClone((scenariosSeed as { scenarios: AdaptationScenario[] }).scenarios);
 
-async function ensureScenariosFile() {
-  await mkdir(dirname(SCENARIOS_FILE), { recursive: true });
-  try {
-    await readFile(SCENARIOS_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(SCENARIOS_FILE, { scenarios: seedScenarios() });
-  }
+/** Как до этапа 8: пустой или битый список сценариев → сид из репозитория. */
+export function normalizeScenariosState(raw: unknown): ScenariosState {
+  const list = raw && typeof raw === 'object' && Array.isArray((raw as Partial<ScenariosState>).scenarios)
+    ? (raw as ScenariosState).scenarios
+    : [];
+  return { scenarios: list.length ? list : seedScenarios() };
 }
 
-async function ensureAssignmentsFile() {
-  await mkdir(dirname(ASSIGNMENTS_FILE), { recursive: true });
-  try {
-    await readFile(ASSIGNMENTS_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(ASSIGNMENTS_FILE, emptyAssignments());
-  }
+export function normalizeAssignmentsState(raw: unknown): AssignmentsState {
+  const list = raw && typeof raw === 'object' ? (raw as Partial<AssignmentsState>).assignments : null;
+  return { assignments: Array.isArray(list) ? list : [] };
 }
+
+export const ADAPTATION_SCENARIOS_STATE_FULL_DEF: KeyedStateDef = {
+  ...ADAPTATION_SCENARIOS_STATE_DEF,
+  normalize: normalizeScenariosState
+};
+
+export const ADAPTATION_ASSIGNMENTS_STATE_FULL_DEF: KeyedStateDef = {
+  ...ADAPTATION_ASSIGNMENTS_STATE_DEF,
+  normalize: normalizeAssignmentsState
+};
+
+/**
+ * Этап 8: DB_ADAPTATION=1 и задан DATABASE_URL → Postgres (adaptation.scenarios / assignments),
+ * иначе server/data/adaptation-*.json. Флаг стоит только на стейдже. Публичный API не менялся.
+ */
+export const adaptationScenariosFile = defineStateFile({
+  fileName: 'adaptation-scenarios.json',
+  label: 'сценарии адаптации',
+  logTag: 'adaptation-scenarios',
+  flag: adaptationDbFlag,
+  def: ADAPTATION_SCENARIOS_STATE_FULL_DEF,
+  jsonImports: adaptationJsonImports,
+  defaultRaw: () => ({ scenarios: seedScenarios() }) as unknown as RawState,
+  onBadJson: () => ({ scenarios: seedScenarios() }) as unknown as RawState
+});
+
+export const adaptationAssignmentsFile = defineStateFile({
+  fileName: 'adaptation-assignments.json',
+  label: 'назначения адаптации',
+  logTag: 'adaptation-assignments',
+  flag: adaptationDbFlag,
+  def: ADAPTATION_ASSIGNMENTS_STATE_FULL_DEF,
+  jsonImports: adaptationJsonImports,
+  defaultRaw: () => emptyAssignments() as unknown as RawState,
+  onBadJson: () => emptyAssignments() as unknown as RawState
+});
 
 async function readScenariosState(): Promise<ScenariosState> {
-  await ensureScenariosFile();
-  try {
-    const raw = await readFile(SCENARIOS_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<ScenariosState>;
-    const list = Array.isArray(parsed.scenarios) ? parsed.scenarios : [];
-    return { scenarios: list.length ? list : seedScenarios() };
-  } catch {
-    return { scenarios: seedScenarios() };
-  }
+  return normalizeScenariosState(await (await adaptationScenariosFile.repo()).read());
 }
 
-async function writeScenariosState(state: ScenariosState) {
-  await ensureScenariosFile();
-  await writeJsonAtomic(SCENARIOS_FILE, state);
+async function mutateScenarios<R>(fn: (state: ScenariosState) => R | Promise<R>, ctx: KeyedListWriteContext): Promise<R> {
+  return (await adaptationScenariosFile.repo()).mutate(async (raw) => {
+    const state = normalizeScenariosState(raw);
+    const result = await fn(state);
+    return { next: state as unknown as RawState, result };
+  }, ctx);
 }
 
 async function readAssignmentsState(): Promise<AssignmentsState> {
-  await ensureAssignmentsFile();
-  try {
-    const raw = await readFile(ASSIGNMENTS_FILE, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<AssignmentsState>;
-    return { assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [] };
-  } catch {
-    return emptyAssignments();
-  }
+  return normalizeAssignmentsState(await (await adaptationAssignmentsFile.repo()).read());
 }
 
-async function writeAssignmentsState(state: AssignmentsState) {
-  await ensureAssignmentsFile();
-  await writeJsonAtomic(ASSIGNMENTS_FILE, state);
+async function mutateAssignments<R>(fn: (state: AssignmentsState) => R | Promise<R>, ctx: KeyedListWriteContext): Promise<R> {
+  return (await adaptationAssignmentsFile.repo()).mutate(async (raw) => {
+    const state = normalizeAssignmentsState(raw);
+    const result = await fn(state);
+    return { next: state as unknown as RawState, result };
+  }, ctx);
 }
 
 export function slugifyScenarioId(input: string): string {
@@ -250,52 +276,53 @@ export function applyScenarioToTrack(
 }
 
 export async function createAdaptationScenario(
-  input: Partial<AdaptationScenario>
+  input: Partial<AdaptationScenario>,
+  ctx: KeyedListWriteContext = {}
 ): Promise<AdaptationScenario> {
-  const state = await readScenariosState();
   const scenario = normalizeScenarioInput(input);
-  if (state.scenarios.some((s) => s.id === scenario.id)) {
-    throw createError({ statusCode: 409, statusMessage: 'Сценарий с таким id уже есть' });
-  }
-  state.scenarios.push(scenario);
-  await writeScenariosState(state);
+  await mutateScenarios((state) => {
+    if (state.scenarios.some((s) => s.id === scenario.id)) {
+      throw createError({ statusCode: 409, statusMessage: 'Сценарий с таким id уже есть' });
+    }
+    state.scenarios.push(scenario);
+  }, { reason: 'adaptation:scenario-create', ...ctx });
   return scenario;
 }
 
 export async function updateAdaptationScenario(
   id: string,
-  input: Partial<AdaptationScenario>
+  input: Partial<AdaptationScenario>,
+  ctx: KeyedListWriteContext = {}
 ): Promise<AdaptationScenario> {
-  const state = await readScenariosState();
-  const index = state.scenarios.findIndex((s) => s.id === id);
-  if (index === -1) {
-    throw createError({ statusCode: 404, statusMessage: 'Сценарий не найден' });
-  }
-  const scenario = normalizeScenarioInput(input, { keepId: id });
-  state.scenarios[index] = scenario;
-  await writeScenariosState(state);
-  return scenario;
+  return mutateScenarios((state) => {
+    const index = state.scenarios.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw createError({ statusCode: 404, statusMessage: 'Сценарий не найден' });
+    }
+    const scenario = normalizeScenarioInput(input, { keepId: id });
+    state.scenarios[index] = scenario;
+    return structuredClone(scenario);
+  }, { reason: 'adaptation:scenario-update', ...ctx });
 }
 
-export async function deleteAdaptationScenario(id: string): Promise<boolean> {
-  const state = await readScenariosState();
-  const next = state.scenarios.filter((s) => s.id !== id);
-  if (next.length === state.scenarios.length) return false;
-  if (!next.length) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Нельзя удалить последний сценарий'
-    });
-  }
-  state.scenarios = next;
-  await writeScenariosState(state);
+export async function deleteAdaptationScenario(id: string, ctx: KeyedListWriteContext = {}): Promise<boolean> {
+  const removed = await mutateScenarios((state) => {
+    const next = state.scenarios.filter((s) => s.id !== id);
+    if (next.length === state.scenarios.length) return false;
+    if (!next.length) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Нельзя удалить последний сценарий'
+      });
+    }
+    state.scenarios = next;
+    return true;
+  }, { reason: 'adaptation:scenario-delete', ...ctx });
+  if (!removed) return false;
 
-  const assignments = await readAssignmentsState();
-  const filtered = assignments.assignments.filter((row) => row.scenario_id !== id);
-  if (filtered.length !== assignments.assignments.length) {
-    assignments.assignments = filtered;
-    await writeAssignmentsState(assignments);
-  }
+  await mutateAssignments((assignments) => {
+    assignments.assignments = assignments.assignments.filter((row) => row.scenario_id !== id);
+  }, { reason: 'adaptation:scenario-delete', ...ctx });
   return true;
 }
 
@@ -313,14 +340,17 @@ export async function getAssignmentForEmployee(
   return state.assignments.find((row) => row.employee_id === employeeId) ?? null;
 }
 
-export async function removeAdaptationAssignmentForEmployee(employeeId: number): Promise<boolean> {
+export async function removeAdaptationAssignmentForEmployee(
+  employeeId: number,
+  ctx: KeyedListWriteContext = {}
+): Promise<boolean> {
   if (!Number.isFinite(employeeId) || employeeId <= 0) return false;
-  const state = await readAssignmentsState();
-  const next = state.assignments.filter((row) => row.employee_id !== employeeId);
-  if (next.length === state.assignments.length) return false;
-  state.assignments = next;
-  await writeAssignmentsState(state);
-  return true;
+  return mutateAssignments((state) => {
+    const next = state.assignments.filter((row) => row.employee_id !== employeeId);
+    if (next.length === state.assignments.length) return false;
+    state.assignments = next;
+    return true;
+  }, { reason: 'adaptation:unassign-employee', ...ctx });
 }
 
 export async function assignAdaptationScenario(input: {
@@ -329,13 +359,12 @@ export async function assignAdaptationScenario(input: {
   scenario_id: string;
   assigned_by_user_id: number;
   assigned_by_name: string;
-}): Promise<AdaptationAssignment> {
+}, ctx: KeyedListWriteContext = {}): Promise<AdaptationAssignment> {
   const scenario = await findAdaptationScenario(input.scenario_id);
   if (!scenario) {
     throw createError({ statusCode: 400, statusMessage: 'Неизвестный сценарий' });
   }
 
-  const state = await readAssignmentsState();
   const assignment: AdaptationAssignment = {
     employee_id: input.employee_id,
     employee_name: input.employee_name,
@@ -345,10 +374,11 @@ export async function assignAdaptationScenario(input: {
     assigned_by_name: input.assigned_by_name
   };
 
-  const without = state.assignments.filter((row) => row.employee_id !== input.employee_id);
-  without.push(assignment);
-  state.assignments = without;
-  await writeAssignmentsState(state);
+  await mutateAssignments((state) => {
+    const without = state.assignments.filter((row) => row.employee_id !== input.employee_id);
+    without.push(assignment);
+    state.assignments = without;
+  }, { reason: 'adaptation:assign', ...ctx });
   return assignment;
 }
 

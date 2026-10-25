@@ -128,6 +128,7 @@ import {
 } from '~/utils/vacationDepartmentGroups';
 import { findVacationOverlapDetails, namesOnVacationOnIso, todayIso } from '~/utils/vacationCalendar';
 import { assessVacationBalance } from '~/utils/vacationBalance';
+import { requestsAroundYear } from '~/utils/vacationBookingYears';
 
 const props = withDefaults(
   defineProps<{
@@ -344,7 +345,10 @@ const overlapScopeNames = computed(() => {
 });
 
 const overlapDetails = (req: VacationRequest) =>
-  findVacationOverlapDetails(req, yearRequests.value, overlapScopeNames.value);
+  findVacationOverlapDetails(req, requestsAroundYear(state.value.requestsByYear, Number(req.start.slice(0, 4))), overlapScopeNames.value);
+
+/** Все заявки всех лет: остаток для следующего года считается через переходящий остаток. */
+const allRealRequests = computed(() => Object.values(state.value.requestsByYear).flat());
 
 const advanceAssessment = (req: VacationRequest) =>
   assessVacationBalance(
@@ -352,7 +356,7 @@ const advanceAssessment = (req: VacationRequest) =>
     findByName(req.employee)?.hired_at,
     req.start,
     req.end,
-    yearRequests.value,
+    allRealRequests.value,
     state.value.primaryYear,
     req.id,
     findByName(req.employee)?.vacation_opening_balance

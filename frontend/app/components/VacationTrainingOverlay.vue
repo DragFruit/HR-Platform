@@ -702,8 +702,7 @@ let confettiFn: ((opts: { position: { x: number; y: number }; count: number; vel
 const burstConfetti = async (yRatio = 0.45) => {
   if (!import.meta.client) return;
   if (!confettiFn) {
-    const mod = await import('@hiseb/confetti');
-    confettiFn = mod.default as typeof confettiFn;
+    confettiFn = await importConfetti();
   }
   if (!confettiFn) return;
   confettiFn({

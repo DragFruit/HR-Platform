@@ -7,6 +7,7 @@ import {
   type KnowledgeInlineComment
 } from '../../../../utils/knowledgeArticlesStore';
 import { canModerateKnowledgeArticle } from '../../../../utils/knowledgeNotifications';
+import { sessionActorEmployeeId } from '../../../../utils/employeesStore';
 
 type CommentBody = {
   quote?: string;
@@ -67,7 +68,7 @@ export default defineEventHandler(async (event) => {
     const articles = [...state.articles];
     articles[index] = updated;
     return { ...state, articles };
-  });
+  }, { actorEmployeeId: await sessionActorEmployeeId(session), reason: 'knowledge:comment' });
 
   if (!updatedArticle) throw createError({ statusCode: 404, statusMessage: 'Статья не найдена' });
   return { article: updatedArticle };

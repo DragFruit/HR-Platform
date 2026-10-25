@@ -11,6 +11,7 @@ import {
   type BitrixUser
 } from './bitrixClient';
 import { getBitrixConfig, isBitrixWebhookConfigured, parseGroupIds } from './bitrixConfig';
+import { normalizeBitrixBirthday } from './bitrixBirthday';
 import { isBitrixUserAccessRevoked, isRosterEmployeeDenied, readAccessDenylist } from './employeeAccessDenylist';
 
 type BitrixUserRow = BitrixUser & { ID: string };
@@ -158,6 +159,7 @@ const BITRIX_USER_SELECT = [
   'EMAIL',
   'WORK_POSITION',
   'DATE_REGISTER',
+  'PERSONAL_BIRTHDAY',
   'UF_DEPARTMENT'
 ] as const;
 
@@ -328,7 +330,9 @@ async function syncEmployeesFromBitrixUncached(
         ...prev,
         bitrix_user_id: bitrixId,
         platform_user_id: prev.platform_user_id ?? bitrixId,
-        email: prev.email?.trim() || String(user.EMAIL || '').trim().toLowerCase() || ''
+        email: prev.email?.trim() || String(user.EMAIL || '').trim().toLowerCase() || '',
+        // Bitrix — источник правды: убрал дату в профиле, убираем и у нас.
+        birthday: normalizeBitrixBirthday(user.PERSONAL_BIRTHDAY)
       });
       continue;
     }
@@ -346,6 +350,7 @@ async function syncEmployeesFromBitrixUncached(
       hired_at: String(user.DATE_REGISTER || '').slice(0, 10) || new Date().toISOString().slice(0, 10),
       platform_user_id: bitrixId,
       email: String(user.EMAIL || '').trim().toLowerCase(),
+      birthday: normalizeBitrixBirthday(user.PERSONAL_BIRTHDAY),
       account_role: ''
     });
   }
@@ -400,7 +405,7 @@ async function syncEmployeesFromBitrixUncached(
     return true;
   });
 
-  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly], { preserveManagers: true });
+  await writeEmployees([...synced, ...keptRosterOnly, ...manualOnly], { preserveManagers: true, reason: 'bitrix-sync' });
 
   return {
     total: synced.length + keptRosterOnly.length + manualOnly.length,

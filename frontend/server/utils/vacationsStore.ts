@@ -1,5 +1,3 @@
-import { readFile, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import type { VacationRequest } from '../../app/composables/useVacations';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
 import {
@@ -8,7 +6,10 @@ import {
   stripQaTestVacationReservations,
   type QaDemoVacationSuppressed
 } from '../../app/data/qaTestVacationSeed';
-import { writeJsonAtomic } from './atomicJson';
+import { getDb, isDbEnabled } from '../db/client';
+import { createPgVacationsRepo } from '../db/repositories/vacations';
+import { createJsonVacationsRepo, VACATIONS_JSON_FILE } from '../vacations/jsonStore';
+import type { VacationsRepo, VacationWriteContext } from '../vacations/types';
 
 export type { VacationRequest, VacationReservation };
 
@@ -22,9 +23,21 @@ export type VacationStoreState = {
   qaDemoSuppressed?: QaDemoVacationSuppressed;
   /** Лимит броней на месяц по группам Digital (groupId → max). */
   reservationMonthlyCapsByGroup?: Record<string, number>;
+  /** Последний переход учётного года (снимок остатков на 01.01 для карточек сотрудников). */
+  yearRollover?: VacationYearRolloverRecord;
 };
 
-const DATA_FILE = join(process.cwd(), 'server/data/vacations.json');
+export type VacationYearRolloverRecord = {
+  fromYear: number;
+  toYear: number;
+  /** ISO-время перехода. */
+  at: string;
+  reason: string;
+  /** id сотрудника → остаток на 01.01.toYear (vacation_opening_balance). */
+  openingBalances: Record<string, number>;
+  /** Когда остатки записаны в карточки; null — ещё нет (доделает следующий запуск). */
+  employeesAppliedAt: string | null;
+};
 
 export const defaultVacationState = (): VacationStoreState => ({
   primaryYear: new Date().getFullYear(),
@@ -44,23 +57,9 @@ export function normalizeVacationStoreState(raw: Partial<VacationStoreState>): V
     nextReservationId:
       typeof raw.nextReservationId === 'number' ? raw.nextReservationId : base.nextReservationId,
     qaDemoSuppressed: raw.qaDemoSuppressed,
-    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup
+    reservationMonthlyCapsByGroup: raw.reservationMonthlyCapsByGroup,
+    ...(raw.yearRollover ? { yearRollover: raw.yearRollover } : {})
   };
-}
-
-async function ensureFile() {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  try {
-    await readFile(DATA_FILE, 'utf8');
-  } catch {
-    await writeJsonAtomic(DATA_FILE, defaultVacationState());
-  }
-}
-
-export async function readVacations(): Promise<VacationStoreState> {
-  await ensureFile();
-  const raw = await readFile(DATA_FILE, 'utf8');
-  return mergeQaTestVacationState(normalizeVacationStoreState(JSON.parse(raw) as Partial<VacationStoreState>));
 }
 
 function stripQaFromVacationState(state: VacationStoreState): VacationStoreState {
@@ -79,26 +78,91 @@ function stripQaFromVacationState(state: VacationStoreState): VacationStoreState
   return { ...state, requestsByYear, reservationsByYear };
 }
 
-export async function writeVacations(state: VacationStoreState): Promise<VacationStoreState> {
-  await ensureFile();
-  const persisted = stripQaFromVacationState(state);
-  await writeJsonAtomic(DATA_FILE, persisted);
+/**
+ * Хранилище отпусков (этап 4). DB_VACATIONS=1 и задан DATABASE_URL → Postgres (схема vacations),
+ * иначе server/data/vacations.json. Флаг стоит только на стейдже; на проде DATABASE_URL есть,
+ * но флага нет → JSON. Публичный API (readVacations / writeVacations / mutateVacations) не менялся.
+ */
+export function vacationsDbFlag(): boolean {
+  return String(process.env.DB_VACATIONS || '').trim() === '1' && isDbEnabled();
+}
+
+let resolvePgReady!: (ok: boolean) => void;
+const pgReady = new Promise<boolean>((resolve) => {
+  resolvePgReady = resolve;
+});
+
+/** Вызывает плагин db-migrate: true — миграции и импорт прошли, можно работать с Postgres. */
+export function setVacationsPgReady(ok: boolean) {
+  resolvePgReady(ok);
+}
+
+let jsonRepo: VacationsRepo | null = null;
+let pgRepo: VacationsRepo | null = null;
+let warnedFallback = false;
+
+export async function vacationsRepo(): Promise<VacationsRepo> {
+  if (vacationsDbFlag()) {
+    const ok = await pgReady;
+    const db = ok ? getDb() : null;
+    if (db) return (pgRepo ??= createPgVacationsRepo(db));
+    if (!warnedFallback) {
+      warnedFallback = true;
+      console.error('[vacations] DB_VACATIONS=1, но Postgres недоступен — отпуска на JSON (бэкап может быть устаревшим)');
+    }
+  }
+  return (jsonRepo ??= createJsonVacationsRepo(VACATIONS_JSON_FILE, defaultVacationState));
+}
+
+export async function getVacationsBackend(): Promise<'json' | 'postgres'> {
+  return (await vacationsRepo()).backend;
+}
+
+/** Служебные поля, которые не отдаём клиенту (снимок остатков всех сотрудников при переходе года). */
+export function withoutVacationServiceFields(state: VacationStoreState): VacationStoreState {
+  if (!state.yearRollover) return state;
+  const { yearRollover: _hidden, ...rest } = state;
+  return rest;
+}
+
+/** Состояние для API и логики (без служебного снимка перехода года). */
+export async function readVacations(): Promise<VacationStoreState> {
+  return withoutVacationServiceFields(await readVacationsWithServiceFields());
+}
+
+/** Полное состояние, включая `yearRollover` (только для перехода года). */
+export async function readVacationsWithServiceFields(): Promise<VacationStoreState> {
+  const raw = await (await vacationsRepo()).readRaw();
+  return mergeQaTestVacationState(normalizeVacationStoreState(raw));
+}
+
+/** Перезаписать состояние целиком (rollover). Возвращает то же состояние, что передали. */
+export async function writeVacations(
+  state: VacationStoreState,
+  ctx?: VacationWriteContext
+): Promise<VacationStoreState> {
+  await (await vacationsRepo()).writeRaw(stripQaFromVacationState(state), ctx);
   return state;
 }
 
-/** Сериализует все правки отпусков — без гонок при параллельных POST/PATCH. */
-let mutationQueue: Promise<unknown> = Promise.resolve();
-
+/**
+ * Mutator получает полное состояние (со служебным `yearRollover` — его надо сохранять, как остальные поля),
+ * наружу возвращается состояние без служебных полей.
+ * Сериализует все правки отпусков — без гонок при параллельных POST/PATCH.
+ * JSON: очередь в процессе. Postgres: очередь + транзакция под advisory lock (см. repositories/vacations.ts).
+ * Возвращает состояние, которое вернул mutator (с демо-записями QA, как и раньше).
+ */
 export async function mutateVacations(
-  mutator: (state: VacationStoreState) => VacationStoreState | Promise<VacationStoreState>
+  mutator: (state: VacationStoreState) => VacationStoreState | Promise<VacationStoreState>,
+  ctx?: VacationWriteContext
 ): Promise<VacationStoreState> {
-  const run = mutationQueue.then(async () => {
-    const current = await readVacations();
-    const next = await mutator(current);
-    return writeVacations(next);
-  });
-  mutationQueue = run.catch(() => {});
-  return run;
+  let result!: VacationStoreState;
+  await (await vacationsRepo()).mutateRaw(async (raw) => {
+    const current = mergeQaTestVacationState(normalizeVacationStoreState(raw));
+    result = await mutator(current);
+    return stripQaFromVacationState(result);
+  }, ctx);
+  return withoutVacationServiceFields(result);
 }
 
 function normalizeEmployeeNameKey(name: string): string {
@@ -110,7 +174,10 @@ function normalizeEmployeeNameKey(name: string): string {
 }
 
 /** Удалить заявки/брони сотрудника по ФИО (после срока хранения 1 год). */
-export async function purgeVacationsForEmployeeName(employeeName: string): Promise<number> {
+export async function purgeVacationsForEmployeeName(
+  employeeName: string,
+  ctx: VacationWriteContext = { reason: 'access-revoked-purge' }
+): Promise<number> {
   const key = normalizeEmployeeNameKey(employeeName);
   if (!key) return 0;
 
@@ -128,6 +195,6 @@ export async function purgeVacationsForEmployeeName(employeeName: string): Promi
       next.reservationsByYear[year] = filtered;
     }
     return next;
-  });
+  }, ctx);
   return removed;
 }

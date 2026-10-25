@@ -1,5 +1,6 @@
 import { requireVbiSession } from '../../utils/session';
 import { setUserAvatar } from '../../utils/userAvatarsStore';
+import { sessionActorEmployeeId } from '../../utils/employeesStore';
 
 export default defineEventHandler(async (event) => {
   const session = await requireVbiSession(event);
@@ -8,6 +9,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Укажите characterId' });
   }
 
-  const avatars = await setUserAvatar(session.id, body.characterId);
+  const avatars = await setUserAvatar(session.id, body.characterId, {
+    actorEmployeeId: await sessionActorEmployeeId(session)
+  });
   return { ok: true, avatars };
 });

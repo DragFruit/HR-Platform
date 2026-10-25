@@ -14,8 +14,12 @@
  *
  * Usage:
  *   node merge-knowledge-articles-seed.mjs <target.json> <incoming.json>
+ *
+ * Этап 7: та же функция mergeKnowledgeArticlesSeed() применяется сервером к Postgres
+ * (DB_KNOWLEDGE=1, server/knowledge/seedSync.ts) — один источник правил слияния.
  */
 import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 
 /** Снятые сид-статьи: не оставлять на стенде после замены. */
 const RETIRED_ARTICLE_IDS = new Set(['kb-vibe-vacations']);
@@ -38,12 +42,6 @@ const PLATFORM_OWNED_ARTICLE_IDS = new Set([
   'kb-case-ecom-mk-shatura',
   'kb-case-ecom-age-of-innocence'
 ]);
-
-const [targetPath, incomingPath] = process.argv.slice(2);
-if (!targetPath || !incomingPath) {
-  console.error('Usage: node merge-knowledge-articles-seed.mjs <target> <incoming>');
-  process.exit(1);
-}
 
 const toIso = () => new Date().toISOString();
 
@@ -109,91 +107,114 @@ function shouldRefreshBody(targetArticle, incomingArticle) {
   return false;
 }
 
-const target = await readJson(targetPath, { articles: [], nextId: 1 });
-const incoming = await readJson(incomingPath, { articles: [], nextId: 1 });
+/**
+ * Слить сид из git (incoming) с данными стенда (target). Чистая функция: возвращает
+ * новое состояние { articles, nextId } и счётчики, ничего не пишет.
+ */
+export function mergeKnowledgeArticlesSeed(target, incoming) {
+  const t = normalizeState(target);
+  const i = normalizeState(incoming);
 
-const t = normalizeState(target);
-const i = normalizeState(incoming);
+  const targetById = new Map(t.articles.map((a) => [String(a?.id ?? ''), a]).filter(([id]) => id));
 
-const targetById = new Map(t.articles.map((a) => [String(a?.id ?? ''), a]).filter(([id]) => id));
+  const merged = [];
+  let added = 0;
+  let refreshedBody = 0;
+  let retired = 0;
+  let platformOwned = 0;
 
-const merged = [];
-let added = 0;
-let refreshedBody = 0;
-let retired = 0;
-let platformOwned = 0;
+  const incomingById = new Map(
+    i.articles.map((a) => [String(a?.id ?? ''), a]).filter(([id]) => id)
+  );
 
-const incomingById = new Map(
-  i.articles.map((a) => [String(a?.id ?? ''), a]).filter(([id]) => id)
-);
+  for (const targetArticle of t.articles) {
+    const id = String(targetArticle?.id ?? '').trim();
+    if (id && RETIRED_ARTICLE_IDS.has(id)) {
+      retired += 1;
+      continue;
+    }
+    // Drop Bitrix menu stubs / broken rows without title (API ignores them anyway).
+    if (!String(targetArticle?.title ?? '').trim()) {
+      continue;
+    }
+    const incomingArticle = id ? incomingById.get(id) : undefined;
+    if (!incomingArticle) {
+      merged.push(targetArticle);
+      continue;
+    }
 
-for (const targetArticle of t.articles) {
-  const id = String(targetArticle?.id ?? '').trim();
-  if (id && RETIRED_ARTICLE_IDS.has(id)) {
-    retired += 1;
-    continue;
+    if (PLATFORM_OWNED_ARTICLE_IDS.has(id)) {
+      platformOwned += 1;
+      merged.push({
+        ...targetArticle,
+        title: incomingArticle.title ?? targetArticle.title,
+        summary: incomingArticle.summary ?? targetArticle.summary,
+        body: incomingArticle.body ?? targetArticle.body,
+        tags: incomingArticle.tags ?? targetArticle.tags,
+        breadcrumbs: incomingArticle.breadcrumbs ?? targetArticle.breadcrumbs,
+        departments: incomingArticle.departments ?? targetArticle.departments,
+        status: incomingArticle.status ?? targetArticle.status,
+        updatedAt: toIso()
+      });
+      continue;
+    }
+
+    if (shouldRefreshBody(targetArticle, incomingArticle)) {
+      refreshedBody += 1;
+      merged.push({
+        ...targetArticle,
+        body: incomingArticle.body,
+        coverImage:
+          incomingArticle.coverImage !== undefined
+            ? incomingArticle.coverImage
+            : targetArticle.coverImage,
+        updatedAt: toIso()
+      });
+    } else {
+      merged.push(targetArticle);
+    }
   }
-  // Drop Bitrix menu stubs / broken rows without title (API ignores them anyway).
-  if (!String(targetArticle?.title ?? '').trim()) {
-    continue;
-  }
-  const incomingArticle = id ? incomingById.get(id) : undefined;
-  if (!incomingArticle) {
-    merged.push(targetArticle);
-    continue;
-  }
 
-  if (PLATFORM_OWNED_ARTICLE_IDS.has(id)) {
-    platformOwned += 1;
+  let prunedEmptyTitle = t.articles.length - merged.length - retired;
+
+  for (const incomingArticle of i.articles) {
+    const id = String(incomingArticle?.id ?? '').trim();
+    if (!id) continue;
+    if (RETIRED_ARTICLE_IDS.has(id)) continue;
+    if (!String(incomingArticle?.title ?? '').trim()) continue;
+    if (targetById.has(id)) continue;
     merged.push({
-      ...targetArticle,
-      title: incomingArticle.title ?? targetArticle.title,
-      summary: incomingArticle.summary ?? targetArticle.summary,
-      body: incomingArticle.body ?? targetArticle.body,
-      tags: incomingArticle.tags ?? targetArticle.tags,
-      breadcrumbs: incomingArticle.breadcrumbs ?? targetArticle.breadcrumbs,
-      departments: incomingArticle.departments ?? targetArticle.departments,
-      status: incomingArticle.status ?? targetArticle.status,
-      updatedAt: toIso()
+      ...incomingArticle,
+      createdAt: incomingArticle.createdAt ?? toIso(),
+      updatedAt: incomingArticle.updatedAt ?? incomingArticle.createdAt ?? toIso()
     });
-    continue;
+    added += 1;
   }
 
-  if (shouldRefreshBody(targetArticle, incomingArticle)) {
-    refreshedBody += 1;
-    merged.push({
-      ...targetArticle,
-      body: incomingArticle.body,
-      coverImage:
-        incomingArticle.coverImage !== undefined
-          ? incomingArticle.coverImage
-          : targetArticle.coverImage,
-      updatedAt: toIso()
-    });
-  } else {
-    merged.push(targetArticle);
-  }
+  const nextId = Math.max(t.nextId, i.nextId);
+  return {
+    state: { articles: merged, nextId },
+    stats: { added, refreshedBody, platformOwned, retired, prunedEmptyTitle: Math.max(0, prunedEmptyTitle) }
+  };
 }
 
-let prunedEmptyTitle = t.articles.length - merged.length - retired;
-
-for (const incomingArticle of i.articles) {
-  const id = String(incomingArticle?.id ?? '').trim();
-  if (!id) continue;
-  if (RETIRED_ARTICLE_IDS.has(id)) continue;
-  if (!String(incomingArticle?.title ?? '').trim()) continue;
-  if (targetById.has(id)) continue;
-  merged.push({
-    ...incomingArticle,
-    createdAt: incomingArticle.createdAt ?? toIso(),
-    updatedAt: incomingArticle.updatedAt ?? incomingArticle.createdAt ?? toIso()
-  });
-  added += 1;
+async function main() {
+  const [targetPath, incomingPath] = process.argv.slice(2);
+  if (!targetPath || !incomingPath) {
+    console.error('Usage: node merge-knowledge-articles-seed.mjs <target> <incoming>');
+    process.exit(1);
+  }
+  const target = await readJson(targetPath, { articles: [], nextId: 1 });
+  const incoming = await readJson(incomingPath, { articles: [], nextId: 1 });
+  const { state, stats } = mergeKnowledgeArticlesSeed(target, incoming);
+  await writeFile(targetPath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
+  console.log(
+    `knowledge articles merged: added ${stats.added}, refreshed body ${stats.refreshedBody}, platform-owned ${stats.platformOwned}, retired ${stats.retired}, pruned empty title ${stats.prunedEmptyTitle}`
+  );
 }
 
-const nextId = Math.max(t.nextId, i.nextId);
-
-await writeFile(targetPath, `${JSON.stringify({ articles: merged, nextId }, null, 2)}\n`, 'utf8');
-console.log(
-  `knowledge articles merged: added ${added}, refreshed body ${refreshedBody}, platform-owned ${platformOwned}, retired ${retired}, pruned empty title ${Math.max(0, prunedEmptyTitle)}`
-);
+// CLI только при прямом запуске (node merge-knowledge-articles-seed.mjs …), не при импорте сервером.
+// Не сравниваем import.meta.url: в сборке Nitro он подменяется на URL входного index.mjs.
+if (basename(process.argv[1] || '') === 'merge-knowledge-articles-seed.mjs') {
+  await main();
+}
