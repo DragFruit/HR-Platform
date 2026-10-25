@@ -1,0 +1,92 @@
+[
+  {
+    "label": "01-welcome",
+    "titleText": "С возвращением!",
+    "classes": "pvm-illust pvm-illust--welcome",
+    "artPctW": 46,
+    "artPctH": 30,
+    "gapCtaToArt": 18.5,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "label": "02-intro",
+    "titleText": "Вот четыресовета",
+    "classes": "pvm-illust pvm-illust--intro",
+    "artPctW": 54,
+    "artPctH": 30.1,
+    "gapCtaToArt": -268.5,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0
+    ]
+  },
+  {
+    "label": "03-tip1",
+    "titleText": "Войди в ритмплавно",
+    "classes": "pvm-illust pvm-illust--pace",
+    "artPctW": 46,
+    "artPctH": 30,
+    "gapCtaToArt": 19.2,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ]
+  },
+  {
+    "label": "04-tip2",
+    "titleText": "Посмотри на работусвежим взглядом",
+    "classes": "pvm-illust pvm-illust--fresh",
+    "artPctW": 52,
+    "artPctH": 30.6,
+    "gapCtaToArt": -2.8,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ]
+  },
+  {
+    "label": "05-tip3",
+    "titleText": "Пусть впечатленияне обрываются",
+    "classes": "pvm-illust pvm-illust--weekend",
+    "artPctW": 48,
+    "artPctH": 32,
+    "gapCtaToArt": 12,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ]
+  },
+  {
+    "label": "06-tip4",
+    "titleText": "Если всё равнотяжело",
+    "classes": "pvm-illust pvm-illust--triggers",
+    "artPctW": 44,
+    "artPctH": 30,
+    "gapCtaToArt": 38.1,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ]
+  }
+]

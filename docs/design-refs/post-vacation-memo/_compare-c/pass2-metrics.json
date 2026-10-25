@@ -1,0 +1,189 @@
+[
+  {
+    "label": "01-welcome",
+    "artPctW": 46,
+    "artPctH": 30,
+    "gapCtaToArt": 18.5,
+    "gapCtaBottomToArt": -193.2,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0,
+      0
+    ],
+    "cta": {
+      "w": 103.3,
+      "h": 38,
+      "r": 635.5,
+      "b": 721,
+      "l": 532.3,
+      "t": 683
+    },
+    "illust": {
+      "w": 184,
+      "h": 163.2,
+      "r": 838,
+      "b": 691,
+      "l": 654,
+      "t": 527.8
+    },
+    "classes": "pvm-illust pvm-illust--welcome"
+  },
+  {
+    "label": "02-intro",
+    "artPctW": 46,
+    "artPctH": 30,
+    "gapCtaToArt": 78.2,
+    "gapCtaBottomToArt": -194.2,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      42
+    ],
+    "cta": {
+      "w": 101,
+      "h": 38,
+      "r": 573.8,
+      "b": 722,
+      "l": 472.8,
+      "t": 684
+    },
+    "illust": {
+      "w": 184,
+      "h": 163.2,
+      "r": 836,
+      "b": 691,
+      "l": 652,
+      "t": 527.8
+    },
+    "classes": "pvm-illust pvm-illust--pace"
+  },
+  {
+    "label": "03-tip1",
+    "artPctW": 54,
+    "artPctH": 31.8,
+    "gapCtaToArt": -10.8,
+    "gapCtaBottomToArt": -201.8,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      14,
+      176
+    ],
+    "cta": {
+      "w": 101,
+      "h": 38,
+      "r": 632.8,
+      "b": 722,
+      "l": 531.8,
+      "t": 684
+    },
+    "illust": {
+      "w": 216,
+      "h": 172.8,
+      "r": 838,
+      "b": 693,
+      "l": 622,
+      "t": 520.2
+    },
+    "classes": "pvm-illust pvm-illust--fresh"
+  },
+  {
+    "label": "04-tip2",
+    "artPctW": 48,
+    "artPctH": 32,
+    "gapCtaToArt": 12,
+    "gapCtaBottomToArt": -205.1,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      45
+    ],
+    "cta": {
+      "w": 101,
+      "h": 38,
+      "r": 632.8,
+      "b": 722,
+      "l": 531.8,
+      "t": 684
+    },
+    "illust": {
+      "w": 192,
+      "h": 174.1,
+      "r": 836.8,
+      "b": 691,
+      "l": 644.8,
+      "t": 516.9
+    },
+    "classes": "pvm-illust pvm-illust--weekend"
+  },
+  {
+    "label": "05-tip3",
+    "artPctW": 44,
+    "artPctH": 30,
+    "gapCtaToArt": 38.1,
+    "gapCtaBottomToArt": -194.2,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ],
+    "cta": {
+      "w": 90.1,
+      "h": 38,
+      "r": 621.9,
+      "b": 722,
+      "l": 531.8,
+      "t": 684
+    },
+    "illust": {
+      "w": 176,
+      "h": 163.2,
+      "r": 836,
+      "b": 691,
+      "l": 660,
+      "t": 527.8
+    },
+    "classes": "pvm-illust pvm-illust--triggers"
+  },
+  {
+    "label": "06-tip4",
+    "artPctW": 44,
+    "artPctH": 30,
+    "gapCtaToArt": 38.1,
+    "gapCtaBottomToArt": -194.2,
+    "solidCta": 0,
+    "solidLater": 0,
+    "solidTitle": 0,
+    "solidTexts": [
+      0,
+      0
+    ],
+    "cta": {
+      "w": 90.1,
+      "h": 38,
+      "r": 621.9,
+      "b": 722,
+      "l": 531.8,
+      "t": 684
+    },
+    "illust": {
+      "w": 176,
+      "h": 163.2,
+      "r": 836,
+      "b": 691,
+      "l": 660,
+      "t": 527.8
+    },
+    "classes": "pvm-illust pvm-illust--triggers"
+  }
+]

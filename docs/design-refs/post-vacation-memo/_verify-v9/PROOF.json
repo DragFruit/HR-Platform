@@ -1,0 +1,45 @@
+{
+  "welcome": {
+    "overlap": false,
+    "gapY": -6,
+    "gapX": 25,
+    "src": "/memos/pvm-c-art-welcome.png?v=art-c-v9"
+  },
+  "tip1Read": {
+    "overlap": false,
+    "gapY": -8,
+    "gapX": 9,
+    "src": "/memos/pvm-c-art-tip1.png?v=art-c-v9"
+  },
+  "intro": {
+    "overlap": true,
+    "gapY": -4,
+    "gapX": -260,
+    "src": "/memos/pvm-c-art-intro.png?v=art-c-v9"
+  },
+  "03-tip1": {
+    "overlap": false,
+    "gapY": -8,
+    "gapX": 246,
+    "src": "/memos/pvm-c-art-tip1.png?v=art-c-v9"
+  },
+  "04-tip2": {
+    "overlap": false,
+    "gapY": -8,
+    "gapX": 642,
+    "src": "/memos/pvm-c-art-tip2.png?v=art-c-v9"
+  },
+  "05-tip3": {
+    "overlap": false,
+    "gapY": -8,
+    "gapX": 1037,
+    "src": "/memos/pvm-c-art-tip3.png?v=art-c-v9"
+  },
+  "06-tip4": {
+    "overlap": false,
+    "gapY": -8,
+    "gapX": 1433,
+    "src": "/memos/pvm-c-art-tip4.png?v=art-c-v9"
+  },
+  "artVersion": true
+}
