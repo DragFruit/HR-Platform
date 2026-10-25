@@ -24,9 +24,11 @@
 
 Стиль один на все 38 файлов, портреты в том числе: на эталоне лицо читается даже при половине в тени, так что разводить портреты и фоны по разным манерам не нужно.
 
+Манера это **постер, а не гравюра**: плотные плоские мазки кисти, много чистой бумаги, бирюза отдельной плашкой со сдвигом, светлый общий тон, мало деталей. Первая генерация кабинета вышла офортом со штриховкой пером и сплошной чернотой, потому что в промпте стояли `hand-inked` и `visible paper tooth`. Эти слова из промптов убраны, разбор в `sinij-nokturn-prompts.md`, раздел «Манера».
+
 **Базовый промпт-префикс** (дописывать к каждому запросу):
 
-> high-contrast noir poster illustration, heavy black brush-ink shapes, hard chiaroscuro, silkscreen print texture with slight colour misregistration, strictly three-colour palette: bone white, ink black, cold teal, visible paper tooth and grain, 1950s crime film poster
+> bold two-plate noir screenprint poster illustration, 1950s crime film poster style, flat black brush-ink shapes painted in thick confident strokes, large areas of clean bone white paper left untouched, bright bone white background, a cold teal plate printed slightly offset behind the black shapes, simple graphic silhouettes, minimal detail, subtle even paper grain
 
 **Для документов и бумаг** префикс другой:
 
@@ -34,7 +36,7 @@
 
 **Жёсткие негативы, дописывать всегда:**
 
-> no text, no lettering, no title, no caption, no tagline, no poster title, no typography, no signature, no watermark, no numbers, no readable writing of any kind
+> no text, no lettering, no title, no caption, no tagline, no poster title, no typography, no signature, no watermark, no numbers, no readable writing of any kind, no cross-hatching, no hatching, no stippling, no engraving, no etching, no woodcut, no pen and ink line work, no dense black background, no overall darkness, no gloom, no horror
 
 Это не перестраховка: на пробнике генератор сам дорисовал заголовок и слоган поверх портрета, хотя в негативах уже стояло «no text». Все надписи у нас выводятся кодом поверх картинки, иначе их не исправить и они будут с ошибками. Любую картинку, которая пришла с текстом, перегенерировать, а не затирать.
 

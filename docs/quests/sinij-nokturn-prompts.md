@@ -2,23 +2,41 @@
 
 Готовые промпты на все 44 файла. Стиль, палитра и правила лежат в `sinij-nokturn-art.md`, пути и размеры там же. Эталон стиля: `docs/design-refs/nokturn/LOCKED-style-noir.png`, отдавать референсом в каждую генерацию.
 
+## Манера: постер, а не гравюра
+
+Первая же генерация кабинета вышла офортом: тонкая штриховка пером, всё закрашено, темно и мрачно, ни одного светлого пятна. Эталон выглядит ровно наоборот.
+
+Причина в словах. `hand-inked`, `visible paper tooth`, `heavy black brush-ink` генератор читает как гравюру, офорт и штриховку пером, и чем их больше, тем плотнее он забивает кадр линиями. Из всех промптов эти формулировки убраны, заменять их обратно нельзя.
+
+Что на эталоне на самом деле:
+
+- **Плотные плоские мазки кисти.** Форма берётся одним движением, а не набирается штрихами. Внутри чёрного пятна нет линий.
+- **Много чистой бумаги.** Костяной белый это не фон под рисунком, а полноценный участник кадра. Светлого в кадре должно быть больше, чем чёрного.
+- **Бирюза плашкой, а не блёстками.** Это вторая печатная форма, напечатанная со сдвигом относительно чёрной: крупные пятна и ореолы по краю фигур. Не «бирюзовый огонёк в углу».
+- **Светло.** Ночная сцена делается чёрными пятнами на светлой бумаге, а не темнотой по всему кадру.
+- **Мало деталей.** Узнаваемый силуэт важнее фактуры. Мелочь, которая не читается в миниатюре, не рисуется.
+
+Если присланная картинка темнее эталона по общему тону или набрана линиями, а не пятнами, её перегенерировать, а не осветлять.
+
 ## Как пользоваться
 
-Промпт собирается из трёх кусков: **ПРЕФИКС + строка предмета + НЕГАТИВЫ**. Префикс и негативы ниже, строки предметов в таблицах. Для сцен, портретов и трёх особых файлов промпт дан целиком, собирать ничего не надо.
+Промпт собирается из трёх кусков: **ПРЕФИКС + строка предмета + НЕГАТИВЫ**. Префикс и негативы ниже, строки предметов в таблицах. Для локаций, портретов и трёх особых файлов промпт дан целиком, собирать ничего не надо.
 
 ### ПРЕФИКС обычный (предметы, улики, иконки)
 
-> high-contrast noir illustration, hand-inked, heavy black brush-ink shapes, two-colour screenprint: ink black on bone white paper, visible paper tooth, grain and slight misregistration, flat even lighting, plain background,
+> bold two-plate noir screenprint poster illustration, 1950s crime film poster style, flat black brush-ink shapes painted in thick confident strokes, large areas of clean bone white paper left untouched, bright bone white background, a cold teal plate printed slightly offset behind the black shapes, simple graphic silhouettes, minimal detail, subtle even paper grain, flat even lighting, plain background,
 
 ### ПРЕФИКС для бумаг (все `doc-*`)
 
-> scan of an aged typewritten document, slightly crumpled paper, soft shadow, flatbed scan look, bone white paper, ink black and cold teal only,
+> scan of an aged typewritten document on bright bone white paper, slightly crumpled, soft shadow, flatbed scan look, ink black and cold teal only, clean and bright, minimal detail,
 
 ### НЕГАТИВЫ (дописывать всегда)
 
-> no text, no lettering, no title, no caption, no tagline, no typography, no signature, no watermark, no numbers, no readable writing of any kind, no photograph, no photorealistic texture, no 3d render, no colour except teal accent, no rainbow gradients
+> no text, no lettering, no title, no caption, no tagline, no typography, no signature, no watermark, no numbers, no readable writing of any kind, no cross-hatching, no hatching, no stippling, no engraving, no etching, no woodcut, no scratchboard, no pen and ink line work, no thin scratchy lines, no dense black background, no overall darkness, no gloom, no horror, no grime, no photograph, no photorealistic texture, no 3d render, no colour except the teal plate, no rainbow gradients
 
-На документах текста быть не должно: все надписи выводит код поверх подложки. Картинку, пришедшую с текстом, перегенерировать, а не затирать.
+Три негатива здесь главные: `no cross-hatching`, `no engraving`, `no overall darkness`. Без них генератор каждый раз скатывается в офорт.
+
+На документах текста быть не должно: все надписи выводит код поверх подложки. Картинку, пришедшую с текстом, перегенерировать, а не затирать. На первой генерации кабинета генератор сам дописал три надписи вопреки негативам, так что проверять это нужно глазами на каждой картинке.
 
 ---
 
@@ -32,7 +50,7 @@
 
 ### `board-cork.jpg` — 2560×1440, 16:9
 
-> high-contrast noir illustration of a cork board surface, hand-inked, close-up full-frame texture filling the entire image edge to edge, coarse cork grain drawn with brush ink stippling and hatching, about 25 small dark pin holes clustered near the centre and upper area, holes rendered as dark low-contrast dents, two-colour screenprint: ink black on bone white paper, mid-tone surface value (clearly lighter than black so light paper cards read on top), visible paper tooth, grain and slight misregistration, even flat lighting across the whole surface, empty board
+> bold two-plate noir screenprint poster illustration of a cork board surface, close-up full-frame texture filling the entire image edge to edge, coarse cork grain drawn with brush ink stippling and hatching, about 25 small dark pin holes clustered near the centre and upper area, holes rendered as dark low-contrast dents, two-colour screenprint: ink black on bone white paper, mid-tone surface value (clearly lighter than black so light paper cards read on top), visible paper tooth, grain and slight misregistration, even flat lighting across the whole surface, empty board
 
 Негативы:
 
@@ -42,7 +60,7 @@
 
 ### `prop-board-frame.png` — 1024×1024, PNG с прозрачностью
 
-> hand-inked illustration of a rectangular wooden picture frame, heavy dark wood with bold simple grain, drawn with black brush ink and coarse hatching, two-colour screenprint look: ink black on bone white, visible paper tooth and grain, the frame forms a closed rectangle with a completely empty transparent centre, band thickness about 90 px, flat even lighting, straight uniform sides, corners clearly drawn, large simple shapes that stay readable when scaled down
+> illustration of a rectangular wooden picture frame, heavy dark wood with bold simple grain, drawn with black brush ink and coarse hatching, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, the frame forms a closed rectangle with a completely empty transparent centre, band thickness about 90 px, flat even lighting, straight uniform sides, corners clearly drawn, large simple shapes that stay readable when scaled down
 
 Негативы:
 
@@ -58,9 +76,11 @@
 
 Ко всем локациям: эталон `LOCKED-style-noir.png` референсом, общие негативы, и к ним всегда дописывать:
 
-> no people, no person, no figure, no silhouette, no hands, no body, no corpse, no blood
+> no people, no person, no figure, no silhouette, no hands, no body, no corpse, no blood, no cross-hatching, no engraving, no dark gloomy interior, no horror atmosphere
 
 Людей в локациях нет ни разу: весь квест держится на пустых комнатах.
+
+Со светом у локаций отдельная беда. Все пять интерьеров ночные, и от слова `night` генератор заливает кадр чернотой и добирает её штриховкой. Поэтому в промптах локаций ночь **не упоминается совсем**: ночь читается по зарешеченному окну, лампе и пустой комнате, а не по темноте. Стены и пол остаются чистой костяной бумагой, чёрным берутся только мебель, проёмы и тени под предметами.
 
 ---
 
@@ -81,11 +101,11 @@
 
 Промпт:
 
-> high-contrast noir illustration, hand-inked, an empty inventor's study on the second floor of a jazz club at night, wide eye-level view of the whole room: an empty leather armchair behind a heavy desk in the centre, a sofa against the wall, a small sink in a corner, a barred window, a massive door on the left, technical drawings pinned to the walls, parts of a medical exoskeleton on a workbench, and six objects placed far apart from each other on clean uncluttered patches of floor, desk and furniture, each object fully visible and unobstructed with clear empty space around it: a massive metal sliding bolt low on the left wall, a small voice recorder on the floor in the lower left, a vintage stage microphone on a shelf high in the centre, a folded official document on the desk in the middle of the frame, a crumpled bar napkin on the floor in the lower right, a crowbar leaning against the right wall at mid height, heavy black brush-ink shapes, hard chiaroscuro, two-colour screenprint, ink black on bone white, visible paper tooth and grain, even readable lighting across the whole room, mid-tone walls and floor so dark objects stay visible against them, empty room
+> bold two-plate noir screenprint poster illustration, an empty inventor's study, wide eye-level view of the whole room, walls and floor left as clean bright bone white paper with only a few flat black shapes on them: an empty leather armchair behind a heavy desk in the centre, a sofa against the wall, a small sink in a corner, a barred window, a massive door on the left, technical drawings pinned to the walls, parts of a medical exoskeleton on a workbench, and six objects placed far apart from each other on clean uncluttered patches of floor, desk and furniture, each object fully visible and unobstructed with clear empty space around it: a massive metal sliding bolt low on the left wall, a small voice recorder on the floor in the lower left, a vintage stage microphone on a shelf high in the centre, a folded official document on the desk in the middle of the frame, a crumpled bar napkin on the floor in the lower right, a crowbar leaning against the right wall at mid height, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, simple graphic shapes with minimal detail, bright overall image, light airy room, even readable lighting everywhere, every one of the six objects drawn as a clear black silhouette against clean bone white paper, empty room
 
 Негативы: общие + «no people» + 
 
-> no clutter, no piles of junk, no overlapping objects, no duplicate objects, no extra tools, no shadow so deep that the objects disappear, no vignette
+> no clutter, no piles of junk, no overlapping objects, no duplicate objects, no extra tools, no cross-hatching, no engraving, no hatched walls, no hatched floorboards, no dark room, no night, no shadow so deep that the objects disappear, no vignette, no posters on the walls, no signs, no labels
 
 Главное: предметы не прячутся в темноте. Прятать их должен фон — похожая форма и похожий тон рядом, — а не чернота. На попытку у игрока 90 секунд (`attemptSeconds: 90`), в темноте он не найдёт их и за пять минут.
 
@@ -97,7 +117,7 @@
 
 Поверх сетки 3×3 код играет в крестики-нолики. Значит девять квадратов должны быть **равными и геометрически ровными**, строго фронтально, без перспективы и наклона, промежутки одинаковые, сетка по центру кадра с равными полями. Кривая от руки сетка здесь не живость, а баг: кликабельные зоны считаются по ровной сетке.
 
-> high-contrast noir illustration, hand-inked, a metal patent archive cabinet door seen perfectly straight on, flat front view, a combination lock made of nine identical empty square buttons in a precise 3 by 3 grid centred in the frame with equal margins and equal gaps, each square flat and completely blank inside, worn riveted sheet metal around the grid, a small keyhole and a handle near the edge, heavy black brush-ink shapes, two-colour screenprint, ink black on bone white, visible grain, flat even lighting, transparent background around the cabinet door
+> bold two-plate noir screenprint poster illustration, a metal patent archive cabinet door seen perfectly straight on, flat front view, a combination lock made of nine identical empty square buttons in a precise 3 by 3 grid centred in the frame with equal margins and equal gaps, each square flat and completely blank inside, worn riveted sheet metal around the grid, a small keyhole and a handle near the edge, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, flat even lighting, transparent background around the cabinet door
 
 Негативы: общие + «no people» +
 
@@ -111,7 +131,7 @@
 
 Мини-игра «Колбы»: переливание, пока цвета не совпадут с эталоном. Сами колбы интерфейса рисует код, а фон — это стол и стена **за** ними. Колбы на фоне нужны для антуража, но по краям кадра: центр остаётся спокойным.
 
-> high-contrast noir illustration, hand-inked, an empty forensic laboratory at night, wide view of a long bench against a tiled wall, glass flasks and test tubes in metal stands grouped at the far left and far right edges of the frame, a burner, coiled glass tubing, handwritten notes and charts pinned to the tiles, the whole centre of the bench clear and empty, one flask at the edge faintly glowing cold teal as the single accent, heavy black brush-ink shapes, two-colour screenprint with a teal accent, ink black on bone white, visible grain, even lighting, empty room
+> bold two-plate noir screenprint poster illustration, an empty forensic laboratory at night, wide view of a long bench against a tiled wall, glass flasks and test tubes in metal stands grouped at the far left and far right edges of the frame, a burner, coiled glass tubing, handwritten notes and charts pinned to the tiles, the whole centre of the bench clear and empty, one flask at the edge faintly glowing cold teal as the single accent, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, even lighting, empty room
 
 Негативы: общие + «no people» +
 
@@ -123,7 +143,7 @@
 
 Мини-игра «Взлом»: поверх фона ляжет окно терминала со светлым текстом. Под него нужна спокойная и именно **тёмная** зона в центре кадра.
 
-> high-contrast noir illustration, hand-inked, an empty club basement server room, wide view: a tall rack of audio equipment on the left, tangled cables running along bare concrete walls, rows of small indicator lights glowing cold teal as the single accent, one bare hanging bulb, pipes near the ceiling, a dark flat empty concrete wall across the centre of the frame, heavy black brush-ink shapes, two-colour screenprint with a teal accent, ink black on bone white, visible grain, empty room
+> bold two-plate noir screenprint poster illustration, an empty club basement server room, wide view: a tall rack of audio equipment on the left, tangled cables running along bare concrete walls, rows of small indicator lights glowing cold teal as the single accent, one bare hanging bulb, pipes near the ceiling, a dark flat empty concrete wall across the centre of the frame, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, empty room
 
 Негативы: общие + «no people» +
 
@@ -137,7 +157,7 @@
 
 Мини-игра «Пазл»: 12 фрагментов фотографии раскладывает код. Значит на фоне **разбросанных фрагментов быть не должно**, и это второе отклонение от арт-дока: нарисованные обрывки спорят с настоящими и игрок не поймёт, какие из них можно двигать. Нужна пустая середина стола. Строка в арт-доке поправлена.
 
-> high-contrast noir illustration, hand-inked, an investigator's desk seen from directly above, flat top-down view: closed case folders stacked in the top left corner, a desk lamp reaching in from the top right corner, an ashtray and a pencil at the bottom edge, a faint coffee ring, the large central area of the worn wooden desk surface completely empty, heavy black brush-ink shapes, two-colour screenprint, ink black on bone white, visible paper tooth and grain, even flat lighting
+> bold two-plate noir screenprint poster illustration, an investigator's desk seen from directly above, flat top-down view: closed case folders stacked in the top left corner, a desk lamp reaching in from the top right corner, an ashtray and a pencil at the bottom edge, a faint coffee ring, the large central area of the worn wooden desk surface completely empty, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, even flat lighting
 
 Негативы: общие + «no people, no hands» +
 
@@ -149,7 +169,7 @@
 
 Фон заголовка квеста и экрана развязки. Поверх ляжет текст, и спокойную зону логичнее держать слева: шапка и титры у нас выровнены по левому краю.
 
-> high-contrast noir illustration, hand-inked, the empty hall of a closed jazz club at night, wide cinematic view: a small stage with a single standing microphone on the right, round tables with chairs stacked upside down on them in the middle distance, a saxophone on a stand beside the stage, heavy velvet curtains, cold teal stage light falling on the empty stage as the single accent, the left third of the frame quiet and simple with deep flat shadow, heavy black brush-ink shapes, two-colour screenprint with a teal accent, ink black on bone white, visible grain, empty room
+> bold two-plate noir screenprint poster illustration, the empty hall of a closed jazz club at night, wide cinematic view: a small stage with a single standing microphone on the right, round tables with chairs stacked upside down on them in the middle distance, a saxophone on a stand beside the stage, heavy velvet curtains, cold teal stage light falling on the empty stage as the single accent, the left third of the frame quiet and simple with deep flat shadow, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, empty room
 
 Негативы: общие + «no people» +
 
@@ -161,7 +181,7 @@
 
 Карточка квеста и пункт меню. В маленьком размере кадр узнаётся только за счёт одной крупной формы, поэтому дверь берётся фронтально и во весь кадр.
 
-> high-contrast noir illustration, hand-inked, a single closed heavy office door seen straight on at the end of a dark corridor, the door filling most of the frame, a thin bright strip of cold teal light spilling out from underneath it across the floor, a massive sliding bolt visible on the door, deep flat black shadow all around, very simple bold composition that stays readable at small size, heavy black brush-ink shapes, two-colour screenprint with a teal accent, ink black on bone white, visible grain, empty corridor
+> bold two-plate noir screenprint poster illustration, a single closed heavy office door seen straight on at the end of a dark corridor, the door filling most of the frame, a thin bright strip of cold teal light spilling out from underneath it across the floor, a massive sliding bolt visible on the door, deep flat black shadow all around, very simple bold composition that stays readable at small size, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, empty corridor
 
 Негативы: общие + «no people» +
 
@@ -184,7 +204,7 @@
 
 **Общая часть для всех шести подозреваемых**, меняется только описание человека:
 
-> high-contrast noir poster portrait, chest-up crop filling the frame, [ЧЕЛОВЕК], neutral calm expression, three-quarter key light from the left with a soft shadow on the right third of the face, both eyes clearly lit and readable, heavy black brush-ink shapes, two-colour screenprint, ink black on bone white, visible paper tooth and grain, plain flat background, 1950s crime film poster
+> bold two-plate noir screenprint poster portrait, chest-up crop filling the frame, [ЧЕЛОВЕК], neutral calm expression, three-quarter key light from the left with a soft shadow on the right third of the face, both eyes clearly lit and readable, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, plain flat background, 1950s crime film poster
 
 **Негативы для всех портретов:**
 
@@ -207,11 +227,11 @@
 
 `person-fedor-android.jpg` (1024×1280) — тот же кадр и тот же свет, что у `person-fedor.jpg`, но:
 
-> the same pale young man in a bartender waistcoat, but bio-mechanical structure showing faintly through the skin: joints, fibres and a dim cold teal glow under the cheekbone, same three-quarter key light from the left, same crop, high-contrast noir poster portrait, heavy black brush-ink shapes, two-colour screenprint with a teal accent, ink black on bone white, visible grain, plain flat background
+> the same pale young man in a bartender waistcoat, but bio-mechanical structure showing faintly through the skin: joints, fibres and a dim cold teal glow under the cheekbone, same three-quarter key light from the left, same crop, bold two-plate noir screenprint poster portrait, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, plain flat background
 
 `person-solovyova.jpg` (1024×1280) — она не подозреваемая, свет мягче и светлее, чтобы отделяться от доски:
 
-> high-contrast noir poster portrait, chest-up crop, a woman of about 40 in a plain jacket with her hair tied back, very tired, a stack of case folders in front of her, soft even frontal light with little shadow, lighter overall value than the suspect portraits, heavy black brush-ink shapes, two-colour screenprint, ink black on bone white, visible grain, plain flat background
+> bold two-plate noir screenprint poster portrait, chest-up crop, a woman of about 40 in a plain jacket with her hair tied back, very tired, a stack of case folders in front of her, soft even frontal light with little shadow, lighter overall value than the suspect portraits, flat black brush-ink shapes with thick confident strokes, large areas of clean bone white paper left untouched, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, plain flat background
 
 ---
 
@@ -234,14 +254,14 @@
 
 | Файл | Промпт целиком |
 |---|---|
-| `clue-08-server-photo.jpg` | high-contrast noir illustration of a photograph taken secretly: a server monitor screen shot from an angle, slightly blurred, the edge of the photographer's hand in frame, lamp glare on the screen, cold teal screen glow as the single accent, ink black on bone white, grain |
-| `clue-09-registry.jpg` | high-contrast noir illustration of a stern corporate database screen, a table of empty rows with one row highlighted in cold teal, ink black on bone white, screen glare, grain |
+| `clue-08-server-photo.jpg` | bold two-plate noir screenprint poster illustration of a photograph taken secretly: a server monitor screen shot from an angle, slightly blurred, the edge of the photographer's hand in frame, lamp glare on the screen, cold teal screen glow as the single accent, ink black on bone white, grain |
+| `clue-09-registry.jpg` | bold two-plate noir screenprint poster illustration of a stern corporate database screen, a table of empty rows with one row highlighted in cold teal, ink black on bone white, screen glare, grain |
 
 Пятница, 1200×900:
 
 | Файл | Промпт целиком |
 |---|---|
-| `clue-11-photo-torn.jpg` | high-contrast noir illustration of an old photograph: two men standing in a workshop with an early exoskeleton prototype between them, one noticeably older than the other, both in work clothes, aged print with worn corners, ink black on bone white, heavy grain. Картинка целая, на фрагменты её режет код |
+| `clue-11-photo-torn.jpg` | bold two-plate noir screenprint poster illustration of an old photograph: two men standing in a workshop with an early exoskeleton prototype between them, one noticeably older than the other, both in work clothes, aged print with worn corners, ink black on bone white, heavy grain. Картинка целая, на фрагменты её режет код |
 | `clue-11-photo-back.jpg` | the blank reverse side of an old photograph, aged paper, worn corners, a faint rectangular discolouration, completely empty surface with room for a handwritten line. Надпись выводит код |
 
 ---
