@@ -78,7 +78,7 @@ export const NOKTURN_FIXTURE_SUSPECT: Record<string, string> = {
 export const NOKTURN_INVESTIGATOR = {
   name: 'Вера Соловьёва',
   title: 'отдел киберпреступлений',
-  photo: '/events/nokturn/person-solovyova.jpg'
+  photo: '/events/nokturn/person-solovyova.png'
 } as const;
 
 /** Фон доски и накладки — канонические пути из docs/quests/sinij-nokturn-art.md. */

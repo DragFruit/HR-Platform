@@ -21090,7 +21090,8 @@ body.nk-body-locked {
 .nk-brief__photo {
   width: 84px;
   height: 84px;
-  object-fit: cover;
+  /* Соловьёва — вырезанная фигура без фона, кадрировать её нечем. */
+  object-fit: contain;
   border: 1px solid var(--nk-ink);
 }
 
@@ -21492,9 +21493,18 @@ body.nk-body-locked {
   user-select: none;
 }
 
+/*
+  Карточка подозреваемого — сам отпечаток, без рамки и подложки: у снимка
+  уже нарисовано белое поле, и чёрный бордер поверх него читался как вторая
+  рамка. Имя и должность ложатся на это поле снизу, а не в отдельный блок:
+  доска небольшая, лишняя полоса съедала её впустую.
+*/
 .nk-fix--suspect {
+  position: relative;
   width: 100%;
-  padding-bottom: 6px;
+  padding-bottom: 0;
+  background: transparent;
+  border: 0;
   text-align: center;
 }
 
@@ -21516,6 +21526,10 @@ body.nk-body-locked {
   border-bottom: 1px solid var(--nk-ink);
 }
 
+.nk-fix--suspect .nk-fix__photo {
+  border-bottom: 0;
+}
+
 .nk-fix__name {
   margin: 5px 0 0;
   font-weight: 700;
@@ -21527,6 +21541,37 @@ body.nk-body-locked {
   margin: 1px 0 0;
   font-size: 0.68rem;
   color: var(--nk-ink-soft);
+}
+
+/*
+  Подпись лежит на белом поле отпечатка, внутри кадра. Поле у снимка всего
+  около 5% высоты, двум строкам там тесно, поэтому под ними светлая полоса
+  в цвет поля: она продолжает рамку снимка, а не добавляет блок под ним, и
+  карточка остаётся ровно квадратной.
+*/
+.nk-fix--suspect .nk-fix__name,
+.nk-fix--suspect .nk-fix__role {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  margin: 0;
+  background: rgba(239, 233, 223, 0.86);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nk-fix--suspect .nk-fix__name {
+  bottom: 13%;
+  padding-top: 2px;
+  font-size: 0.66rem;
+}
+
+.nk-fix--suspect .nk-fix__role {
+  bottom: 1%;
+  padding-bottom: 2px;
+  font-size: 0.56rem;
 }
 
 .nk-fix--case {
