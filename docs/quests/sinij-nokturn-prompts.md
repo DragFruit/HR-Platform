@@ -46,27 +46,33 @@
 
 ---
 
-## 1. Доска и рама (промпты целиком)
+## 1. Доска (промпт целиком)
 
-### `board-cork.jpg` — 2560×1440, 16:9
+**Решение от 25 октября: доска не масштабируется.** Раньше она собиралась из двух файлов — фактура `board-cork.jpg` края в край плюс рама `prop-board-frame.png`, натянутая через `border-image` (9-slice). Это было сделано ради растяжения под любой экран, и это же оказалось источником проблем: раму приходилось рисовать замкнутым прямоугольником с прозрачной серединой, с однородными прямыми участками и самодостаточными углами, а фактуру — без рамы и строго края в край. Генератор такое отдаёт через раз.
 
-> bold two-plate noir screenprint poster illustration of a cork board surface, close-up full-frame texture filling the entire image edge to edge, coarse cork grain drawn with brush ink stippling and hatching, about 25 small dark pin holes clustered near the centre and upper area, holes rendered as dark low-contrast dents, two-colour screenprint: ink black on bone white paper, mid-tone surface value (clearly lighter than black so light paper cards read on top), visible paper tooth, grain and slight misregistration, even flat lighting across the whole surface, empty board
+Теперь проще: **одна картинка, рама нарисована прямо в ней**, кадр строго 16:9, на экране показывается целиком и не растягивается по осям. Отдельный файл `prop-board-frame.png` больше не нужен.
+
+Что это значит для кода (отдельной задачей, в этом коммите только документация):
+
+- `.nk-board` получает `aspect-ratio: 16 / 9` и `background-size: 100% 100%` вместо `cover`, чтобы рама не обрезалась.
+- Обёртка `.nk-frame` с `border-image` убирается, вместе с ключом `boardFrame` в `NOKTURN_ART`.
+- Внутренние отступы: полоса рамы занимает **ровно 2,5% ширины и 2,5% высоты** кадра, и `.nk-board` получает такой же `padding`. Координаты улик считаются от `padding-box`, так что улика не заедет на раму.
+
+### `board-cork.jpg` — 2560×1440, строго 16:9
+
+> bold two-plate noir screenprint poster illustration of a cork notice board hanging on a wall, seen perfectly straight on, flat front view, the board filling the entire frame edge to edge, a plain dark wooden frame drawn as a closed rectangle around the whole image with a uniform band thickness of exactly 2.5 percent of the image width on every side, the frame drawn in flat black brush-ink with a few bold simple grain strokes, inside the frame a large empty cork surface in a light warm mid tone, its texture suggested by sparse scattered flecks and a few soft blotches rather than by lines, about 20 small dark pin holes scattered near the centre and upper area as low-contrast dents, large areas of clean bone white paper left untouched inside the board, simple graphic shapes, minimal detail, bright overall image, even flat lighting across the whole surface, subtle even grain, empty board
 
 Негативы:
 
-> no frame, no border, no wooden edge, no teal, no cyan, no colour, no photograph, no photorealistic texture, no 3d render, no bright highlights, no pins, no papers, no notes, no strings, no objects, no text, no watermark, no vignette
+> no cross-hatching, no hatching, no stippling, no engraving, no etching, no woodcut, no pen and ink line work, no thin scratchy lines, no dense texture, no dark board, no overall darkness, no gloom, no teal, no cyan, no colour, no perspective, no tilt, no angle, no wall around the board, no shadow outside the frame, no pins, no papers, no notes, no photographs, no strings, no objects on the board, no ornament on the frame, no carving, no text, no lettering, no watermark, no vignette, no photograph, no photorealistic texture, no 3d render
 
-Главное: средний тон, не чёрный. Поверх лягут светлые карточки, и на чёрной доске они будут выглядеть как дырки.
+Три вещи, по которым доска бракуется:
 
-### `prop-board-frame.png` — 1024×1024, PNG с прозрачностью
+1. **Тон.** Поверхность светлая, среднего тона. Поверх лягут карточки улик на костяной бумаге, и на тёмной доске они будут выглядеть дырками, а не бумагой.
+2. **Фактура линиями.** Пробка набирается пятнышками и кляксами, а не штриховкой. Штриховка здесь вдвойне вредна: она и выбивается из манеры, и спорит с текстом на карточках.
+3. **Геометрия рамы.** Рама строго фронтально, полоса одинаковой толщины со всех четырёх сторон, кадр ровно 16:9. Перспектива, наклон или разная толщина полосы означают, что отступы в коде не совпадут с рисунком.
 
-> illustration of a rectangular wooden picture frame, heavy dark wood with bold simple grain, drawn with black brush ink and coarse hatching, ink black and a cold teal plate printed slightly offset on bright bone white paper, subtle even grain, the frame forms a closed rectangle with a completely empty transparent centre, band thickness about 90 px, flat even lighting, straight uniform sides, corners clearly drawn, large simple shapes that stay readable when scaled down
-
-Негативы:
-
-> no background, no fill inside the frame, no cork, no board, no picture inside, no colour, no teal, no photograph, no 3d render, no perspective, no tilt, no shadow outside the frame, no fine detail, no thin lines, no text, no watermark
-
-Важно: рама рисуется на экране толщиной 20 px, а на мобильном 10 px. Мелкая штриховка туда не доживёт, поэтому рисунок крупный и простой. Середина должна быть действительно прозрачной, а не белой.
+Проколы: не больше 20-30 на весь кадр, тёмные и малоконтрастные, ближе к центру и верху. Яркая крошка по всей площади конкурирует с уликами.
 
 ---
 
