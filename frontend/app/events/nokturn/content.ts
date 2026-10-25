@@ -41,6 +41,7 @@ export const NOKTURN_INVESTIGATOR = {
 /** Фон доски и накладки — канонические пути из docs/quests/sinij-nokturn-art.md. */
 export const NOKTURN_ART = {
   cork: '/events/nokturn/board-cork.jpg',
+  boardFrame: '/events/nokturn/prop-board-frame.png',
   pinRed: '/events/nokturn/prop-pin-red.png',
   evidenceBag: '/events/nokturn/prop-evidence-bag.png',
   tape: '/events/nokturn/prop-tape.png',
