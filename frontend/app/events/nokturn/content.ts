@@ -46,6 +46,7 @@ export const NOKTURN_FIXTURES: NokturnFixture[] = [
     kind: 'case',
     title: 'Дело Костелова',
     subtitle: 'Клуб «Синий Ноктюрн», кабинет владельца',
+    photo: '/events/nokturn/person-arkadiy.jpg',
     lines: [
       'Аркадий Борисович Костелов, 54 года. Владелец клуба и изобретатель-одиночка.',
       'Дверь заперта изнутри на массивную задвижку, окна зарешечены.',

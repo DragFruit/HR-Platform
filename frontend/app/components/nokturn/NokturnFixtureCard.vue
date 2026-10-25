@@ -12,6 +12,13 @@
     </template>
 
     <template v-else>
+      <img
+        v-if="fixture.photo"
+        class="nk-fix__photo nk-fix__photo--case"
+        :src="fixture.photo"
+        :alt="fixture.title"
+        draggable="false"
+      />
       <p class="nk-fix__kicker">Дело</p>
       <h3 class="nk-fix__title">{{ fixture.title }}</h3>
       <p v-if="fixture.subtitle" class="nk-fix__sub">{{ fixture.subtitle }}</p>
