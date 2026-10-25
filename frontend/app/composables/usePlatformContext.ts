@@ -4,12 +4,15 @@ export type NavItem = {
   to: string;
   label: string;
   locked?: boolean;
+  /** Точка-индикатор: у квеста «Синий Ноктюрн» — доступная мини-игра дня. */
+  dot?: boolean;
 };
 
 const profileNavItem: NavItem = { to: '/profile', label: 'Профиль' };
 
 const employeeNav: NavItem[] = [
   { to: '/', label: 'Главная' },
+  { to: '/event/nokturn', label: 'Синий Ноктюрн' },
   { to: '/adaptation', label: 'Адаптация' },
   { to: '/organization', label: 'Структура' },
   { to: '/vacations', label: 'График отпусков' },
@@ -49,15 +52,19 @@ export function usePlatformContext() {
   const { isVacationsOnly, isPathAllowed, homePath, isNavPathUnlocked } = useLaunchScope();
 
   const isAdmin = computed(() => role.value === 'admin');
+  const { dot: nokturnDot } = useNokturnBadge();
+  const withDot = (item: NavItem): boolean =>
+    item.to === '/event/nokturn' && nokturnDot.value;
   const navItems = computed<NavItem[]>(() => {
     const base = isAdmin.value ? adminNav : employeeNav;
     if (!isVacationsOnly.value) {
-      return base.map((item) => ({ ...item, locked: false }));
+      return base.map((item) => ({ ...item, locked: false, dot: withDot(item) }));
     }
     // Пилот: все пункты видны; закрытые — с замком, не кликабельны
     return base.map((item) => ({
       ...item,
-      locked: !isNavPathUnlocked(item.to)
+      locked: !isNavPathUnlocked(item.to),
+      dot: withDot(item) && isNavPathUnlocked(item.to)
     }));
   });
   const canSwitchRole = computed(() => user.value?.role === 'admin');
@@ -141,6 +148,9 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/event/pit-stop')) {
       return 'Pit Stop 14';
+    }
+    if (route.path.startsWith('/event/nokturn')) {
+      return 'Синий Ноктюрн';
     }
     if (route.path.startsWith('/admin/quest-dashboard')) {
       return 'Pit Stop';

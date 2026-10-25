@@ -90,6 +90,7 @@
             :class="{ 'router-link-active': isNavItemActive(item.to) }"
           >
             {{ item.label }}
+            <span v-if="item.dot" class="nav-link__dot" aria-label="Есть новая улика" />
           </NuxtLink>
           <span
             v-else

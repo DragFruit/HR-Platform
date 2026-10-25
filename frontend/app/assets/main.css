@@ -20007,3 +20007,1122 @@ button.button {
     transition: none;
   }
 }
+
+/* ============================================================================
+   Квест «Синий Ноктюрн» (/event/nokturn)
+   Доска, сейф улик, нити, полный экран. См. docs/quests/sinij-nokturn.md
+   ========================================================================== */
+
+/*
+  Переменные квеста — на :root, а не на .nk-page: в полном экране доска
+  уезжает Teleport'ом в body и перестаёт быть потомком страницы, то есть
+  потеряла бы все --nk-* и стала прозрачной.
+*/
+/*
+  Палитра квеста зафиксирована: нуар-постер, ровно три краски
+  (docs/quests/sinij-nokturn-art.md, раздел 1). Лайм и сиреневый платформы
+  внутрь вкладки не тянем — у ивента свой стиль, как пиксель у «Пит-стопа».
+  Красная нить — единственный тёплый цвет на экране, больше ничего красным
+  не красим, иначе она перестаёт тянуть взгляд.
+*/
+:root {
+  --nk-paper: #efe9df;
+  --nk-ink: #111111;
+  --nk-accent: #3f8f8f;
+  --nk-thread: #b6242c;
+  --nk-on-dark: #efe9df;
+  --nk-on-dark-soft: rgba(239, 233, 223, 0.62);
+  --nk-night: #111111;
+  --nk-night-soft: #1a1a19;
+}
+
+.nk-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nk-page__loading,
+.nk-page__error {
+  padding: 28px;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+}
+
+.nk-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.nk-page__title {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+
+.nk-page__sub {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.nk-page__title {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.nk-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nk-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.nk-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.nk-btn--primary {
+  background: var(--nk-accent);
+  color: var(--nk-paper);
+  border-color: var(--nk-ink);
+}
+
+.nk-btn--ghost:hover:not(:disabled) {
+  background: #e3dccf;
+}
+
+/* ------------------------------------------------------------ слой доски */
+
+.nk-inline {
+  display: block;
+}
+
+/*
+  Полный экран — свой слой: фиксированное перекрытие поверх всей платформы,
+  вынесенное Teleport'ом в body, то есть вне любого CSS-масштаба (--platform-zoom).
+*/
+.nk-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--nk-night);
+  display: flex;
+}
+
+body.nk-body-locked {
+  overflow: hidden;
+}
+
+.nk-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-night);
+  color: var(--nk-on-dark);
+  overflow: hidden;
+}
+
+.nk-stage--full {
+  flex: 1;
+  border: 0;
+}
+
+.nk-stage__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--nk-night-soft);
+  border-bottom: 1px solid rgba(239, 233, 223, 0.16);
+}
+
+.nk-stage__case {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.nk-stage__deadline {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  color: var(--nk-accent);
+}
+
+.nk-stage__bar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nk-stage__threads {
+  font-size: 0.78rem;
+  color: var(--nk-on-dark-soft);
+}
+
+.nk-stage__bar .nk-btn {
+  background: transparent;
+  color: var(--nk-on-dark);
+  border-color: rgba(239, 233, 223, 0.4);
+}
+
+.nk-stage__bar .nk-btn:hover {
+  background: var(--nk-accent);
+  border-color: var(--nk-accent);
+}
+
+/*
+  Строку сетки обязательно зажимаем в minmax(0, 1fr): иначе длинный список
+  показаний растягивает ряд, доска вырастает на тысячи пикселей и улики
+  уезжают за экран.
+*/
+.nk-stage__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+
+/* Высота — на самой сцене: у .nk-stage__body flex-basis: 0 съедает height. */
+.nk-stage:not(.nk-stage--full) {
+  height: min(78vh, 820px);
+}
+
+/* ---------------------------------------------------------------- доска */
+
+.nk-board {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #a97c4c;
+  background-size: cover;
+  background-position: center;
+  touch-action: none;
+  cursor: default;
+}
+
+.nk-board__empty,
+.nk-board__hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  max-width: 70%;
+  text-align: center;
+  background: rgba(17, 17, 17, 0.82);
+  color: var(--nk-on-dark);
+  font-size: 0.84rem;
+  pointer-events: none;
+}
+
+.nk-board__empty {
+  top: 50%;
+}
+
+.nk-board__hint {
+  bottom: 10px;
+  font-size: 0.76rem;
+  opacity: 0.75;
+}
+
+.nk-board__web {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.nk-board__thread {
+  stroke: var(--nk-thread);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.nk-board__thread--draft {
+  stroke-dasharray: 7 5;
+  opacity: 0.85;
+}
+
+/* Широкая прозрачная линия — зона двойного клика для удаления нити. */
+.nk-board__thread-hit {
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.nk-pinned {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.nk-pinned__pin {
+  position: absolute;
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: crosshair;
+  z-index: 3;
+}
+
+.nk-pinned__pin img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.nk-pinned__card {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 152px;
+  transform: translateX(-50%);
+  cursor: grab;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+
+.nk-pinned.is-dragging .nk-pinned__card {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+.nk-board__game {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  max-width: min(420px, 60%);
+}
+
+/* ------------------------------------------------------- карточка улики */
+
+.nk-card {
+  margin: 0;
+  background: var(--nk-paper);
+  border: 1px solid var(--nk-ink);
+  user-select: none;
+}
+
+.nk-card__frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.nk-card--prop .nk-card__frame {
+  aspect-ratio: 1 / 1;
+  background: var(--nk-paper);
+}
+
+.nk-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nk-card--doc .nk-card__img,
+.nk-card--photo .nk-card__img {
+  object-fit: cover;
+}
+
+.nk-card--doc .nk-card__frame {
+  aspect-ratio: 3 / 4;
+}
+
+.nk-card--photo .nk-card__frame {
+  aspect-ratio: 4 / 3;
+}
+
+/* Пакет — накладка поверх предмета, бирка рисуется кодом по белой полосе. */
+.nk-card__bag {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.nk-card__label {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 8%;
+  margin: 0;
+  max-height: 17%;
+  overflow: hidden;
+  color: var(--nk-ink);
+  font-size: 0.56rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.nk-card--full.nk-card--prop .nk-card__label {
+  max-height: 20%;
+  font-size: 0.82rem;
+}
+
+.nk-card__doc {
+  position: absolute;
+  inset: 8% 9%;
+  overflow: hidden;
+  color: var(--nk-ink);
+}
+
+.nk-card__doc-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.nk-card__doc-line {
+  margin: 0 0 6px;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.nk-card--board .nk-card__doc-line,
+.nk-card--board .nk-card__doc-title {
+  font-size: 0.58rem;
+}
+
+.nk-card__doc-line--clip {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nk-card--full .nk-card__doc-title {
+  font-size: 1rem;
+}
+
+.nk-card--full .nk-card__doc-line {
+  font-size: 0.86rem;
+}
+
+.nk-card__cap {
+  display: block;
+  padding: 6px 8px;
+  background: #e3dccf;
+  border-top: 1px solid var(--nk-ink);
+  color: var(--nk-ink);
+  font-size: 0.68rem;
+}
+
+.nk-card__cap-title {
+  display: block;
+  font-weight: 700;
+}
+
+.nk-card__cap-line {
+  display: block;
+  margin-top: 5px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.nk-card--full {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.nk-card--full .nk-card__cap {
+  font-size: 0.86rem;
+}
+
+.nk-card__back {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--nk-ink);
+}
+
+/* ------------------------------------------------------------ сейф улик */
+
+.nk-safe {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--nk-night-soft);
+  border-left: 1px solid rgba(239, 233, 223, 0.16);
+}
+
+.nk-safe__head {
+  padding: 12px 12px 8px;
+}
+
+.nk-safe__title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.nk-safe__tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.nk-safe__tab {
+  flex: 1;
+  padding: 7px 8px;
+  border: 1px solid rgba(239, 233, 223, 0.3);
+  background: transparent;
+  color: var(--nk-on-dark-soft);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.nk-safe__tab.is-on {
+  background: var(--nk-accent);
+  border-color: var(--nk-accent);
+  color: var(--nk-paper);
+}
+
+.nk-safe__calendar {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.nk-safe__day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border: 1px solid rgba(239, 233, 223, 0.26);
+  background: transparent;
+  color: var(--nk-on-dark-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nk-safe__day:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.nk-safe__day.is-available {
+  border-color: var(--nk-accent);
+  background: var(--nk-accent);
+  color: var(--nk-paper);
+}
+
+.nk-safe__day.is-done {
+  border-color: var(--nk-accent);
+  color: var(--nk-accent);
+}
+
+.nk-safe__day.is-catch-up {
+  border-color: var(--nk-accent);
+  color: var(--nk-accent);
+}
+
+.nk-safe__day-n {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.nk-safe__day-w {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+}
+
+.nk-safe__day.is-voted::after {
+  content: '•';
+  font-size: 0.9rem;
+  line-height: 0.5;
+  color: currentColor;
+}
+
+.nk-safe__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+
+.nk-safe__empty,
+.nk-safe__list .nk-word {
+  grid-column: 1 / -1;
+}
+
+.nk-safe__empty {
+  margin: 0;
+  color: var(--nk-on-dark-soft);
+  font-size: 0.82rem;
+}
+
+.nk-safe__item {
+  cursor: grab;
+  touch-action: none;
+}
+
+.nk-safe__item:active {
+  cursor: grabbing;
+}
+
+.nk-word {
+  padding: 10px;
+  background: rgba(239, 233, 223, 0.06);
+  border: 1px solid rgba(239, 233, 223, 0.16);
+}
+
+.nk-word__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.nk-word__photo {
+  width: 40px;
+  height: 50px;
+  object-fit: cover;
+  border: 1px solid rgba(239, 233, 223, 0.3);
+}
+
+.nk-word__name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.nk-word__role {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--nk-on-dark-soft);
+}
+
+.nk-word__text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--nk-on-dark);
+}
+
+/* --------------------------------------------------------------- призрак */
+
+.nk-ghost {
+  position: fixed;
+  z-index: 2600;
+  width: 152px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.9;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+}
+
+/* --------------------------------------------------------- кнопка игры */
+
+.nk-game {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(17, 17, 17, 0.92);
+  border: 1px solid rgba(239, 233, 223, 0.26);
+  color: var(--nk-on-dark);
+}
+
+.nk-game--available {
+  border-color: var(--nk-accent);
+  box-shadow: 0 0 0 1px var(--nk-accent), 0 0 18px rgba(63, 143, 143, 0.4);
+}
+
+.nk-game__icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
+.nk-game--available .nk-game__icon {
+  filter: drop-shadow(0 0 6px rgba(63, 143, 143, 0.9));
+}
+
+.nk-game__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.nk-game__state {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+  color: var(--nk-on-dark-soft);
+}
+
+/* --------------------------------------------------------------- модалки */
+
+.nk-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 36px 16px;
+  overflow-y: auto;
+  background: rgba(17, 17, 17, 0.86);
+}
+
+.nk-modal__inner {
+  position: relative;
+  width: min(900px, 100%);
+  padding: 22px;
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  border: 1px solid var(--nk-ink);
+}
+
+.nk-modal__x {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nk-modal__note {
+  margin: 10px 24px 0 0;
+  font-size: 0.9rem;
+}
+
+/* ----------------------------------------------------------- бриф и игра */
+
+.nk-brief__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.nk-brief__photo {
+  width: 72px;
+  height: 90px;
+  object-fit: cover;
+  border: 1px solid var(--nk-ink);
+}
+
+.nk-brief__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.nk-brief__role,
+.nk-brief__when {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-brief__line {
+  margin: 0 0 12px;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.nk-search__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.nk-search__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.nk-search__sub {
+  margin: 3px 0 0;
+  font-size: 0.8rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-search__timer {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.nk-search__timer.is-low {
+  color: var(--nk-accent);
+}
+
+.nk-search__frame {
+  position: relative;
+  border: 1px solid var(--nk-ink);
+  cursor: crosshair;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.nk-search__bg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.nk-search__mark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--nk-accent);
+  background: rgba(63, 143, 143, 0.26);
+  color: var(--nk-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.nk-search__miss {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid var(--nk-ink);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.nk-search__foot {
+  margin-top: 10px;
+}
+
+.nk-search__checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nk-search__checklist li {
+  padding: 4px 9px;
+  border: 1px solid var(--nk-ink);
+  font-size: 0.74rem;
+  color: rgba(17, 17, 17, 0.5);
+}
+
+.nk-search__checklist li.is-found {
+  background: var(--nk-accent);
+  color: var(--nk-paper);
+  font-weight: 600;
+}
+
+.nk-search__result {
+  margin: 10px 0 0;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------ бюллетень */
+
+.nk-ballot__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.nk-ballot__sub {
+  margin: 3px 0 14px;
+  font-size: 0.8rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-ballot__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.nk-ballot__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nk-ballot__card.is-on,
+.nk-ballot__card.is-chosen {
+  background: rgba(63, 143, 143, 0.16);
+  box-shadow: inset 0 0 0 2px var(--nk-accent);
+}
+
+.nk-ballot__card:disabled {
+  cursor: default;
+}
+
+.nk-ballot__photo {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border: 1px solid var(--nk-ink);
+}
+
+.nk-ballot__name {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.nk-ballot__role {
+  font-size: 0.72rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-ballot__foot {
+  margin-top: 14px;
+}
+
+.nk-ballot__note {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.nk-ballot__error {
+  margin: 8px 0 0;
+  color: var(--nk-ink);
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.nk-mech {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--nk-ink);
+}
+
+.nk-mech__title {
+  margin: 0 0 10px;
+  font-size: 0.98rem;
+}
+
+.nk-mech__stake {
+  color: var(--nk-accent);
+}
+
+.nk-mech__opt {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 9px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.nk-mech__done {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* -------------------------------------------------------------- развязка */
+
+.nk-reveal__title {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+}
+
+.nk-reveal__text p {
+  margin: 0 0 12px;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.nk-reveal__sub {
+  margin: 20px 0 10px;
+  font-size: 1rem;
+}
+
+.nk-reveal__roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nk-reveal__roles li {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--nk-ink);
+}
+
+.nk-reveal__roles img {
+  width: 54px;
+  height: 68px;
+  object-fit: cover;
+  border: 1px solid var(--nk-ink);
+}
+
+.nk-reveal__name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.nk-reveal__role,
+.nk-reveal__hides {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-reveal__chart {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.nk-reveal__col {
+  flex: 1;
+}
+
+.nk-reveal__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  border-bottom: 1px solid var(--nk-ink);
+}
+
+.nk-reveal__bar {
+  flex: 1;
+  min-height: 2px;
+  background: rgba(17, 17, 17, 0.35);
+}
+
+.nk-reveal__bar.is-culprit {
+  background: var(--nk-accent);
+}
+
+.nk-reveal__col-label {
+  margin: 6px 0 0;
+  font-size: 0.74rem;
+  text-align: center;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.nk-reveal__board {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nk-reveal__board li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.25);
+  font-size: 0.88rem;
+}
+
+.nk-reveal__rank {
+  width: 26px;
+  font-weight: 700;
+}
+
+.nk-reveal__who {
+  flex: 1;
+}
+
+.nk-reveal__pts {
+  font-weight: 700;
+}
+
+.nk-reveal__empty {
+  color: rgba(17, 17, 17, 0.62);
+}
+
+/* ------------------------------------------------------------- мобильный */
+
+@media (max-width: 900px) {
+  .nk-stage__body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(260px, 55vh) minmax(0, 1fr);
+  }
+
+  .nk-stage:not(.nk-stage--full) {
+    height: min(88vh, 900px);
+  }
+
+  .nk-safe {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    max-height: 60vh;
+  }
+
+  .nk-pinned__card {
+    width: 118px;
+  }
+}
+
+/* Точка-индикатор в левом меню (квест «Синий Ноктюрн»). */
+.nav-link__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: #3f8f8f;
+  box-shadow: 0 0 0 2px rgba(63, 143, 143, 0.28);
+}
+
+.nk-pinned__pin:focus {
+  outline: none;
+}
+
+.nk-pinned__pin:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
