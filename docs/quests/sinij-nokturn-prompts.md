@@ -58,6 +58,12 @@
 - Обёртка `.nk-frame` с `border-image` убирается, вместе с ключом `boardFrame` в `NOKTURN_ART`.
 - Внутренние отступы: полоса рамы занимает **ровно 2,5% ширины и 2,5% высоты** кадра, и `.nk-board` получает такой же `padding`. Координаты улик считаются от `padding-box`, так что улика не заедет на раму.
 
+**Принято 25 октября.** Заказчик выбрал вариант доски и он лежит в `frontend/public/events/nokturn/board-cork.jpg`: 1920×1080, пробка тёплого коричневого тона в тёмной деревянной раме, кадр 16:9. Полоса рамы 4,45% ширины и 8,2% высоты, в коде под неё отдан `padding: 4.7%` на `.nk-frame`.
+
+Доска **сознательно выпадает из трёхцветной палитры**: пробка коричневая и фактурная, а не костяная с чернилами. Это исключение на один файл и только для подложки: улики, портреты и локации остаются в трёх красках. Остальные правила доски в силе — светлый средний тон, чтобы карточки читались поверх, и никакой бирюзы, чтобы акцент оставался у интерфейса.
+
+Промпт ниже оставлен на случай перегенерации.
+
 ### `board-cork.jpg` — 2560×1440, строго 16:9
 
 > bold two-plate noir screenprint poster illustration of a cork notice board hanging on a wall, seen perfectly straight on, flat front view, the board filling the entire frame edge to edge, a plain dark wooden frame drawn as a closed rectangle around the whole image with a uniform band thickness of exactly 2.5 percent of the image width on every side, the frame drawn in flat black brush-ink with a few bold simple grain strokes, inside the frame a large empty cork surface in a light warm mid tone, its texture suggested by sparse scattered flecks and a few soft blotches rather than by lines, about 20 small dark pin holes scattered near the centre and upper area as low-contrast dents, large areas of clean bone white paper left untouched inside the board, simple graphic shapes, minimal detail, bright overall image, even flat lighting across the whole surface, subtle even grain, empty board

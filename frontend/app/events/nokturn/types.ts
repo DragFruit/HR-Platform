@@ -128,6 +128,25 @@ export type NokturnStageView = {
   testimonies: NokturnTestimony[];
 };
 
+/**
+ * Постоянная обстановка доски: карточка дела и шесть портретов.
+ * Лежит на доске с первого входа, двигается и связывается нитями как улика,
+ * но в сейф не возвращается — доска не должна пустовать никогда.
+ */
+export type NokturnFixtureKind = 'case' | 'suspect';
+
+export type NokturnFixture = {
+  id: string;
+  kind: NokturnFixtureKind;
+  title: string;
+  subtitle?: string;
+  lines: string[];
+  photo?: string;
+  /** Положение по умолчанию, доли доски 0..1. */
+  x: number;
+  y: number;
+};
+
 export type NokturnBoardItem = {
   /** id улики. */
   id: string;

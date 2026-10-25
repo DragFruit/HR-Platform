@@ -11,6 +11,8 @@ import {
 import { buildStageViews, isStageOpen } from '../../../utils/nokturnGate';
 import {
   NOKTURN_ART,
+  NOKTURN_FIXTURES,
+  NOKTURN_FIXTURE_SUSPECT,
   NOKTURN_INVESTIGATOR,
   NOKTURN_MECHANICS_OPTIONS,
   NOKTURN_MECHANICS_QUESTION,
@@ -46,6 +48,13 @@ export default defineEventHandler(async (event) => {
     return { id: s.id, name: s.name, role: s.role, photo };
   });
 
+  // Обстановка доски: портрет Фёдора подменяется тем же правилом, что в бюллетене.
+  const photoById = new Map(suspects.map((s) => [s.id, s.photo]));
+  const fixtures = NOKTURN_FIXTURES.map((f) => {
+    const suspectId = NOKTURN_FIXTURE_SUSPECT[f.id];
+    return { ...f, photo: suspectId ? photoById.get(suspectId) ?? f.photo : f.photo };
+  });
+
   let reveal: unknown = null;
   if (revealed) {
     const players = await readNokturnPlayers();
@@ -79,6 +88,7 @@ export default defineEventHandler(async (event) => {
     minigameAttempts: NOKTURN_MINIGAME_ATTEMPTS,
     micro: NOKTURN_MICRO,
     suspects,
+    fixtures,
     art: NOKTURN_ART,
     investigator: NOKTURN_INVESTIGATOR,
     mechanics: {

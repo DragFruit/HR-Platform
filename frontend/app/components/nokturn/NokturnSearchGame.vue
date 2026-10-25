@@ -116,7 +116,7 @@ function finish(win: boolean) {
   if (timer) clearInterval(timer);
   timer = null;
   if (win) {
-    result.value = 'Все шесть предметов изъяты. Улики ушли в сейф.';
+    result.value = `Все предметы изъяты (${hotspots.value.length}). Улики ушли в сейф.`;
     emit('solved', [...found.value]);
   } else {
     result.value = 'Время вышло.';

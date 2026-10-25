@@ -5,7 +5,7 @@ import {
   mutateNokturn,
   NOKTURN_THREAD_LIMIT
 } from '../../../utils/nokturnStore';
-import { availableEvidenceIds } from '../../../utils/nokturnGate';
+import { allowedBoardIds } from '../../../utils/nokturnGate';
 import type { NokturnBoard } from '../../../../app/events/nokturn/types';
 
 const clamp01 = (v: unknown) => {
@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
 
   return mutateNokturn((state) => {
     const player = findOrCreatePlayer(state, session.id, session.name || 'Сотрудник');
-    const allowed = availableEvidenceIds(player, now);
+    const allowed = allowedBoardIds(player, now);
 
     const items = incoming.items
       .filter((i) => i && typeof i.id === 'string' && allowed.has(i.id))

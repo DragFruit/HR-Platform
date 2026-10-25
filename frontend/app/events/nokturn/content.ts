@@ -8,6 +8,7 @@
 
 import type {
   NokturnEvidence,
+  NokturnFixture,
   NokturnMechanicsOption,
   NokturnStage,
   NokturnStageId,
@@ -31,6 +32,47 @@ export const NOKTURN_SUSPECTS: NokturnSuspect[] = [
   { id: 'anna', name: 'Анна', role: 'поставщик', photo: '/events/nokturn/person-anna.jpg' }
 ];
 
+/**
+ * Обстановка доски с первого входа: карточка дела в центре и шесть портретов
+ * вокруг. Спойлера нет — все шестеро задержаны с субботы и известны с первого
+ * дня, показания понедельника есть от всех шести. Игрок всю неделю выбирает
+ * из этих шестерых, поэтому они должны быть перед глазами, а не в бюллетене.
+ */
+export const NOKTURN_CASE_FIXTURE_ID = 'case-file';
+
+export const NOKTURN_FIXTURES: NokturnFixture[] = [
+  {
+    id: NOKTURN_CASE_FIXTURE_ID,
+    kind: 'case',
+    title: 'Дело Костелова',
+    subtitle: 'Клуб «Синий Ноктюрн», кабинет на втором этаже',
+    lines: [
+      'Аркадий Борисович Костелов, 54 года. Владелец клуба и изобретатель-одиночка.',
+      'Дверь заперта изнутри на массивную задвижку, окна зарешечены.',
+      'Смерть по логам экзокостюма: вторник, 20 октября, 21:03.',
+      'Тело обнаружено в субботу, 24 октября. Задержаны шестеро.'
+    ],
+    x: 0.5,
+    y: 0.37
+  },
+  { id: 'suspect-roman', kind: 'suspect', title: 'Роман', lines: ['юрист клуба'], photo: '/events/nokturn/person-roman.jpg', x: 0.075, y: 0.04 },
+  { id: 'suspect-fedor', kind: 'suspect', title: 'Фёдор', lines: ['бармен'], photo: '/events/nokturn/person-fedor.jpg', x: 0.245, y: 0.04 },
+  { id: 'suspect-lara', kind: 'suspect', title: 'Лара', lines: ['певица'], photo: '/events/nokturn/person-lara.jpg', x: 0.415, y: 0.04 },
+  { id: 'suspect-timur', kind: 'suspect', title: 'Тимур', lines: ['журналист'], photo: '/events/nokturn/person-timur.jpg', x: 0.585, y: 0.04 },
+  { id: 'suspect-ilya', kind: 'suspect', title: 'Илья', lines: ['звукорежиссёр'], photo: '/events/nokturn/person-ilya.jpg', x: 0.755, y: 0.04 },
+  { id: 'suspect-anna', kind: 'suspect', title: 'Анна', lines: ['поставщик'], photo: '/events/nokturn/person-anna.jpg', x: 0.925, y: 0.04 }
+];
+
+/** id подозреваемого по id карточки на доске — для подмены портрета Фёдора. */
+export const NOKTURN_FIXTURE_SUSPECT: Record<string, string> = {
+  'suspect-roman': 'roman',
+  'suspect-fedor': 'fedor',
+  'suspect-lara': 'lara',
+  'suspect-timur': 'timur',
+  'suspect-ilya': 'ilya',
+  'suspect-anna': 'anna'
+};
+
 /** Шапка утреннего брифа. */
 export const NOKTURN_INVESTIGATOR = {
   name: 'Вера Соловьёва',
@@ -41,7 +83,6 @@ export const NOKTURN_INVESTIGATOR = {
 /** Фон доски и накладки — канонические пути из docs/quests/sinij-nokturn-art.md. */
 export const NOKTURN_ART = {
   cork: '/events/nokturn/board-cork.jpg',
-  boardFrame: '/events/nokturn/prop-board-frame.png',
   pinRed: '/events/nokturn/prop-pin-red.png',
   evidenceBag: '/events/nokturn/prop-evidence-bag.png',
   tape: '/events/nokturn/prop-tape.png',
@@ -68,54 +109,24 @@ export const NOKTURN_MICRO = {
 
 const MONDAY_EVIDENCE: NokturnEvidence[] = [
   {
-    id: 'mon-latch',
+    id: 'mon-lock',
     stage: 1,
-    title: 'Задвижка со следами пальцев',
-    tag: ['Задвижка двери кабинета. Отпечатки: Фёдор. Иных отпечатков не обнаружено'],
+    title: 'Дверная ручка-замок',
+    tag: ['Ручка-замок двери кабинета, снята целиком. Отпечатки: Фёдор. Иных отпечатков не обнаружено'],
     kind: 'prop',
-    image: '/events/nokturn/clue-01-latch.png',
+    image: '/events/nokturn/clue-mon-lock.jpg',
     fromMinigame: true
   },
   {
-    id: 'mon-napkin',
+    id: 'mon-case',
     stage: 1,
-    title: 'Барная салфетка',
+    title: 'Портфель у двери',
     tag: [
-      'Салфетка с барной стойки. Рукой Романа: расписание выходов Лары, второй выход обведён: 21:00'
+      'Портфель, обнаружен у двери кабинета. Внутри журнал выдачи сертификационного пакета изделия.',
+      'Последняя запись: 20 октября, 18:40. Пакет выдан поверенному заявителя.'
     ],
     kind: 'prop',
-    image: '/events/nokturn/clue-02-napkin.png',
-    fromMinigame: true
-  },
-  {
-    id: 'mon-mic',
-    stage: 1,
-    title: 'Микрофон со сцены',
-    tag: ['Микрофон, брошен на сцене в 21:01. Пиковая перегрузка канала, предел шкалы'],
-    kind: 'prop',
-    image: '/events/nokturn/clue-03-microphone.png',
-    fromMinigame: true
-  },
-  {
-    id: 'mon-recorder',
-    stage: 1,
-    title: 'Диктофон под столом в зале',
-    tag: [
-      'Диктофон на магните, снят с нижней поверхности столика №4. Владелец не установлен'
-    ],
-    kind: 'prop',
-    image: '/events/nokturn/clue-04-recorder.png',
-    fromMinigame: true
-  },
-  {
-    id: 'mon-crowbar',
-    stage: 1,
-    title: 'Монтажка и обрезки кабеля',
-    tag: [
-      'Монтажка, следы на двери кабинета. Обрезки экранированного кабеля, не из заводской поставки'
-    ],
-    kind: 'prop',
-    image: '/events/nokturn/clue-05-crowbar.png',
+    image: '/events/nokturn/clue-mon-case.jpg',
     fromMinigame: true
   },
   {
@@ -123,10 +134,80 @@ const MONDAY_EVIDENCE: NokturnEvidence[] = [
     stage: 1,
     title: 'Требование о взыскании',
     tag: [
-      'Требование о взыскании предмета залога. Подпись: Анна. Дата: 19 октября. Пометка от руки: срок истёк'
+      'Требование о взыскании предмета залога, на рабочем столе. Подпись: Анна. Дата: 19 октября. Пометка от руки: срок истёк'
     ],
     kind: 'prop',
-    image: '/events/nokturn/clue-06-claim.png',
+    image: '/events/nokturn/clue-mon-claim.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-cigarette',
+    stage: 1,
+    title: 'Окурок в пепельнице',
+    tag: [
+      'Пепельница на рабочем столе, один окурок. След помады: соответствует образцу Лары.',
+      'Из показаний Лары: в кабинет не поднималась.'
+    ],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-cigarette.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-recorder',
+    stage: 1,
+    title: 'Диктофон на магните',
+    tag: [
+      'Диктофон на магните, столик у дивана. Снят с нижней поверхности столика в зале и принесён в кабинет. Владелец не установлен'
+    ],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-recorder.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-cable',
+    stage: 1,
+    title: 'Обрезки кабеля у стены',
+    tag: [
+      'Обрезки экранированного кабеля у плинтуса, не из заводской поставки. Там же следы отжима на дверном полотне: дверь вскрывали в субботу'
+    ],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-cable.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-hat',
+    stage: 1,
+    title: 'Шляпа на вешалке',
+    tag: ['Шляпа, вешалка у двери. Принадлежность: Костелов. К обстоятельствам дела отношения не имеет'],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-hat.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-glass',
+    stage: 1,
+    title: 'Стакан на столе',
+    tag: ['Стакан с остатком виски, рабочий стол. Отпечатки: Костелов. Посторонних следов не обнаружено'],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-glass.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-poster',
+    stage: 1,
+    title: 'Афиша квартета',
+    tag: ['Афиша концерта, стена кабинета. Дата прошедшая. К обстоятельствам дела отношения не имеет'],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-poster.jpg',
+    fromMinigame: true
+  },
+  {
+    id: 'mon-inkstand',
+    stage: 1,
+    title: 'Чернильный прибор',
+    tag: ['Чернильный прибор, рабочий стол. Следов использования в последние дни нет'],
+    kind: 'prop',
+    image: '/events/nokturn/clue-mon-inkstand.jpg',
     fromMinigame: true
   },
   {
@@ -424,16 +505,19 @@ export const NOKTURN_STAGES: NokturnStage[] = [
       kind: 'search',
       title: 'Поиск предметов',
       background: '/events/nokturn/scene-office.jpg',
-      attemptSeconds: 90,
+      attemptSeconds: 150,
       hotspots: [
-        { evidenceId: 'mon-latch', x: 0.045, y: 0.355, w: 0.1, h: 0.13, label: 'Задвижка' },
-        { evidenceId: 'mon-napkin', x: 0.705, y: 0.715, w: 0.12, h: 0.1, label: 'Салфетка' },
-        { evidenceId: 'mon-mic', x: 0.455, y: 0.21, w: 0.1, h: 0.12, label: 'Микрофон' },
-        { evidenceId: 'mon-recorder', x: 0.23, y: 0.75, w: 0.11, h: 0.1, label: 'Диктофон' },
-        { evidenceId: 'mon-crowbar', x: 0.825, y: 0.3, w: 0.13, h: 0.11, label: 'Монтажка' },
-        { evidenceId: 'mon-claim', x: 0.545, y: 0.56, w: 0.12, h: 0.11, label: 'Требование' }
-      ]
-    }
+        { evidenceId: 'mon-lock', x: 0.015, y: 0.07, w: 0.075, h: 0.3, label: 'Дверная ручка' },
+        { evidenceId: 'mon-hat', x: 0.155, y: 0.155, w: 0.06, h: 0.09, label: 'Шляпа' },
+        { evidenceId: 'mon-case', x: 0.105, y: 0.6, w: 0.07, h: 0.11, label: 'Портфель' },
+        { evidenceId: 'mon-inkstand', x: 0.21, y: 0.66, w: 0.07, h: 0.08, label: 'Чернильный прибор' },
+        { evidenceId: 'mon-claim', x: 0.39, y: 0.62, w: 0.085, h: 0.095, label: 'Требование' },
+        { evidenceId: 'mon-cigarette', x: 0.455, y: 0.578, w: 0.058, h: 0.068, label: 'Пепельница' },
+        { evidenceId: 'mon-glass', x: 0.562, y: 0.58, w: 0.055, h: 0.066, label: 'Стакан' },
+        { evidenceId: 'mon-recorder', x: 0.575, y: 0.4, w: 0.09, h: 0.09, label: 'Диктофон' },
+        { evidenceId: 'mon-poster', x: 0.7, y: 0.04, w: 0.09, h: 0.15, label: 'Афиша' },
+        { evidenceId: 'mon-cable', x: 0.865, y: 0.6, w: 0.09, h: 0.12, label: 'Обрезки кабеля' }
+      ]    }
   },
   {
     id: 2,
@@ -450,7 +534,7 @@ export const NOKTURN_STAGES: NokturnStage[] = [
       slug: 'archive-lock',
       kind: 'tic-tac-toe',
       title: 'Кодовый замок архива',
-      background: '/events/nokturn/scene-archive.png',
+      background: '/events/nokturn/scene-desk.jpg',
       attemptSeconds: 0
     }
   },

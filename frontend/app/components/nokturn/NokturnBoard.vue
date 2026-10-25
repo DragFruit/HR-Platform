@@ -15,26 +15,27 @@
 
     <div class="nk-stage__body">
       <!--
-        Рама доски — отдельная обёртка, а не бордер на самой доске: проценты
-        позиционирования улик считаются от padding-box, а getBoundingClientRect()
-        возвращает border-box, и любой бордер на .nk-board развёл бы курсор
-        с отрисовкой ровно на свою толщину. Фон `board-cork.jpg` приходит
-        чистой фактурой край в край, рама — отдельная картинка
-        `prop-board-frame.png`, натянутая 9-slice: углы фиксированы слайсом,
-        тянутся только прямые участки.
+        Доска — одна картинка `board-cork.jpg` вместе с нарисованной рамой,
+        кадр 16:9. Картинка лежит фоном на обёртке, а не на самой доске:
+        полоса рамы отдана в padding обёртки, и .nk-board совпадает с
+        пробковой зоной. Отступ именно на обёртке потому, что проценты
+        позиционирования улик считаются от padding-box, а
+        getBoundingClientRect() возвращает border-box, и padding на .nk-board
+        развёл бы курсор с отрисовкой ровно на свою толщину.
 
         Сама доска — собственный слой: все координаты считаются от
         getBoundingClientRect(), поэтому курсор и отрисовка не расходятся
         ни при масштабе платформы 90%, ни в полном экране.
       -->
-      <div class="nk-frame" :style="{ borderImageSource: `url(${art.boardFrame})` }">
+      <div class="nk-frame" :style="{ backgroundImage: `url(${art.cork})` }">
       <div
         ref="boardEl"
         class="nk-board"
-        :style="{ backgroundImage: `url(${art.cork})` }"
         @pointerdown="onBoardPointerDown"
       >
-        <p v-if="!items.length" class="nk-board__empty">{{ micro.emptyBoard }}</p>
+        <p v-if="!boardHasClues && safeEvidence.length" class="nk-board__hint">
+          {{ micro.emptyBoard }}
+        </p>
         <p v-else-if="threads.length" class="nk-board__hint">{{ micro.threadHint }}</p>
 
         <svg class="nk-board__web" :viewBox="`0 0 ${size.w || 1} ${size.h || 1}`">
@@ -63,13 +64,16 @@
           v-for="item in placedItems"
           :key="item.id"
           class="nk-pinned"
-          :class="{ 'is-dragging': drag?.id === item.id }"
+          :class="[
+            item.fixture ? `nk-pinned--${item.fixture.kind}` : 'nk-pinned--clue',
+            { 'is-dragging': drag?.id === item.id }
+          ]"
           :style="{ left: `${item.x * 100}%`, top: `${item.y * 100}%` }"
         >
           <button
             type="button"
             class="nk-pinned__pin"
-            :aria-label="`Нить от улики «${item.evidence.title}»`"
+            :aria-label="`Нить от карточки «${(item.fixture ?? item.evidence)?.title}»`"
             @pointerdown.stop="onPinDown($event, item.id)"
           >
             <img :src="art.pinRed" alt="" aria-hidden="true" draggable="false" />
@@ -78,11 +82,13 @@
             class="nk-pinned__card"
             role="button"
             tabindex="0"
-            :aria-label="item.evidence.title"
+            :aria-label="(item.fixture ?? item.evidence)?.title"
             @pointerdown="onItemDown($event, item.id)"
-            @keydown.enter="emit('open-evidence', item.evidence)"
+            @keydown.enter="item.evidence && emit('open-evidence', item.evidence)"
           >
+            <NokturnFixtureCard v-if="item.fixture" :fixture="item.fixture" />
             <NokturnEvidenceCard
+              v-else-if="item.evidence"
               :evidence="item.evidence"
               variant="board"
               :bag-src="art.evidenceBag"
@@ -90,7 +96,7 @@
           </div>
         </div>
 
-        <div class="nk-board__game">
+        <div class="nk-board__game" :class="{ 'is-centered': !boardHasClues }">
           <NokturnMinigameButton
             v-if="activeStage"
             :stage="activeStage"
@@ -166,7 +172,18 @@
         </div>
 
         <div v-else class="nk-safe__list">
-          <p v-if="!testimonies.length" class="nk-safe__empty">Показаний пока нет.</p>
+          <!--
+            Пустой список показаний — тупик для того, кто зашёл первый раз.
+            Вместо него показываем бриф: что от игрока хотят сегодня.
+          -->
+          <NokturnBriefing
+            v-if="!testimonies.length && briefStage"
+            :stage="briefStage"
+            :investigator="investigator"
+          />
+          <p v-else-if="!testimonies.length" class="nk-safe__empty">
+            Показания появятся, когда откроется этап.
+          </p>
           <article v-for="(t, i) in testimonies" :key="`${t.stage}-${t.suspectId}-${i}`" class="nk-word">
             <header class="nk-word__head">
               <img
@@ -204,6 +221,7 @@ import type {
   NokturnBoardItem,
   NokturnBoardThread,
   NokturnEvidence,
+  NokturnFixture,
   NokturnStageId,
   NokturnStageView,
   NokturnSuspect
@@ -213,6 +231,9 @@ const props = defineProps<{
   board: NokturnBoard;
   stages: NokturnStageView[];
   suspects: NokturnSuspect[];
+  fixtures: NokturnFixture[];
+  briefStage: NokturnStageView | null;
+  investigator: { name: string; title: string; photo: string };
   art: Record<string, string>;
   micro: Record<string, string>;
   threadLimit: number;
@@ -251,12 +272,28 @@ const suspectById = computed(() => {
   return map;
 });
 
-/** На доске — только те улики, которые игрок уже получил. */
+const fixtureById = computed(() => {
+  const map: Record<string, NokturnFixture> = {};
+  for (const f of props.fixtures) map[f.id] = f;
+  return map;
+});
+
+/** Карточка дела и портреты с доски не убираются — доска не пустует. */
+const isFixture = (id: string) => Boolean(fixtureById.value[id]);
+
+/** На доске — обстановка плюс те улики, которые игрок уже получил. */
 const placedItems = computed(() =>
   items.value
-    .filter((i) => evidenceById.value[i.id])
-    .map((i) => ({ ...i, evidence: evidenceById.value[i.id] as NokturnEvidence }))
+    .filter((i) => evidenceById.value[i.id] || fixtureById.value[i.id])
+    .map((i) => ({
+      ...i,
+      evidence: evidenceById.value[i.id] ?? null,
+      fixture: fixtureById.value[i.id] ?? null
+    }))
 );
+
+/** Улик на доске ещё нет — кнопку дня показываем по центру. */
+const boardHasClues = computed(() => items.value.some((i) => evidenceById.value[i.id]));
 
 const onBoardIds = computed(() => new Set(items.value.map((i) => i.id)));
 const safeEvidence = computed(() => allEvidence.value.filter((e) => !onBoardIds.value.has(e.id)));
@@ -450,7 +487,8 @@ function onUp(e: PointerEvent) {
   }
 
   // Улику вынесли за доску — она возвращается в сейф вместе со своими нитями.
-  if (!insideBoard(e.clientX, e.clientY)) {
+  // Обстановку не отдаём: доска не должна оставаться пустой.
+  if (!insideBoard(e.clientX, e.clientY) && !isFixture(d.id)) {
     emitBoard({
       items: items.value.filter((i) => i.id !== d.id),
       threads: threads.value.filter((t) => t.from !== d.id && t.to !== d.id)

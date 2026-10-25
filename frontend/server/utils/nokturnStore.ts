@@ -7,6 +7,7 @@ import type {
   NokturnSuspectId
 } from '../../app/events/nokturn/types';
 import { NOKTURN_STAGE_IDS } from '../../app/events/nokturn/timeline';
+import { NOKTURN_FIXTURES } from '../../app/events/nokturn/content';
 
 const DATA_FILE = join(process.cwd(), 'server/data/nokturn.json');
 const enqueue = createMutationQueue();
@@ -45,6 +46,8 @@ export type NokturnPlayer = {
     late: boolean;
     at: string;
   };
+  /** Обстановка доски уже разложена (карточка дела и шесть портретов). */
+  fixturesSeeded?: boolean;
   updatedAt: string;
 };
 
@@ -60,10 +63,30 @@ export function emptyNokturnPlayer(userId: number, name: string): NokturnPlayer 
   return {
     userId,
     name,
-    board: { items: [], threads: [] },
+    board: { items: fixtureItems(), threads: [] },
     stages: {},
+    fixturesSeeded: true,
     updatedAt: new Date().toISOString()
   };
+}
+
+/** Карточка дела и шесть портретов на местах по умолчанию. */
+function fixtureItems() {
+  return NOKTURN_FIXTURES.map((f) => ({ id: f.id, x: f.x, y: f.y }));
+}
+
+/**
+ * Разовая раскладка обстановки для игроков, заведённых до её появления.
+ * Флаг нужен, чтобы не возвращать карточки тому, кто их сам убрал с доски.
+ */
+export function ensureFixtures(player: NokturnPlayer): boolean {
+  if (player.fixturesSeeded) return false;
+  const present = new Set(player.board.items.map((i) => i.id));
+  for (const f of fixtureItems()) {
+    if (!present.has(f.id)) player.board.items.push(f);
+  }
+  player.fixturesSeeded = true;
+  return true;
 }
 
 function normalizeBoard(raw: unknown): NokturnBoard {
@@ -117,6 +140,7 @@ function normalizePlayer(raw: unknown): NokturnPlayer | null {
     name: String(src.name || 'Сотрудник'),
     board: normalizeBoard(src.board),
     stages,
+    fixturesSeeded: Boolean(src.fixturesSeeded),
     mechanics: src.mechanics
       ? {
           optionId: Number(src.mechanics.optionId) || 0,
@@ -173,6 +197,7 @@ export function findOrCreatePlayer(
     state.players.push(player);
   }
   if (name) player.name = name;
+  ensureFixtures(player);
   player.updatedAt = new Date().toISOString();
   return player;
 }

@@ -20265,9 +20265,15 @@ button.button {
 */
 :root {
   --nk-paper: #efe9df;
+  --nk-paper-shade: #e3dccf;
   --nk-ink: #111111;
+  --nk-ink-soft: rgba(17, 17, 17, 0.62);
+  --nk-ink-faint: rgba(17, 17, 17, 0.28);
   --nk-accent: #3f8f8f;
+  --nk-accent-deep: #2f6c6c;
   --nk-thread: #b6242c;
+  /* Доска — средний тон: бумажные карточки на ней читаются, чёрное на чёрном уходит. */
+  --nk-board: #5a5a55;
   --nk-on-dark: #efe9df;
   --nk-on-dark-soft: rgba(239, 233, 223, 0.62);
   --nk-night: #111111;
@@ -20370,8 +20376,8 @@ body.nk-body-locked {
   flex-direction: column;
   gap: 0;
   border: 1px solid var(--nk-ink);
-  background: var(--nk-night);
-  color: var(--nk-on-dark);
+  background: var(--nk-paper);
+  color: var(--nk-ink);
   overflow: hidden;
 }
 
@@ -20385,21 +20391,23 @@ body.nk-body-locked {
   align-items: center;
   gap: 14px;
   padding: 10px 14px;
-  background: var(--nk-night-soft);
-  border-bottom: 1px solid rgba(239, 233, 223, 0.16);
+  background: var(--nk-paper-shade);
+  border-bottom: 1px solid var(--nk-ink);
 }
 
 .nk-stage__case {
   margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .nk-stage__deadline {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
-  color: var(--nk-accent);
+  letter-spacing: 0.04em;
+  color: var(--nk-accent-deep);
 }
 
 .nk-stage__bar-right {
@@ -20411,18 +20419,19 @@ body.nk-body-locked {
 
 .nk-stage__threads {
   font-size: 0.78rem;
-  color: var(--nk-on-dark-soft);
+  color: var(--nk-ink-soft);
 }
 
 .nk-stage__bar .nk-btn {
-  background: transparent;
-  color: var(--nk-on-dark);
-  border-color: rgba(239, 233, 223, 0.4);
+  padding: 8px 18px;
+  background: var(--nk-accent);
+  color: var(--nk-paper);
+  border-color: var(--nk-ink);
+  font-weight: 700;
 }
 
 .nk-stage__bar .nk-btn:hover {
-  background: var(--nk-accent);
-  border-color: var(--nk-accent);
+  background: var(--nk-accent-deep);
 }
 
 /*
@@ -20446,29 +20455,32 @@ body.nk-body-locked {
 /* ---------------------------------------------------------------- доска */
 
 /*
-  Рама по периметру доски — на обёртке, картинкой через border-image (9-slice):
-  слайс 90 держит углы, растягиваются только прямые участки, поэтому рама не
-  едет при смене разрешения и в полном экране. Внутрь фактуры пробки раму
-  возвращать нельзя по той же причине — `board-cork.jpg` идёт край в край.
-  Бордер именно на обёртке, а не на .nk-board: проценты позиционирования улик
+  Доска — одна картинка `board-cork.jpg` вместе с нарисованной рамой, кадр
+  строго 16:9. Поэтому обёртка держит aspect-ratio и показывает картинку
+  целиком (`background-size: 100% 100%` при том же соотношении ничего не
+  искажает), а прежняя схема «фактура край в край + рама отдельным PNG через
+  border-image» снята: она была нужна только ради растяжения под любой экран.
+  Полоса рамы занимает ~4,7% кадра, столько же отдано в padding, и cork-зона
+  совпадает с .nk-board.
+
+  Отступ именно на обёртке, а не на .nk-board: проценты позиционирования улик
   считаются от padding-box, а getBoundingClientRect() возвращает border-box,
-  и бордер на самой доске развёл бы курсор с отрисовкой на свою толщину.
+  и padding на самой доске развёл бы курсор с отрисовкой на свою толщину.
 */
 .nk-frame {
-  --nk-frame-w: 20px;
   position: relative;
   display: flex;
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  place-self: center;
   min-width: 0;
   min-height: 0;
-  border: var(--nk-frame-w) solid transparent;
-  border-image-slice: 90;
-  border-image-repeat: stretch;
-  background: var(--nk-ink);
-  background-clip: padding-box;
-}
-
-.nk-stage--full .nk-frame {
-  --nk-frame-w: 14px;
+  padding: 4.7%;
+  background-color: var(--nk-ink);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .nk-board {
@@ -20477,14 +20489,10 @@ body.nk-body-locked {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background-color: #a97c4c;
-  background-size: cover;
-  background-position: center;
   touch-action: none;
   cursor: default;
 }
 
-.nk-board__empty,
 .nk-board__hint {
   position: absolute;
   left: 50%;
@@ -20495,18 +20503,9 @@ body.nk-body-locked {
   text-align: center;
   background: rgba(17, 17, 17, 0.82);
   color: var(--nk-on-dark);
-  font-size: 0.84rem;
-  pointer-events: none;
-}
-
-.nk-board__empty {
-  top: 50%;
-}
-
-.nk-board__hint {
-  bottom: 10px;
   font-size: 0.76rem;
-  opacity: 0.75;
+  pointer-events: none;
+  bottom: 10px;
 }
 
 .nk-board__web {
@@ -20576,11 +20575,24 @@ body.nk-body-locked {
   opacity: 0.85;
 }
 
+/*
+  Кнопка дня — главное действие экрана. Пока улик на доске нет, она стоит
+  по центру, чтобы зашедший в 10:00 видел «Играть», а не искал её глазами.
+*/
 .nk-board__game {
   position: absolute;
   left: 14px;
   bottom: 14px;
   max-width: min(420px, 60%);
+  z-index: 4;
+}
+
+.nk-board__game.is-centered {
+  left: 50%;
+  bottom: auto;
+  top: 76%;
+  transform: translate(-50%, -50%);
+  max-width: min(460px, 76%);
 }
 
 /* ------------------------------------------------------- карточка улики */
@@ -20633,6 +20645,7 @@ body.nk-body-locked {
 }
 
 .nk-card__label {
+  font-family: inherit;
   position: absolute;
   left: 8%;
   right: 8%;
@@ -20736,8 +20749,9 @@ body.nk-body-locked {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--nk-night-soft);
-  border-left: 1px solid rgba(239, 233, 223, 0.16);
+  background: var(--nk-paper-shade);
+  color: var(--nk-ink);
+  border-left: 1px solid var(--nk-ink);
 }
 
 .nk-safe__head {
@@ -20757,12 +20771,16 @@ body.nk-body-locked {
 .nk-safe__tab {
   flex: 1;
   padding: 7px 8px;
-  border: 1px solid rgba(239, 233, 223, 0.3);
+  border: 1px solid var(--nk-ink);
   background: transparent;
-  color: var(--nk-on-dark-soft);
+  color: var(--nk-ink-soft);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.nk-safe__tab:hover {
+  background: var(--nk-paper);
 }
 
 .nk-safe__tab.is-on {
@@ -20784,9 +20802,9 @@ body.nk-body-locked {
   align-items: center;
   gap: 2px;
   padding: 6px 2px;
-  border: 1px solid rgba(239, 233, 223, 0.26);
-  background: transparent;
-  color: var(--nk-on-dark-soft);
+  border: 1px solid var(--nk-ink-faint);
+  background: var(--nk-paper);
+  color: var(--nk-ink-soft);
   font: inherit;
   cursor: pointer;
 }
@@ -20804,12 +20822,12 @@ body.nk-body-locked {
 
 .nk-safe__day.is-done {
   border-color: var(--nk-accent);
-  color: var(--nk-accent);
+  color: var(--nk-accent-deep);
 }
 
 .nk-safe__day.is-catch-up {
   border-color: var(--nk-accent);
-  color: var(--nk-accent);
+  color: var(--nk-accent-deep);
 }
 
 .nk-safe__day-n {
@@ -20847,7 +20865,7 @@ body.nk-body-locked {
 
 .nk-safe__empty {
   margin: 0;
-  color: var(--nk-on-dark-soft);
+  color: var(--nk-ink-soft);
   font-size: 0.82rem;
 }
 
@@ -20862,8 +20880,8 @@ body.nk-body-locked {
 
 .nk-word {
   padding: 10px;
-  background: rgba(239, 233, 223, 0.06);
-  border: 1px solid rgba(239, 233, 223, 0.16);
+  background: var(--nk-paper);
+  border: 1px solid var(--nk-ink);
 }
 
 .nk-word__head {
@@ -20877,7 +20895,7 @@ body.nk-body-locked {
   width: 40px;
   height: 50px;
   object-fit: cover;
-  border: 1px solid rgba(239, 233, 223, 0.3);
+  border: 1px solid var(--nk-ink);
 }
 
 .nk-word__name {
@@ -20889,14 +20907,14 @@ body.nk-body-locked {
 .nk-word__role {
   margin: 0;
   font-size: 0.72rem;
-  color: var(--nk-on-dark-soft);
+  color: var(--nk-ink-soft);
 }
 
 .nk-word__text {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.45;
-  color: var(--nk-on-dark);
+  color: var(--nk-ink);
 }
 
 /* --------------------------------------------------------------- призрак */
@@ -20916,11 +20934,34 @@ body.nk-body-locked {
 .nk-game {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   background: rgba(17, 17, 17, 0.92);
-  border: 1px solid rgba(239, 233, 223, 0.26);
+  border: 1px solid var(--nk-ink);
   color: var(--nk-on-dark);
+}
+
+.is-centered .nk-game {
+  padding: 16px 18px;
+  background: var(--nk-accent);
+  border-color: var(--nk-ink);
+  color: var(--nk-paper);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+.is-centered .nk-game__state {
+  color: rgba(239, 233, 223, 0.85);
+}
+
+.is-centered .nk-game__title {
+  font-size: 0.94rem;
+}
+
+.is-centered .nk-btn--primary {
+  padding: 11px 22px;
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  font-size: 0.94rem;
 }
 
 .nk-game--available {
@@ -20992,6 +21033,22 @@ body.nk-body-locked {
 }
 
 /* ----------------------------------------------------------- бриф и игра */
+
+/* Фон брифа — кабинет следователя, затемнён под текст. */
+.nk-brief {
+  position: relative;
+  isolation: isolate;
+}
+
+.nk-brief__bg {
+  position: absolute;
+  inset: -20px;
+  z-index: -1;
+  background-image: linear-gradient(rgba(17, 17, 17, 0.82), rgba(17, 17, 17, 0.92)),
+    url('/events/nokturn/scene-desk.jpg');
+  background-size: cover;
+  background-position: center;
+}
 
 .nk-brief__head {
   display: flex;
@@ -21370,10 +21427,6 @@ body.nk-body-locked {
   .nk-pinned__card {
     width: 118px;
   }
-
-  .nk-frame {
-    --nk-frame-w: 10px;
-  }
 }
 
 /* Точка-индикатор в левом меню (квест «Синий Ноктюрн»). */
@@ -21395,4 +21448,97 @@ body.nk-body-locked {
 .nk-pinned__pin:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
+}
+
+
+/* ---------------------------------------------- обстановка доски (дело, портреты) */
+
+.nk-fix {
+  margin: 0;
+  background: var(--nk-paper);
+  border: 1px solid var(--nk-ink);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+.nk-fix--suspect {
+  width: 100%;
+  padding-bottom: 6px;
+  text-align: center;
+}
+
+.nk-fix__photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-bottom: 1px solid var(--nk-ink);
+}
+
+.nk-fix__name {
+  margin: 5px 0 0;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--nk-ink);
+}
+
+.nk-fix__role {
+  margin: 1px 0 0;
+  font-size: 0.68rem;
+  color: var(--nk-ink-soft);
+}
+
+.nk-fix--case {
+  padding: 12px 14px 13px;
+  color: var(--nk-ink);
+}
+
+.nk-fix__kicker {
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--nk-accent-deep);
+}
+
+.nk-fix__title {
+  margin: 3px 0 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.nk-fix__sub {
+  margin: 3px 0 8px;
+  font-size: 0.72rem;
+  color: var(--nk-ink-soft);
+}
+
+.nk-fix__line {
+  margin: 0 0 5px;
+  font-size: 0.74rem;
+  line-height: 1.38;
+}
+
+.nk-fix__line:last-child {
+  margin-bottom: 0;
+}
+
+/* Ширина карточек на доске: портрет узкий, дело широкое, улика средняя. */
+.nk-pinned--suspect .nk-pinned__card {
+  width: 104px;
+}
+
+.nk-pinned--case .nk-pinned__card {
+  width: 300px;
+}
+
+@media (max-width: 900px) {
+  .nk-pinned--suspect .nk-pinned__card {
+    width: 84px;
+  }
+
+  .nk-pinned--case .nk-pinned__card {
+    width: 220px;
+  }
 }

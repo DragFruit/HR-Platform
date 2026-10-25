@@ -19,6 +19,7 @@ import {
   nokturnEvidenceForStage,
   nokturnStageById,
   nokturnTestimoniesForStage,
+  NOKTURN_FIXTURES,
   NOKTURN_STAGES
 } from '../../app/events/nokturn/content';
 import { NOKTURN_MINIGAME_ATTEMPTS, type NokturnPlayer } from './nokturnStore';
@@ -126,9 +127,12 @@ export function buildStageViews(player: NokturnPlayer, now: Date): NokturnStageV
   });
 }
 
-/** Улики, доступные игроку прямо сейчас — для валидации доски. */
-export function availableEvidenceIds(player: NokturnPlayer, now: Date): Set<string> {
-  const ids = new Set<string>();
+/**
+ * Что игроку разрешено держать на доске: выданные улики плюс постоянная
+ * обстановка (карточка дела и шесть портретов).
+ */
+export function allowedBoardIds(player: NokturnPlayer, now: Date): Set<string> {
+  const ids = new Set<string>(NOKTURN_FIXTURES.map((f) => f.id));
   for (const view of buildStageViews(player, now)) {
     for (const e of view.evidence) ids.add(e.id);
   }

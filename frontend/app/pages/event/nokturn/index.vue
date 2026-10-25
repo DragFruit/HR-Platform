@@ -45,6 +45,9 @@
             :board="board"
             :stages="state.stages"
             :suspects="state.suspects"
+            :fixtures="state.fixtures"
+            :brief-stage="briefStage"
+            :investigator="state.investigator"
             :art="state.art"
             :micro="micro"
             :thread-limit="state.threadLimit"
@@ -129,6 +132,7 @@
 import type {
   NokturnBoard as BoardShape,
   NokturnEvidence,
+  NokturnFixture,
   NokturnStageId,
   NokturnStageView,
   NokturnSuspect,
@@ -148,6 +152,7 @@ type QuestState = {
   minigameAttempts: number;
   micro: Record<string, string>;
   suspects: NokturnSuspect[];
+  fixtures: NokturnFixture[];
   art: Record<string, string>;
   investigator: { name: string; title: string; photo: string };
   mechanics: {

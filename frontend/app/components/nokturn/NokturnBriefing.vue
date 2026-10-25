@@ -1,5 +1,6 @@
 <template>
   <section class="nk-brief" aria-labelledby="nk-brief-title">
+    <div class="nk-brief__bg" aria-hidden="true"></div>
     <header class="nk-brief__head">
       <img
         class="nk-brief__photo"
