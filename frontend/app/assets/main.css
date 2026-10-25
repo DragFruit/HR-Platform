@@ -20244,6 +20244,8 @@ button.button {
 }
 .profile-stat-tile.profile-stat-tile--banner.profile-stat-tile--vacation-quest {
   background: #6e4cf2 !important;
+}
+
 /* ============================================================================
    Квест «Синий Ноктюрн» (/event/nokturn)
    Доска, сейф улик, нити, полный экран. См. docs/quests/sinij-nokturn.md
