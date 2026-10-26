@@ -119,7 +119,6 @@ const MONDAY_EVIDENCE: NokturnEvidence[] = [
     tag: ['Ручка-замок двери кабинета, снята целиком. Отпечатки: Фёдор. Иных отпечатков не обнаружено'],
     kind: 'prop',
     image: '/events/nokturn/clue-mon-lock.jpg',
-    bagged: true,
     fromMinigame: true
   },
   {
@@ -143,7 +142,6 @@ const MONDAY_EVIDENCE: NokturnEvidence[] = [
     ],
     kind: 'prop',
     image: '/events/nokturn/clue-mon-claim.jpg',
-    bagged: true,
     fromMinigame: true
   },
   {
