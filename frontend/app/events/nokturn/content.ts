@@ -510,17 +510,22 @@ export const NOKTURN_STAGES: NokturnStage[] = [
       title: 'Поиск предметов',
       background: '/events/nokturn/scene-office.jpg',
       attemptSeconds: 150,
+      /*
+        Зоны обведены по самим предметам, а не по углу комнаты: раньше рамки
+        были вдвое шире предмета и попадали «мимо, но засчитано». Координаты —
+        доли кадра scene-office.jpg от левого верхнего угла.
+      */
       hotspots: [
-        { evidenceId: 'mon-lock', x: 0.015, y: 0.07, w: 0.075, h: 0.3, label: 'Дверная ручка' },
-        { evidenceId: 'mon-hat', x: 0.155, y: 0.155, w: 0.06, h: 0.09, label: 'Шляпа' },
-        { evidenceId: 'mon-case', x: 0.105, y: 0.6, w: 0.07, h: 0.11, label: 'Портфель' },
-        { evidenceId: 'mon-inkstand', x: 0.21, y: 0.66, w: 0.07, h: 0.08, label: 'Чернильный прибор' },
-        { evidenceId: 'mon-claim', x: 0.39, y: 0.62, w: 0.085, h: 0.095, label: 'Требование' },
-        { evidenceId: 'mon-cigarette', x: 0.455, y: 0.578, w: 0.058, h: 0.068, label: 'Пепельница' },
-        { evidenceId: 'mon-glass', x: 0.562, y: 0.58, w: 0.055, h: 0.066, label: 'Стакан' },
-        { evidenceId: 'mon-recorder', x: 0.575, y: 0.4, w: 0.09, h: 0.09, label: 'Диктофон' },
-        { evidenceId: 'mon-poster', x: 0.7, y: 0.04, w: 0.09, h: 0.15, label: 'Афиша' },
-        { evidenceId: 'mon-cable', x: 0.865, y: 0.6, w: 0.09, h: 0.12, label: 'Обрезки кабеля' }
+        { evidenceId: 'mon-lock', x: 0.015, y: 0.1, w: 0.08, h: 0.3, label: 'Дверная ручка' },
+        { evidenceId: 'mon-hat', x: 0.16, y: 0.165, w: 0.05, h: 0.07, label: 'Шляпа' },
+        { evidenceId: 'mon-case', x: 0.105, y: 0.62, w: 0.07, h: 0.08, label: 'Портфель' },
+        { evidenceId: 'mon-inkstand', x: 0.215, y: 0.67, w: 0.06, h: 0.06, label: 'Чернильный прибор' },
+        { evidenceId: 'mon-claim', x: 0.39, y: 0.633, w: 0.08, h: 0.07, label: 'Требование' },
+        { evidenceId: 'mon-cigarette', x: 0.4615, y: 0.588, w: 0.045, h: 0.05, label: 'Пепельница' },
+        { evidenceId: 'mon-glass', x: 0.569, y: 0.588, w: 0.04, h: 0.05, label: 'Стакан' },
+        { evidenceId: 'mon-recorder', x: 0.585, y: 0.41, w: 0.07, h: 0.07, label: 'Диктофон' },
+        { evidenceId: 'mon-poster', x: 0.7125, y: 0.055, w: 0.065, h: 0.12, label: 'Афиша' },
+        { evidenceId: 'mon-cable', x: 0.87, y: 0.61, w: 0.08, h: 0.1, label: 'Обрезки кабеля' }
       ]    }
   },
   {

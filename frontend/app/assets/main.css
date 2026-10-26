@@ -20653,12 +20653,18 @@ body.nk-body-locked {
   bottom: 10px;
 }
 
+/*
+  Нити идут поверх карточек: нить связывает улики, и если она ныряет под
+  карточку, связь теряется ровно там, где на неё смотрят. Кнопка дня остаётся
+  выше нитей, иначе главное действие перечёркивается.
+*/
 .nk-board__web {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 5;
 }
 
 .nk-board__thread {
@@ -20729,7 +20735,7 @@ body.nk-body-locked {
   left: 14px;
   bottom: 14px;
   max-width: min(420px, 60%);
-  z-index: 4;
+  z-index: 6;
 }
 
 /*
@@ -22087,4 +22093,21 @@ body.nk-body-locked {
 
 .nk-modal__note {
   color: var(--nk-on-dark-soft);
+}
+
+/*
+  Список предметов в поиске: теперь это задание, а не прочерки, поэтому
+  названия видны сразу. Найденное заливается бирюзой, ненайденное — обводка
+  по тёмному: окно мини-игры стало нуарным, и прежний чёрный текст в нём
+  пропадал.
+*/
+.nk-search__checklist li {
+  border-color: var(--nk-shell-line);
+  color: var(--nk-on-dark-soft);
+}
+
+.nk-search__checklist li.is-found {
+  background: var(--nk-accent-deep);
+  border-color: var(--nk-accent);
+  color: var(--nk-on-dark);
 }

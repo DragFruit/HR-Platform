@@ -50,7 +50,7 @@
           :key="h.evidenceId"
           :class="{ 'is-found': found.includes(h.evidenceId) }"
         >
-          {{ found.includes(h.evidenceId) ? h.label : '— — —' }}
+          {{ h.label }}
         </li>
       </ul>
       <p v-if="result" class="nk-search__result" role="status">{{ result }}</p>
