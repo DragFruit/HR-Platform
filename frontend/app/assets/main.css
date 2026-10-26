@@ -20447,7 +20447,8 @@ body.nk-body-locked {
 .nk-stage__bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   padding: 10px 14px;
   background: var(--nk-paper-shade);
   border-bottom: 1px solid var(--nk-ink);
@@ -20469,6 +20470,8 @@ body.nk-body-locked {
 }
 
 .nk-stage__points {
+  flex: none;
+  white-space: nowrap;
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--nk-ink-soft);
@@ -20476,6 +20479,8 @@ body.nk-body-locked {
 
 .nk-stage__tip {
   margin: 0;
+  min-width: 0;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -21572,6 +21577,15 @@ body.nk-body-locked {
   .nk-pinned__card {
     width: 118px;
   }
+
+  .nk-stage__tip {
+    display: none;
+  }
+
+  .nk-stage__bar-right {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
 }
 
 /* Точка-индикатор в левом меню (квест «Синий Ноктюрн»). */
@@ -21753,22 +21767,34 @@ body.nk-body-locked {
   z-index: 2400;
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 0;
   width: min(560px, calc(100vw - 48px));
 }
 
+/*
+  Соловьёва — вырезанная PNG, как енот в гонках: без рамки и без подложки,
+  стоит рядом с репликой в полный рост. object-fit: contain, иначе кадр
+  обрежет фигуру.
+*/
 .nk-guide__photo {
   flex: none;
-  width: 92px;
-  height: 92px;
-  object-fit: cover;
-  border: 1px solid var(--nk-ink);
-  background: var(--nk-paper);
+  width: 132px;
+  height: auto;
+  aspect-ratio: 570 / 760;
+  object-fit: contain;
+  object-position: bottom center;
+  border: 0;
+  background: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 .nk-guide__bubble {
   flex: 1;
   min-width: 0;
+  /* Небольшой заход под фигуру — она «держит» реплику, а не стоит отдельно. */
+  margin-left: -14px;
+  margin-bottom: 10px;
   padding: 12px 14px 12px;
   background: var(--nk-ink);
   color: var(--nk-on-dark);
@@ -21845,8 +21871,7 @@ body.nk-body-locked {
   }
 
   .nk-guide__photo {
-    width: 64px;
-    height: 64px;
+    width: 86px;
   }
 
   .nk-guide__text {
