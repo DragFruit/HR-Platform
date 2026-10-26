@@ -1,55 +1,5 @@
 <template>
   <div class="nk-stage" :class="{ 'nk-stage--full': fullscreen }">
-    <!--
-      Одна полоса на весь экран: название дела ушло в шапку платформы,
-      счётчик срока — в слова Соловьёвой, счётчик нитей убран как лишний.
-      Действия держим здесь, а не на странице: в полном экране страница
-      скрыта, и бюллетень иначе был бы недоступен.
-    -->
-    <div class="nk-stage__bar">
-      <span class="nk-stage__points">Баллы: {{ points }}</span>
-      <p v-if="!boardHasClues && safeEvidence.length" class="nk-stage__tip">
-        {{ micro.emptyBoard }}
-      </p>
-      <div class="nk-stage__bar-right">
-        <button type="button" class="nk-btn nk-btn--ghost nk-btn--sm" @click="emit('open-brief')">
-          Бриф следователя
-        </button>
-        <button
-          v-if="hasReveal"
-          type="button"
-          class="nk-btn nk-btn--ghost nk-btn--sm"
-          @click="emit('open-reveal')"
-        >
-          Развязка
-        </button>
-        <button
-          type="button"
-          class="nk-btn nk-btn--primary nk-btn--sm"
-          :disabled="!canVote"
-          @click="emit('open-ballot')"
-        >
-          {{ micro.voteButton }}
-        </button>
-        <button
-          type="button"
-          class="nk-icon-btn"
-          :aria-label="fullscreen ? 'Свернуть' : 'Развернуть'"
-          :title="fullscreen ? 'Свернуть' : 'Развернуть'"
-          @click="emit('toggle-fullscreen')"
-        >
-          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-            <template v-if="fullscreen">
-              <path d="M8 2v6H2M12 18v-6h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-            </template>
-            <template v-else>
-              <path d="M7 2H2v5M13 18h5v-5M18 7V2h-5M2 13v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-            </template>
-          </svg>
-        </button>
-      </div>
-    </div>
-
     <div class="nk-stage__body">
       <!--
         Доска — одна картинка `board-cork.jpg` вместе с нарисованной рамой,
@@ -64,6 +14,7 @@
         getBoundingClientRect(), поэтому курсор и отрисовка не расходятся
         ни при масштабе платформы 90%, ни в полном экране.
       -->
+      <div class="nk-boardcol">
       <div class="nk-frame" :style="{ backgroundImage: `url(${art.cork})` }">
       <div
         ref="boardEl"
@@ -144,9 +95,48 @@
       </div>
       </div>
 
+      <!-- Главное действие дня — под доской, по центру. -->
+      <div class="nk-stage__foot">
+        <button
+          v-if="hasReveal"
+          type="button"
+          class="nk-btn nk-btn--ghost"
+          @click="emit('open-reveal')"
+        >
+          Развязка
+        </button>
+        <button
+          type="button"
+          class="nk-btn nk-btn--primary"
+          :disabled="!canVote"
+          @click="emit('open-ballot')"
+        >
+          {{ micro.voteButton }}
+        </button>
+      </div>
+      </div>
+
       <aside class="nk-safe" aria-label="Сейф улик">
         <header class="nk-safe__head">
-          <h2 class="nk-safe__title">Сейф улик</h2>
+          <div class="nk-safe__titlerow">
+            <h2 class="nk-safe__title">Сейф улик</h2>
+            <button
+              type="button"
+              class="nk-icon-btn nk-icon-btn--bare"
+              :aria-label="fullscreen ? 'Свернуть' : 'Развернуть'"
+              :title="fullscreen ? 'Свернуть' : 'Развернуть'"
+              @click="emit('toggle-fullscreen')"
+            >
+              <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+                <template v-if="fullscreen">
+                  <path d="M8 2v6H2M12 18v-6h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </template>
+                <template v-else>
+                  <path d="M7 2H2v5M13 18h5v-5M18 7V2h-5M2 13v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </template>
+              </svg>
+            </button>
+          </div>
           <div class="nk-safe__tabs" role="tablist">
             <button
               type="button"

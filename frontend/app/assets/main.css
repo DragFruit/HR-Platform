@@ -20513,6 +20513,77 @@ body.nk-body-locked {
   показаний растягивает ряд, доска вырастает на тысячи пикселей и улики
   уезжают за экран.
 */
+/* Колонка доски: кадр плюс действия под ним, группа стоит по центру. */
+.nk-boardcol {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+}
+
+/*
+  Кнопка дня справа: Соловьёва выходит слева снизу, и по центру она бы
+  закрывала собой главное действие.
+*/
+.nk-stage__foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding-right: 4px;
+}
+
+.nk-stage__foot .nk-btn--primary {
+  padding: 11px 26px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Иконка без рамки — в шапке сейфа. */
+.nk-safe__titlerow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nk-safe__titlerow .nk-safe__title {
+  margin: 0;
+}
+
+.nk-icon-btn--bare {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--nk-ink-soft);
+}
+
+.nk-icon-btn--bare:hover {
+  background: transparent;
+  border: 0;
+  color: var(--nk-accent-deep);
+}
+
+/* Правило полноэкранного режима не должно возвращать иконке заливку и рамку. */
+.nk-stage--full .nk-icon-btn--bare,
+.nk-stage--full .nk-icon-btn--bare:hover {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--nk-ink-soft);
+}
+
+.nk-stage--full .nk-icon-btn--bare:hover {
+  color: var(--nk-accent-deep);
+}
+
 .nk-stage__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -20545,7 +20616,8 @@ body.nk-body-locked {
   position: relative;
   display: flex;
   width: 100%;
-  max-height: 100%;
+  min-height: 0;
+  flex: 0 1 auto;
   aspect-ratio: 16 / 9;
   place-self: center;
   min-width: 0;
@@ -21061,51 +21133,8 @@ body.nk-body-locked {
   font-size: 0.8rem;
 }
 
-/* Иконочная кнопка: там, где у действия есть общепринятая иконка. */
-.nk-stage--full .nk-icon-btn {
-  width: 40px;
-  height: 40px;
-  background: var(--nk-accent);
-  border-color: var(--nk-ink);
-  color: var(--nk-paper);
-}
-
-.nk-stage--full .nk-icon-btn:hover {
-  background: var(--nk-accent-deep);
-}
-
-.nk-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--nk-ink);
-  background: var(--nk-paper);
-  color: var(--nk-ink);
-  cursor: pointer;
-}
-
-.nk-icon-btn:hover {
-  background: var(--nk-accent);
-  border-color: var(--nk-accent);
-  color: var(--nk-paper);
-}
-
-.nk-icon-btn--onDark {
-  border-color: transparent;
-  background: transparent;
-  color: var(--nk-on-dark);
-}
-
-.nk-icon-btn--onDark:hover {
-  background: rgba(239, 233, 223, 0.16);
-  border-color: transparent;
-  color: var(--nk-on-dark);
-}
-
-.nk-btn--primary {
+/* Кнопка внутри акцентной плашки дня — наоборот, светлая на бирюзовом. */
+.is-centered .nk-btn--primary {
   padding: 11px 22px;
   background: var(--nk-paper);
   color: var(--nk-ink);
