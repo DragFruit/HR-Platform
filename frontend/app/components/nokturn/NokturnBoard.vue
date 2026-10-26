@@ -343,7 +343,9 @@ const days = computed(() => {
     else byDate.push({ dateIso: s.dateIso, weekday: s.weekday, stages: [s] });
   }
   return byDate.map((d) => {
-    const active = d.stages.find((s) => !s.vote) ?? d.stages[d.stages.length - 1]!;
+    // Первый несыгранный этап дня: сыграл поиск — кнопка ведёт в замок архива.
+    const active =
+      d.stages.find((s) => s.minigame.state !== 'done') ?? d.stages[d.stages.length - 1]!;
     return {
       dateIso: d.dateIso,
       weekday: d.weekday,

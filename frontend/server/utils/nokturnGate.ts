@@ -23,6 +23,20 @@ import {
   NOKTURN_STAGES
 } from '../../app/events/nokturn/content';
 import { NOKTURN_MINIGAME_ATTEMPTS, type NokturnPlayer } from './nokturnStore';
+import { getDeployAppEnv } from './appEnv';
+
+/**
+ * Отладочный режим: все этапы и мини-игры открыты сразу, расписание и цепочка
+ * «сначала реши предыдущий» не действуют. Нужен, чтобы прогонять дни квеста
+ * до их наступления.
+ *
+ * Работает на localhost и стейдже, на бою игнорируется — там этапы открывает
+ * только календарь. Выключается переменной `NOKTURN_DEBUG_OPEN_ALL=0`.
+ */
+export function nokturnDebugOpenAll(): boolean {
+  if (getDeployAppEnv() === 'production') return false;
+  return String(process.env.NOKTURN_DEBUG_OPEN_ALL ?? '1').trim() !== '0';
+}
 
 /** Правильные ответы живут только на сервере. */
 export const NOKTURN_CULPRIT = 'roman' as const;
@@ -62,6 +76,7 @@ export function isStageOpen(
   id: NokturnStageId,
   now: Date
 ): boolean {
+  if (nokturnDebugOpenAll()) return true;
   if (!nokturnStageScheduleOpen(id, now)) return false;
   return blockingStage(player, id) === null;
 }
@@ -71,10 +86,12 @@ function minigameState(
   id: NokturnStageId,
   now: Date
 ): NokturnMinigameButtonState {
-  if (!nokturnStageScheduleOpen(id, now)) return 'locked';
-  if (blockingStage(player, id) !== null) return 'blocked-by-stage';
+  const debug = nokturnDebugOpenAll();
+  if (!debug && !nokturnStageScheduleOpen(id, now)) return 'locked';
+  if (!debug && blockingStage(player, id) !== null) return 'blocked-by-stage';
   const p = player.stages[String(id)];
   if (p?.released) return 'done';
+  if (debug) return 'available';
   const today = moscowDateIso(now);
   return nokturnStageById(id).dateIso === today ? 'available' : 'catch-up';
 }
@@ -86,7 +103,7 @@ function minigameState(
 export function buildStageViews(player: NokturnPlayer, now: Date): NokturnStageView[] {
   return NOKTURN_STAGES.map((stage) => {
     const id = stage.id;
-    const scheduleOpen = nokturnStageScheduleOpen(id, now);
+    const scheduleOpen = nokturnDebugOpenAll() || nokturnStageScheduleOpen(id, now);
     const open = isStageOpen(player, id, now);
     const progress = player.stages[String(id)];
     const state = minigameState(player, id, now);
@@ -103,7 +120,7 @@ export function buildStageViews(player: NokturnPlayer, now: Date): NokturnStageV
       scheduleOpen,
       opensAt: nokturnStageOpensAt(id),
       fullRateUntil: nokturnStageFullRateUntil(id),
-      blockedByStage: scheduleOpen ? blockingStage(player, id) : null,
+      blockedByStage: nokturnDebugOpenAll() || !scheduleOpen ? null : blockingStage(player, id),
       minigame: {
         slug: stage.minigame.slug,
         kind: stage.minigame.kind,
