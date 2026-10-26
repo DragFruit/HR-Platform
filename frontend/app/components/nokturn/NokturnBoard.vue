@@ -161,19 +161,24 @@
           </div>
         </header>
 
+        <!--
+          Календарь по дням, а не по этапам: понедельника в квесте нет, а
+          вторник держит сразу два этапа (поиск предметов и замок архива).
+          Кнопка ведёт в первый несыгранный этап дня.
+        -->
         <div class="nk-safe__calendar">
           <button
-            v-for="s in stages"
-            :key="s.id"
+            v-for="(d, i) in days"
+            :key="d.dateIso"
             type="button"
             class="nk-safe__day"
-            :class="[`is-${s.minigame.state}`, { 'is-voted': Boolean(s.vote) }]"
-            :title="dayHint(s)"
-            :disabled="s.minigame.state === 'locked' || s.minigame.state === 'blocked-by-stage'"
-            @click="emit('play', s.id)"
+            :class="[`is-${d.state}`, { 'is-voted': d.voted }]"
+            :title="dayHint(d.active)"
+            :disabled="d.state === 'locked' || d.state === 'blocked-by-stage'"
+            @click="emit('play', d.active.id)"
           >
-            <span class="nk-safe__day-n">{{ s.id }}</span>
-            <span class="nk-safe__day-w">{{ s.weekday.slice(0, 2) }}</span>
+            <span class="nk-safe__day-n">{{ i + 1 }}</span>
+            <span class="nk-safe__day-w">{{ d.weekday.slice(0, 2) }}</span>
           </button>
         </div>
 
@@ -325,6 +330,30 @@ const placedItems = computed(() =>
 const boardHasClues = computed(() => items.value.some((i) => evidenceById.value[i.id]));
 
 const onBoardIds = computed(() => new Set(items.value.map((i) => i.id)));
+/*
+  Дни календаря. Этапов пять, дней четыре: первые два этапа приходятся на
+  вторник. Активный этап дня — первый, по которому ещё не вынесено решение,
+  иначе последний: на него и ведёт кнопка.
+*/
+const days = computed(() => {
+  const byDate: { dateIso: string; weekday: string; stages: NokturnStageView[] }[] = [];
+  for (const s of props.stages) {
+    const last = byDate[byDate.length - 1];
+    if (last && last.dateIso === s.dateIso) last.stages.push(s);
+    else byDate.push({ dateIso: s.dateIso, weekday: s.weekday, stages: [s] });
+  }
+  return byDate.map((d) => {
+    const active = d.stages.find((s) => !s.vote) ?? d.stages[d.stages.length - 1]!;
+    return {
+      dateIso: d.dateIso,
+      weekday: d.weekday,
+      active,
+      state: active.minigame.state,
+      voted: d.stages.every((s) => Boolean(s.vote))
+    };
+  });
+});
+
 const safeEvidence = computed(() => allEvidence.value.filter((e) => !onBoardIds.value.has(e.id)));
 const testimonies = computed(() => props.stages.flatMap((s) => s.testimonies));
 
