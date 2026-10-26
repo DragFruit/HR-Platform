@@ -209,9 +209,15 @@ const activeStage = computed<NokturnStageView | null>(() => {
 });
 
 /** Бриф показываем по последнему открытому этапу. */
+/*
+  Бриф — первый открытый этап без решения, и только если такого нет, последний
+  открытый. Раньше брался просто последний: в отладочном режиме открыты все
+  этапы сразу, и новичок получал вместо вводной пятничную реплику «последний
+  день».
+*/
 const briefStage = computed<NokturnStageView | null>(() => {
   const open = (state.value?.stages ?? []).filter((s) => s.open);
-  return open.length ? (open[open.length - 1] ?? null) : null;
+  return open.find((s) => !s.vote) ?? open[open.length - 1] ?? null;
 });
 
 /** Голосовать можно по первому открытому этапу без решения. */
