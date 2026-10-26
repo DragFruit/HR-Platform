@@ -8,6 +8,9 @@
     -->
     <div class="nk-stage__bar">
       <span class="nk-stage__points">Баллы: {{ points }}</span>
+      <p v-if="!boardHasClues && safeEvidence.length" class="nk-stage__tip">
+        {{ micro.emptyBoard }}
+      </p>
       <div class="nk-stage__bar-right">
         <button type="button" class="nk-btn nk-btn--ghost nk-btn--sm" @click="emit('open-brief')">
           Бриф следователя
@@ -67,10 +70,6 @@
         class="nk-board"
         @pointerdown="onBoardPointerDown"
       >
-        <p v-if="!boardHasClues && safeEvidence.length" class="nk-board__hint">
-          {{ micro.emptyBoard }}
-        </p>
-        <p v-else-if="threads.length" class="nk-board__hint">{{ micro.threadHint }}</p>
 
         <svg class="nk-board__web" :viewBox="`0 0 ${size.w || 1} ${size.h || 1}`">
           <g v-for="t in threadLines" :key="t.id">
@@ -98,6 +97,7 @@
           v-for="item in placedItems"
           :key="item.id"
           class="nk-pinned"
+          :data-nk-id="item.id"
           :class="[
             item.fixture ? `nk-pinned--${item.fixture.kind}` : 'nk-pinned--clue',
             { 'is-dragging': drag?.id === item.id }
@@ -527,6 +527,8 @@ function onUp(e: PointerEvent) {
 
   // Улику вынесли за доску — она возвращается в сейф вместе со своими нитями.
   // Обстановку не отдаём: доска не должна оставаться пустой.
+  nextTick(clampItems);
+
   if (!insideBoard(e.clientX, e.clientY) && !isFixture(d.id)) {
     emitBoard({
       items: items.value.filter((i) => i.id !== d.id),
@@ -576,14 +578,65 @@ function unbindWindow() {
   window.removeEventListener('pointercancel', onUp);
 }
 
+/**
+ * Карточка висит ПОД пином, поэтому якорь у нижнего края уводит её за доску
+ * (на сохранённых досках это видно как обрезанный портрет). Подтягиваем
+ * якоря внутрь по реальным размерам карточек и сохраняем результат.
+ */
+function clampItems() {
+  const rect = boardRect();
+  if (!rect || !rect.width || !rect.height) return;
+  // Пока портреты не загрузились, карточки меряются неверно. Подтянуть по
+  // такой мерке — значит сохранить испорченные координаты, поэтому ждём.
+  const cards = [...(boardEl.value?.querySelectorAll('.nk-pinned__card') ?? [])];
+  if (!cards.length) return;
+  if (cards.some((c) => (c as HTMLElement).offsetHeight > rect.height * 0.5)) return;
+  let changed = false;
+  const next = items.value.map((i) => {
+    const card = boardEl.value?.querySelector(
+      `[data-nk-id="${i.id}"] .nk-pinned__card`
+    ) as HTMLElement | null;
+    if (!card) return i;
+    const halfW = card.offsetWidth / 2 / rect.width;
+    const maxY = Math.max(0.02, 1 - (card.offsetHeight + 14) / rect.height);
+    const x = Math.min(1 - halfW - 0.005, Math.max(halfW + 0.005, i.x));
+    const y = Math.min(maxY, Math.max(0.02, i.y));
+    if (Math.abs(x - i.x) > 0.0005 || Math.abs(y - i.y) > 0.0005) {
+      changed = true;
+      return { ...i, x, y };
+    }
+    return i;
+  });
+  if (changed) emitBoard({ items: next });
+}
+
 let ro: ResizeObserver | null = null;
 const measure = () => {
   const rect = boardRect();
   if (rect) size.value = { w: rect.width, h: rect.height };
+  clampItems();
 };
+
+/** Дождаться картинок доски и только потом подтягивать якоря. */
+async function clampWhenReady() {
+  const imgs = [...(boardEl.value?.querySelectorAll('img') ?? [])] as HTMLImageElement[];
+  await Promise.all(
+    imgs.map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise<void>((done) => {
+            img.addEventListener('load', () => done(), { once: true });
+            img.addEventListener('error', () => done(), { once: true });
+          })
+    )
+  );
+  await nextTick();
+  clampItems();
+}
 
 onMounted(() => {
   measure();
+  void clampWhenReady();
   if (boardEl.value && typeof ResizeObserver !== 'undefined') {
     ro = new ResizeObserver(measure);
     ro.observe(boardEl.value);

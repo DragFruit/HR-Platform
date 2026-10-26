@@ -403,9 +403,26 @@ function onKey(e: KeyboardEvent) {
   if (fullscreen.value) fullscreen.value = false;
 }
 
+/**
+ * Первый вход — сразу развёрнуто: квест занимает всё окно, а не жмётся
+ * в колонку платформы. Дальше уважаем выбор человека: свернул — значит
+ * свёрнуто, пока сам не развернёт. На узком экране не разворачиваем:
+ * там полноэкранный режим мешает управлению и прячет выход.
+ */
+function initialFullscreen(): boolean {
+  try {
+    const saved = localStorage.getItem(FULLSCREEN_KEY);
+    if (saved === '1') return true;
+    if (saved === '0') return false;
+  } catch {
+    return false;
+  }
+  return window.matchMedia('(min-width: 900px)').matches;
+}
+
 onMounted(async () => {
   try {
-    fullscreen.value = localStorage.getItem(FULLSCREEN_KEY) === '1';
+    fullscreen.value = initialFullscreen();
   } catch {
     /* приватный режим */
   }
