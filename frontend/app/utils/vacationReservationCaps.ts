@@ -9,10 +9,14 @@ export { DEFAULT_RESERVATION_MONTHLY_CAP };
 export const DEFAULT_SUBGROUP_RESERVATION_MONTHLY_CAP = 1;
 
 export const RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE =
-  'Уже максимум сотрудников заняли этот месяц в отделе (бронь или отпуск). Больше нельзя — договоритесь поменяться или выберите другой месяц.';
+  'В этом месяце в отделе уже отдыхает максимум сотрудников (бронь или отпуск). Выберите другой месяц или договоритесь с коллегами.';
 
 export const RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE =
   'В вашей группе этот месяц уже занят (бронь или отпуск). Договоритесь с коллегами или выберите другой месяц.';
+
+/** Заявка с датами упёрлась в лимит группы Digital: в какой-то день диапазона уже отдыхает коллега из группы. */
+export const VACATION_REQUEST_SUBGROUP_BLOCKED_MESSAGE =
+  'В эти даты в вашей группе уже кто-то в отпуске. Выберите другие даты или договоритесь с коллегами.';
 
 /** Заявка с датами упёрлась в лимит отдела: в какой-то день диапазона отдыхает уже cap человек. */
 export const vacationRequestDepartmentCapBlockedMessage = (cap: number) =>
@@ -30,8 +34,38 @@ export type ReservationCapScope = {
 
 export type EmployeeReservationCapContext = {
   department: ReservationCapScope & { label: string };
-  subgroup: ReservationCapScope & { label: string };
+  /**
+   * Группа внутри отдела (лимит «1 в группе»). null — у отдела нет групп (все отделы, кроме
+   * Digital и демо-QA) или сотрудник Digital не попал ни в одну группу: тогда действует только
+   * лимит отдела.
+   */
+  subgroup: (ReservationCapScope & { label: string }) | null;
 };
+
+/** Результат resolveEmployeeReservationCapContext (с сотрудниками) → контекст с именами. */
+export function toEmployeeReservationCapContext(resolved: {
+  department: { id: string; label: string; members: { name: string }[] };
+  subgroup: { id: string; label: string; members: { name: string }[] } | null;
+}): EmployeeReservationCapContext {
+  return {
+    department: {
+      id: resolved.department.id,
+      label: resolved.department.label,
+      memberNames: resolved.department.members.map((emp) => emp.name)
+    },
+    subgroup: resolved.subgroup
+      ? {
+          id: resolved.subgroup.id,
+          label: resolved.subgroup.label,
+          memberNames: resolved.subgroup.members.map((emp) => emp.name)
+        }
+      : null
+  };
+}
+
+/** Лимит «1 в группе» не проверяется: группы нет или она в исключениях (Цхай). */
+const shouldSkipSubgroupCap = (context: EmployeeReservationCapContext) =>
+  !context.subgroup || isReservationCapExemptSubgroupId(context.subgroup.id);
 
 export type ReservationCapBlockReason = 'department' | 'subgroup';
 
@@ -357,11 +391,10 @@ export function getReservationMonthBlockReason(params: {
 }): ReservationCapBlockReason | null {
   const { context, year, month, reservations, requests, caps, excludeEmployee } = params;
 
-  // Группа Цхай и др.: без лимита «1 в подгруппе», но отдел «5» остаётся.
-  const skipSubgroup = isReservationCapExemptSubgroupId(context.subgroup.id);
-
+  // Группа Цхай и отделы без групп: без лимита «1 в подгруппе», но отдел «5» остаётся.
   if (
-    !skipSubgroup &&
+    context.subgroup &&
+    !shouldSkipSubgroupCap(context) &&
     isReservationMonthAtSubgroupCap({
       subgroupId: context.subgroup.id,
       memberNames: context.subgroup.memberNames,
@@ -413,13 +446,14 @@ export function getReservationRangeBlockReason(params: {
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): ReservationCapBlockReason | null {
-  const skipSubgroup = isReservationCapExemptSubgroupId(params.context.subgroup.id);
+  const subgroup = params.context.subgroup;
 
   if (
-    !skipSubgroup &&
+    subgroup &&
+    !shouldSkipSubgroupCap(params.context) &&
     isRequestRangeAtSubgroupCap({
-      subgroupId: params.context.subgroup.id,
-      memberNames: params.context.subgroup.memberNames,
+      subgroupId: subgroup.id,
+      memberNames: subgroup.memberNames,
       start: params.start,
       end: params.end,
       reservations: params.reservations,
@@ -462,7 +496,7 @@ export function vacationRequestCapBlockMessage(
   caps?: ReservationMonthlyCapsByGroup
 ): string {
   return reason === 'subgroup'
-    ? RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE
+    ? VACATION_REQUEST_SUBGROUP_BLOCKED_MESSAGE
     : vacationRequestDepartmentCapBlockedMessage(
         getDepartmentReservationMonthlyCap(context.department.id, caps)
       );

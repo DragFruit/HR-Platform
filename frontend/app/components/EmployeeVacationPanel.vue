@@ -373,6 +373,7 @@ import {
   getReservationMonthBlockReason,
   getReservationRangeBlockReason,
   reservationCapBlockMessage,
+  toEmployeeReservationCapContext,
   vacationRequestCapBlockMessage,
   RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
 } from '~/utils/vacationReservationCaps';
@@ -516,18 +517,7 @@ const openReservationCapNotice = (monthIndex: number) => {
   const ctx = reservationCapContext.value;
   if (ctx) {
     const reason = getReservationMonthBlockReason({
-      context: {
-        department: {
-          id: ctx.department.id,
-          label: ctx.department.label,
-          memberNames: ctx.department.members.map((member) => member.name)
-        },
-        subgroup: {
-          id: ctx.subgroup.id,
-          label: ctx.subgroup.label,
-          memberNames: ctx.subgroup.members.map((member) => member.name)
-        }
-      },
+      context: toEmployeeReservationCapContext(ctx),
       year: props.viewYear,
       month: monthIndex + 1,
       reservations: allReservations.value,
@@ -584,18 +574,7 @@ const capBlockedMonthsForYear = (year: number): number[] => {
   const blocked: number[] = [];
   const caps = state.value.reservationMonthlyCapsByGroup;
   const reservations = allReservations.value;
-  const capContext = {
-    department: {
-      id: ctx.department.id,
-      label: ctx.department.label,
-      memberNames: ctx.department.members.map((member) => member.name)
-    },
-    subgroup: {
-      id: ctx.subgroup.id,
-      label: ctx.subgroup.label,
-      memberNames: ctx.subgroup.members.map((member) => member.name)
-    }
-  };
+  const capContext = toEmployeeReservationCapContext(ctx);
   for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
     if (
       getReservationMonthBlockReason({
@@ -1038,18 +1017,7 @@ const submitRequest = async () => {
 
   const capCtx = reservationCapContext.value;
   if (capCtx) {
-    const rangeCapContext = {
-      department: {
-        id: capCtx.department.id,
-        label: capCtx.department.label,
-        memberNames: capCtx.department.members.map((member) => member.name)
-      },
-      subgroup: {
-        id: capCtx.subgroup.id,
-        label: capCtx.subgroup.label,
-        memberNames: capCtx.subgroup.members.map((member) => member.name)
-      }
-    };
+    const rangeCapContext = toEmployeeReservationCapContext(capCtx);
     const capReason = getReservationRangeBlockReason({
       context: rangeCapContext,
       start: form.start,

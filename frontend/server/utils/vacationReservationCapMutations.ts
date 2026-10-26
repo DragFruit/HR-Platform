@@ -8,6 +8,7 @@ import {
   getReservationMonthBlockReason,
   getReservationRangeBlockReason,
   reservationCapBlockMessage,
+  toEmployeeReservationCapContext,
   vacationRequestCapBlockMessage,
   type EmployeeReservationCapContext
 } from '../../app/utils/vacationReservationCaps';
@@ -36,18 +37,7 @@ const buildGroupHelpers = async () => {
 
 const toCapContext = (
   context: NonNullable<ReturnType<typeof resolveEmployeeReservationCapContext>>
-): EmployeeReservationCapContext => ({
-  department: {
-    id: context.department.id,
-    label: context.department.label,
-    memberNames: context.department.members.map((emp) => emp.name)
-  },
-  subgroup: {
-    id: context.subgroup.id,
-    label: context.subgroup.label,
-    memberNames: context.subgroup.members.map((emp) => emp.name)
-  }
-});
+): EmployeeReservationCapContext => toEmployeeReservationCapContext(context);
 
 const allReservations = (state: VacationStoreState) =>
   Object.values(state.reservationsByYear).flat();

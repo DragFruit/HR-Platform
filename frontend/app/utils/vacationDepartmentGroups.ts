@@ -207,20 +207,48 @@ const resolveDepartmentCapMembers = (
   return uniqueEmployees(layout.groups.flatMap((def) => resolveGroupMembers(def, helpers)));
 };
 
-/** Пул отдела + подгруппа для двухуровневого лимита броней (5 на отдел, 1 в группе). */
+/** Префикс пула лимита для отделов без раскладки по группам: `department:DEV`, `department:SEO / ORM`… */
+export const DEPARTMENT_CAP_POOL_PREFIX = 'department:';
+
+export function departmentCapPoolId(department: string): string {
+  return `${DEPARTMENT_CAP_POOL_PREFIX}${department.trim()}`;
+}
+
+/**
+ * Пул отдела + подгруппа для двухуровневого лимита (5 на отдел, 1 в группе; по реальным датам).
+ *
+ * - Digital (и демо-QA): пул из раскладки + группа сотрудника. Сотрудник Digital вне групп:
+ *   только лимит отдела (subgroup = null).
+ * - Любой другой отдел (DEV, SEO / ORM, Отдел продаж…): пул `department:<отдел>` из всех
+ *   сотрудников с тем же employee.department, лимит 5 (или override в reservationMonthlyCapsByGroup),
+ *   без лимита группы.
+ */
 export function resolveEmployeeReservationCapContext(
   employee: Pick<Employee, 'name' | 'department' | 'manager'> | null | undefined,
   helpers: VacationGroupHelpers
 ): {
   department: { id: string; label: string; members: Employee[] };
-  subgroup: { id: string; label: string; members: Employee[] };
+  subgroup: { id: string; label: string; members: Employee[] } | null;
 } | null {
   if (!employee?.name.trim()) return null;
-  const layout = getVacationDepartmentLayout(employee.department);
-  if (!layout?.reservationCapPoolId) return null;
+  const departmentName = employee.department?.trim() ?? '';
+  const layout = getVacationDepartmentLayout(departmentName);
+
+  if (!layout?.reservationCapPoolId) {
+    if (!departmentName) return null;
+    const members = helpers.employeesInDepartment?.(departmentName) ?? [];
+    if (!members.length) return null;
+    return {
+      department: {
+        id: departmentCapPoolId(departmentName),
+        label: departmentName,
+        members: sortEmployees(members)
+      },
+      subgroup: null
+    };
+  }
 
   const subgroup = resolveVacationGroupForEmployee(employee, helpers);
-  if (!subgroup) return null;
 
   const deptMembers = resolveDepartmentCapMembers(layout, helpers);
   if (!deptMembers.length) return null;
@@ -231,11 +259,13 @@ export function resolveEmployeeReservationCapContext(
       label: layout.department,
       members: deptMembers
     },
-    subgroup: {
-      id: subgroup.id,
-      label: subgroup.label,
-      members: subgroup.members
-    }
+    subgroup: subgroup
+      ? {
+          id: subgroup.id,
+          label: subgroup.label,
+          members: subgroup.members
+        }
+      : null
   };
 }
 
@@ -280,8 +310,12 @@ export function resolveReservationCapGroupMeta(
 ): { id: string; label: string } | null {
   for (const layout of DEPARTMENT_VACATION_LAYOUTS) {
     if (layout.reservationCapPoolId === groupId) {
-      return { id: groupId, label: `${layout.department} — весь отдел` };
+      return { id: groupId, label: `${layout.department}: весь отдел` };
     }
+  }
+  if (groupId.startsWith(DEPARTMENT_CAP_POOL_PREFIX)) {
+    const department = groupId.slice(DEPARTMENT_CAP_POOL_PREFIX.length).trim();
+    if (department) return { id: groupId, label: `${department}: весь отдел` };
   }
   const def = findVacationGroupDefById(groupId);
   return def ? { id: def.id, label: def.label } : null;

@@ -15,6 +15,8 @@
 
 У **всех остальных** групп Digital (и демо-QA) оба лимита без изменений.
 
+Отделы кроме Digital (с 2026-10-26): групп нет, только лимит **5 на отдел** по реальным датам (пул `department:<отдел>`). Исключение Цхая их не касается.
+
 ## Как устроено в коде
 
 - Список: `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` / `isReservationCapExemptSubgroupId` в `vacationDepartmentGroups.ts`
