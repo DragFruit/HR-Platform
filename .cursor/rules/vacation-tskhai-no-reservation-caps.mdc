@@ -11,12 +11,14 @@
 | **1** человек в подгруппе | **нет** — несколько человек из группы Цхая могут занять один месяц |
 | **5** человек на весь отдел Digital | **да** — как у всех; их брони/заявки **входят** в общий пул отдела |
 
+Лимит отдела для заявок с датами считается **по реальному пересечению дней** (с 2026-10-26): в любой день не больше 5 отсутствующих; брони без дат занимают свой месяц целиком. Для группы Цхая так же, как для всех.
+
 У **всех остальных** групп Digital (и демо-QA) оба лимита без изменений.
 
 ## Как устроено в коде
 
 - Список: `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` / `isReservationCapExemptSubgroupId` в `vacationDepartmentGroups.ts`
-- `getReservationMonthBlockReason` пропускает только проверку subgroup для этих id; department-cap всегда
+- `getReservationMonthBlockReason` (брони, по месяцу) и `getReservationRangeBlockReason` (заявки, по дням) пропускают только проверку subgroup для этих id; department-cap всегда
 - `resolveEmployeeReservationCapContext` для Цхая возвращает обычный контекст (пул отдела полный)
 
 ## Запрещено без просьбы

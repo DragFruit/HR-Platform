@@ -373,6 +373,7 @@ import {
   getReservationMonthBlockReason,
   getReservationRangeBlockReason,
   reservationCapBlockMessage,
+  vacationRequestCapBlockMessage,
   RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE
 } from '~/utils/vacationReservationCaps';
 import {
@@ -1037,19 +1038,20 @@ const submitRequest = async () => {
 
   const capCtx = reservationCapContext.value;
   if (capCtx) {
-    const capReason = getReservationRangeBlockReason({
-      context: {
-        department: {
-          id: capCtx.department.id,
-          label: capCtx.department.label,
-          memberNames: capCtx.department.members.map((member) => member.name)
-        },
-        subgroup: {
-          id: capCtx.subgroup.id,
-          label: capCtx.subgroup.label,
-          memberNames: capCtx.subgroup.members.map((member) => member.name)
-        }
+    const rangeCapContext = {
+      department: {
+        id: capCtx.department.id,
+        label: capCtx.department.label,
+        memberNames: capCtx.department.members.map((member) => member.name)
       },
+      subgroup: {
+        id: capCtx.subgroup.id,
+        label: capCtx.subgroup.label,
+        memberNames: capCtx.subgroup.members.map((member) => member.name)
+      }
+    };
+    const capReason = getReservationRangeBlockReason({
+      context: rangeCapContext,
       start: form.start,
       end: form.end,
       reservations: allReservations.value,
@@ -1059,8 +1061,12 @@ const submitRequest = async () => {
     });
     if (capReason) {
       formError.value = {
-        title: 'Месяц занят в группе',
-        text: reservationCapBlockMessage(capReason)
+        title: capReason === 'department' ? 'Даты заняты в отделе' : 'Даты заняты в группе',
+        text: vacationRequestCapBlockMessage(
+          capReason,
+          rangeCapContext,
+          state.value.reservationMonthlyCapsByGroup
+        )
       };
       return;
     }

@@ -14,6 +14,10 @@ export const RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE =
 export const RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE =
   'В вашей группе этот месяц уже занят (бронь или отпуск). Договоритесь с коллегами или выберите другой месяц.';
 
+/** Заявка с датами упёрлась в лимит отдела: в какой-то день диапазона отдыхает уже cap человек. */
+export const vacationRequestDepartmentCapBlockedMessage = (cap: number) =>
+  `В эти даты в отделе уже отдыхает максимум сотрудников (${cap}). Выберите другие даты или договоритесь с коллегами.`;
+
 /** @deprecated Используйте RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE */
 export const RESERVATION_CAP_BLOCKED_MESSAGE = RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE;
 
@@ -232,19 +236,77 @@ function enumerateDayTimestamps(start: Date, end: Date): number[] {
 }
 
 /**
- * Лимит подгруппы для ЗАЯВКИ с настоящими датами (start/end): считаем реальное пересечение
- * дней, а не «касание месяца».
- *
- * Пример: у Маши отпуск 26 окт – 1 ноя (касается ноября только 1 днём). Коля хочет 9–22 ноя.
- * Их диапазоны не пересекаются ни одним днём → Коля не должен блокироваться, хотя оба «в ноябре».
- * Старая логика (countGroupVacationSlotsForMonth) считала только «месяц одинаковый» и блокировала
- * это зря — отсюда и фикс.
+ * Общая проверка лимита для ЗАЯВКИ с настоящими датами (start/end): считаем реальное
+ * пересечение дней, а не «касание месяца». Блок, если хотя бы в один день диапазона
+ * уже отсутствует cap человек из memberNames (то есть с заявителем было бы cap + 1).
  *
  * Важно про брони (VacationReservation): у них нет точных дат, только {year, month, durationDays}
- * («где-то в этом месяце, ~N дней»). Посчитать для них настоящее пересечение по дням нельзя —
+ * («где-то в этом месяце, ~N дней»). Посчитать для них настоящее пересечение по дням нельзя:
  * данных недостаточно. Поэтому бронь другого человека здесь СОЗНАТЕЛЬНО считается занимающей
- * весь месяц целиком (консервативно, как и раньше) — это не упущение, а намеренное решение:
- * лучше изредка перестраховаться для брони без дат, чем выдумать несуществующую точность.
+ * весь месяц целиком (консервативно). Это намеренное решение: лучше изредка перестраховаться
+ * для брони без дат, чем выдумать несуществующую точность.
+ */
+function isRequestRangeAtOccupancyCap(params: {
+  cap: number;
+  memberNames: string[];
+  start: string;
+  end: string;
+  reservations: VacationReservation[];
+  requests: VacationRequest[];
+  excludeEmployee?: string;
+}): boolean {
+  const { cap } = params;
+  const names = new Set(params.memberNames.map((name) => name.trim()));
+  const exclude = params.excludeEmployee?.trim().toLowerCase();
+
+  const ownDays = enumerateDayTimestamps(parseIsoToDate(params.start), parseIsoToDate(params.end));
+  if (!ownDays.length) return false;
+
+  type Occupancy = { employee: string; start: number; end: number };
+  const occupancies: Occupancy[] = [];
+
+  // Брони других сотрудников: без точных дат, занимают месяц целиком (консервативно).
+  for (const row of params.reservations) {
+    const employee = row.employee.trim();
+    if (!names.has(employee)) continue;
+    if (exclude && employee.toLowerCase() === exclude) continue;
+    occupancies.push({
+      employee: employee.toLowerCase(),
+      start: new Date(row.year, row.month - 1, 1).getTime(),
+      end: new Date(row.year, row.month, 0).getTime()
+    });
+  }
+
+  // Заявки других сотрудников (approved + pending): настоящие даты start/end.
+  for (const row of params.requests) {
+    if (row.status !== 'approved' && row.status !== 'pending') continue;
+    const employee = row.employee.trim();
+    if (!names.has(employee)) continue;
+    if (exclude && employee.toLowerCase() === exclude) continue;
+    occupancies.push({
+      employee: employee.toLowerCase(),
+      start: parseIsoToDate(row.start).getTime(),
+      end: parseIsoToDate(row.end).getTime()
+    });
+  }
+
+  if (occupancies.length < cap) return false;
+
+  for (const dayTs of ownDays) {
+    const occupantsToday = new Set<string>();
+    for (const occ of occupancies) {
+      if (dayTs >= occ.start && dayTs <= occ.end) occupantsToday.add(occ.employee);
+    }
+    if (occupantsToday.size >= cap) return true;
+  }
+  return false;
+}
+
+/**
+ * Лимит подгруппы для заявки с датами: реальное пересечение дней.
+ *
+ * Пример: у Маши отпуск 26 окт – 1 ноя (касается ноября только 1 днём). Коля хочет 9–22 ноя.
+ * Их диапазоны не пересекаются ни одним днём → Коля не блокируется, хотя оба «в ноябре».
  */
 export function isRequestRangeAtSubgroupCap(params: {
   subgroupId: string;
@@ -256,53 +318,32 @@ export function isRequestRangeAtSubgroupCap(params: {
   caps?: ReservationMonthlyCapsByGroup;
   excludeEmployee?: string;
 }): boolean {
-  const cap = getSubgroupReservationMonthlyCap(params.subgroupId, params.caps);
-  const names = new Set(params.memberNames);
-  const exclude = params.excludeEmployee?.trim().toLowerCase();
+  return isRequestRangeAtOccupancyCap({
+    ...params,
+    cap: getSubgroupReservationMonthlyCap(params.subgroupId, params.caps)
+  });
+}
 
-  const ownDays = enumerateDayTimestamps(parseIsoToDate(params.start), parseIsoToDate(params.end));
-  if (!ownDays.length) return false;
-
-  type Occupancy = { employee: string; start: Date; end: Date };
-  const occupancies: Occupancy[] = [];
-
-  // Брони других членов подгруппы — без точных дат, занимают месяц целиком (консервативно).
-  for (const row of params.reservations) {
-    const employee = row.employee.trim();
-    if (!names.has(employee)) continue;
-    if (exclude && employee.toLowerCase() === exclude) continue;
-    occupancies.push({
-      employee: employee.toLowerCase(),
-      start: new Date(row.year, row.month - 1, 1),
-      end: new Date(row.year, row.month, 0)
-    });
-  }
-
-  // Заявки других членов подгруппы — настоящие даты start/end.
-  for (const row of params.requests) {
-    if (row.status !== 'approved' && row.status !== 'pending') continue;
-    const employee = row.employee.trim();
-    if (!names.has(employee)) continue;
-    if (exclude && employee.toLowerCase() === exclude) continue;
-    occupancies.push({
-      employee: employee.toLowerCase(),
-      start: parseIsoToDate(row.start),
-      end: parseIsoToDate(row.end)
-    });
-  }
-
-  if (!occupancies.length) return false;
-
-  for (const dayTs of ownDays) {
-    const occupantsToday = new Set<string>();
-    for (const occ of occupancies) {
-      if (dayTs >= occ.start.getTime() && dayTs <= occ.end.getTime()) {
-        occupantsToday.add(occ.employee);
-      }
-    }
-    if (occupantsToday.size >= cap) return true;
-  }
-  return false;
+/**
+ * Лимит отдела («5 на отдел») для заявки с датами: в любой день отсутствует не больше cap
+ * человек отдела. Пример (Digital, окт 2026): Цхай 05–18, Хакимов 12–21, Седова 19–20,
+ * Девочкина 26.10–08.11, Бояринова 26.10–01.11. Все пятеро «в октябре», но 29–30.10 отдыхают
+ * только двое, поэтому заявка на 29–30.10 проходит.
+ */
+export function isRequestRangeAtDepartmentCap(params: {
+  poolId: string;
+  memberNames: string[];
+  start: string;
+  end: string;
+  reservations: VacationReservation[];
+  requests: VacationRequest[];
+  caps?: ReservationMonthlyCapsByGroup;
+  excludeEmployee?: string;
+}): boolean {
+  return isRequestRangeAtOccupancyCap({
+    ...params,
+    cap: getDepartmentReservationMonthlyCap(params.poolId, params.caps)
+  });
 }
 
 export function getReservationMonthBlockReason(params: {
@@ -356,10 +397,12 @@ export function getReservationMonthBlockReason(params: {
 /**
  * Блок лимита для заявки с датами (start/end).
  *
- * Подгруппа: настоящее пересечение дней (isRequestRangeAtSubgroupCap) — см. комментарий там.
- * Отдел (пул «5 на отдел»): поведение НЕ менялось — как раньше, по месяцам, «коснулся месяца
- * хоть одним днём» считается занятым слотом (countGroupVacationSlotsForMonth). Это осознанно:
- * задача заказчика — только про лимит подгруппы, пул отдела трогать не просили.
+ * И подгруппа, и отдел считаются по реальному пересечению дней (isRequestRangeAtOccupancyCap):
+ * блок, только если хотя бы в один день диапазона уже отсутствует cap человек.
+ * Брони (без дат) занимают свой месяц целиком. Исключение группы Цхай: пропускается только
+ * лимит подгруппы, лимит отдела действует (vacation-tskhai-no-reservation-caps.mdc).
+ *
+ * Брони (getReservationMonthBlockReason) остаются помесячными: бронь сама занимает месяц целиком.
  */
 export function getReservationRangeBlockReason(params: {
   context: EmployeeReservationCapContext;
@@ -388,21 +431,19 @@ export function getReservationRangeBlockReason(params: {
     return 'subgroup';
   }
 
-  for (const { year, month } of monthsOverlappingIsoRange(params.start, params.end)) {
-    if (
-      isReservationMonthAtDepartmentCap({
-        poolId: params.context.department.id,
-        memberNames: params.context.department.memberNames,
-        year,
-        month,
-        reservations: params.reservations,
-        requests: params.requests,
-        caps: params.caps,
-        excludeEmployee: params.excludeEmployee
-      })
-    ) {
-      return 'department';
-    }
+  if (
+    isRequestRangeAtDepartmentCap({
+      poolId: params.context.department.id,
+      memberNames: params.context.department.memberNames,
+      start: params.start,
+      end: params.end,
+      reservations: params.reservations,
+      requests: params.requests ?? [],
+      caps: params.caps,
+      excludeEmployee: params.excludeEmployee
+    })
+  ) {
+    return 'department';
   }
 
   return null;
@@ -412,6 +453,19 @@ export function reservationCapBlockMessage(reason: ReservationCapBlockReason): s
   return reason === 'subgroup'
     ? RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE
     : RESERVATION_CAP_DEPARTMENT_BLOCKED_MESSAGE;
+}
+
+/** Текст блока для заявки с датами (лимит отдела называет число из настроек). */
+export function vacationRequestCapBlockMessage(
+  reason: ReservationCapBlockReason,
+  context: EmployeeReservationCapContext,
+  caps?: ReservationMonthlyCapsByGroup
+): string {
+  return reason === 'subgroup'
+    ? RESERVATION_CAP_SUBGROUP_BLOCKED_MESSAGE
+    : vacationRequestDepartmentCapBlockedMessage(
+        getDepartmentReservationMonthlyCap(context.department.id, caps)
+      );
 }
 
 /** @deprecated Используйте getReservationMonthBlockReason */
