@@ -3,6 +3,7 @@ import {
   getReservationMonthBlockReason,
   getReservationRangeBlockReason,
   monthsOverlappingIsoRange,
+  vacationRequestCapBlockMessage,
   type EmployeeReservationCapContext
 } from '../../app/utils/vacationReservationCaps';
 import type { VacationReservation } from '../../app/utils/vacationReservations';
@@ -125,6 +126,194 @@ describe('лимит подгруппы по датам (Маша / Коля)', 
         excludeEmployee: KOLYA
       })
     ).toBe('department');
+  });
+});
+
+describe('лимит отдела по реальному пересечению дней', () => {
+  // Реальный кейс Digital, октябрь 2026, лимит отдела 5.
+  const TSKHAI = 'Цхай Виталий';
+  const KHAKIMOV = 'Хакимов';
+  const SEDOVA = 'Седова';
+  const DEVOCHKINA = 'Девочкина';
+  const BOYARINOVA = 'Бояринова';
+  const KLADOVA = 'Кладова';
+  const NOSKOV = 'Носков Никита';
+
+  const digitalContext = (subgroupId = 'digital-noskov'): EmployeeReservationCapContext => ({
+    department: {
+      id: 'digital',
+      label: 'Digital',
+      memberNames: [TSKHAI, KHAKIMOV, SEDOVA, DEVOCHKINA, BOYARINOVA, KLADOVA, NOSKOV]
+    },
+    subgroup: { id: subgroupId, label: 'Digital / SMM · Носков', memberNames: [NOSKOV, SEDOVA, KLADOVA] }
+  });
+
+  const october = [
+    request(TSKHAI, '2026-10-05', '2026-10-18'),
+    request(KHAKIMOV, '2026-10-12', '2026-10-21'),
+    request(SEDOVA, '2026-10-19', '2026-10-20'),
+    request(DEVOCHKINA, '2026-10-26', '2026-11-08'),
+    request(BOYARINOVA, '2026-10-26', '2026-11-01')
+  ];
+
+  it('Кладова 29–30.10: в октябре 5 человек, но в эти дни отдыхают двое → можно', () => {
+    expect(
+      getReservationRangeBlockReason({
+        context: digitalContext(),
+        start: '2026-10-29',
+        end: '2026-10-30',
+        reservations: [],
+        requests: october,
+        excludeEmployee: KLADOVA
+      })
+    ).toBeNull();
+  });
+
+  it('бронь (без дат) по-прежнему помесячная: октябрь занят 5 людьми отдела', () => {
+    const ctx = digitalContext();
+    expect(
+      getReservationMonthBlockReason({
+        // Подгруппу без Седовой, чтобы проверить именно пул отдела.
+        context: { ...ctx, subgroup: { ...ctx.subgroup, memberNames: [NOSKOV, KLADOVA] } },
+        year: 2026,
+        month: 10,
+        reservations: [],
+        requests: october,
+        excludeEmployee: KLADOVA
+      })
+    ).toBe('department');
+  });
+
+  const five = ['А', 'Б', 'В', 'Г', 'Д'];
+  const poolContext = (subgroupId = 'digital-revzina'): EmployeeReservationCapContext => ({
+    department: { id: 'digital', label: 'Digital', memberNames: [KOLYA, ...five] },
+    subgroup: { id: subgroupId, label: 'Подгруппа', memberNames: [KOLYA] }
+  });
+
+  it('5 человек отдыхают в один день → шестой с этим днём блокируется', () => {
+    const requests = five.map((name, i) => request(name, `2026-03-0${i + 1}`, '2026-03-10'));
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-10',
+        end: '2026-03-12',
+        reservations: [],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBe('department');
+    // День после общего пересечения свободен.
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-11',
+        end: '2026-03-12',
+        reservations: [],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBeNull();
+  });
+
+  it('6 человек в одном месяце без пересечения дней → можно', () => {
+    const requests = five.map((name, i) => request(name, `2026-03-${String(i * 5 + 1).padStart(2, '0')}`, `2026-03-${String(i * 5 + 4).padStart(2, '0')}`));
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-26',
+        end: '2026-03-30',
+        reservations: [],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBeNull();
+  });
+
+  it('pending считается, rejected нет', () => {
+    const requests = five.map((name, i) =>
+      request(name, '2026-03-01', '2026-03-10', i === 0 ? 'rejected' : 'pending')
+    );
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-05',
+        end: '2026-03-06',
+        reservations: [],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBeNull();
+  });
+
+  it('бронь без дат занимает весь свой месяц: 4 заявки + 1 бронь в тот же месяц → блок', () => {
+    const requests = five.slice(0, 4).map((name) => request(name, '2026-03-20', '2026-03-25'));
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-24',
+        end: '2026-03-24',
+        reservations: [reservation(five[4], 2026, 3)],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBe('department');
+    // Бронь на апрель на мартовские дни не влияет.
+    expect(
+      getReservationRangeBlockReason({
+        context: poolContext(),
+        start: '2026-03-24',
+        end: '2026-03-24',
+        reservations: [reservation(five[4], 2026, 4)],
+        requests,
+        excludeEmployee: KOLYA
+      })
+    ).toBeNull();
+  });
+
+  it('группа Цхай: лимит подгруппы не действует, лимит отдела по дням действует', () => {
+    const tskhaiContext: EmployeeReservationCapContext = {
+      department: { id: 'digital', label: 'Digital', memberNames: [KOLYA, MASHA, ...five] },
+      subgroup: { id: 'digital-tskhai', label: 'Цхай', memberNames: [KOLYA, MASHA] }
+    };
+    // Маша из той же подгруппы в те же дни: для Цхая это не блок.
+    expect(
+      getReservationRangeBlockReason({
+        context: tskhaiContext,
+        start: '2026-03-05',
+        end: '2026-03-06',
+        reservations: [],
+        requests: [request(MASHA, '2026-03-01', '2026-03-10')],
+        excludeEmployee: KOLYA
+      })
+    ).toBeNull();
+    // 5 человек отдела в тот же день: блок отдела.
+    expect(
+      getReservationRangeBlockReason({
+        context: tskhaiContext,
+        start: '2026-03-05',
+        end: '2026-03-06',
+        reservations: [],
+        requests: five.map((name) => request(name, '2026-03-01', '2026-03-10')),
+        excludeEmployee: KOLYA
+      })
+    ).toBe('department');
+  });
+
+  it('свой лимит отдела из настроек и текст сообщения с числом', () => {
+    const requests = five.slice(0, 3).map((name) => request(name, '2026-03-01', '2026-03-10'));
+    const params = {
+      context: poolContext(),
+      start: '2026-03-05',
+      end: '2026-03-05',
+      reservations: [],
+      requests,
+      excludeEmployee: KOLYA
+    };
+    expect(getReservationRangeBlockReason(params)).toBeNull();
+    expect(getReservationRangeBlockReason({ ...params, caps: { digital: 3 } })).toBe('department');
+    expect(vacationRequestCapBlockMessage('department', poolContext(), { digital: 3 })).toBe(
+      'В эти даты в отделе уже отдыхает максимум сотрудников (3). Выберите другие даты или договоритесь с коллегами.'
+    );
   });
 });
 

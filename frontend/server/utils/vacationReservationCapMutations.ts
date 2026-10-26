@@ -8,6 +8,7 @@ import {
   getReservationMonthBlockReason,
   getReservationRangeBlockReason,
   reservationCapBlockMessage,
+  vacationRequestCapBlockMessage,
   type EmployeeReservationCapContext
 } from '../../app/utils/vacationReservationCaps';
 import type { SessionUser } from './credentials';
@@ -84,7 +85,7 @@ export async function assertReservationGroupCap(
   }
 }
 
-/** Лимит группы/отдела при подаче или сдвиге заявки с датами. */
+/** Лимит группы/отдела при подаче или сдвиге заявки с датами: по реальному пересечению дней. */
 export async function assertVacationRequestGroupCap(
   state: VacationStoreState,
   employeeName: string,
@@ -98,8 +99,9 @@ export async function assertVacationRequestGroupCap(
   const context = resolveEmployeeReservationCapContext(employee, helpers);
   if (!context) return;
 
+  const capContext = toCapContext(context);
   const reason = getReservationRangeBlockReason({
-    context: toCapContext(context),
+    context: capContext,
     start,
     end,
     reservations: allReservations(state),
@@ -111,7 +113,7 @@ export async function assertVacationRequestGroupCap(
   if (reason) {
     throw createError({
       statusCode: 409,
-      statusMessage: reservationCapBlockMessage(reason)
+      statusMessage: vacationRequestCapBlockMessage(reason, capContext, state.reservationMonthlyCapsByGroup)
     });
   }
 }
