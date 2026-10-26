@@ -7,7 +7,7 @@
         бирка рисуется кодом по белой полосе пакета (docs/quests/sinij-nokturn-art.md).
       -->
       <img
-        v-if="evidence.kind === 'prop' && bagSrc"
+        v-if="evidence.kind === 'prop' && evidence.bagged && bagSrc"
         class="nk-card__bag"
         :src="bagSrc"
         alt=""
