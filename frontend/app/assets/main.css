@@ -20348,6 +20348,43 @@ button.button {
   cursor: default;
 }
 
+.nk-btn--sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* Иконочная кнопка: там, где у действия есть общепринятая иконка. */
+.nk-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  cursor: pointer;
+}
+
+.nk-icon-btn:hover {
+  background: var(--nk-accent);
+  border-color: var(--nk-accent);
+  color: var(--nk-paper);
+}
+
+.nk-icon-btn--onDark {
+  border-color: transparent;
+  background: transparent;
+  color: var(--nk-on-dark);
+}
+
+.nk-icon-btn--onDark:hover {
+  background: rgba(239, 233, 223, 0.16);
+  border-color: transparent;
+  color: var(--nk-on-dark);
+}
+
 .nk-btn--primary {
   background: var(--nk-accent);
   color: var(--nk-paper);
@@ -20419,6 +20456,12 @@ body.nk-body-locked {
   color: var(--nk-accent-deep);
 }
 
+.nk-stage__points {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--nk-ink-soft);
+}
+
 .nk-stage__bar-right {
   margin-left: auto;
   display: flex;
@@ -20431,15 +20474,11 @@ body.nk-body-locked {
   color: var(--nk-ink-soft);
 }
 
-.nk-stage__bar .nk-btn {
-  padding: 8px 18px;
-  background: var(--nk-accent);
-  color: var(--nk-paper);
-  border-color: var(--nk-ink);
-  font-weight: 700;
+.nk-stage__bar .nk-btn--ghost:hover:not(:disabled) {
+  background: var(--nk-paper);
 }
 
-.nk-stage__bar .nk-btn:hover {
+.nk-stage__bar .nk-btn--primary:hover:not(:disabled) {
   background: var(--nk-accent-deep);
 }
 
@@ -20596,12 +20635,17 @@ body.nk-body-locked {
   z-index: 4;
 }
 
+/*
+  Кадр доски низкий, и слева под портретами стоит карточка дела, поэтому
+  кнопка дня живёт справа снизу: видна сразу и ни на что не налезает.
+*/
 .nk-board__game.is-centered {
-  left: 50%;
-  bottom: auto;
-  top: 76%;
-  transform: translate(-50%, -50%);
-  max-width: min(460px, 76%);
+  left: auto;
+  right: 16px;
+  bottom: 16px;
+  top: auto;
+  transform: none;
+  max-width: min(420px, 56%);
 }
 
 /* ------------------------------------------------------- карточка улики */
@@ -20987,7 +21031,44 @@ body.nk-body-locked {
   font-size: 0.94rem;
 }
 
-.is-centered .nk-btn--primary {
+.is-centered .nk-btn--sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* Иконочная кнопка: там, где у действия есть общепринятая иконка. */
+.nk-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+  color: var(--nk-ink);
+  cursor: pointer;
+}
+
+.nk-icon-btn:hover {
+  background: var(--nk-accent);
+  border-color: var(--nk-accent);
+  color: var(--nk-paper);
+}
+
+.nk-icon-btn--onDark {
+  border-color: transparent;
+  background: transparent;
+  color: var(--nk-on-dark);
+}
+
+.nk-icon-btn--onDark:hover {
+  background: rgba(239, 233, 223, 0.16);
+  border-color: transparent;
+  color: var(--nk-on-dark);
+}
+
+.nk-btn--primary {
   padding: 11px 22px;
   background: var(--nk-paper);
   color: var(--nk-ink);
@@ -21612,11 +21693,11 @@ body.nk-body-locked {
 
 /* Ширина карточек на доске: портрет узкий, дело широкое, улика средняя. */
 .nk-pinned--suspect .nk-pinned__card {
-  width: 104px;
+  width: 96px;
 }
 
 .nk-pinned--case .nk-pinned__card {
-  width: 300px;
+  width: 252px;
 }
 
 @media (max-width: 900px) {
@@ -21626,5 +21707,119 @@ body.nk-body-locked {
 
   .nk-pinned--case .nk-pinned__card {
     width: 220px;
+  }
+}
+
+
+/* ------------------------------------------- Соловьёва ведёт день (проводник) */
+
+.nk-guide {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 2400;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: min(620px, calc(100vw - 32px));
+  transform: translateX(-50%);
+}
+
+.nk-guide__photo {
+  flex: none;
+  width: 92px;
+  height: 92px;
+  object-fit: cover;
+  border: 1px solid var(--nk-ink);
+  background: var(--nk-paper);
+}
+
+.nk-guide__bubble {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px 12px;
+  background: var(--nk-ink);
+  color: var(--nk-on-dark);
+  border: 1px solid var(--nk-ink);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42);
+}
+
+.nk-guide__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.nk-guide__name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.nk-guide__head .nk-icon-btn {
+  margin-left: auto;
+}
+
+.nk-guide__text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  min-height: 3.6em;
+}
+
+.nk-guide__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.nk-guide__dots {
+  display: flex;
+  gap: 5px;
+}
+
+.nk-guide__dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(239, 233, 223, 0.32);
+}
+
+.nk-guide__dots i.is-on {
+  background: var(--nk-accent);
+}
+
+.nk-guide__foot .nk-btn {
+  margin-left: auto;
+}
+
+.nk-guide-enter-active,
+.nk-guide-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.nk-guide-enter-from,
+.nk-guide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+
+@media (max-width: 700px) {
+  .nk-guide__photo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .nk-guide__text {
+    font-size: 0.86rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nk-guide-enter-active,
+  .nk-guide-leave-active {
+    transition: none;
   }
 }

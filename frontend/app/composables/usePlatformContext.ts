@@ -176,7 +176,8 @@ export function usePlatformContext() {
       return 'Опросы';
     }
     if (route.path.startsWith('/event/nokturn')) {
-      return 'Синий Ноктюрн';
+      // В шапке — полное название дела, в пункте меню остаётся короткое.
+      return 'Дело Костелова · «Синий Ноктюрн»';
     }
     if (route.path === '/admin/how-it-looks') {
       return 'Как выглядит';

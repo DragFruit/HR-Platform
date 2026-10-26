@@ -4,30 +4,6 @@
     <p v-else-if="loadError" class="nk-page__error" role="alert">{{ loadError }}</p>
 
     <template v-else-if="state">
-      <header class="nk-page__head">
-        <div class="nk-page__actions">
-          <span class="nk-page__points">Баллы: {{ state.player.points }}</span>
-          <button type="button" class="nk-btn nk-btn--ghost" @click="modal = 'brief'">
-            Бриф следователя
-          </button>
-          <button
-            type="button"
-            class="nk-btn nk-btn--primary"
-            :disabled="!votableStage"
-            @click="modal = 'ballot'"
-          >
-            {{ micro.voteButton }}
-          </button>
-          <button
-            v-if="state.reveal"
-            type="button"
-            class="nk-btn nk-btn--ghost"
-            @click="modal = 'reveal'"
-          >
-            Развязка
-          </button>
-        </div>
-      </header>
 
       <!--
         Полный экран — свой CSS-слой через Teleport в body, а не Fullscreen API:
@@ -48,15 +24,30 @@
             :thread-limit="state.threadLimit"
             :attempts-total="state.minigameAttempts"
             :fullscreen="fullscreen"
-            :deadline-label="deadlineLabel"
+            :points="state.player.points"
+            :can-vote="Boolean(votableStage)"
+            :has-reveal="Boolean(state.reveal)"
             :minigame-countdown="minigameCountdown"
             :active-stage="activeStage"
             @update:board="onBoardChange"
+            @open-brief="briefRequest += 1"
+            @open-ballot="modal = 'ballot'"
+            @open-reveal="modal = 'reveal'"
             @toggle-fullscreen="toggleFullscreen"
             @play="onPlay"
             @open-evidence="openEvidence"
           />
         </div>
+      </Teleport>
+
+      <Teleport to="body">
+        <NokturnGuide
+          :stage-id="briefStage?.id ?? null"
+          :briefing="briefStage?.briefing ?? []"
+          :deadline-line="deadlineLine"
+          :investigator="state.investigator"
+          :force="briefRequest"
+        />
       </Teleport>
 
       <Teleport to="body">
@@ -243,14 +234,19 @@ const ballotBlockedNote = computed(() => {
   return 'Этап ещё не открыт.';
 });
 
-const deadlineLabel = computed(() => {
+const briefRequest = ref(0);
+
+/** Срок задержания Соловьёва проговаривает сама — в шапке счётчика нет. */
+const deadlineLine = computed(() => {
   if (!state.value) return '';
   const leftMs = Date.parse(state.value.deadlineAt) - serverNow.value.getTime();
-  if (leftMs <= 0) return 'Срок задержания истёк';
+  if (leftMs <= 0) return 'Срок задержания истёк. Я обязана их отпустить.';
   const { days, hhmm } = nokturnDeadlineParts(leftMs);
-  return (micro.value.deadline ?? '')
+  const tail = (micro.value.deadline ?? '')
     .replace('{N}', String(days))
-    .replace('{t}', hhmm);
+    .replace('{t}', hhmm)
+    .toLowerCase();
+  return `И держите в голове: ${tail}.`;
 });
 
 const minigameCountdown = computed(() => {

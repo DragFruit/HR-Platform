@@ -2,57 +2,50 @@
   "players": [
     {
       "userId": 3,
-      "name": "Даша Тестова",
+      "name": "Катя",
       "board": {
         "items": [
           {
             "id": "case-file",
-            "x": 0.5,
-            "y": 0.46
+            "x": 0.22,
+            "y": 0.36
           },
           {
             "id": "suspect-roman",
-            "x": 0.13,
-            "y": 0.2
+            "x": 0.075,
+            "y": 0.04
           },
           {
             "id": "suspect-fedor",
-            "x": 0.345,
-            "y": 0.13
+            "x": 0.245,
+            "y": 0.04
           },
           {
             "id": "suspect-lara",
-            "x": 0.655,
-            "y": 0.13
+            "x": 0.415,
+            "y": 0.04
           },
           {
             "id": "suspect-timur",
-            "x": 0.87,
-            "y": 0.2
+            "x": 0.585,
+            "y": 0.04
           },
           {
             "id": "suspect-ilya",
-            "x": 0.13,
-            "y": 0.78
+            "x": 0.755,
+            "y": 0.04
           },
           {
             "id": "suspect-anna",
-            "x": 0.87,
-            "y": 0.78
+            "x": 0.925,
+            "y": 0.04
           }
         ],
         "threads": []
       },
-      "stages": {
-        "1": {
-          "attempts": 1,
-          "solved": true,
-          "released": true,
-          "releasedAt": "2026-10-25T22:39:56.219Z"
-        }
-      },
+      "stages": {},
       "fixturesSeeded": true,
-      "updatedAt": "2026-10-25T22:39:56.237Z"
+      "updatedAt": "2026-10-26T09:37:02.349Z"
     }
   ]
 }
