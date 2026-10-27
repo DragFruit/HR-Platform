@@ -22277,17 +22277,27 @@ body.nk-body-locked {
   pointer-events: none;
 }
 
+/*
+  Тыквы стоят на верхней кромке подвала. Раньше полоса шла по всему вьюпорту
+  и накрывала сайдбар — тыква садилась прямо на кнопку «Выйти». Украшение не
+  должно перекрывать ни одного элемента управления.
+*/
+.app-site-footer {
+  position: relative;
+}
+
 .hw-pumpkins {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: 86px;
+  top: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .hw-pumpkin {
   position: absolute;
-  bottom: 6px;
+  bottom: -4px;
   width: calc(64px * var(--hw-scale, 1));
   height: calc(64px * var(--hw-scale, 1));
   padding: 0;
@@ -22331,7 +22341,9 @@ body.nk-body-locked {
   left: -140px;
   width: calc(96px * var(--hw-ghost-scale, 1));
   height: auto;
-  opacity: 0.22;
+  /* Поверх светлых карточек заметный призрак читается как артефакт рендера. */
+  opacity: 0.1;
+  filter: blur(1px);
   animation-name: hw-drift;
   animation-timing-function: linear;
   animation-iteration-count: infinite;

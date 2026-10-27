@@ -1,10 +1,11 @@
 <template>
   <div v-if="enabled" class="hw-layer" aria-hidden="true">
     <!--
-      Слой чисто декоративный: вся подложка не ловит курсор, кликабельны
-      только сами тыквы. Иначе украшения начали бы перехватывать клики по
-      интерфейсу.
+      Тыквы живут на полосе подвала, а не на вьюпорте: полоса во всю ширину
+      экрана накрывала сайдбар и садилась прямо на кнопку «Выйти». В подвале
+      им место между логотипом и соцсетями, там только декоративная линейка.
     -->
+    <Teleport to=".app-site-footer" :disabled="!footerReady">
     <div class="hw-pumpkins">
       <button
         v-for="p in visiblePumpkins"
@@ -29,6 +30,7 @@
         </template>
       </button>
     </div>
+    </Teleport>
 
     <div v-if="motionAllowed" class="hw-ghosts">
       <img
@@ -68,12 +70,15 @@ const ART = {
 const PUMPKIN_REGROW_MS = 2 * 24 * 60 * 60 * 1000;
 const PUMPKINS_KEY = 'vbi-halloween-pumpkins';
 
-/** Правый край оставлен коту оценки и мобильному меню — туда не сажаем. */
+/**
+ * Координаты внутри подвала, а не вьюпорта: слева логотип VBI, справа
+ * соцсети, между ними декоративная линейка — туда и сажаем.
+ */
 const PUMPKINS = [
-  { id: 'p1', x: 4, scale: 1 },
-  { id: 'p2', x: 17, scale: 0.78 },
-  { id: 'p3', x: 33, scale: 0.92 },
-  { id: 'p4', x: 48, scale: 0.7 }
+  { id: 'p1', x: 24, scale: 0.9 },
+  { id: 'p2', x: 38, scale: 0.68 },
+  { id: 'p3', x: 52, scale: 0.8 },
+  { id: 'p4', x: 64, scale: 0.6 }
 ] as const;
 
 const GHOSTS = [
@@ -130,8 +135,14 @@ function breakPumpkin(id: string) {
   persist();
 }
 
+/** Подвал рисуется в app.vue; пока его нет в DOM, Teleport держим выключенным. */
+const footerReady = ref(false);
+
 onMounted(() => {
   brokenAt.value = readBroken();
   persist();
+  nextTick(() => {
+    footerReady.value = Boolean(document.querySelector('.app-site-footer'));
+  });
 });
 </script>
