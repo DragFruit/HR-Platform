@@ -22377,10 +22377,11 @@ body.nk-body-locked {
 .halloween .user-avatar--character::after {
   content: '';
   position: absolute;
-  left: -14%;
-  top: -34%;
-  width: 72%;
-  height: 72%;
+  left: 8%;
+  top: -16%;
+  width: 52%;
+  height: 52%;
+  transform: rotate(-12deg);
   background-image: url('/decor/halloween/avatar-hat.png');
   background-repeat: no-repeat;
   background-size: contain;
