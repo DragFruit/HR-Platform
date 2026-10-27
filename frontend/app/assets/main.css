@@ -22261,62 +22261,48 @@ body.nk-body-locked {
   крайние клетки. Высота 34px со сдвигом вверх на 18px — полоса тела
   ложится по центру клетки, размеры самих клеток не меняем.
 */
-.halloween .hr-month-grid td.emp-day-pending::before {
+/*
+  Кот в сетке: на крайних клетках рисуется ТОЛЬКО торец, на средних — только
+  тело. Раньше под головой и хвостом дополнительно тайлилось тело, и картинка
+  задваивалась. В каждой картинке тело продолжается до среза, поэтому ряд
+  остаётся сплошным. Везде один «период» на клетку и вылет на 2px в зазоры.
+*/
+.halloween .hr-month-grid td.emp-day-pending::before,
+.halloween .hr-month-grid td.emp-day-pending::after {
   content: '';
   position: absolute;
-  /* border-spacing 2px между клетками — перекрываем, иначе кот рвётся */
   left: -2px;
   right: -2px;
   bottom: -1px;
   height: 34px;
   z-index: 0;
   pointer-events: none;
-  background-image: url('/decor/halloween/vac-cat-body.png');
-  background-repeat: repeat-x;
-  /*
-    Ровно один период тайла на клетку. При repeat-x с авто-шириной фаза
-    начинается заново в каждой клетке, и ряд рвался на границах дней.
-  */
+  background-repeat: no-repeat;
   background-size: 100% 34px;
 }
 
-.halloween .hr-month-grid td.emp-day-pending::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  height: 34px;
-  z-index: 1;
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-size: auto 34px;
+/* Тело — только середина ряда. */
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-mid::before {
+  background-image: url('/decor/halloween/vac-cat-body.png');
 }
 
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-start::after,
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
-  left: -6px;
-  width: 22px;
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-start::after {
   background-image: url('/decor/halloween/vac-cat-head.png');
 }
 
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-end::after,
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
-  right: -18px;
-  left: auto;
-  width: 44px;
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-end::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
 }
 
-/* Однодневный: голова и хвост на одной клетке, обе накладки через ::after. */
+/* Однодневный отпуск: голова и хвост делят клетку пополам. */
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
-  left: -6px;
-  right: auto;
-  width: 66px;
   background-image:
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
   background-position: left bottom, right bottom;
-  background-size: auto 34px, auto 34px;
+  background-size: 50% 34px, 50% 34px;
 }
+
 
 /* --------------------------------------------------- тыквы и призраки */
 
