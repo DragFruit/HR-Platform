@@ -22191,6 +22191,83 @@ body.nk-body-locked {
   background-image: url('/decor/halloween/vac-cat-tail.png');
 }
 
+/*
+  Тот же приём в календаре сотрудника. Там отпуск рисуется не полоской, а
+  рядом клеток-дней, и ряд уже размечен сегментами (`emp-appr-seg-*`,
+  `emp-pend-seg-*`) — поэтому голова, середина и хвост кота ложатся на ряд
+  без единой правки в компоненте. Клетки позиционируются, чтобы накладки
+  было к чему прижать; размеры и цвета статусов не трогаем.
+*/
+.halloween .hr-month-grid td.emp-day-approved,
+.halloween .hr-month-grid td.emp-day-pending {
+  position: relative;
+}
+
+/* Слизь капает из-под ряда согласованных дней. */
+.halloween .hr-month-grid td.emp-day-approved::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 9px;
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    radial-gradient(3px 6px at 6px 0, #0f9488 98%, transparent 100%),
+    radial-gradient(3px 9px at 20px 0, #0f9488 98%, transparent 100%);
+  background-repeat: repeat-x;
+  background-size: 34px 9px;
+}
+
+/* Кот: голова на первом дне ряда, хвост на последнем. */
+.halloween .hr-month-grid td.emp-day-pending::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 22px;
+  margin-top: -11px;
+  z-index: 3;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-start::after,
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
+  left: -5px;
+  background-image: url('/decor/halloween/vac-cat-head.png');
+}
+
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-end::after,
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
+  right: -5px;
+  left: auto;
+  background-image: url('/decor/halloween/vac-cat-tail.png');
+}
+
+/*
+  Однодневный отпуск — и голова, и хвост на одной клетке: голову берёт
+  ::before, иначе два правила дерутся за единственный ::after.
+*/
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -5px;
+  width: 18px;
+  height: 22px;
+  margin-top: -11px;
+  z-index: 3;
+  pointer-events: none;
+  background-image: url('/decor/halloween/vac-cat-head.png');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
 /* --------------------------------------------------- тыквы и призраки */
 
 .hw-layer {
