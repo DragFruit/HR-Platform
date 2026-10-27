@@ -36,6 +36,7 @@ export function isHalloweenSeason(now: Date = new Date()): boolean {
 export function useHalloweenDecor() {
   const pref = useState<DecorPref>('halloween-decor-pref', () => 'on');
   const hydrated = useState<boolean>('halloween-decor-hydrated', () => false);
+  const { isProduction } = useAppEnv();
 
   /**
    * На сервере всегда false: иначе разметка с декором приедет в HTML и
@@ -45,6 +46,9 @@ export function useHalloweenDecor() {
     if (!hydrated.value) return false;
     if (pref.value === 'off') return false;
     if (pref.value === 'force') return true;
+    // Даты держим только на бою. Стейдж и локалка показывают декор всегда —
+    // иначе его нельзя отлаживать до начала сезона.
+    if (!isProduction.value) return true;
     return isHalloweenSeason();
   });
 
