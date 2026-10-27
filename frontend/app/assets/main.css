@@ -22123,3 +22123,190 @@ body.nk-body-locked {
 .nk-card--prop .nk-card__frame {
   background: var(--nk-shell-2);
 }
+
+/* ============================================================================
+   Хеллоуинский декор платформы (28.10–06.11)
+   Класс `halloween` вешает useHalloweenDecor на <html>. Украшения меняют
+   только внешний вид: геометрию полосок, хит-зоны и статусы не трогают.
+   ========================================================================== */
+
+/*
+  Слизь на согласованных отпусках. Капли — псевдоэлемент вне потока, поэтому
+  строка не становится выше и соседние полоски не сдвигаются. Без анимации.
+*/
+.halloween .vac-detailed-bar.approved::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 100%;
+  height: 11px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(4px 7px at 10px 0, #1ea853 98%, transparent 100%),
+    radial-gradient(3px 4px at 38px 0, #1ea853 98%, transparent 100%),
+    radial-gradient(4px 10px at 64px 0, #1ea853 98%, transparent 100%);
+  background-repeat: repeat-x;
+  background-size: 86px 11px;
+}
+
+/*
+  Рыжий отпуск «на согласовании» становится котом: середина тайлится, торцы
+  накладываются псевдоэлементами. Длина полоски при этом не важна — от одного
+  дня до месяца. Высота и позиция самой полоски не меняются.
+*/
+.halloween .vac-detailed-bar.pending {
+  background-color: transparent;
+  background-image: url('/decor/halloween/vac-cat-body.png');
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-size: auto 26px;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.halloween .vac-detailed-bar.pending::before,
+.halloween .vac-detailed-bar.pending::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  height: 26px;
+  margin-top: -13px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
+.halloween .vac-detailed-bar.pending::before {
+  left: -4px;
+  width: 22px;
+  background-image: url('/decor/halloween/vac-cat-head.png');
+}
+
+.halloween .vac-detailed-bar.pending::after {
+  right: -4px;
+  width: 20px;
+  background-image: url('/decor/halloween/vac-cat-tail.png');
+}
+
+/* --------------------------------------------------- тыквы и призраки */
+
+.hw-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hw-pumpkins {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 86px;
+}
+
+.hw-pumpkin {
+  position: absolute;
+  bottom: 6px;
+  width: calc(64px * var(--hw-scale, 1));
+  height: calc(64px * var(--hw-scale, 1));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.hw-pumpkin img {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.hw-pumpkin__half--l {
+  left: -16%;
+  transform: rotate(-14deg);
+}
+
+.hw-pumpkin__half--r {
+  left: 22%;
+  transform: rotate(11deg);
+}
+
+.hw-pumpkin.is-broken {
+  cursor: default;
+  pointer-events: none;
+}
+
+.hw-ghosts {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.hw-ghost {
+  position: absolute;
+  left: -140px;
+  width: calc(96px * var(--hw-ghost-scale, 1));
+  height: auto;
+  opacity: 0.22;
+  animation-name: hw-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes hw-drift {
+  from {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(50vw) translateY(-18px);
+  }
+  to {
+    transform: translateX(calc(100vw + 160px)) translateY(0);
+  }
+}
+
+/* Движение выключено — призраков не показываем вовсе, а не «замораживаем». */
+@media (prefers-reduced-motion: reduce) {
+  .hw-ghosts {
+    display: none;
+  }
+}
+
+/* На узком экране снизу мобильное меню — декор туда не лезет. */
+@media (max-width: 900px) {
+  .hw-pumpkins {
+    display: none;
+  }
+}
+
+/* ------------------------------------------- накладка на аватарки */
+
+/*
+  Не перерисовываем сорок аватарок: шляпа кладётся сверху на любую. Сидит
+  сбоку под углом, чтобы не спорить с ушами у ушастых.
+*/
+.halloween .user-avatar--character {
+  position: relative;
+  overflow: visible;
+}
+
+.halloween .user-avatar--character::after {
+  content: '';
+  position: absolute;
+  left: -14%;
+  top: -34%;
+  width: 72%;
+  height: 72%;
+  background-image: url('/decor/halloween/avatar-hat.png');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  pointer-events: none;
+}

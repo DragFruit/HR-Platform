@@ -32,9 +32,13 @@ const savePlatformRole = (next: PlatformRole) => {
   }
 };
 
+/*
+ * Квест «Синий Ноктюрн» снят с меню по просьбе заказчика. Код, данные и
+ * страница `/event/nokturn` намеренно оставлены на месте: квест может
+ * понадобиться позже, тогда достаточно вернуть сюда строку пункта.
+ */
 const employeeNav: NavItem[] = [
   { to: '/', label: 'Главная' },
-  { to: '/event/nokturn', label: 'Синий Ноктюрн' },
   { to: '/adaptation', label: 'Адаптация' },
   { to: '/organization', label: 'Структура' },
   { to: '/vacations', label: 'График отпусков' },
@@ -73,9 +77,7 @@ export function usePlatformContext() {
   const { isVacationsOnly, isPathAllowed, homePath, isNavPathUnlocked } = useLaunchScope();
 
   const isAdmin = computed(() => role.value === 'admin');
-  const { dot: nokturnDot } = useNokturnBadge();
-  const withDot = (item: NavItem): boolean =>
-    item.to === '/event/nokturn' && nokturnDot.value;
+  const withDot = (_item: NavItem): boolean => false;
   const navItems = computed<NavItem[]>(() => {
     const base = isAdmin.value ? adminNav : employeeNav;
     if (!isVacationsOnly.value) {

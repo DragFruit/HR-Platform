@@ -148,6 +148,9 @@
     <ClientOnly>
       <PageRateCatHost v-if="isAuthenticated" />
     </ClientOnly>
+    <ClientOnly>
+      <HalloweenDecorLayer v-if="isAuthenticated" />
+    </ClientOnly>
   </div>
 </template>
 
@@ -166,6 +169,8 @@ const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
 const { homePath } = useLaunchScope();
+// Сезонный декор: вешает класс на <html>, сам снимается вне окна 28.10–06.11
+useHalloweenDecor();
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';
