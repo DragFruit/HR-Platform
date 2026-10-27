@@ -22218,16 +22218,25 @@ body.nk-body-locked {
 }
 
 /* Слизь капает из-под ряда согласованных дней. */
+/*
+  Снятие заливки пишем теми же длинными селекторами, что и исходные правила
+  статусов: у `.vac-emp-page--embedded .emp-cal-grid--compact …` четыре
+  класса, короткий `.halloween …` им проигрывал и заливка оставалась.
+*/
 .halloween .hr-month-grid td.emp-day-approved,
-.halloween .hr-month-grid td.emp-day-pending {
+.halloween .hr-month-grid td.emp-day-pending,
+.halloween .vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-approved,
+.halloween .vac-emp-page--embedded .emp-cal-grid--compact .hr-month-grid td.emp-day-pending,
+.halloween .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-approved,
+.halloween .vac-emp-page--fit .emp-cal-grid--compact .hr-month-grid td.emp-day-pending {
   background: transparent;
 }
 
 .halloween .hr-month-grid td.emp-day-approved::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: -2px;
+  right: -2px;
   top: 0;
   bottom: -12px;
   z-index: 0;
@@ -22255,9 +22264,10 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::before {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 3px;
+  /* border-spacing 2px между клетками — перекрываем, иначе кот рвётся */
+  left: -2px;
+  right: -2px;
+  bottom: -1px;
   height: 34px;
   z-index: 0;
   pointer-events: none;
@@ -22273,7 +22283,7 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::after {
   content: '';
   position: absolute;
-  bottom: 3px;
+  bottom: -1px;
   height: 34px;
   z-index: 1;
   pointer-events: none;
