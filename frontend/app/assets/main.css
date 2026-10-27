@@ -22137,18 +22137,17 @@ body.nk-body-locked {
 .halloween .vac-detailed-bar.approved::after {
   content: '';
   position: absolute;
-  left: 3px;
-  right: 3px;
+  left: 0;
+  right: 0;
   top: 100%;
-  height: 11px;
+  height: 16px;
   pointer-events: none;
-  background-image:
-    radial-gradient(4px 7px at 10px 0, #16a34a 98%, transparent 100%),
-    radial-gradient(3px 4px at 38px 0, #16a34a 98%, transparent 100%),
-    radial-gradient(4px 10px at 64px 0, #16a34a 98%, transparent 100%);
+  background-image: url('/decor/halloween/vac-slime.png');
   background-repeat: repeat-x;
-  background-size: 86px 11px;
+  background-position: left top;
+  background-size: auto 16px;
 }
+
 
 /*
   Рыжий отпуск «на согласовании» становится котом: середина тайлится, торцы
@@ -22215,15 +22214,22 @@ body.nk-body-locked {
   left: 0;
   right: 0;
   top: 100%;
-  height: 9px;
+  height: 11px;
   z-index: 3;
   pointer-events: none;
-  background-image:
-    radial-gradient(3px 6px at 6px 0, #16a34a 98%, transparent 100%),
-    radial-gradient(3px 9px at 20px 0, #16a34a 98%, transparent 100%);
+  background-image: url('/decor/halloween/vac-slime.png');
   background-repeat: repeat-x;
-  background-size: 34px 9px;
+  background-position: left top;
+  background-size: auto 11px;
 }
+
+/* Число дня всегда поверх украшения. */
+.halloween .hr-month-grid td.emp-day-approved .hr-day-num,
+.halloween .hr-month-grid td.emp-day-pending .hr-day-num {
+  position: relative;
+  z-index: 2;
+}
+
 
 /*
   Кот в сетке дней: тело тайлится по всему ряду, голова и хвост садятся на
@@ -22235,23 +22241,25 @@ body.nk-body-locked {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  bottom: -5px;
   height: 34px;
-  margin-top: -17px;
-  z-index: 3;
+  z-index: 0;
   pointer-events: none;
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: auto 34px;
+  /*
+    Ровно один период тайла на клетку. При repeat-x с авто-шириной фаза
+    начинается заново в каждой клетке, и ряд рвался на границах дней.
+  */
+  background-size: 100% 34px;
 }
 
 .halloween .hr-month-grid td.emp-day-pending::after {
   content: '';
   position: absolute;
-  top: 50%;
+  bottom: -5px;
   height: 34px;
-  margin-top: -17px;
-  z-index: 4;
+  z-index: 1;
   pointer-events: none;
   background-repeat: no-repeat;
   background-size: auto 34px;
@@ -22280,7 +22288,7 @@ body.nk-body-locked {
   background-image:
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
-  background-position: left center, right center;
+  background-position: left bottom, right bottom;
   background-size: auto 34px, auto 34px;
 }
 
