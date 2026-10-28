@@ -4,8 +4,9 @@ import {
   isGroupedVacationDepartment,
   resolveVacationDepartmentsForDepartment
 } from '~/utils/vacationDepartmentGroups';
+import { seesCompanyWideVacationCalendar } from '~/utils/companyWideVacationViewer';
 
-export type VacationTeamScopeKind = 'grouped-department' | 'department';
+export type VacationTeamScopeKind = 'grouped-department' | 'department' | 'company';
 
 export type VacationTeamScope = {
   kind: VacationTeamScopeKind;
@@ -70,7 +71,8 @@ export function enrichTeamMembers(
 /**
  * Общий календарь отпусков для сотрудника:
  * - Digital и QA «Тестировщики»: весь отдел (сгруппированный в UI);
- * - остальные отделы: все сотрудники отдела, включая руководителей.
+ * - остальные отделы: все сотрудники отдела, включая руководителей;
+ * - главный бухгалтер (по должности): вся компания по отделам — только просмотр.
  */
 export function resolveVacationTeamScope(
   viewer: Employee | null | undefined,
@@ -78,6 +80,11 @@ export function resolveVacationTeamScope(
   helpers: ScopeHelpers
 ): VacationTeamScope | null {
   if (!viewer?.name.trim()) return null;
+
+  if (seesCompanyWideVacationCalendar(viewer.title)) {
+    const members = sortMembers(allEmployees);
+    if (members.length >= 2) return { kind: 'company', label: 'Вся компания', members };
+  }
 
   const department = viewer.department.trim();
   if (!department) return null;
@@ -105,6 +112,18 @@ export function vacationTeamScopeToDepartments(
   scope: VacationTeamScope,
   helpers?: Pick<ScopeHelpers, 'directReports' | 'findByName'> & { allEmployees?: Employee[] }
 ) {
+  if (scope.kind === 'company') {
+    const map = new Map<string, Employee[]>();
+    for (const emp of scope.members) {
+      const dept = emp.department.trim() || 'Без отдела';
+      const bucket = map.get(dept) ?? [];
+      bucket.push(emp);
+      map.set(dept, bucket);
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'ru'))
+      .map(([name, employees]) => ({ name, employees }));
+  }
   if (scope.kind === 'grouped-department' && helpers?.allEmployees) {
     return resolveVacationDepartmentsForDepartment(scope.label, helpers.allEmployees, {
       directReports: helpers.directReports,
