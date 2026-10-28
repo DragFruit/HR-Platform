@@ -22283,19 +22283,22 @@ body.nk-body-locked {
   content: '';
   position: absolute;
   /*
-   * Ровно по клетке: зазоров между днями нет, а вылет на 2px в каждую сторону
-   * сдвигал рисунок на соседней клетке — ряд рвался на каждой границе.
+   * Коробка на 1px шире клетки с каждой стороны, а рисунок начинается ровно
+   * на краю клетки (--hw-cell — её ширина в пикселях). Вылет закрывает шов:
+   * при дробной ширине клетки браузер оставляет между соседними фонами белую
+   * нитку. Размер в пикселях, а не в процентах, иначе период считался бы от
+   * коробки и уезжал на каждой следующей клетке.
    */
-  left: 0;
-  right: 0;
+  left: -1px;
+  right: -1px;
   top: 0;
   bottom: -6px;
   z-index: 0;
   pointer-events: none;
   background-image: url('/decor/halloween/vac-slime.png');
-  /* Ровно один период на клетку: тайл бесшовный, соседние дни стыкуются. */
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
+  background-size: var(--hw-cell, 100%) 100%;
+  background-position: 1px top;
+  background-repeat: repeat-x;
 }
 
 
@@ -22322,9 +22325,9 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::after {
   content: '';
   position: absolute;
-  /* Ровно по клетке — см. слизь выше: вылет ломал стык соседних дней. */
-  left: 0;
-  right: 0;
+  /* Вылет на 1px закрывает шов, рисунок начинается на краю клетки — см. слизь. */
+  left: -1px;
+  right: -1px;
   bottom: -1px;
   height: 34px;
   z-index: 0;
@@ -22342,8 +22345,8 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::before {
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: var(--hw-cat-tile, 100%) 34px;
-  background-position: left bottom;
+  background-size: var(--hw-cat-tile, 24px) 34px;
+  background-position: 1px bottom;
 }
 
 /*
@@ -22353,13 +22356,13 @@ body.nk-body-locked {
 */
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start:not(.emp-pend-run-end)::after {
   background-image: url('/decor/halloween/vac-cat-head.png');
-  background-position: left bottom;
+  background-position: 1px bottom;
   background-size: var(--hw-cat-head, auto) 34px;
 }
 
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-run-end:not(.emp-pend-run-start)::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
-  background-position: right bottom;
+  background-position: right 1px bottom;
   background-size: var(--hw-cat-tail, auto) 34px;
 }
 
@@ -22368,7 +22371,7 @@ body.nk-body-locked {
   background-image:
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
-  background-position: left bottom, right bottom;
+  background-position: 1px bottom, right 1px bottom;
   background-size: var(--hw-cat-head, auto) 34px, var(--hw-cat-tail, auto) 34px;
 }
 
@@ -22379,7 +22382,7 @@ body.nk-body-locked {
   клетка шире, чем при 4 на широком.
 */
 :root {
-  --hw-cat-tile: 100%;
+  --hw-cat-tile: 24px;
 }
 
 

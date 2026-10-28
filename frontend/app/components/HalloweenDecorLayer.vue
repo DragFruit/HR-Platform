@@ -200,11 +200,17 @@ function measureCatTile() {
   if (width / times / natural > 1.35) times += 1;
   const tile = width / times;
   const tiles = (ratio: number) => Math.max(1, Math.round((CAT_H * ratio) / tile));
+  /*
+   * Размеры в пикселях, а не в процентах: накладка шире клетки на 1px с каждой
+   * стороны (шов), и процент считался бы от неё — рисунок уезжал бы на каждой
+   * следующей клетке.
+   */
   const style = document.documentElement.style;
-  const share = (n: number) => `${((100 * n) / times).toFixed(4)}%`;
-  style.setProperty('--hw-cat-tile', share(1));
-  style.setProperty('--hw-cat-head', share(tiles(CAT_HEAD_RATIO)));
-  style.setProperty('--hw-cat-tail', share(tiles(CAT_TAIL_RATIO)));
+  const px = (n: number) => `${(tile * n).toFixed(3)}px`;
+  style.setProperty('--hw-cell', `${width.toFixed(3)}px`);
+  style.setProperty('--hw-cat-tile', px(1));
+  style.setProperty('--hw-cat-head', px(tiles(CAT_HEAD_RATIO)));
+  style.setProperty('--hw-cat-tail', px(tiles(CAT_TAIL_RATIO)));
 }
 
 const remeasure = () => {
