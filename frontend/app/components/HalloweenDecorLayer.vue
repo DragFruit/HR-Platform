@@ -173,49 +173,103 @@ function measureSpot() {
 }
 
 /*
- * Кот в сетке дней. Высота постоянная — 34px, как рисовал художник. Меряем
- * только ширину клетки: она зависит не от окна, а от того, сколько карточек
- * месяцев встало в ряд (от 20 до 55px), медиазапросами это не угадать.
+ * Кот в сетке дней. Каждый отрезок подряд идущих дней отпуска внутри строки
+ * недели рисуется одной картинкой — слоем поверх карточки месяца. Здесь мы
+ * только считаем геометрию отрезков и держим слой в актуальном виде.
  *
- * Тело тайлится, поэтому доля клетки должна давать целое число повторов,
- * иначе рисунок рвётся на границе дней. Повторов берём меньше, а не больше:
- * кот чуть длиннее натурального читается как кот, а поджатый втрое — как
- * частокол из лап. Тянуть больше чем на треть нельзя, тогда повтор добавляем.
- *
- * Голова и хвост занимают целое число тех же плиток. Иначе их срез приходится
- * на середину плитки тела: сразу за головой начиналось второе тело, и у краёв
- * заявки кот читался как два кота.
+ * По клетке рисовать нельзя: клетка шириной 47.5 или 54.1px, каждый фон
+ * округляется до пикселей сам по себе, и на границах дней рисунок рвался
+ * белой ниткой или уезжал на полплитки — тело читалось дважды.
  */
 const CAT_H = 34;
-const CAT_BODY_RATIO = 107 / 150;
-const CAT_HEAD_RATIO = 98 / 150;
-const CAT_TAIL_RATIO = 194 / 150;
 
-function measureCatTile() {
+type CatRun = { left: number; top: number; width: number; head: boolean; tail: boolean };
+
+function collectRuns(table: Element): CatRun[] {
+  const runs: CatRun[] = [];
+  for (const row of table.querySelectorAll('tr')) {
+    const cells = Array.from(row.children) as HTMLElement[];
+    let i = 0;
+    while (i < cells.length) {
+      if (!cells[i]!.classList.contains('emp-day-pending')) {
+        i += 1;
+        continue;
+      }
+      let last = i;
+      while (last + 1 < cells.length && cells[last + 1]!.classList.contains('emp-day-pending')) {
+        last += 1;
+      }
+      const from = cells[i]!;
+      const to = cells[last]!;
+      /*
+       * offsetLeft/offsetTop, а не getBoundingClientRect: это координаты
+       * вёрстки относительно слоя, они не зависят от масштаба страницы и не
+       * требуют вычитать прокрутку.
+       */
+      runs.push({
+        left: from.offsetLeft,
+        top: from.offsetTop + from.offsetHeight + 1 - CAT_H,
+        width: to.offsetLeft + to.offsetWidth - from.offsetLeft,
+        head: from.classList.contains('emp-pend-run-start'),
+        tail: to.classList.contains('emp-pend-run-end')
+      });
+      i = last + 1;
+    }
+  }
+  return runs;
+}
+
+function layoutCatRuns() {
   if (!import.meta.client) return;
-  const width = document.querySelector('.hr-month-grid td')?.getBoundingClientRect().width ?? 0;
-  if (!width) return;
-  const natural = CAT_H * CAT_BODY_RATIO;
-  let times = Math.max(1, Math.floor(width / natural));
-  if (width / times / natural > 1.35) times += 1;
-  const tile = width / times;
-  const tiles = (ratio: number) => Math.max(1, Math.round((CAT_H * ratio) / tile));
-  /*
-   * Размеры в пикселях, а не в процентах: накладка шире клетки на 1px с каждой
-   * стороны (шов), и процент считался бы от неё — рисунок уезжал бы на каждой
-   * следующей клетке.
-   */
-  const style = document.documentElement.style;
-  const px = (n: number) => `${(tile * n).toFixed(3)}px`;
-  style.setProperty('--hw-cell', `${width.toFixed(3)}px`);
-  style.setProperty('--hw-cat-tile', px(1));
-  style.setProperty('--hw-cat-head', px(tiles(CAT_HEAD_RATIO)));
-  style.setProperty('--hw-cat-tail', px(tiles(CAT_TAIL_RATIO)));
+  // Слизь по-прежнему рисуется по клетке, ей нужна ширина клетки в пикселях.
+  const cellWidth = document.querySelector('.hr-month-grid td')?.getBoundingClientRect().width;
+  if (cellWidth) {
+    document.documentElement.style.setProperty('--hw-cell', `${cellWidth.toFixed(2)}px`);
+  }
+  for (const table of document.querySelectorAll('.hr-month-grid')) {
+    const host = table.parentElement as HTMLElement | null;
+    if (!host) continue;
+    let layer = host.querySelector(':scope > .hw-cat-layer') as HTMLElement | null;
+    const hasDays = enabled.value && Boolean(table.querySelector('td.emp-day-pending'));
+    if (!hasDays) {
+      layer?.remove();
+      continue;
+    }
+    // Слой должен стать точкой отсчёта до того, как читаем offsetLeft клеток.
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.className = 'hw-cat-layer';
+      layer.setAttribute('aria-hidden', 'true');
+      host.appendChild(layer);
+    }
+    const runs = collectRuns(table);
+    // Своя же правка разметки будит MutationObserver — пишем, только если
+    // геометрия и правда изменилась, иначе уйдём в бесконечный цикл.
+    const key = JSON.stringify(runs);
+    if (layer.dataset.runs === key) continue;
+    layer.dataset.runs = key;
+    layer.replaceChildren(
+      ...runs.map((run) => {
+        const el = document.createElement('div');
+        el.className = `hw-cat-run${run.head ? ' hw-cat-head' : ''}${run.tail ? ' hw-cat-tail' : ''}`;
+        el.style.left = `${run.left}px`;
+        el.style.top = `${run.top}px`;
+        el.style.width = `${run.width}px`;
+        return el;
+      })
+    );
+  }
+}
+
+function dropCatRuns() {
+  if (!import.meta.client) return;
+  for (const layer of document.querySelectorAll('.hw-cat-layer')) layer.remove();
 }
 
 const remeasure = () => {
   measureSpot();
-  measureCatTile();
+  layoutCatRuns();
 };
 
 /*
@@ -285,6 +339,7 @@ onBeforeUnmount(() => {
   if (domTimer) clearTimeout(domTimer);
   observer?.disconnect();
   domObserver?.disconnect();
+  dropCatRuns();
 });
 
 watch(() => route.fullPath, () => scheduleMeasure());

@@ -22311,78 +22311,62 @@ body.nk-body-locked {
 
 
 /*
-  Кот в сетке дней: тело тайлится по всему ряду, голова и хвост садятся на
-  крайние клетки. Голова и хвост занимают целое число плиток тела — иначе их
-  срез приходится на середину плитки, и у края заявки тело читается дважды.
+  Кот в сетке дней рисуется ОДНОЙ картинкой на весь отрезок подряд идущих дней
+  отпуска — отдельным слоем поверх карточки месяца.
+
+  По клетке рисовать нельзя: клетка шириной 47.5 или 54.1px, каждый фон
+  округляется до пикселей сам по себе, и на границах дней рисунок рвался белой
+  ниткой или уезжал на полплитки — тело читалось дважды. Псевдоэлемент первой
+  клетки тоже не годится: соседние клетки позиционированы и закрашивают его
+  своим фоном, полоса обрывалась на втором дне.
+
+  Слой лежит под числами (z-index 1 против 2), поэтому даты читаются поверх
+  кота. Координаты и ширину отрезков считает HalloweenDecorLayer.
 */
+.hw-cat-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hw-cat-run {
+  position: absolute;
+  height: 34px;
+  background-image: url('/decor/halloween/vac-cat-body.png');
+  background-repeat: repeat-x;
+  background-size: auto 34px;
+  background-position: left bottom;
+}
+
 /*
-  Кот в сетке: на крайних клетках рисуется ТОЛЬКО торец, на средних — только
-  тело. Раньше под головой и хвостом дополнительно тайлилось тело, и картинка
-  задваивалась. В каждой картинке тело продолжается до среза, поэтому ряд
-  остаётся сплошным. Везде один «период» на клетку и вылет на 2px в зазоры.
+  Отрезок начинается с головы — тело тайлится от её среза (22.2px при высоте
+  34px), иначе под головой окажется обрезок плитки: то самое «второе тело».
+  Голова и хвост садятся на торцы самого отпуска, а не строки недели, поэтому
+  у отпуска через воскресенье или границу месяца вторая голова не растёт.
 */
-.halloween .hr-month-grid td.emp-day-pending::before,
-.halloween .hr-month-grid td.emp-day-pending::after {
+.hw-cat-run.hw-cat-head {
+  background-position: 22.2px bottom;
+}
+
+.hw-cat-run.hw-cat-head::before,
+.hw-cat-run.hw-cat-tail::after {
   content: '';
   position: absolute;
-  /* Вылет на 1px закрывает шов, рисунок начинается на краю клетки — см. слизь. */
-  left: -1px;
-  right: -1px;
-  bottom: -1px;
-  height: 34px;
-  z-index: 0;
-  pointer-events: none;
+  inset: 0;
   background-repeat: no-repeat;
   background-size: auto 34px;
 }
 
-/*
-  Тело лежит под всем рядом, включая концы: голова и хвост рисуются поверх.
-  Ширина плитки — доля клетки (--hw-cat-tile), то есть целое число повторов,
-  иначе рисунок рвётся на границе клеток. На широких экранах доля меньше:
-  при одном повторе на клетку кот растягивался в два-три раза.
-*/
-.halloween .hr-month-grid td.emp-day-pending::before {
-  background-image: url('/decor/halloween/vac-cat-body.png');
-  background-repeat: repeat-x;
-  background-size: var(--hw-cat-tile, 24px) 34px;
-  background-position: 1px bottom;
-}
-
-/*
-  Голова и хвост — по торцам самого отпуска (`-run-start` / `-run-end`), а не
-  по торцам строки недели (`-seg-start` / `-seg-end`). Иначе у отпуска, что
-  перешёл через воскресенье или границу месяца, вырастала вторая голова.
-*/
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start:not(.emp-pend-run-end)::after {
+.hw-cat-run.hw-cat-head::before {
   background-image: url('/decor/halloween/vac-cat-head.png');
-  background-position: 1px bottom;
-  background-size: var(--hw-cat-head, auto) 34px;
+  background-position: left bottom;
 }
 
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-end:not(.emp-pend-run-start)::after {
+/* Хвост прижат к правому краю и закрывает недотайленный остаток тела. */
+.hw-cat-run.hw-cat-tail::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
-  background-position: right 1px bottom;
-  background-size: var(--hw-cat-tail, auto) 34px;
-}
-
-/* Однодневный отпуск: голова слева, хвост справа, тело между ними. */
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start.emp-pend-run-end::after {
-  background-image:
-    url('/decor/halloween/vac-cat-head.png'),
-    url('/decor/halloween/vac-cat-tail.png');
-  background-position: 1px bottom, right 1px bottom;
-  background-size: var(--hw-cat-head, auto) 34px, var(--hw-cat-tail, auto) 34px;
-}
-
-/*
-  Сколько повторов тела влезает в клетку, считает HalloweenDecorLayer: ширина
-  клетки зависит не от окна, а от того, сколько месяцев встало в ряд (от 20 до
-  48px). По медиазапросам это не угадать — при 2 месяцах в ряду на узком окне
-  клетка шире, чем при 4 на широком.
-*/
-:root {
-  --hw-cat-tile: 24px;
+  background-position: right bottom;
 }
 
 
