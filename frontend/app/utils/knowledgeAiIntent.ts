@@ -212,7 +212,7 @@ export function looksLikeWorkplaceKbQuestion(raw: string): boolean {
  * не оффтоп сами по себе; для RAG склеиваем с прошлым вопросом.
  */
 const CLARIFY_FOLLOWUP_RE =
-  /^(а\s+)?(ещ[её]|там|тут|если|ну)\b|^(какие\s+)?ещ[её]|подробнее|что\s+ещ[её]|какие\s+ещ[её]|а\s+что|а\s+как|а\s+где|продолж|уточн|а\s+кроме|кроме\s+этого|кроме\s+этих|остальн|не\s+назва|это\s+все|это\s+вс[её]|все\s+ли|вс[её]\s+ли|допис|дополни|назови\s+ещ|напиши\s+ещ|перечисл\s+ещ|ещ[её]\s+друг|друг(ие|их)\s+(программ|компани|партн|площад|из\s+списка|с\s+которы)/i;
+  /^(а\s+)?(ещ[её]|там|тут|если|ну)(?![а-яёa-z])|^(какие\s+)?ещ[её]|подробнее|что\s+ещ[её]|какие\s+ещ[её]|а\s+что|а\s+как|а\s+где|продолж|уточн|а\s+кроме|кроме\s+этого|кроме\s+этих|остальн|не\s+назва|это\s+все|это\s+вс[её]|все\s+ли|вс[её]\s+ли|допис|дополни|назови\s+ещ|напиши\s+ещ|перечисл\s+ещ|ещ[её]\s+друг|друг(ие|их)\s+(программ|компани|партн|площад|из\s+списка|с\s+которы)/i;
 
 export function isKbClarifyingFollowUp(raw: string): boolean {
   const t = raw.trim().replace(/\s+/g, ' ');
@@ -221,6 +221,51 @@ export function isKbClarifyingFollowUp(raw: string): boolean {
   if (CLARIFY_FOLLOWUP_RE.test(t)) return true;
   // короткие «а …?» после рабочего ответа
   return /^а\s+.+\?$/iu.test(t) && t.length <= 64;
+}
+
+/**
+ * Темы базы знаний: «увольнение» ≠ «отпуск» ≠ «больничный».
+ * Нужны, чтобы вопрос вида «а если мне нужно заявление на увольнение?»
+ * не склеивался с прошлым вопросом про отпуск (2026-10-28: склейка топила якорь новой темы).
+ * Без `\b`: для кириллицы word-boundary в JS часто не срабатывает.
+ */
+const KB_TOPIC_PATTERNS: { id: string; re: RegExp }[] = [
+  { id: 'dismissal', re: /(увольн|уволи|уволь|уволю|расч[её]т\s+при\s+ух)/i },
+  { id: 'vacation', re: /(отпуск|график\s+отпуск)/i },
+  { id: 'dayoff', re: /(отгул|дейоф|дей\s*офф?|day\s*off|dayoff)/i },
+  { id: 'sickleave', re: /(больничн)/i },
+  { id: 'businesstrip', re: /(командиров)/i },
+  { id: 'salary', re: /(зарплат|зп\s|оклад|премия|выплат)/i },
+  { id: 'access', re: /(vpn|впн|доступ|пароль|логин|wifi|wi-?fi)/i },
+  { id: 'hiring', re: /(ваканс|собесед|кандидат|на[ий]м|трудоустрой|адаптац|испытательн)/i },
+  { id: 'merch', re: /(мерч|магазин|купон)/i },
+  { id: 'achievements', re: /(ачивк|достижен)/i },
+  { id: 'cases', re: /(кейс|case[\s-]*stud)/i },
+  { id: 'fonts', re: /(шрифт|типограф|hoves|брендбук)/i },
+  { id: 'writeoffs', re: /(списан|комисси|afina|афин|акт[аыу]?\s)/i },
+  { id: 'utm', re: /(utm|коллтрек|колтрек|разметк|тегирован)/i },
+  { id: 'contacts', re: /(контакт|партн[её]р|площадк|юрист|программатик|programmatic)/i },
+  { id: 'birthday', re: /(день\s*рожден|дн[ияей]\s*рожден|др\s+клиент)/i }
+];
+
+/** Темы базы, упомянутые в тексте. */
+export function kbTopicsOf(raw: string): string[] {
+  const t = String(raw || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  if (!t) return [];
+  return KB_TOPIC_PATTERNS.filter((p) => p.re.test(t)).map((p) => p.id);
+}
+
+/**
+ * В уточнении появилась тема, которой не было в базовом вопросе →
+ * это новый вопрос, склеивать с историей нельзя.
+ */
+export function isKbTopicShift(question: string, base: string): boolean {
+  const next = kbTopicsOf(question);
+  if (!next.length) return false;
+  const prev = new Set(kbTopicsOf(base));
+  return next.some((id) => !prev.has(id));
 }
 
 /** История уже про кейсы / ecom / клиента — уточнение канала или ниши. */
@@ -312,6 +357,8 @@ export function expandQuestionFromHistory(
   const lastWork = [...users].reverse().find((t) => looksLikeWorkplaceKbQuestion(t));
   const base = lastWork || users[users.length - 1];
   if (!base || base === q) return q;
+  // «а если мне нужно заявление на увольнение?» после вопроса про отпуск — новая тема, не уточнение
+  if (isKbTopicShift(q, base)) return q;
   return `${base}\nУточнение: ${q}`;
 }
 
