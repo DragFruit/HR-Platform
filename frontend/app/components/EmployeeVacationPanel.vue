@@ -414,8 +414,11 @@ const {
   directReports,
   findByName,
   employeesInDepartment,
+  employees: allEmployees,
   hydrate: hydrateEmployees
 } = useEmployees();
+/** Оргструктура уже грузится в bootstrapAppData: группы Digital для лимита «1 на группу». */
+const { orgUnits, orgLinks } = useOrgStructure();
 const {
   requestsForYear,
   employeeReservations,
@@ -564,7 +567,9 @@ const reservationCapContext = computed(() => {
   return resolveEmployeeReservationCapContext(emp, {
     directReports,
     findByName,
-    employeesInDepartment
+    employeesInDepartment,
+    allEmployees: allEmployees.value,
+    orgStructure: orgUnits.value.length ? { units: orgUnits.value, links: orgLinks.value } : null
   });
 });
 

@@ -5,6 +5,7 @@ import {
   QA_TEST_DEPARTMENT_NAME
 } from '~/data/qaTestDepartment';
 import { employeeNamesMatch } from '~/utils/employeeName';
+import { resolveDigitalOrgVacationGroups, type OrgStructureLike } from '~/utils/vacationOrgGroups';
 import {
   DIGITAL_DIRECTOR_NAME,
   isDigitalDepartment,
@@ -111,6 +112,13 @@ export type VacationGroupHelpers = {
   findByName: (name: string) => Employee | undefined;
   /** Все сотрудники отдела — для общего пула лимита броней. */
   employeesInDepartment?: (department: string) => Employee[];
+  /** Весь справочник: состав нод оргструктуры (аналитика по id, группы по руководителям). */
+  allEmployees?: readonly Employee[];
+  /**
+   * Оргструктура (core.org_units / org_links): источник групп Digital для лимита «1 на группу».
+   * Без неё или без ноды Digital с дочерними нодами — запасная раскладка из кода.
+   */
+  orgStructure?: OrgStructureLike | null;
 };
 
 const sortEmployees = (list: Employee[]) =>
@@ -207,6 +215,37 @@ const resolveDepartmentCapMembers = (
   return uniqueEmployees(layout.groups.flatMap((def) => resolveGroupMembers(def, helpers)));
 };
 
+let orgFallbackWarned = false;
+
+/**
+ * Группа для лимита «1 на группу». Digital: группы из оргструктуры
+ * (resolveDigitalOrgVacationGroups), сотрудник вне дочерних нод Digital: null (только лимит
+ * отдела). Нет данных оргструктуры по Digital: запасная раскладка из кода + warning на сервере.
+ * Остальные раскладки (демо-QA): из кода.
+ */
+function resolveCapSubgroupForEmployee(
+  employee: Pick<Employee, 'name' | 'department' | 'manager'>,
+  layout: DepartmentVacationLayout,
+  helpers: VacationGroupHelpers
+): { id: string; label: string; members: Employee[] } | null {
+  if (layout.department === 'Digital') {
+    const employees =
+      helpers.allEmployees ?? helpers.employeesInDepartment?.(layout.department) ?? [];
+    const orgGroups = resolveDigitalOrgVacationGroups(helpers.orgStructure, employees);
+    if (orgGroups) {
+      const name = employee.name.trim();
+      return orgGroups.find((group) => group.members.some((emp) => employeeNamesMatch(emp.name, name))) ?? null;
+    }
+    if (typeof window === 'undefined' && helpers.orgStructure !== undefined && !orgFallbackWarned) {
+      orgFallbackWarned = true;
+      console.warn(
+        '[vacations] В оргструктуре нет ноды Digital с дочерними нодами и сотрудниками: группы для лимита «1 на группу» взяты из запасной раскладки в коде.'
+      );
+    }
+  }
+  return resolveVacationGroupForEmployee(employee, helpers);
+}
+
 /** Префикс пула лимита для отделов без раскладки по группам: `department:DEV`, `department:SEO / ORM`… */
 export const DEPARTMENT_CAP_POOL_PREFIX = 'department:';
 
@@ -217,8 +256,9 @@ export function departmentCapPoolId(department: string): string {
 /**
  * Пул отдела + подгруппа для двухуровневого лимита (5 на отдел, 1 в группе; по реальным датам).
  *
- * - Digital (и демо-QA): пул из раскладки + группа сотрудника. Сотрудник Digital вне групп:
- *   только лимит отдела (subgroup = null).
+ * - Digital: пул = все сотрудники отдела; группа = секция дочерней ноды «Digital отдел»
+ *   в оргструктуре (helpers.orgStructure). Сотрудник Digital вне дочерних нод: только лимит
+ *   отдела (subgroup = null). Демо-QA: группы из раскладки в коде.
  * - Любой другой отдел (DEV, SEO / ORM, Отдел продаж…): пул `department:<отдел>` из всех
  *   сотрудников с тем же employee.department, лимит 5 (или override в reservationMonthlyCapsByGroup),
  *   без лимита группы.
@@ -248,7 +288,7 @@ export function resolveEmployeeReservationCapContext(
     };
   }
 
-  const subgroup = resolveVacationGroupForEmployee(employee, helpers);
+  const subgroup = resolveCapSubgroupForEmployee(employee, layout, helpers);
 
   const deptMembers = resolveDepartmentCapMembers(layout, helpers);
   if (!deptMembers.length) return null;

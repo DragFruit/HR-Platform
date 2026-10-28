@@ -49,29 +49,26 @@
         <p class="muted">В общем списке сейчас нет задач. Попробуй другой фильтр или зайди позже.</p>
       </div>
 
-      <div v-else class="grid-two tasks-grid">
-        <article v-for="task in filteredPool" :key="task.id" class="card task-item">
-          <div class="row">
-            <strong>{{ task.title }}</strong>
-            <span class="tag" :class="task.motivation_block">{{ motivationLabels[task.motivation_block] }}</span>
+      <div v-else class="tcard-grid">
+        <article v-for="task in filteredPool" :key="task.id" class="tcard">
+          <div class="tcard__body">
+            <h4 class="tcard__title">{{ task.title }}</h4>
+            <ul class="tcard__pills">
+              <li class="tcard__pill tcard__pill--reward">+{{ task.reward_amount }}</li>
+              <li class="tcard__pill">{{ motivationLabels[task.motivation_block] }}</li>
+              <li class="tcard__pill">{{ difficultyLabels[task.difficulty] }}</li>
+              <li class="tcard__pill">до {{ formatDate(task.deadline) }}</li>
+            </ul>
           </div>
-          <p class="muted">
-            {{ difficultyLabels[task.difficulty] }} · Дедлайн: {{ formatDate(task.deadline) }}
-          </p>
-          <div class="row">
-            <span class="pill">+{{ task.reward_amount }}</span>
-            <button
-              v-if="isHrKnowledgeTask(task)"
-              class="button primary"
-              type="button"
-              @click="handleTakeQuiz(task.id)"
-            >
-              Взять и пройти
-            </button>
-            <button v-else class="button primary" type="button" @click="handleTake(task.id)">
-              Взять задачу
-            </button>
-          </div>
+          <button
+            class="tcard__go"
+            type="button"
+            :aria-label="isHrKnowledgeTask(task) ? 'Взять и пройти' : 'Взять задачу'"
+            :title="isHrKnowledgeTask(task) ? 'Взять и пройти' : 'Взять задачу'"
+            @click="isHrKnowledgeTask(task) ? handleTakeQuiz(task.id) : handleTake(task.id)"
+          >
+            <span aria-hidden="true">↗</span>
+          </button>
         </article>
       </div>
     </section>
@@ -105,39 +102,37 @@
         </p>
       </div>
 
-      <div v-else class="grid-two tasks-grid">
-        <article v-for="task in filteredMine" :key="task.id" class="card task-item">
-          <div class="row">
-            <strong>{{ task.title }}</strong>
-            <span class="tag status-tag" :class="`status-${task.status}`">
-              {{ taskStatusLabels[task.status] }}
-            </span>
+      <div v-else class="tcard-grid">
+        <article
+          v-for="task in filteredMine"
+          :key="task.id"
+          class="tcard"
+          :class="{ 'tcard--plain': !myTaskAction(task) }"
+        >
+          <div class="tcard__body">
+            <h4 class="tcard__title">{{ task.title }}</h4>
+            <ul class="tcard__pills">
+              <li class="tcard__pill tcard__pill--status" :class="`status-${task.status}`">
+                {{ taskStatusLabels[task.status] }}
+              </li>
+              <li class="tcard__pill tcard__pill--reward">+{{ task.reward_amount }}</li>
+              <li class="tcard__pill">{{ motivationLabels[task.motivation_block] }}</li>
+              <li class="tcard__pill">{{ difficultyLabels[task.difficulty] }}</li>
+              <li class="tcard__pill">до {{ formatDate(task.deadline) }}</li>
+              <li v-if="task.taken_at" class="tcard__pill">Взята {{ formatDate(task.taken_at) }}</li>
+              <li v-if="task.completed_at" class="tcard__pill">Завершена {{ formatDate(task.completed_at) }}</li>
+            </ul>
           </div>
-          <p class="muted">
-            {{ motivationLabels[task.motivation_block] }} · {{ difficultyLabels[task.difficulty] }} · Дедлайн:
-            {{ formatDate(task.deadline) }}
-          </p>
-          <p v-if="task.taken_at" class="soft">Взята: {{ formatDate(task.taken_at) }}</p>
-          <p v-if="task.completed_at" class="soft">Завершена: {{ formatDate(task.completed_at) }}</p>
-          <div class="row">
-            <span class="pill">+{{ task.reward_amount }}</span>
-            <button
-              v-if="isHrKnowledgeTask(task)"
-              class="button primary"
-              type="button"
-              @click="openHrAssessment(task.id)"
-            >
-              {{ task.status === 'completed' ? 'Пройти снова' : 'Пройти тест' }}
-            </button>
-            <button
-              v-else-if="task.status === 'active'"
-              class="button primary"
-              type="button"
-              @click="handleComplete(task.id)"
-            >
-              Завершить
-            </button>
-          </div>
+          <button
+            v-if="myTaskAction(task)"
+            class="tcard__go"
+            type="button"
+            :aria-label="myTaskAction(task)!.label"
+            :title="myTaskAction(task)!.label"
+            @click="myTaskAction(task)!.run()"
+          >
+            <span aria-hidden="true">↗</span>
+          </button>
         </article>
       </div>
     </section>
@@ -146,7 +141,7 @@
 
 <script setup lang="ts">
 import type { MotivationBlock } from '~/composables/useMockData';
-import type { TaskStatus } from '~/composables/useTasks';
+import type { Task, TaskStatus } from '~/composables/useTasks';
 
 const {
   poolTasks,
@@ -207,6 +202,21 @@ const handleComplete = (taskId: number) => {
   completeTask(taskId);
 };
 
+
+/** Главное действие карточки «Мои задачи» (оранжевая стрелка); null — действия нет. */
+const myTaskAction = (task: Task) => {
+  if (isHrKnowledgeTask(task)) {
+    return {
+      label: task.status === 'completed' ? 'Пройти снова' : 'Пройти тест',
+      run: () => openHrAssessment(task.id)
+    };
+  }
+  if (task.status === 'active') {
+    return { label: 'Завершить', run: () => handleComplete(task.id) };
+  }
+  return null;
+};
+
 const reload = () => {
   loading.value = true;
   error.value = false;
@@ -219,3 +229,138 @@ const reload = () => {
 
 onMounted(reload);
 </script>
+
+<style scoped>
+.tcard-grid {
+  display: grid;
+  /* 3 колонки на широком контенте, 2 на среднем, 1 на мобиле. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-radius: 24px;
+  background: var(--hero-purple);
+}
+
+.tcard {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.tcard:hover {
+  transform: translateY(-3px);
+}
+
+.tcard__body {
+  height: 100%;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--bg-surface);
+  /* Вогнутый вырез в правом верхнем углу под кнопку-стрелку: фон под карточкой просвечивает. */
+  -webkit-mask: radial-gradient(circle 30px at calc(100% - 22px) 22px, transparent 29.5px, #000 30px);
+  mask: radial-gradient(circle 30px at calc(100% - 22px) 22px, transparent 29.5px, #000 30px);
+}
+
+.tcard--plain .tcard__body {
+  -webkit-mask: none;
+  mask: none;
+}
+
+.tcard__title {
+  margin: 0 48px 12px 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--accent-orange);
+  overflow-wrap: anywhere;
+}
+
+.tcard--plain .tcard__title {
+  margin-right: 0;
+}
+
+.tcard__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tcard__pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eee9fb;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.tcard__pill--reward {
+  font-weight: 700;
+}
+
+.tcard__pill--status.status-active {
+  background: var(--accent-lime);
+}
+
+.tcard__pill--status.status-completed {
+  background: var(--mint);
+}
+
+.tcard__pill--status.status-cancelled {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+}
+
+.tcard__go {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.tcard__go:hover {
+  transform: rotate(12deg) scale(1.08);
+}
+
+.tcard__go:focus-visible {
+  outline: 3px solid var(--accent-lime);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .tcard-grid {
+    grid-template-columns: 1fr;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcard,
+  .tcard__go {
+    transition: none;
+  }
+
+  .tcard:hover,
+  .tcard__go:hover {
+    transform: none;
+  }
+}
+</style>
