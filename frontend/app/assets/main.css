@@ -22236,6 +22236,12 @@ body.nk-body-locked {
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
   background-size: auto 100%;
+  /*
+   * Тайлим не от края полоски, а от среза головы: дорожка 21px, голова при
+   * этой высоте шириной 13.7px. Иначе первая плитка тела кончалась в середине
+   * головы и сразу за головой начиналось второе тело.
+   */
+  background-position: 13.7px top;
 }
 
 .halloween .vac-detailed-bar.pending::after {
@@ -22276,8 +22282,12 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-approved::after {
   content: '';
   position: absolute;
-  left: -2px;
-  right: -2px;
+  /*
+   * Ровно по клетке: зазоров между днями нет, а вылет на 2px в каждую сторону
+   * сдвигал рисунок на соседней клетке — ряд рвался на каждой границе.
+   */
+  left: 0;
+  right: 0;
   top: 0;
   bottom: -6px;
   z-index: 0;
@@ -22299,8 +22309,8 @@ body.nk-body-locked {
 
 /*
   Кот в сетке дней: тело тайлится по всему ряду, голова и хвост садятся на
-  крайние клетки. Высота — по высоте клетки дня (--hw-cat-h), иначе кот выше
-  ряда и залезает ушами на строку сверху: клетка всего 28px.
+  крайние клетки. Голова и хвост занимают целое число плиток тела — иначе их
+  срез приходится на середину плитки, и у края заявки тело читается дважды.
 */
 /*
   Кот в сетке: на крайних клетках рисуется ТОЛЬКО торец, на средних — только
@@ -22312,14 +22322,15 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::after {
   content: '';
   position: absolute;
-  left: -2px;
-  right: -2px;
+  /* Ровно по клетке — см. слизь выше: вылет ломал стык соседних дней. */
+  left: 0;
+  right: 0;
   bottom: -1px;
-  height: var(--hw-cat-h, 30px);
+  height: 34px;
   z-index: 0;
   pointer-events: none;
   background-repeat: no-repeat;
-  background-size: auto var(--hw-cat-h, 30px);
+  background-size: auto 34px;
 }
 
 /*
@@ -22331,7 +22342,8 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending::before {
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: var(--hw-cat-tile, 100%) var(--hw-cat-h, 30px);
+  background-size: var(--hw-cat-tile, 100%) 34px;
+  background-position: left bottom;
 }
 
 /*
@@ -22342,11 +22354,13 @@ body.nk-body-locked {
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start:not(.emp-pend-run-end)::after {
   background-image: url('/decor/halloween/vac-cat-head.png');
   background-position: left bottom;
+  background-size: var(--hw-cat-head, auto) 34px;
 }
 
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-run-end:not(.emp-pend-run-start)::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
   background-position: right bottom;
+  background-size: var(--hw-cat-tail, auto) 34px;
 }
 
 /* Однодневный отпуск: голова слева, хвост справа, тело между ними. */
@@ -22355,7 +22369,7 @@ body.nk-body-locked {
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
   background-position: left bottom, right bottom;
-  background-size: auto var(--hw-cat-h, 30px), auto var(--hw-cat-h, 30px);
+  background-size: var(--hw-cat-head, auto) 34px, var(--hw-cat-tail, auto) 34px;
 }
 
 /*
@@ -22366,7 +22380,6 @@ body.nk-body-locked {
 */
 :root {
   --hw-cat-tile: 100%;
-  --hw-cat-h: 30px;
 }
 
 

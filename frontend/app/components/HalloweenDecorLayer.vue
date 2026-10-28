@@ -173,50 +173,38 @@ function measureSpot() {
 }
 
 /*
- * Кот в сетке дней меряется по живой клетке, а не по магическим числам.
+ * Кот в сетке дней. Высота постоянная — 34px, как рисовал художник. Меряем
+ * только ширину клетки: она зависит не от окна, а от того, сколько карточек
+ * месяцев встало в ряд (от 20 до 55px), медиазапросами это не угадать.
  *
- * Высота: клетка дня всего 28px, и кот ростом 34px залезал ушами на строку
- * сверху. Берём высоту клетки плюс 2px на зазор между клетками.
+ * Тело тайлится, поэтому доля клетки должна давать целое число повторов,
+ * иначе рисунок рвётся на границе дней. Повторов берём меньше, а не больше:
+ * кот чуть длиннее натурального читается как кот, а поджатый втрое — как
+ * частокол из лап. Тянуть больше чем на треть нельзя, тогда повтор добавляем.
  *
- * Ширина: тело тайлится, и доля должна давать целое число повторов, иначе
- * рисунок рвётся на границе клеток. Один повтор на всю клетку растягивал кота
- * вдвое. Медиазапросами это не решается: ширина клетки зависит не от окна, а
- * от того, сколько карточек месяцев встало в ряд — от 20 до 48px.
+ * Голова и хвост занимают целое число тех же плиток. Иначе их срез приходится
+ * на середину плитки тела: сразу за головой начиналось второе тело, и у краёв
+ * заявки кот читался как два кота.
  */
+const CAT_H = 34;
 const CAT_BODY_RATIO = 107 / 150;
-const CAT_OVERHANG = 2;
+const CAT_HEAD_RATIO = 98 / 150;
+const CAT_TAIL_RATIO = 194 / 150;
 
 function measureCatTile() {
   if (!import.meta.client) return;
-  const rect = document.querySelector('.hr-month-grid td')?.getBoundingClientRect();
-  if (!rect?.width || !rect.height) return;
-  const maxH = Math.round(rect.height) + CAT_OVERHANG;
-  /*
-   * Высота кота — по ряду: голова, хвост и тело должны быть одного роста с
-   * полосой отпуска, иначе кот перестаёт читаться.
-   *
-   * Ширина плитки задана клеткой, делённой на целое число повторов, поэтому
-   * тело всё равно немного тянется или поджимается. Из двух соседних целых
-   * берём то, где искажение меньше.
-   */
-  const natural = maxH * CAT_BODY_RATIO;
-  /*
-   * Повторов берём меньше, а не больше: кот чуть длиннее натурального читается
-   * как кот, а поджатый в три раза — как частокол из лап. Тянуть больше чем на
-   * треть уже нельзя, тогда добавляем повтор.
-   */
-  let times = Math.max(1, Math.floor(rect.width / natural));
-  if (rect.width / times / natural > 1.35) times += 1;
-  /*
-   * Клетка заметно уже кота (узкие высокие клетки на широком экране) —
-   * повторов меньше одного не бывает, поэтому опускаем самого кота: лучше
-   * ниже ряда, чем сплющенный вдоль.
-   */
-  const tileW = rect.width / times;
-  const h = tileW / (maxH * CAT_BODY_RATIO) < 0.8 ? tileW / CAT_BODY_RATIO : maxH;
+  const width = document.querySelector('.hr-month-grid td')?.getBoundingClientRect().width ?? 0;
+  if (!width) return;
+  const natural = CAT_H * CAT_BODY_RATIO;
+  let times = Math.max(1, Math.floor(width / natural));
+  if (width / times / natural > 1.35) times += 1;
+  const tile = width / times;
+  const tiles = (ratio: number) => Math.max(1, Math.round((CAT_H * ratio) / tile));
   const style = document.documentElement.style;
-  style.setProperty('--hw-cat-h', `${Math.round(h)}px`);
-  style.setProperty('--hw-cat-tile', `${(100 / times).toFixed(4)}%`);
+  const share = (n: number) => `${((100 * n) / times).toFixed(4)}%`;
+  style.setProperty('--hw-cat-tile', share(1));
+  style.setProperty('--hw-cat-head', share(tiles(CAT_HEAD_RATIO)));
+  style.setProperty('--hw-cat-tail', share(tiles(CAT_TAIL_RATIO)));
 }
 
 const remeasure = () => {
