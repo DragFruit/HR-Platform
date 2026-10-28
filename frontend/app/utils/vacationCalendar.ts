@@ -206,6 +206,37 @@ const segmentClasses = (cells: CalendarDayCell[], key: 'approved' | 'pending') =
   }
 };
 
+/**
+ * Торцы самого отпуска, а не строки календаря.
+ *
+ * `segmentClasses` размечает прогон внутри одной недели: полоска статуса
+ * скругляется на краю каждой строки, и это правильно. Но хеллоуинскому коту
+ * нужны настоящие границы — иначе у отпуска, перешедшего через воскресенье
+ * или через границу месяца, появляется вторая голова. Границу определяем по
+ * соседнему дню: нет его в множестве — значит здесь отпуск и начинается.
+ */
+const shiftIso = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toIso(d);
+};
+
+const runEdgeClasses = (
+  row: CalendarDayCell[],
+  approved: Set<string>,
+  pending: Set<string>
+) => {
+  for (const cell of row) {
+    if (cell.empty || (!cell.approved && !cell.pending)) continue;
+    const set = cell.approved ? approved : pending;
+    const prefix = cell.approved ? 'emp-appr' : 'emp-pend';
+    const edges: string[] = [];
+    if (!set.has(shiftIso(cell.iso, -1))) edges.push(`${prefix}-run-start`);
+    if (!set.has(shiftIso(cell.iso, 1))) edges.push(`${prefix}-run-end`);
+    if (edges.length) cell.segmentClass = `${cell.segmentClass} ${edges.join(' ')}`.trim();
+  }
+};
+
 export const buildMonthGrid = (
   year: number,
   month: number,
@@ -252,6 +283,7 @@ export const buildMonthGrid = (
     }
     segmentClasses(row, 'approved');
     segmentClasses(row, 'pending');
+    runEdgeClasses(row, approved, pending);
     rows.push(row);
   }
 

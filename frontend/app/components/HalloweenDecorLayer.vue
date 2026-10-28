@@ -153,10 +153,47 @@ function measureSpot() {
   const cards = document.querySelectorAll('.emp-cal-month');
   const lastCard = cards.length ? cards[cards.length - 1]!.getBoundingClientRect() : null;
   const column = aside.previousElementSibling?.getBoundingClientRect();
-  const left = lastCard && lastCard.right < a.left ? lastCard.right : column?.right;
-  const gapLeft = left && left < a.left ? left : a.left - 24;
+  const candidates = [lastCard?.right, column?.right].filter(
+    (x): x is number => typeof x === 'number' && x < a.left
+  );
+  /*
+   * На узком окне панель уезжает под календарь — просвета нет совсем, и
+   * тыкве негде сесть: раньше она в этом случае оказывалась под сайдбаром.
+   * Нет щели шире 8px — нет и тыквы.
+   */
+  const gapLeft = candidates.length ? Math.max(...candidates) : null;
+  if (gapLeft === null || a.left - gapLeft < 8) {
+    spotX.value = null;
+    return;
+  }
   spotX.value = (((gapLeft + a.left) / 2 - f.left) / f.width) * 100;
 }
+
+/*
+ * Сколько раз повторить тело кота в одной клетке дня. Тело рисуется высотой
+ * 34px, его натуральная ширина при этой высоте — 24px. Растянуть один повтор
+ * на всю клетку нельзя: на широких клетках кот вытягивается вдвое. Взять
+ * нецелую долю тоже нельзя: рисунок порвётся на границе клеток. Поэтому берём
+ * ближайшее целое число повторов и отдаём долю в CSS.
+ *
+ * Медиазапросами это не решается: ширина клетки зависит не от окна, а от того,
+ * сколько карточек месяцев встало в ряд — от 20 до 48px.
+ */
+const CAT_BODY_W_AT_34 = 24.25;
+
+function measureCatTile() {
+  if (!import.meta.client) return;
+  const cell = document.querySelector('.hr-month-grid td');
+  const w = cell?.getBoundingClientRect().width ?? 0;
+  if (!w) return;
+  const times = Math.max(1, Math.round(w / CAT_BODY_W_AT_34));
+  document.documentElement.style.setProperty('--hw-cat-tile', `${(100 / times).toFixed(4)}%`);
+}
+
+const remeasure = () => {
+  measureSpot();
+  measureCatTile();
+};
 
 /*
  * Раздел дорисовывается не сразу: сперва восстановление сессии, потом данные.
@@ -174,8 +211,11 @@ function scheduleMeasure(attempts = 24) {
   // Без requestAnimationFrame: в фоновой вкладке кадры не идут, и тыква
   // не появилась бы до первого ресайза.
   nextTick(() => {
-    measureSpot();
-    if (spotX.value === null && attempts > 0) {
+    remeasure();
+    // Повторяем, пока не нашлись оба якоря: панель (место тыквы) и клетка дня
+    // (доля плитки кота). Они появляются в разные моменты.
+    const done = spotX.value !== null && Boolean(document.querySelector('.hr-month-grid td'));
+    if (!done && attempts > 0) {
       retryTimer = setTimeout(() => scheduleMeasure(attempts - 1), 500);
     }
   });
@@ -188,16 +228,16 @@ onMounted(() => {
   brokenNow.value = false;
   persist();
   scheduleMeasure();
-  window.addEventListener('resize', measureSpot);
+  window.addEventListener('resize', remeasure);
   if (typeof ResizeObserver !== 'undefined') {
-    observer = new ResizeObserver(() => measureSpot());
+    observer = new ResizeObserver(remeasure);
     observer.observe(document.body);
   }
 });
 
 onBeforeUnmount(() => {
   if (!import.meta.client) return;
-  window.removeEventListener('resize', measureSpot);
+  window.removeEventListener('resize', remeasure);
   if (retryTimer) clearTimeout(retryTimer);
   observer?.disconnect();
 });

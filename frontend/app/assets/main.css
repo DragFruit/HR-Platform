@@ -22179,13 +22179,18 @@ body.nk-body-locked {
   box-shadow: none;
 }
 
+/*
+  Дорожка строки (.vac-detailed-track) режет всё, что вылезает: overflow
+  hidden. Поэтому декор вписываем ровно в неё — от 4px над полоской до 3px
+  под ней. Раньше слизь была на 11px ниже, и капли срезало.
+*/
 .halloween .vac-detailed-bar.approved::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
-  bottom: -11px;
+  top: -4px;
+  bottom: -3px;
   pointer-events: none;
   background-image: url('/decor/halloween/vac-slime.png');
   background-repeat: repeat-x;
@@ -22210,9 +22215,9 @@ body.nk-body-locked {
 
 /*
   Кот склеен из трёх частей. Тело тайлится, голова и хвост садятся на торцы
-  второй накладкой, поэтому трёх псевдоэлементов не нужно. Все части одной
-  высоты 42px, сдвинуты вверх на 22px — ровно так полоса тела совпадает с
-  геометрией самой полоски отпуска, которую мы не меняем.
+  второй накладкой, поэтому трёх псевдоэлементов не нужно. Высота — ровно
+  дорожка строки: выше её всё равно срежет overflow. Геометрию самой полоски
+  отпуска не меняем.
 */
 .halloween .vac-detailed-bar.pending::before,
 .halloween .vac-detailed-bar.pending::after {
@@ -22220,8 +22225,8 @@ body.nk-body-locked {
   position: absolute;
   left: 0;
   right: 0;
-  top: -20px;
-  height: 40px;
+  top: -4px;
+  bottom: -3px;
   pointer-events: none;
   background-repeat: no-repeat;
 }
@@ -22230,7 +22235,7 @@ body.nk-body-locked {
 .halloween .vac-detailed-bar.pending::before {
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: auto 40px;
+  background-size: auto 100%;
 }
 
 .halloween .vac-detailed-bar.pending::after {
@@ -22238,7 +22243,7 @@ body.nk-body-locked {
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
   background-position: left center, right center;
-  background-size: auto 40px, auto 40px;
+  background-size: auto 100%, auto 100%;
 }
 
 /*
@@ -22274,7 +22279,7 @@ body.nk-body-locked {
   left: -2px;
   right: -2px;
   top: 0;
-  bottom: -12px;
+  bottom: -6px;
   z-index: 0;
   pointer-events: none;
   background-image: url('/decor/halloween/vac-slime.png');
@@ -22329,18 +22334,23 @@ body.nk-body-locked {
   background-size: var(--hw-cat-tile, 100%) 34px;
 }
 
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-start::after {
+/*
+  Голова и хвост — по торцам самого отпуска (`-run-start` / `-run-end`), а не
+  по торцам строки недели (`-seg-start` / `-seg-end`). Иначе у отпуска, что
+  перешёл через воскресенье или границу месяца, вырастала вторая голова.
+*/
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start:not(.emp-pend-run-end)::after {
   background-image: url('/decor/halloween/vac-cat-head.png');
   background-position: left bottom;
 }
 
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-end::after {
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-end:not(.emp-pend-run-start)::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
   background-position: right bottom;
 }
 
 /* Однодневный отпуск: голова слева, хвост справа, тело между ними. */
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
+.halloween .hr-month-grid td.emp-day-pending.emp-pend-run-start.emp-pend-run-end::after {
   background-image:
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
@@ -22348,20 +22358,14 @@ body.nk-body-locked {
   background-size: auto 34px, auto 34px;
 }
 
+/*
+  Сколько повторов тела влезает в клетку, считает HalloweenDecorLayer: ширина
+  клетки зависит не от окна, а от того, сколько месяцев встало в ряд (от 20 до
+  48px). По медиазапросам это не угадать — при 2 месяцах в ряду на узком окне
+  клетка шире, чем при 4 на широком.
+*/
 :root {
   --hw-cat-tile: 100%;
-}
-
-@media (min-width: 1600px) {
-  :root {
-    --hw-cat-tile: 50%;
-  }
-}
-
-@media (min-width: 2300px) {
-  :root {
-    --hw-cat-tile: 33.3333%;
-  }
 }
 
 
