@@ -33,6 +33,38 @@ import {
 import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
 import { employeeNamesMatch } from '../../app/utils/employeeName';
 import { vacationBookingYearError } from '../../app/utils/vacationBookingYears';
+import {
+  assessVacationShortfall,
+  isVacationShortfallBlocking
+} from '../../app/utils/vacationShortfall';
+
+/**
+ * Нельзя подать заявку больше доступного остатка (та же проверка, что в форме).
+ * Только сотрудник для себя; HR/админ за другого могут оформить с нехваткой (исключения).
+ */
+const assertVacationBalanceSufficient = (
+  state: VacationStoreState,
+  employee: { name: string; hired_at?: string | null; vacation_opening_balance?: number | null } | null,
+  start: string,
+  end: string,
+  blocking: boolean,
+  excludeRequestId?: number
+) => {
+  if (!blocking || !employee) return;
+  const { shortfall, message } = assessVacationShortfall({
+    employeeName: employee.name,
+    hireIso: employee.hired_at,
+    start,
+    end,
+    requests: Object.values(state.requestsByYear).flat(),
+    primaryYear: state.primaryYear,
+    excludeRequestId,
+    openingBalance: employee.vacation_opening_balance
+  });
+  if (shortfall > 0) {
+    throw createError({ statusCode: 400, statusMessage: message });
+  }
+};
 
 /** Новые даты — только на текущий учётный год или следующий (прошлые заявки правятся как раньше). */
 const assertBookableVacationYear = (
@@ -236,6 +268,18 @@ export async function createVacationRequest(
     if (employee && session.role !== 'admin') {
       await assertVacationRequestGroupCap(state, canonicalName, body.start, body.end);
     }
+    assertVacationBalanceSufficient(
+      state,
+      employee ? { ...employee, name: canonicalName } : null,
+      body.start,
+      body.end,
+      isVacationShortfallBlocking({
+        rosterWide: hasRosterWideRights(session),
+        ownRequest:
+          (Number(employee?.id) > 0 && employee?.id === sessionEmployee?.id) ||
+          sameEmployeeName(canonicalName, sessionEmployee?.name)
+      })
+    );
     request.id = state.nextRequestId++;
     const list = state.requestsByYear[yearKey] ?? [];
     state.requestsByYear[yearKey] = [...list, request];
@@ -402,6 +446,17 @@ export async function patchVacationRequest(
 
     if (owner && changesDates && session.role !== 'admin') {
       await assertVacationRequestGroupCap(state, found.item.employee, found.item.start, found.item.end);
+    }
+
+    if (changesDates && (found.item.start !== prevStart || found.item.end !== prevEnd)) {
+      assertVacationBalanceSufficient(
+        state,
+        owner ? { ...owner, name: owner.name?.trim() || found.item.employee } : null,
+        found.item.start,
+        found.item.end,
+        isVacationShortfallBlocking({ rosterWide: elevated, ownRequest: isOwnRequest }),
+        found.item.id
+      );
     }
 
     if (decision) {

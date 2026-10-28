@@ -32,7 +32,7 @@
           <button
             class="vac-emp-btn"
             type="submit"
-            :disabled="isHistoricalYear || submitting"
+            :disabled="isHistoricalYear || submitting || formShortfallBlocked"
           >
             {{ submitting ? 'Сохранение…' : 'Создать заявку' }}
           </button>
@@ -48,13 +48,15 @@
           </div>
         </Teleport>
         <p
-          v-if="!isHistoricalYear && formAssessment.status === 'advance'"
-          class="vac-advance-notice vac-advance-notice--toolbar"
-          role="status"
+          v-if="formShortfallBlocked"
+          class="vac-shortfall-error vac-shortfall-error--toolbar"
+          role="alert"
         >
-          <span class="vac-advance-notice__text">
-            Не хватает {{ formAssessment.deficit }} дн. · к {{ formAssessment.startLabel }} будет
-            {{ formAssessment.availableAtStart }} из {{ formAssessment.neededDays }}
+          {{ formShortfall.message }}
+          <span class="vac-shortfall-error__meta">
+            к {{ formShortfall.assessment.startLabel }} будет
+            {{ formatVacationDaysAmount(formShortfall.assessment.availableAtStart) }} из
+            {{ formShortfall.assessment.neededDays }}
           </span>
         </p>
         <p
@@ -109,7 +111,7 @@
             type="submit"
             class="vac-mob-dates__ok"
             aria-label="Создать заявку"
-            :disabled="isHistoricalYear || submitting || !form.start || !form.end"
+            :disabled="isHistoricalYear || submitting || !form.start || !form.end || formShortfallBlocked"
           >
             <!-- SVG, а не символ «✓»: у глифа своя метрика шрифта, и он съезжал от центра -->
             <svg class="vac-mob-dates__ok-icon" viewBox="0 0 20 20" width="18" height="18" fill="none" aria-hidden="true">
@@ -129,6 +131,7 @@
       </div>
 
       <p v-if="!isHistoricalYear && clarifyHint" class="vac-mob-chrome__hint">{{ clarifyHint }}</p>
+      <p v-if="formShortfallBlocked" class="vac-mob-chrome__err" role="alert">{{ formShortfall.message }}</p>
       <p v-if="formError" class="vac-mob-chrome__err">
         <strong>{{ formError.title }}:</strong> {{ formError.text }}
       </p>
@@ -359,7 +362,8 @@
 <script setup lang="ts">
 import { buildDaySetsForEmployee, isVacationStartInPast, todayIso } from '~/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
-import { assessVacationBalance, calcEmployeeBalance } from '~/utils/vacationBalance';
+import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import { assessVacationShortfall, formatVacationDaysAmount } from '~/utils/vacationShortfall';
 import { requestsAroundYear, vacationBookingYearError } from '~/utils/vacationBookingYears';
 import { VACATION_HINT_AVAILABLE } from '~/utils/vacationBalanceHints';
 import type { VacationRequest } from '~/composables/useVacations';
@@ -634,19 +638,21 @@ const fitTeamTableToSideTabs = async () => {
 
 const hireIso = computed(() => currentEmployee.value?.hired_at ?? '');
 
-const formAssessment = computed(() => {
-  const y = state.value.primaryYear;
-  return assessVacationBalance(
-    employeeName.value,
-    hireIso.value,
-    form.start,
-    form.end,
-    capRequests.value,
-    y,
-    undefined,
-    currentEmployee.value?.vacation_opening_balance
-  );
-});
+/** Своя заявка: нехватка дней блокирует подачу (та же функция, что на сервере). */
+const formShortfall = computed(() =>
+  assessVacationShortfall({
+    employeeName: employeeName.value,
+    hireIso: hireIso.value,
+    start: form.start,
+    end: form.end,
+    requests: capRequests.value,
+    primaryYear: state.value.primaryYear,
+    openingBalance: currentEmployee.value?.vacation_opening_balance
+  })
+);
+const formShortfallBlocked = computed(
+  () => !isHistoricalYear.value && !isTrainingActive.value && formShortfall.value.shortfall > 0
+);
 
 const form = reactive({ start: '', end: '' });
 const formError = ref<{ title: string; text: string } | null>(null);
@@ -1003,6 +1009,10 @@ const submitRequest = async () => {
   const yearError = vacationBookingYearError(form.start, form.end, state.value.primaryYear);
   if (yearError) {
     formError.value = { title: 'Год недоступен', text: yearError };
+    return;
+  }
+  if (formShortfallBlocked.value) {
+    formError.value = { title: 'Не хватает дней', text: formShortfall.value.message };
     return;
   }
   if (hasConflict(form.start, form.end)) {
