@@ -22334,8 +22334,8 @@ body.nk-body-locked {
 .hw-pumpkin {
   position: absolute;
   bottom: -4px;
-  width: calc(64px * var(--hw-scale, 1));
-  height: calc(64px * var(--hw-scale, 1));
+  height: calc(66px * var(--hw-scale, 1));
+  width: calc(66px * var(--hw-scale, 1) * var(--hw-ratio, 1));
   padding: 0;
   border: 0;
   background: transparent;
@@ -22351,14 +22351,20 @@ body.nk-body-locked {
   display: block;
 }
 
+/*
+ * Половинки нарисованы на той же канве, что целая тыква, поэтому им хватает
+ * сдвига в стороны и наклона: совмещать по пикселям ничего не нужно.
+ */
+.hw-pumpkin__half {
+  transform-origin: bottom center;
+}
+
 .hw-pumpkin__half--l {
-  left: -16%;
-  transform: rotate(-14deg);
+  transform: translateX(-16%) rotate(-24deg);
 }
 
 .hw-pumpkin__half--r {
-  left: 22%;
-  transform: rotate(11deg);
+  transform: translateX(16%) rotate(18deg);
 }
 
 .hw-pumpkin.is-broken {
