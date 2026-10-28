@@ -209,9 +209,23 @@
               <button type="button" class="vac-emp-btn vac-emp-btn--ghost" @click="cancelEditRequest">
                 Отмена
               </button>
-              <button type="button" class="vac-emp-btn" @click="saveEditRequest(req.id)">Сохранить</button>
+              <button
+                type="button"
+                class="vac-emp-btn"
+                :disabled="editShortfall.shortfall > 0"
+                @click="saveEditRequest(req.id)"
+              >
+                Сохранить
+              </button>
             </div>
             <p v-if="editError" class="emp-request-edit__error">{{ editError }}</p>
+            <p
+              v-else-if="editShortfall.shortfall > 0"
+              class="emp-request-edit__error emp-request-edit__error--shortfall"
+              role="alert"
+            >
+              {{ editShortfall.message }}
+            </p>
           </div>
         </div>
       </div>
@@ -274,6 +288,7 @@
 
 <script setup lang="ts">
 import { calcAvailableOnDate, calcEmployeeBalance, assessVacationBalance } from '~/utils/vacationBalance';
+import { assessVacationShortfall } from '~/utils/vacationShortfall';
 import { requestsAroundYear } from '~/utils/vacationBookingYears';
 import { VACATION_HINT_AVAILABLE, VACATION_HINT_PLANNED, VACATION_HINT_TAKEN } from '~/utils/vacationBalanceHints';
 import { countVacationBillableDays, isPastApprovedVacationRequest, isVacationStartInPast, todayIso, toIso } from '~/utils/vacationCalendar';
@@ -539,6 +554,20 @@ const requestAdvance = (req: VacationRequest) =>
     openingBalance.value
   );
 
+/** Смена дат своей заявки: та же проверка остатка, что на сервере (без самой заявки). */
+const editShortfall = computed(() =>
+  assessVacationShortfall({
+    employeeName: employeeName.value,
+    hireIso: hireIso.value,
+    start: editingId.value ? editForm.start : '',
+    end: editingId.value ? editForm.end : '',
+    requests: balanceYearRequests.value,
+    primaryYear: balanceYear.value,
+    excludeRequestId: editingId.value ?? undefined,
+    openingBalance: openingBalance.value
+  })
+);
+
 const hasConflict = (start: string, end: string, excludeId?: number) =>
   [
     ...yearRequests.value,
@@ -597,6 +626,10 @@ const saveEditRequest = async (id: number) => {
   }
   if (!allowPastDates.value && isVacationStartInPast(editForm.start, todayIso())) {
     editError.value = 'Нельзя оформить отпуск задним числом.';
+    return;
+  }
+  if (editShortfall.value.shortfall > 0) {
+    editError.value = editShortfall.value.message;
     return;
   }
   if (hasConflict(editForm.start, editForm.end, id)) {

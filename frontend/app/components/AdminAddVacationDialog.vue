@@ -43,6 +43,9 @@
         </div>
 
         <p v-if="formError" class="vac-admin-add-error" role="alert">{{ formError }}</p>
+        <p v-else-if="shortfall.shortfall > 0" class="vac-admin-add-warn" role="status">
+          {{ shortfallWarning }}
+        </p>
 
         <div class="vac-admin-add-actions row">
           <button type="button" class="button ghost" :disabled="submitting" @click="close">
@@ -58,6 +61,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  assessVacationShortfall,
+  formatVacationDaysAmount,
+  vacationDaysGenitive
+} from '~/utils/vacationShortfall';
+
 const props = defineProps<{
   open: boolean;
 }>();
@@ -67,7 +76,7 @@ const emit = defineEmits<{
   added: [];
 }>();
 
-const { departmentsGrouped } = useEmployees();
+const { departmentsGrouped, employees } = useEmployees();
 const { addRequest, state, viewYear } = useVacations();
 
 const form = reactive({ employee: '', start: '', end: '' });
@@ -75,6 +84,24 @@ const formError = ref('');
 const submitting = ref(false);
 
 const allRequests = computed(() => Object.values(state.value.requestsByYear).flat());
+
+/** За другого сотрудника HR/админ могут оформить отпуск с нехваткой дней: только предупреждение. */
+const shortfall = computed(() => {
+  const emp = employees.value.find((e) => e.name === form.employee);
+  return assessVacationShortfall({
+    employeeName: form.employee,
+    hireIso: emp?.hired_at,
+    start: form.start,
+    end: form.end,
+    requests: allRequests.value,
+    primaryYear: state.value.primaryYear,
+    openingBalance: emp?.vacation_opening_balance
+  });
+});
+const shortfallWarning = computed(() => {
+  const n = shortfall.value.shortfall;
+  return `У сотрудника не хватает ${formatVacationDaysAmount(n)} ${vacationDaysGenitive(n)} отпуска. Заявку можно создать как исключение.`;
+});
 
 const resetForm = () => {
   form.employee = '';

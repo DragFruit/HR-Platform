@@ -9458,6 +9458,36 @@ button.org-unit-head--link:hover {
   color: #ffffff;
 }
 
+/* Нехватка дней: заявку подать нельзя, кнопка выключена */
+.vac-shortfall-error {
+  margin: 0;
+  color: #b42318;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.vac-shortfall-error--toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 6px 14px;
+  max-width: min(460px, 52vw);
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  border-radius: 999px;
+  background: #fef3f2;
+  font-size: 0.72rem;
+}
+
+.vac-shortfall-error__meta {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.emp-request-edit__error--shortfall {
+  font-weight: 700;
+}
+
 .vac-advance-badge-wrap {
   position: relative;
   display: inline-flex;
@@ -10266,6 +10296,12 @@ button.org-unit-head--link:hover {
   margin: 0;
   font-size: 0.88rem;
   color: #b42318;
+}
+
+.vac-admin-add-warn {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #92400e;
 }
 
 .vac-admin-add-actions {
