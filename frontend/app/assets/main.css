@@ -22331,21 +22331,17 @@ body.nk-body-locked {
 }
 
 /*
-  На каждый день приходится одна часть кота: первый день отпуска — голова,
-  последний — хвост, остальные — тело.
+  Отрезок подряд идущих дней отпуска — один элемент: голова, целое число
+  повторов тела, хвост. Ширины считает HalloweenDecorLayer так, чтобы части
+  уложились в отрезок БЕЗ остатка (--hw-head / --hw-body / --hw-tail), и
+  масштаб у всех трёх один. Ни одна часть не обрезается: раньше последняя
+  плитка тела упиралась в хвост и у неё срезало лапу.
 
-  Все части растянуты по горизонтали ОДИНАКОВО — во столько раз, во сколько
-  тело растянуто до ширины дня. Поэтому полоски и контур совпадают на стыках.
-  Голова при этом чуть уже дня (97 против 107 пикселей исходника), а хвост —
-  шире дня в полтора раза: он рисуется в свою клетку и лишнее слева срезается
-  краем клетки. Если подгонять каждую часть по ширине дня, масштабы получаются
-  разные и стык читается как склейка из двух котов.
-
-  Весь отрезок — один элемент, а не рисунок на каждой клетке: клетка дробной
+  Весь отрезок одним элементом, а не рисунком на каждой клетке: клетка дробной
   ширины (47.5 или 54.1px), каждый фон округлялся до пикселей сам по себе, и
   на границах дней оставались белые нитки.
 
-  Тела под головой и хвостом нет: тело прижато к padding-box, а их клетки
+  Тела под головой и хвостом нет: тело прижато к padding-box, а голова и хвост
   вынесены в border-box.
 */
 .hw-cat-layer {
@@ -22362,18 +22358,17 @@ body.nk-body-locked {
   border: 0 solid transparent;
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: var(--hw-day, 24px) 34px;
+  background-size: var(--hw-body, 24px) 34px;
   background-position: left bottom;
   background-clip: padding-box;
 }
 
 .hw-cat-run.hw-cat-head {
-  /* 97/107 — ширина головы к ширине тела в исходных картинках. */
-  border-left-width: calc(var(--hw-day, 24px) * 0.9065);
+  border-left-width: var(--hw-head, 22px);
 }
 
 .hw-cat-run.hw-cat-tail {
-  border-right-width: var(--hw-day, 24px);
+  border-right-width: var(--hw-tail, 40px);
 }
 
 .hw-cat-run.hw-cat-head::before,
@@ -22383,41 +22378,20 @@ body.nk-body-locked {
   bottom: 0;
   height: 34px;
   background-repeat: no-repeat;
-}
-
-.hw-cat-run.hw-cat-head::before {
-  left: calc(-1 * var(--hw-day, 24px) * 0.9065);
-  width: calc(var(--hw-day, 24px) * 0.9065);
-  background-image: url('/decor/halloween/vac-cat-head.png');
   background-size: 100% 34px;
   background-position: left bottom;
 }
 
-/* 177/107 — ширина хвоста к ширине тела; что не влезло, срезает клетка. */
+.hw-cat-run.hw-cat-head::before {
+  left: calc(-1 * var(--hw-head, 22px));
+  width: var(--hw-head, 22px);
+  background-image: url('/decor/halloween/vac-cat-head.png');
+}
+
 .hw-cat-run.hw-cat-tail::after {
-  right: calc(-1 * var(--hw-day, 24px));
-  width: var(--hw-day, 24px);
-  overflow: hidden;
+  right: calc(-1 * var(--hw-tail, 40px));
+  width: var(--hw-tail, 40px);
   background-image: url('/decor/halloween/vac-cat-tail.png');
-  background-size: calc(var(--hw-day, 24px) * 1.6542) 34px;
-  background-position: right bottom;
-}
-
-/* Отпуск на один день: голова слева, хвост справа, оба в одной клетке. */
-.hw-cat-run.hw-cat-single {
-  border-left-width: 0;
-  border-right-width: var(--hw-day, 24px);
-}
-
-.hw-cat-run.hw-cat-single::before {
-  left: 0;
-  width: calc(var(--hw-day, 24px) * 0.45);
-}
-
-.hw-cat-run.hw-cat-single::after {
-  width: calc(var(--hw-day, 24px) * 0.55);
-  right: calc(-1 * var(--hw-day, 24px) * 0.55);
-  background-size: calc(var(--hw-day, 24px) * 0.91) 34px;
 }
 
 

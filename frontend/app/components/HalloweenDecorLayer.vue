@@ -173,18 +173,48 @@ function measureSpot() {
 }
 
 /*
- * Кот в сетке дней. На каждый день приходится ровно одна часть: первый день
- * отпуска — голова, последний — хвост, остальные — тело. Отрезок подряд идущих
- * дней внутри строки недели рисуется одним элементом поверх карточки месяца,
- * здесь считается его геометрия и ширина дня.
+ * Кот в сетке дней. Отрезок подряд идущих дней отпуска внутри строки недели
+ * рисуется одним элементом поверх карточки месяца: голова, целое число
+ * повторов тела, хвост.
  *
- * По клетке рисовать нельзя: клетка шириной 47.5 или 54.1px, каждый фон
- * округляется до пикселей сам по себе, и на границах дней рисунок рвался
- * белой ниткой или уезжал на полплитки — тело читалось дважды.
+ * Ширины подбираем так, чтобы части уложились в отрезок без остатка и в одном
+ * масштабе. Подгонять каждую часть под ширину дня нельзя: части разной ширины
+ * (97, 107 и 177 пикселей в исходниках), масштабы выходили разные, полоски на
+ * стыке не совпадали, а последней плитке тела срезало лапу.
+ *
+ * По клетке рисовать тоже нельзя: клетка дробной ширины, каждый фон
+ * округляется до пикселей сам по себе, и на границах дней оставались белые
+ * нитки.
  */
 const CAT_H = 34;
+const HEAD_SRC = 97;
+const BODY_SRC = 107;
+const TAIL_SRC = 177;
 
-type CatRun = { left: number; top: number; width: number; days: number; head: boolean; tail: boolean };
+type CatParts = { head: number; body: number; tail: number };
+type CatRun = {
+  left: number;
+  top: number;
+  width: number;
+  head: boolean;
+  tail: boolean;
+  parts: CatParts;
+};
+
+/**
+ * Ширины частей в пикселях. Повторов тела берём столько, чтобы тело вышло
+ * ближе всего к ширине дня, а масштаб подгоняем под длину отрезка.
+ */
+function catParts(width: number, dayWidth: number, head: boolean, tail: boolean): CatParts {
+  const ends = ((head ? HEAD_SRC : 0) + (tail ? TAIL_SRC : 0)) / BODY_SRC;
+  const times = Math.max(head || tail ? 0 : 1, Math.round(width / dayWidth - ends));
+  const body = width / (times + ends);
+  return {
+    head: head ? (body * HEAD_SRC) / BODY_SRC : 0,
+    body,
+    tail: tail ? (body * TAIL_SRC) / BODY_SRC : 0
+  };
+}
 
 function collectRuns(table: Element): CatRun[] {
   const runs: CatRun[] = [];
@@ -202,18 +232,21 @@ function collectRuns(table: Element): CatRun[] {
       }
       const from = cells[i]!;
       const to = cells[last]!;
+      const head = from.classList.contains('emp-pend-run-start');
+      const tail = to.classList.contains('emp-pend-run-end');
       /*
        * offsetLeft/offsetTop, а не getBoundingClientRect: это координаты
        * вёрстки относительно слоя, они не зависят от масштаба страницы и не
        * требуют вычитать прокрутку.
        */
+      const width = to.offsetLeft + to.offsetWidth - from.offsetLeft;
       runs.push({
         left: from.offsetLeft,
         top: from.offsetTop + from.offsetHeight + 1 - CAT_H,
-        width: to.offsetLeft + to.offsetWidth - from.offsetLeft,
-        days: last - i + 1,
-        head: from.classList.contains('emp-pend-run-start'),
-        tail: to.classList.contains('emp-pend-run-end')
+        width,
+        head,
+        tail,
+        parts: catParts(width, from.offsetWidth, head, tail)
       });
       i = last + 1;
     }
@@ -254,20 +287,19 @@ function layoutCatRuns() {
     layer.replaceChildren(
       ...runs.map((run) => {
         const el = document.createElement('div');
-        const single = run.days === 1 && run.head && run.tail;
         el.className = [
           'hw-cat-run',
           run.head ? 'hw-cat-head' : '',
-          run.tail ? 'hw-cat-tail' : '',
-          single ? 'hw-cat-single' : ''
+          run.tail ? 'hw-cat-tail' : ''
         ]
           .filter(Boolean)
           .join(' ');
         el.style.left = `${run.left}px`;
         el.style.top = `${run.top}px`;
         el.style.width = `${run.width}px`;
-        // Ширина дня — от самого отрезка, чтобы части легли ровно по дням.
-        el.style.setProperty('--hw-day', `${(run.width / run.days).toFixed(3)}px`);
+        el.style.setProperty('--hw-head', `${run.parts.head.toFixed(3)}px`);
+        el.style.setProperty('--hw-body', `${run.parts.body.toFixed(3)}px`);
+        el.style.setProperty('--hw-tail', `${run.parts.tail.toFixed(3)}px`);
         return el;
       })
     );
