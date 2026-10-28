@@ -22330,43 +22330,81 @@ body.nk-body-locked {
   pointer-events: none;
 }
 
+/*
+  На каждый день приходится ровно одна часть кота: первый день отпуска —
+  голова, последний — хвост, остальные — тело. Части стыкуются по границам
+  дней и складываются в одного кота.
+
+  Весь отрезок — один элемент, а не рисунок на каждой клетке: клетка дробной
+  ширины (47.5 или 54.1px), каждый фон округлялся до пикселей сам по себе, и
+  на границах дней оставались белые нитки.
+
+  Под головой и хвостом тела нет: тело прижато к padding-box, а дни головы и
+  хвоста вынесены в border-box. Раньше тело лежало под всем рядом и
+  просвечивало вторым телом.
+*/
 .hw-cat-run {
   position: absolute;
+  box-sizing: border-box;
   height: 34px;
+  border: 0 solid transparent;
   background-image: url('/decor/halloween/vac-cat-body.png');
   background-repeat: repeat-x;
-  background-size: auto 34px;
+  background-size: var(--hw-day, 24px) 34px;
   background-position: left bottom;
+  background-origin: border-box;
+  background-clip: padding-box;
 }
 
-/*
-  Отрезок начинается с головы — тело тайлится от её среза (22.2px при высоте
-  34px), иначе под головой окажется обрезок плитки: то самое «второе тело».
-  Голова и хвост садятся на торцы самого отпуска, а не строки недели, поэтому
-  у отпуска через воскресенье или границу месяца вторая голова не растёт.
-*/
 .hw-cat-run.hw-cat-head {
-  background-position: 22.2px bottom;
+  border-left-width: var(--hw-day, 24px);
+}
+
+.hw-cat-run.hw-cat-tail {
+  border-right-width: var(--hw-day, 24px);
 }
 
 .hw-cat-run.hw-cat-head::before,
 .hw-cat-run.hw-cat-tail::after {
   content: '';
   position: absolute;
-  inset: 0;
+  bottom: 0;
+  width: var(--hw-day, 24px);
+  height: 34px;
   background-repeat: no-repeat;
-  background-size: auto 34px;
+  background-size: 100% 34px;
+  background-position: center bottom;
 }
 
 .hw-cat-run.hw-cat-head::before {
+  left: calc(-1 * var(--hw-day, 24px));
   background-image: url('/decor/halloween/vac-cat-head.png');
-  background-position: left bottom;
 }
 
-/* Хвост прижат к правому краю и закрывает недотайленный остаток тела. */
 .hw-cat-run.hw-cat-tail::after {
+  right: calc(-1 * var(--hw-day, 24px));
   background-image: url('/decor/halloween/vac-cat-tail.png');
-  background-position: right bottom;
+}
+
+/* Отпуск на один день: голова и хвост делят клетку пополам. */
+.hw-cat-run.hw-cat-head.hw-cat-tail.hw-cat-single {
+  border-left-width: 0;
+  border-right-width: var(--hw-day, 24px);
+}
+
+.hw-cat-run.hw-cat-single::before,
+.hw-cat-run.hw-cat-single::after {
+  width: calc(var(--hw-day, 24px) / 2);
+  left: auto;
+  right: auto;
+}
+
+.hw-cat-run.hw-cat-single::before {
+  left: 0;
+}
+
+.hw-cat-run.hw-cat-single::after {
+  right: calc(-1 * var(--hw-day, 24px));
 }
 
 

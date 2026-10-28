@@ -173,9 +173,10 @@ function measureSpot() {
 }
 
 /*
- * Кот в сетке дней. Каждый отрезок подряд идущих дней отпуска внутри строки
- * недели рисуется одной картинкой — слоем поверх карточки месяца. Здесь мы
- * только считаем геометрию отрезков и держим слой в актуальном виде.
+ * Кот в сетке дней. На каждый день приходится ровно одна часть: первый день
+ * отпуска — голова, последний — хвост, остальные — тело. Отрезок подряд идущих
+ * дней внутри строки недели рисуется одним элементом поверх карточки месяца,
+ * здесь считается его геометрия и ширина дня.
  *
  * По клетке рисовать нельзя: клетка шириной 47.5 или 54.1px, каждый фон
  * округляется до пикселей сам по себе, и на границах дней рисунок рвался
@@ -183,7 +184,7 @@ function measureSpot() {
  */
 const CAT_H = 34;
 
-type CatRun = { left: number; top: number; width: number; head: boolean; tail: boolean };
+type CatRun = { left: number; top: number; width: number; days: number; head: boolean; tail: boolean };
 
 function collectRuns(table: Element): CatRun[] {
   const runs: CatRun[] = [];
@@ -210,6 +211,7 @@ function collectRuns(table: Element): CatRun[] {
         left: from.offsetLeft,
         top: from.offsetTop + from.offsetHeight + 1 - CAT_H,
         width: to.offsetLeft + to.offsetWidth - from.offsetLeft,
+        days: last - i + 1,
         head: from.classList.contains('emp-pend-run-start'),
         tail: to.classList.contains('emp-pend-run-end')
       });
@@ -252,10 +254,20 @@ function layoutCatRuns() {
     layer.replaceChildren(
       ...runs.map((run) => {
         const el = document.createElement('div');
-        el.className = `hw-cat-run${run.head ? ' hw-cat-head' : ''}${run.tail ? ' hw-cat-tail' : ''}`;
+        const single = run.days === 1 && run.head && run.tail;
+        el.className = [
+          'hw-cat-run',
+          run.head ? 'hw-cat-head' : '',
+          run.tail ? 'hw-cat-tail' : '',
+          single ? 'hw-cat-single' : ''
+        ]
+          .filter(Boolean)
+          .join(' ');
         el.style.left = `${run.left}px`;
         el.style.top = `${run.top}px`;
         el.style.width = `${run.width}px`;
+        // Ширина дня — от самого отрезка, чтобы части легли ровно по дням.
+        el.style.setProperty('--hw-day', `${(run.width / run.days).toFixed(3)}px`);
         return el;
       })
     );
