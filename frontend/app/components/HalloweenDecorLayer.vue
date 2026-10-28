@@ -14,14 +14,19 @@
           :tabindex="-1"
           @click="breakPumpkin"
         >
+          <!--
+            v-show, а не v-if: обе картинки грузятся вместе с тыквой, и разлом
+            появляется в тот же миг, что и клик. С v-if браузер шёл за
+            картинкой только после клика — тыква «думала» секунду-две.
+          -->
           <img
-            v-if="!broken"
+            v-show="!broken"
             class="hw-pumpkin__whole"
             :src="art()"
             alt=""
             draggable="false"
           />
-          <img v-else class="hw-pumpkin__broken" :src="BROKEN_SRC" alt="" draggable="false" />
+          <img v-show="broken" class="hw-pumpkin__broken" :src="BROKEN_SRC" alt="" draggable="false" />
         </button>
       </div>
     </Teleport>
@@ -168,24 +173,50 @@ function measureSpot() {
 }
 
 /*
- * Сколько раз повторить тело кота в одной клетке дня. Тело рисуется высотой
- * 34px, его натуральная ширина при этой высоте — 24px. Растянуть один повтор
- * на всю клетку нельзя: на широких клетках кот вытягивается вдвое. Взять
- * нецелую долю тоже нельзя: рисунок порвётся на границе клеток. Поэтому берём
- * ближайшее целое число повторов и отдаём долю в CSS.
+ * Кот в сетке дней меряется по живой клетке, а не по магическим числам.
  *
- * Медиазапросами это не решается: ширина клетки зависит не от окна, а от того,
- * сколько карточек месяцев встало в ряд — от 20 до 48px.
+ * Высота: клетка дня всего 28px, и кот ростом 34px залезал ушами на строку
+ * сверху. Берём высоту клетки плюс 2px на зазор между клетками.
+ *
+ * Ширина: тело тайлится, и доля должна давать целое число повторов, иначе
+ * рисунок рвётся на границе клеток. Один повтор на всю клетку растягивал кота
+ * вдвое. Медиазапросами это не решается: ширина клетки зависит не от окна, а
+ * от того, сколько карточек месяцев встало в ряд — от 20 до 48px.
  */
-const CAT_BODY_W_AT_34 = 24.25;
+const CAT_BODY_RATIO = 107 / 150;
+const CAT_OVERHANG = 2;
 
 function measureCatTile() {
   if (!import.meta.client) return;
-  const cell = document.querySelector('.hr-month-grid td');
-  const w = cell?.getBoundingClientRect().width ?? 0;
-  if (!w) return;
-  const times = Math.max(1, Math.round(w / CAT_BODY_W_AT_34));
-  document.documentElement.style.setProperty('--hw-cat-tile', `${(100 / times).toFixed(4)}%`);
+  const rect = document.querySelector('.hr-month-grid td')?.getBoundingClientRect();
+  if (!rect?.width || !rect.height) return;
+  const maxH = Math.round(rect.height) + CAT_OVERHANG;
+  /*
+   * Высота кота — по ряду: голова, хвост и тело должны быть одного роста с
+   * полосой отпуска, иначе кот перестаёт читаться.
+   *
+   * Ширина плитки задана клеткой, делённой на целое число повторов, поэтому
+   * тело всё равно немного тянется или поджимается. Из двух соседних целых
+   * берём то, где искажение меньше.
+   */
+  const natural = maxH * CAT_BODY_RATIO;
+  /*
+   * Повторов берём меньше, а не больше: кот чуть длиннее натурального читается
+   * как кот, а поджатый в три раза — как частокол из лап. Тянуть больше чем на
+   * треть уже нельзя, тогда добавляем повтор.
+   */
+  let times = Math.max(1, Math.floor(rect.width / natural));
+  if (rect.width / times / natural > 1.35) times += 1;
+  /*
+   * Клетка заметно уже кота (узкие высокие клетки на широком экране) —
+   * повторов меньше одного не бывает, поэтому опускаем самого кота: лучше
+   * ниже ряда, чем сплющенный вдоль.
+   */
+  const tileW = rect.width / times;
+  const h = tileW / (maxH * CAT_BODY_RATIO) < 0.8 ? tileW / CAT_BODY_RATIO : maxH;
+  const style = document.documentElement.style;
+  style.setProperty('--hw-cat-h', `${Math.round(h)}px`);
+  style.setProperty('--hw-cat-tile', `${(100 / times).toFixed(4)}%`);
 }
 
 const remeasure = () => {
@@ -220,6 +251,22 @@ function scheduleMeasure(attempts = 24) {
 }
 
 let observer: ResizeObserver | null = null;
+/*
+ * Календарь сотрудника открывается и без смены маршрута — тумблером
+ * «Руководитель / Сотрудник». Тогда ни route, ни высота страницы не меняются,
+ * и кот оставался с замером от прошлого вида: растянутый вдвое. Поэтому
+ * слушаем перерисовку разметки, но считаем не чаще раза в 200мс.
+ */
+let domObserver: MutationObserver | null = null;
+let domTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onDomChanged() {
+  if (domTimer) return;
+  domTimer = setTimeout(() => {
+    domTimer = null;
+    remeasure();
+  }, 200);
+}
 
 onMounted(() => {
   brokenAt.value = readBroken();
@@ -231,13 +278,19 @@ onMounted(() => {
     observer = new ResizeObserver(remeasure);
     observer.observe(document.body);
   }
+  if (typeof MutationObserver !== 'undefined') {
+    domObserver = new MutationObserver(onDomChanged);
+    domObserver.observe(document.body, { childList: true, subtree: true });
+  }
 });
 
 onBeforeUnmount(() => {
   if (!import.meta.client) return;
   window.removeEventListener('resize', remeasure);
   if (retryTimer) clearTimeout(retryTimer);
+  if (domTimer) clearTimeout(domTimer);
   observer?.disconnect();
+  domObserver?.disconnect();
 });
 
 watch(() => route.fullPath, () => scheduleMeasure());
