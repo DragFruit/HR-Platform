@@ -22419,19 +22419,15 @@ body.nk-body-locked {
 }
 
 /*
- * Половинки нарисованы на той же канве, что целая тыква, поэтому им хватает
- * сдвига в стороны и наклона: совмещать по пикселям ничего не нужно.
+ * Разлом — отдельный рисунок: тыква развалилась и растеклась слизью, поэтому
+ * он ниже и шире целой. Ширину задаём от его же пропорции (294×110) и ставим
+ * по центру того же места, чтобы тыква разваливалась там, где стояла.
  */
-.hw-pumpkin__half {
-  transform-origin: bottom center;
-}
-
-.hw-pumpkin__half--l {
-  transform: translateX(-16%) rotate(-24deg);
-}
-
-.hw-pumpkin__half--r {
-  transform: translateX(16%) rotate(18deg);
+.hw-pumpkin img.hw-pumpkin__broken {
+  width: calc(44px * var(--hw-scale, 1) * 2.673);
+  max-width: none;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .hw-pumpkin.is-broken {

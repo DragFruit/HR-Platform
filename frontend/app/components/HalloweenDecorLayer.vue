@@ -21,10 +21,7 @@
             alt=""
             draggable="false"
           />
-          <template v-else>
-            <img class="hw-pumpkin__half hw-pumpkin__half--l" :src="art('-left')" alt="" draggable="false" />
-            <img class="hw-pumpkin__half hw-pumpkin__half--r" :src="art('-right')" alt="" draggable="false" />
-          </template>
+          <img v-else class="hw-pumpkin__broken" :src="BROKEN_SRC" alt="" draggable="false" />
         </button>
       </div>
     </Teleport>
@@ -54,8 +51,8 @@
  *
  * Тыква одна и садится в просвет между календарём и правой панелью — это
  * единственная полоса подвала, над которой ничего нет. Разломать её можно
- * кликом: половинки остаются лежать до конца захода, при следующем открытии
- * тыквы нет совсем, а через двое суток она вырастает заново.
+ * кликом: разлом лежит до конца захода, при следующем открытии тыквы нет
+ * совсем, а через двое суток она вырастает заново.
  *
  * Состояние держим в браузере: это косметика, ради неё не стоит нагружать
  * сервер. Плата честная — на другом устройстве тыква снова целая.
@@ -64,8 +61,9 @@ const GHOST_SRC = '/decor/halloween/ghost.png';
 
 const PUMPKIN = { id: 'witch', src: 'pumpkin-witch', ratio: 0.96, scale: 1 } as const;
 
-const art = (part: '' | '-left' | '-right' = '') =>
-  `/decor/halloween/${PUMPKIN.src}${part}.png`;
+const art = () => `/decor/halloween/${PUMPKIN.src}.png`;
+/** Разлом — отдельный рисунок заказчика, а не половинки целой тыквы. */
+const BROKEN_SRC = '/decor/halloween/pumpkin-broken.png';
 const ratio = PUMPKIN.ratio;
 
 const PUMPKIN_REGROW_MS = 2 * 24 * 60 * 60 * 1000;
