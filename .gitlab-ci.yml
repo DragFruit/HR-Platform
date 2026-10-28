@@ -15,19 +15,31 @@ variables:
   DEPLOY_HOST: "45.12.74.25"
   DEPLOY_USER: "deploy"
 
+# Один кэш на все ветки, пока не меняется package-lock: меньше копий node_modules на диске раннера.
 cache:
-  key: ${CI_COMMIT_REF_SLUG}
+  key:
+    files:
+      - frontend/package-lock.json
   paths:
     - frontend/node_modules/
     - .npm/
+  policy: pull
 
 # --- Тесты (vitest, чистые функции). Красный тест = нет сборки и деплоя ---
 
 test:
   stage: test
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/node_modules/
+      - .npm/
+    policy: pull-push
   before_script:
     - cd frontend
-    - npm ci
+    - npm ci --prefer-offline --no-audit --no-fund
   script:
     - npm test
 
@@ -46,7 +58,7 @@ test:
     NODE_OPTIONS: "--max-old-space-size=3072"
   before_script:
     - cd frontend
-    - npm ci
+    - npm ci --prefer-offline --no-audit --no-fund
   script:
     - npm run build
     # Шаблон заявления не в server/assets (Nitro OOM) — кладём рядом с сервером вручную.
@@ -62,7 +74,7 @@ test:
     exclude:
       - frontend/.output/public/knowledge/**/*
       - frontend/.output/**/*.map
-    expire_in: 14 days
+    expire_in: 3 days
 
 build:staging:
   extends: .build
