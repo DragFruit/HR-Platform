@@ -15,11 +15,18 @@ import {
 import type { SessionUser } from './credentials';
 import { findEmployeeByName, findEmployeeForSession, readEmployees } from './employeesStore';
 import { mutateVacations, type VacationStoreState } from './vacationsStore';
+import { readOrgStructure } from './orgStructureStore';
 
 const buildGroupHelpers = async () => {
   const allEmployees = await readEmployees();
+  // Группы Digital для лимита «1 на группу» — из оргструктуры (та же функция, что на клиенте).
+  const orgStructure = await readOrgStructure().catch((error) => {
+    console.warn('[vacations] не удалось прочитать оргструктуру для лимитов:', error);
+    return null;
+  });
   return {
     allEmployees,
+    orgStructure,
     directReports: (managerRef: string | number) => {
       const managerId =
         typeof managerRef === 'number'

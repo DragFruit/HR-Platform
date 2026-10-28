@@ -4,7 +4,7 @@
 
 ## Правило
 
-У группы **Цхай Виталий** (`digital-tskhai` — он и прямые подчинённые):
+У группы **Цхай Виталий** (`digital-tskhai`: секция оргструктуры, где состоит Цхай, он и его подчинённые; с 2026-10-28 группы Digital берутся из оргструктуры, `vacationOrgGroups.ts`):
 
 | Лимит | Действует? |
 |-------|------------|
@@ -22,10 +22,11 @@
 - Список: `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` / `isReservationCapExemptSubgroupId` в `vacationDepartmentGroups.ts`
 - `getReservationMonthBlockReason` (брони, по месяцу) и `getReservationRangeBlockReason` (заявки, по дням) пропускают только проверку subgroup для этих id; department-cap всегда
 - `resolveEmployeeReservationCapContext` для Цхая возвращает обычный контекст (пул отдела полный)
+- Группы Digital: `resolveDigitalOrgVacationGroups` (оргструктура); секция, где состоит Цхай Виталий, всегда получает id `digital-tskhai`. Запасная раскладка в коде (нет данных оргструктуры) держит тот же id
 
 ## Запрещено без просьбы
 
 - Снимать лимит «5 на отдел» у группы Цхая
 - Выводить их слоты из пула отдела
 - Расширять `RESERVATION_CAP_EXEMPT_SUBGROUP_IDS` на другие группы
-- Снимать subgroup-cap у Попова / Лунина / Носкова / дирекции / Analytics / QA
+- Снимать subgroup-cap у Попова / Лунина / Носкова / Analytics / QA и других групп оргструктуры
