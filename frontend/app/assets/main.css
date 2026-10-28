@@ -22278,29 +22278,54 @@ body.nk-body-locked {
   z-index: 0;
   pointer-events: none;
   background-repeat: no-repeat;
-  background-size: 100% 34px;
+  background-size: auto 34px;
 }
 
-/* Тело — только середина ряда. */
-.halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-mid::before {
+/*
+  Тело лежит под всем рядом, включая концы: голова и хвост рисуются поверх.
+  Ширина плитки — доля клетки (--hw-cat-tile), то есть целое число повторов,
+  иначе рисунок рвётся на границе клеток. На широких экранах доля меньше:
+  при одном повторе на клетку кот растягивался в два-три раза.
+*/
+.halloween .hr-month-grid td.emp-day-pending::before {
   background-image: url('/decor/halloween/vac-cat-body.png');
+  background-repeat: repeat-x;
+  background-size: var(--hw-cat-tile, 100%) 34px;
 }
 
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-start::after {
   background-image: url('/decor/halloween/vac-cat-head.png');
+  background-position: left bottom;
 }
 
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-end::after {
   background-image: url('/decor/halloween/vac-cat-tail.png');
+  background-position: right bottom;
 }
 
-/* Однодневный отпуск: голова и хвост делят клетку пополам. */
+/* Однодневный отпуск: голова слева, хвост справа, тело между ними. */
 .halloween .hr-month-grid td.emp-day-pending.emp-pend-seg-single::after {
   background-image:
     url('/decor/halloween/vac-cat-head.png'),
     url('/decor/halloween/vac-cat-tail.png');
   background-position: left bottom, right bottom;
-  background-size: 50% 34px, 50% 34px;
+  background-size: auto 34px, auto 34px;
+}
+
+:root {
+  --hw-cat-tile: 100%;
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --hw-cat-tile: 50%;
+  }
+}
+
+@media (min-width: 2300px) {
+  :root {
+    --hw-cat-tile: 33.3333%;
+  }
 }
 
 
@@ -22333,7 +22358,9 @@ body.nk-body-locked {
 
 .hw-pumpkin {
   position: absolute;
-  bottom: -4px;
+  /* left — середина просвета, поэтому сдвигаем на половину ширины. */
+  transform: translateX(-50%);
+  bottom: -1px;
   height: calc(66px * var(--hw-scale, 1));
   width: calc(66px * var(--hw-scale, 1) * var(--hw-ratio, 1));
   padding: 0;
