@@ -157,6 +157,11 @@ ls -l /var/www/vbi-hr/server/data/backups/full/ /var/www/vbi-hr-staging/server/d
 
 ---
 
+## Перевод боя на PostgreSQL
+
+Бой пока на JSON: `DATABASE_URL` есть, флаги `DB_*` стоят только в staging-env. Порядок переключения,
+бэкап, проверка и откат — отдельный документ: [RUNBOOK-DB-PROD.md](RUNBOOK-DB-PROD.md).
+
 ## Локальная база (PostgreSQL на Mac)
 
 Docker не нужен — Homebrew:
