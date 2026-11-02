@@ -48,6 +48,7 @@ const employeeNav: NavItem[] = [
   { to: '/tasks', label: 'Задачи' },
   { to: '/store', label: 'Магазин · кошелёк' },
   { to: '/ideas', label: 'Банк идей' },
+  { to: '/event/ogonek', label: 'Огонёк 2027' },
   profileNavItem
 ];
 
@@ -176,6 +177,12 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/admin/surveys')) {
       return 'Опросы';
+    }
+    if (route.path.startsWith('/event/ogonek/tree')) {
+      return 'Ёлка желаний · «Огонёк 2027»';
+    }
+    if (route.path.startsWith('/event/ogonek')) {
+      return 'Адвент «Огонёк 2027»';
     }
     if (route.path.startsWith('/event/nokturn')) {
       // В шапке — полное название дела, в пункте меню остаётся короткое.

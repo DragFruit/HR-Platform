@@ -151,6 +151,9 @@
     <ClientOnly>
       <HalloweenDecorLayer v-if="isAuthenticated" />
     </ClientOnly>
+    <ClientOnly>
+      <OgonekDecorLayer v-if="isAuthenticated" />
+    </ClientOnly>
   </div>
 </template>
 
@@ -171,6 +174,16 @@ const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRol
 const { homePath } = useLaunchScope();
 // Сезонный декор: вешает класс на <html>, сам снимается вне окна 28.10–06.11
 useHalloweenDecor();
+// Новогодний декор «Огонька»: горит, только пока вилка из окна 4 в розетке
+const ogonekDecor = useOgonekDecor();
+// Состояние вилки лежит на сервере — тянем его один раз после входа.
+watch(
+  isAuthenticated,
+  (on) => {
+    if (on) void ogonekDecor.refresh();
+  },
+  { immediate: true }
+);
 const platformName = PLATFORM_NAME;
 
 const lockedNavHint = 'Раздел скоро откроется';

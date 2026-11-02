@@ -22531,3 +22531,73 @@ body.nk-body-locked {
   background-position: center;
   pointer-events: none;
 }
+
+/* =========================================================================
+   «Огонёк 2027»: декор платформы.
+
+   Класс `ogonek` вешает useOgonekDecor на <html>, когда вилка из окна 4
+   воткнута в розетку. Вынули вилку — класс снимается и не остаётся ничего.
+
+   Украшения только меняют внешний вид: они не двигают геометрию, ничего не
+   считают и не перехватывают клики. График отпусков остаётся рабочим
+   инструментом (то же правило, что было у хеллоуинского декора).
+   ========================================================================= */
+
+/*
+  Иней на верхних углах карточек. Цвет холодный, а не белый: карточки на
+  платформе светлые, и белый иней на них просто не виден.
+*/
+.ogonek .card {
+  position: relative;
+}
+
+.ogonek .card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(47, 127, 122, 0.22) 0, rgba(47, 127, 122, 0) 54px),
+    radial-gradient(circle at 100% 0%, rgba(47, 127, 122, 0.16) 0, rgba(47, 127, 122, 0) 44px);
+}
+
+/* Ковёр фоном разделов — приглушённо, чтобы текст не терялся. */
+.ogonek .content {
+  background-color: rgba(125, 31, 40, 0.04);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(125, 31, 40, 0.05) 0 14px,
+      rgba(31, 65, 54, 0.05) 14px 28px
+    );
+}
+
+/*
+  Колпак на аватарке. Отдельный класс `ogonek-hat`: колпак включается в
+  окне 2 и живёт независимо от вилки — человек может носить его и с
+  погашенным декором.
+
+  Картинка подставляется переменной --og-hat: спрайт рисуется кодом, а не
+  лежит файлом в public.
+*/
+.ogonek-hat .user-avatar--character {
+  position: relative;
+  overflow: visible;
+}
+
+.ogonek-hat .user-avatar--character::after {
+  content: '';
+  position: absolute;
+  left: 4%;
+  top: -24%;
+  width: 62%;
+  height: 62%;
+  transform: rotate(-14deg);
+  background-image: var(--og-hat, none);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
