@@ -45,10 +45,16 @@ export function useHalloweenDecor() {
   const enabled = computed(() => {
     if (!hydrated.value) return false;
     if (pref.value === 'off') return false;
+    /*
+      Хеллоуин снят с localhost и стейджа (просьба заказчика, 02.11.2026):
+      квест кончился, а декор мешал смотреть новогодний «Огонёк». Раньше
+      стенды показывали его всегда, чтобы отлаживать до начала сезона.
+
+      На бою ничего не меняется: там декор по-прежнему живёт только в своём
+      окне 28.10–06.11 и гаснет сам.
+    */
+    if (!isProduction.value) return false;
     if (pref.value === 'force') return true;
-    // Даты держим только на бою. Стейдж и локалка показывают декор всегда —
-    // иначе его нельзя отлаживать до начала сезона.
-    if (!isProduction.value) return true;
     return isHalloweenSeason();
   });
 
