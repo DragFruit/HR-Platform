@@ -22601,3 +22601,34 @@ body.nk-body-locked {
   image-rendering: pixelated;
   pointer-events: none;
 }
+
+/*
+  «Огонёк 2027»: токены дизайна (прототип ogonek-advent-prototype.html).
+  Класс .og-theme стоит на страницах адвента и ёлки и на всём, что вынесено
+  Teleport'ом в body (раскрытый день, снег, тосты). Здесь, в общем CSS, —
+  чтобы токены были и при прямом заходе на ёлку, минуя адвент.
+*/
+.og-theme {
+  --og-bg: #3a0911;
+  --og-bg-2: #5a0e1a;
+  --og-bg-3: #771523;
+  --og-line: #a02a36;
+  --og-shade: #1c0307;
+  --og-paper: #f3efe9;
+  --og-paper-2: #e2d9cf;
+  --og-ink: #2a1216;
+  --og-ink-soft: #7a5a5e;
+  --og-red: #cf1f2c;
+  --og-gold: #ffcf4a;
+  --og-gold-soft: #ffe9a6;
+  --og-green: #3fbf68;
+  --og-snow: #fbf7f4;
+  --og-muted: #e7b9bd;
+  --og-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --og-body: 'PT Sans', 'Trebuchet MS', system-ui, sans-serif;
+  --og-narrow: 'PT Sans Narrow', 'Arial Narrow', 'PT Sans', sans-serif;
+  font-family: var(--og-body);
+  color: var(--og-snow);
+}
+
+body.og-locked-scroll { overflow: hidden; }

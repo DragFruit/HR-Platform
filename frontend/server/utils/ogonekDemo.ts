@@ -17,7 +17,8 @@ import type {
   OgonekSnowflake,
   OgonekToy
 } from '../../app/events/ogonek/types';
-import { OGONEK_SNOWFLAKE_SIZE, OGONEK_TOY_SIZE } from './ogonekStore';
+import { OGONEK_TOY_SIZE } from './ogonekStore';
+import { OGONEK_FLAKE_Q } from '../../app/events/ogonek/snowflake';
 import {
   ogonekTreeSpread,
   OGONEK_TREE_BOTTOM,
@@ -87,19 +88,54 @@ const DEMO_WISHES = [
   'Чтобы получилось то, о чём пока не говорю вслух'
 ];
 
-/** Пиксельная игрушка 16×16: шар, колокольчик, шишка или звезда. */
+/** Семейства тонов: база → тень и свет. Те же, что в палитре спеки. */
+const TONES: Record<string, { shadow: string; light: string }> = {
+  '2': { shadow: '1', light: '3' },
+  '5': { shadow: '4', light: '6' },
+  '8': { shadow: '7', light: '9' },
+  b: { shadow: 'a', light: 'c' },
+  e: { shadow: 'd', light: 'f' },
+  h: { shadow: 'g', light: 'f' }
+};
+
+/**
+ * Тот же приём, что у спрайтов в репозитории: свет слева сверху, тень
+ * справа снизу, база внутри. Демо-игрушки должны быть из той же серии,
+ * что и остальной арт, иначе на ёлке видно, какие нарисованы нами.
+ */
+function shadeGrid(g: string[][]): string[][] {
+  const h = g.length;
+  const w = g[0]?.length ?? 0;
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? '.' : g[y]![x]!);
+  const out = g.map((r) => [...r]);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const base = g[y]![x]!;
+      const fam = TONES[base];
+      if (!fam) continue;
+      const same = (dx: number, dy: number) => at(x + dx, y + dy) === base;
+      const lit = !same(-1, 0) || !same(0, -1) || !same(-1, -1);
+      const dark = !same(1, 0) || !same(0, 1) || !same(1, 1);
+      if (lit && !dark) out[y]![x] = fam.light;
+      else if (dark && !lit) out[y]![x] = fam.shadow;
+    }
+  }
+  return out;
+}
+
+/** Пиксельная игрушка 16×16: шар, колокольчик, шишка. */
 function demoToyPixels(rand: () => number): string[] {
   const size = OGONEK_TOY_SIZE;
   const g: string[][] = Array.from({ length: size }, () => Array(size).fill('.'));
-  const body = ['0', '4', '3', '1', '6'][Math.floor(rand() * 5)] ?? '0';
-  const trim = ['7', '2', '3', '7'][Math.floor(rand() * 4)] ?? '7';
+  const body = ['2', 'b', '8', '5', 'h'][Math.floor(rand() * 5)] ?? '2';
+  const trim = ['f', 'e', '9', 'f'][Math.floor(rand() * 4)] ?? 'f';
   const shape = Math.floor(rand() * 4);
   const put = (x: number, y: number, c: string) => {
     if (x >= 0 && y >= 0 && x < size && y < size) g[y]![x] = c;
   };
   // шапочка и петелька — общие для всех форм
-  for (let x = 6; x <= 9; x++) { put(x, 2, '5'); put(x, 3, '3'); }
-  put(7, 0, '5'); put(8, 0, '5'); put(6, 1, '5'); put(9, 1, '5');
+  for (let x = 6; x <= 9; x++) { put(x, 2, '0'); put(x, 3, '8'); }
+  put(7, 0, '0'); put(8, 0, '0'); put(6, 1, '0'); put(9, 1, '0');
 
   if (shape === 0 || shape === 3) {
     // шар
@@ -107,7 +143,7 @@ function demoToyPixels(rand: () => number): string[] {
     for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
       const d = Math.hypot(x - cx, y - cy);
       if (d <= r - 0.8) put(x, y, body);
-      else if (d <= r + 0.4) put(x, y, '5');
+      else if (d <= r + 0.4) put(x, y, '0');
     }
     if (shape === 3) for (let x = 2; x <= 13; x++) { put(x, 8, trim); put(x, 11, trim); }
     else for (let i = 0; i < 4; i++) { put(4 + i * 2, 9, trim); put(5 + i * 2, 11, trim); }
@@ -116,50 +152,46 @@ function demoToyPixels(rand: () => number): string[] {
     for (let y = 4; y <= 12; y++) {
       const half = Math.min(6, 1 + (y - 3));
       for (let x = 8 - half; x <= 7 + half; x++) put(x, y, body);
-      put(8 - half - 1, y, '5'); put(8 + half, y, '5');
+      put(8 - half - 1, y, '0'); put(8 + half, y, '0');
     }
-    for (let x = 1; x <= 14; x++) put(x, 13, '5');
+    for (let x = 1; x <= 14; x++) put(x, 13, '0');
     put(7, 14, trim); put(8, 14, trim);
   } else {
     // шишка: плотный ромб с чешуёй — силуэт читается, в отличие от тонкой звезды
     for (let y = 4; y <= 14; y++) {
       const half = 5 - Math.round(Math.abs(y - 9) * 0.55);
       for (let x = 8 - half; x <= 7 + half; x++) put(x, y, body);
-      put(7 - half, y, '5'); put(8 + half, y, '5');
+      put(7 - half, y, '0'); put(8 + half, y, '0');
     }
     for (let y = 5; y <= 13; y += 2) {
       for (let x = 4; x <= 11; x += 3) put(x + ((y / 2) % 2 ? 1 : 0), y, trim);
     }
   }
-  return g.map((row) => row.join(''));
+  return shadeGrid(g).map((row) => row.join(''));
 }
 
-/** Снежинка 15×15 с восьмикратной симметрией — как вырезанная из листа. */
-export function demoSnowflakePixels(seed: number): string[] {
-  const size = OGONEK_SNOWFLAKE_SIZE;
-  const c = (size - 1) / 2;
+/**
+ * Четверть снежинки 5×5 — как её рисует сотрудник в окне 12. Диагональ и
+ * нижняя строка всегда закрашены: так снежинка держит форму, а не
+ * рассыпается в случайные точки.
+ */
+export function demoSnowflakeQuarter(seed: number): string[] {
   const rand = rng(seed);
-  const g: string[][] = Array.from({ length: size }, () => Array(size).fill('.'));
-  const put = (x: number, y: number, col: string) => {
-    const pairs: [number, number][] = [
-      [x, y], [-x, y], [x, -y], [-x, -y],
-      [y, x], [-y, x], [y, -x], [-y, -x]
-    ];
-    for (const [ax, ay] of pairs) {
-      const px = Math.round(c + ax), py = Math.round(c + ay);
-      if (px >= 0 && py >= 0 && px < size && py < size) g[py]![px] = col;
-    }
-  };
-  for (let i = 0; i <= c; i++) put(0, i, '7');
-  for (let i = 1; i <= c; i++) put(i, i, rand() > 0.35 ? '7' : '.');
-  const arms = 1 + Math.floor(rand() * 3);
-  for (let a = 0; a < arms; a++) {
-    const at = 2 + Math.floor(rand() * (c - 2));
-    const len = 1 + Math.floor(rand() * 2);
-    for (let j = 1; j <= len; j++) { put(j, at - j, '7'); put(j, at, '7'); }
+  const q: string[][] = Array.from({ length: OGONEK_FLAKE_Q }, () => Array(OGONEK_FLAKE_Q).fill('.'));
+  for (let i = 0; i < OGONEK_FLAKE_Q; i++) {
+    q[i]![i] = '1';                       // диагональный луч
+    q[OGONEK_FLAKE_Q - 1]![i] = '1';      // горизонтальная ось
+    q[i]![OGONEK_FLAKE_Q - 1] = '1';      // вертикальная ось
   }
-  put(0, 0, '4'); put(1, 0, '4');
-  return g.map((row) => row.join(''));
+  // Веточки — редко и только рядом с осями, иначе вместо снежинки квадрат.
+  for (let y = 1; y < OGONEK_FLAKE_Q - 1; y++) {
+    for (let x = 1; x < OGONEK_FLAKE_Q - 1; x++) {
+      if (x !== y && Math.abs(x - y) === 1 && rand() > 0.55) q[y]![x] = '1';
+    }
+  }
+  // Кончики лучей иногда раздваиваются
+  if (rand() > 0.5) q[0]![OGONEK_FLAKE_Q - 2] = '1';
+  return q.map((r) => r.join(''));
 }
 
 let cachedToys: OgonekToy[] | null = null;
@@ -203,7 +235,7 @@ export function demoSnowflakes(): OgonekSnowflake[] {
     id: `demo-flake-${i + 1}`,
     userId: -(i + 1),
     name: person.name,
-    pixels: demoSnowflakePixels(1000 + i * 17),
+    pixels: demoSnowflakeQuarter(1000 + i * 17),
     createdAt: new Date(base + i * 41 * 60 * 1000).toISOString(),
     demo: true
   }));

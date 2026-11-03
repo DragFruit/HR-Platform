@@ -1,5 +1,5 @@
 <template>
-  <div class="ogt">
+  <div class="ogt og-theme">
     <header class="ogt__head">
       <div>
         <h1 class="ogt__title">Ёлка желаний</h1>
@@ -25,7 +25,16 @@
 </template>
 
 <script setup lang="ts">
-/** Ёлка желаний отдельным экраном (спека, раздел 4). */
+/** Ёлка желаний отдельным экраном (спека, раздел 4). Стиль — как у адвента. */
+useHead({
+  link: [
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P&family=PT+Sans:wght@400;700&family=PT+Sans+Narrow:wght@700&display=swap'
+    }
+  ]
+});
+
 import type { OgonekToy } from '~/events/ogonek/types';
 
 const toys = ref<OgonekToy[]>([]);
@@ -51,15 +60,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Токены .og-theme задаёт страница адвента (глобальный стиль в index.vue). */
 .ogt {
-  /* Фон бордовый, а не хвойный: на хвойном сама ёлка сливалась с экраном. */
-  background:
-    radial-gradient(circle at 50% 8%, rgba(217, 154, 43, 0.16), transparent 58%),
-    #7d1f28;
-  border: 3px solid #1a1412;
-  border-radius: 12px;
-  padding: 22px;
-  color: #e8d7b4;
+  background: radial-gradient(120% 80% at 50% 0%, #64101d 0%, var(--og-bg) 60%), var(--og-bg);
+  border: 2px solid var(--og-line);
+  box-shadow: 6px 6px 0 var(--og-shade);
+  padding: 22px clamp(12px, 2.4vw, 26px) 26px;
   min-height: 60vh;
 }
 
@@ -73,30 +79,42 @@ onMounted(async () => {
 
 .ogt__title {
   margin: 0;
-  font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 28px;
-  color: #f5efe3;
+  font-family: var(--og-pixel);
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--og-gold);
+  text-shadow: 0 0 18px rgba(255, 207, 74, 0.5), 3px 3px 0 #6b2a00;
 }
 
-.ogt__lead { margin: 6px 0 0; max-width: 56ch; line-height: 1.5; opacity: 0.86; }
+.ogt__lead { margin: 10px 0 0; max-width: 56ch; line-height: 1.5; color: #f6d9d6; font-size: 17px; }
 
-.ogt__actions { display: flex; align-items: center; gap: 14px; }
+.ogt__actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 .ogt__count {
-  background: rgba(26, 20, 18, 0.45);
-  border: 1px solid rgba(232, 215, 180, 0.24);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
+  font-family: var(--og-pixel);
+  font-size: 10px;
+  color: var(--og-gold-soft);
+  background: var(--og-bg-2);
+  border: 2px solid var(--og-line);
+  padding: 10px 12px;
+  box-shadow: 4px 4px 0 var(--og-shade);
 }
 
-.ogt__back { color: #d99a2b; text-decoration: none; font-weight: 600; }
-.ogt__back:hover { text-decoration: underline; }
+.ogt__back {
+  font-family: var(--og-pixel);
+  font-size: 10px;
+  color: #ffd9d6;
+  text-decoration: none;
+  border: 2px solid var(--og-line);
+  padding: 10px 14px;
+}
 
-.ogt__state { opacity: 0.8; }
+.ogt__back:hover { border-color: var(--og-gold); }
+
+.ogt__state { color: var(--og-muted); }
 
 @media (max-width: 700px) {
   .ogt { padding: 14px; }
-  .ogt__title { font-size: 22px; }
 }
 </style>

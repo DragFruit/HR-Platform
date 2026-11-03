@@ -10,13 +10,14 @@ import type {
   OgonekToy
 } from '../../app/events/ogonek/types';
 import { OGONEK_LETTER_DELIVERY_AT } from '../../app/events/ogonek/timeline';
+import { OGONEK_PIXEL_RE } from '../../app/events/ogonek/palette';
+import { isOgonekFlakeQuarter } from '../../app/events/ogonek/snowflake';
 
 const DATA_FILE = join(process.cwd(), 'server/data/ogonek.json');
 const enqueue = createMutationQueue();
 
-/** Сетка игрушки и снежинки. Размеры жёсткие: по ним нарисован редактор. */
+/** Сетка игрушки. Размер жёсткий: по нему нарисован редактор. */
 export const OGONEK_TOY_SIZE = 16;
-export const OGONEK_SNOWFLAKE_SIZE = 15;
 /** Длина ленты, которую храним. Старое не нужно: лента про «прямо сейчас». */
 export const OGONEK_FEED_LIMIT = 120;
 export const OGONEK_WISH_MAX = 120;
@@ -40,6 +41,8 @@ export type OgonekPlayer = {
   department: string;
   /** Номера распечатанных окон. */
   opened: number[];
+  /** Окна, в которых действие выполнено: по ним горят огоньки гирлянды. */
+  done: number[];
   /** Вилка воткнута — декор платформы горит. */
   plugged: boolean;
   /** Колпак на аватарке (окно 2). */
@@ -81,6 +84,7 @@ export function emptyOgonekPlayer(userId: number, name: string, department: stri
     name,
     department,
     opened: [],
+    done: [],
     plugged: false,
     hat: false,
     thanksSent: 0,
@@ -89,6 +93,12 @@ export function emptyOgonekPlayer(userId: number, name: string, department: stri
 }
 
 const str = (v: unknown, max: number) => String(v ?? '').slice(0, max);
+
+/** Список номеров окон без дублей и мусора, по возрастанию. */
+const dayList = (v: unknown): number[] =>
+  Array.isArray(v)
+    ? [...new Set(v.map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 19))].sort((a, b) => a - b)
+    : [];
 const clamp01 = (v: unknown) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0.5;
@@ -102,13 +112,14 @@ export function normalizeOgonekPixels(raw: unknown, size: number): string[] | nu
   for (const row of raw) {
     const s = String(row ?? '');
     if (s.length !== size) return null;
-    if (!/^[0-7.]+$/.test(s)) return null;
+    if (!OGONEK_PIXEL_RE.test(s)) return null;
     out.push(s);
   }
   // Пустая сетка — не игрушка.
-  if (!out.some((r) => /[0-7]/.test(r))) return null;
+  if (!out.some((r) => /[^.]/.test(r))) return null;
   return out;
 }
+
 
 function normalizeToy(raw: unknown): OgonekToy | null {
   const s = (raw || {}) as Partial<OgonekToy>;
@@ -129,13 +140,14 @@ function normalizeToy(raw: unknown): OgonekToy | null {
 
 function normalizeSnowflake(raw: unknown): OgonekSnowflake | null {
   const s = (raw || {}) as Partial<OgonekSnowflake>;
-  const pixels = normalizeOgonekPixels(s.pixels, OGONEK_SNOWFLAKE_SIZE);
-  if (!pixels || !s.id) return null;
+  // Старый формат (полный лист 15×15) после перехода на четверть не читаем:
+  // настоящих снежинок в нём не было, только тестовые.
+  if (!s.id || !isOgonekFlakeQuarter(s.pixels)) return null;
   return {
     id: String(s.id),
     userId: Number(s.userId) || 0,
     name: str(s.name, 80) || 'Сотрудник',
-    pixels,
+    pixels: [...s.pixels],
     createdAt: str(s.createdAt, 40) || new Date().toISOString()
   };
 }
@@ -152,9 +164,8 @@ async function readState(): Promise<OgonekState> {
         userId,
         name: str(src.name, 80) || 'Сотрудник',
         department: str(src.department, 80),
-        opened: Array.isArray(src.opened)
-          ? [...new Set(src.opened.map(Number).filter((n) => n >= 1 && n <= 19))].sort((a, b) => a - b)
-          : [],
+        opened: dayList(src.opened),
+        done: dayList(src.done),
         plugged: Boolean(src.plugged),
         hat: Boolean(src.hat),
         song: src.song ? str(src.song, 160) : undefined,
@@ -257,6 +268,13 @@ export function findOrCreateOgonekPlayer(
   if (department) player.department = department;
   player.updatedAt = new Date().toISOString();
   return player;
+}
+
+/** Окно выполнено: огонёк на гирлянде загорается. Повторно не дублируется. */
+export function markOgonekDone(player: OgonekPlayer, dayId: number): void {
+  if (!player.done.includes(dayId)) {
+    player.done = [...player.done, dayId].sort((a, b) => a - b);
+  }
 }
 
 export function ogonekId(prefix: string): string {

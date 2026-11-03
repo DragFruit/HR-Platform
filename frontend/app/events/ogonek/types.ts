@@ -58,8 +58,12 @@ export type OgonekDayView = {
   opened: boolean;
   /** Можно открыть прямо сейчас. */
   openable: boolean;
-  /** Окно сегодняшнего дня — отдельное состояние медальона. */
+  /** Окно сегодняшнего дня — отдельное состояние листка. */
   today: boolean;
+  /** Действие окна выполнено — горит огонёк на гирлянде. */
+  done: boolean;
+  /** День прошёл, а листок не оторван. */
+  missed: boolean;
   opensAt: string;
   /** Какое предыдущее окно держит это. */
   blockedBy: OgonekDayId | null;
@@ -88,7 +92,7 @@ export type OgonekSnowflake = {
   id: string;
   userId: number;
   name: string;
-  /** 15×15 сетка, восьмикратная симметрия. */
+  /** Четверть 5×5 из `1` и `.`; полный рисунок отражается из неё. */
   pixels: string[];
   createdAt: string;
   demo?: boolean;

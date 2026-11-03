@@ -1,19 +1,5 @@
 <template>
   <div class="og-win">
-    <header class="og-win__head">
-      <OgonekSprite class="og-win__icon" :rows="objectRows" :width="64" />
-      <div>
-        <p class="og-win__day">Окно {{ day.id }} · {{ dateLabel }}, {{ day.weekday }}</p>
-        <h2 class="og-win__title">{{ day.title }}</h2>
-        <p v-if="day.produces" class="og-win__produces">{{ day.produces }}</p>
-      </div>
-    </header>
-
-    <div class="og-win__lead">
-      <p v-for="(line, i) in day.lead" :key="i">{{ line }}</p>
-    </div>
-
-    <p v-if="day.draft" class="og-win__draft">{{ micro.draftNote }}</p>
 
     <!-- 1. Песня года -->
     <section v-if="day.kind === 'song'" class="og-win__body">
@@ -30,8 +16,7 @@
     </section>
 
     <!-- 2. Колпак на аватарку -->
-    <section v-else-if="day.kind === 'avatar'" class="og-win__body og-win__body--row">
-      <OgonekSprite :rows="OGONEK_OBJECTS.hat" :width="96" alt="Новогодний колпак" />
+    <section v-else-if="day.kind === 'avatar'" class="og-win__body">
       <div class="og-win__col">
         <button type="button" class="og-btn" :disabled="busy" @click="send('hat', { on: !player.hat })">
           {{ player.hat ? 'Снять колпак' : 'Надеть колпак' }}
@@ -82,46 +67,34 @@
       </div>
     </section>
 
-    <!-- 12. Вырежи снежинку -->
+    <!-- 12. Своя снежинка: рисуется четверть, остальное отражается само -->
     <section v-else-if="day.kind === 'snowflake'" class="og-win__body">
-      <div class="og-win__editor">
-        <OgonekPixelGrid
-          v-model="flakePixels"
-          :size="snowflakeSize"
-          :cell="20"
-          :brush="cutting ? '.' : '7'"
-          symmetry="octal"
-        />
-        <div class="og-win__col">
-          <div class="og-win__row">
+      <div class="og-fl">
+        <div>
+          <div class="og-fl__grid" role="group" aria-label="Четверть снежинки">
             <button
+              v-for="(on, i) in flakeCells"
+              :key="i"
               type="button"
-              class="og-btn"
-              :class="{ 'og-btn--ghost': !cutting }"
-              @click="cutting = true"
-            >
-              Вырезать
-            </button>
-            <button
-              type="button"
-              class="og-btn"
-              :class="{ 'og-btn--ghost': cutting }"
-              @click="cutting = false"
-            >
-              Вернуть бумагу
-            </button>
+              class="og-fl__cell"
+              :class="{ 'is-on': on }"
+              :aria-pressed="on"
+              :aria-label="`Клетка ${Math.floor(i / 5) + 1}-${(i % 5) + 1}`"
+              @click="toggleFlake(i)"
+            />
           </div>
-          <p class="og-win__note">
-            Лист сложен в восемь раз: вырез повторяется по всем сторонам сразу.
-          </p>
-          <div class="og-win__row">
-            <button type="button" class="og-btn og-btn--ghost" @click="resetFlake">Новый лист</button>
-            <button type="button" class="og-btn" :disabled="busy || !flakeHasPixels" @click="sendFlake">
-              {{ player.snowflake ? 'Переделать' : 'Отпустить в снегопад' }}
-            </button>
+          <p class="og-fl__cap">Четверть</p>
+        </div>
+        <div>
+          <div class="og-fl__prev">
+            <OgonekSprite :rows="flakePreview" width-css="90px" by-value />
           </div>
+          <p class="og-fl__cap">Так она полетит</p>
         </div>
       </div>
+      <button type="button" class="og-btn" :disabled="busy || !flakeHasCells" @click="sendFlake">
+        {{ player.snowflake ? 'Обновить снежинку' : 'Запустить снежинку' }}
+      </button>
     </section>
 
     <!-- 13. Спасибо коллеге -->
@@ -255,6 +228,31 @@
       <OgonekAwaiting :label="awaitingLabel" :text="day.awaiting" />
     </section>
 
+    <!--
+      Где своего действия нет (ждём материалы) — окно засчитывается
+      прочтением. Финал засчитывается кнопкой «Зажечь огонёк».
+    -->
+    <button
+      v-if="readable && day.kind !== 'final'"
+      type="button"
+      class="og-btn"
+      :disabled="busy || day.done"
+      @click="send('complete', { dayId: day.id })"
+    >
+      {{ day.done ? 'Прочитано' : 'Прочитал, засчитать' }}
+    </button>
+    <button
+      v-if="day.kind === 'final'"
+      type="button"
+      class="og-btn"
+      :disabled="busy"
+      @click="$emit('fireworks'); send('complete', { dayId: day.id })"
+    >
+      Зажечь огонёк
+    </button>
+
+    <div v-if="day.done" class="og-stamp">ЗАСЧИТАНО · ОГОНЁК №{{ day.id }}</div>
+
     <p v-if="error" class="og-win__error" role="alert">{{ error }}</p>
   </div>
 </template>
@@ -267,9 +265,8 @@
  * Окна, где нужны материалы заказчика, не выдумывают содержимое, а честно
  * пишут, чего ждут (спека, раздел 6).
  */
-import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
-import { formatOgonekDate } from '~/events/ogonek/timeline';
 import { ogonekTreeSpot } from '~/events/ogonek/treePlacement';
+import { OGONEK_BASE_FLAKE, ogonekFlakeSprite } from '~/events/ogonek/snowflake';
 import type { OgonekDayView } from '~/events/ogonek/types';
 
 type PlayerView = {
@@ -293,7 +290,6 @@ const props = defineProps<{
   micro: Record<string, string>;
   awaitingLabel: string;
   toySize: number;
-  snowflakeSize: number;
   colleagues: { id: number; name: string; department: string }[];
   recipes: {
     id: string; name: string; department: string; title: string; text: string;
@@ -305,7 +301,10 @@ const props = defineProps<{
   busy?: boolean;
 }>();
 
-const emit = defineEmits<{ submit: [kind: string, payload: Record<string, unknown>] }>();
+const emit = defineEmits<{
+  submit: [kind: string, payload: Record<string, unknown>];
+  fireworks: [];
+}>();
 
 const error = ref('');
 
@@ -318,13 +317,12 @@ const DRESSCODE_OPTIONS = [
   'Ещё думаю'
 ];
 
-const objectRows = computed(() => OGONEK_OBJECTS[props.day.object] ?? OGONEK_OBJECTS.ogonek);
-const dateLabel = computed(() => formatOgonekDate(props.day.dateIso));
+/** Засчитывается прочтением: окно ждёт материалы или само по себе финал. */
+const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind === 'final');
 
 const song = ref(props.player.song);
 const wish = ref(props.player.toy?.wish ?? '');
-const brush = ref('0');
-const cutting = ref(true);
+const brush = ref('2');
 const thanksTo = ref(0);
 const thanksText = ref('');
 const letter = ref('');
@@ -332,18 +330,27 @@ const recipeTitle = ref('');
 const recipeText = ref('');
 
 const blankToy = () => Array.from({ length: props.toySize }, () => '.'.repeat(props.toySize));
-/** Лист бумаги: снежинку не рисуют, её вырезают из целого. */
-const blankSheet = () =>
-  Array.from({ length: props.snowflakeSize }, () => '7'.repeat(props.snowflakeSize));
 
 const toyPixels = ref<string[]>(props.player.toy?.pixels ?? blankToy());
-const flakePixels = ref<string[]>(props.player.snowflake?.pixels ?? blankSheet());
+/** Четверть снежинки 5×5: true — закрашено. */
+const flakeCells = ref<boolean[]>(
+  [...(props.player.snowflake?.pixels ?? OGONEK_BASE_FLAKE).join('')].map((c) => c === '1')
+);
+const flakeQuarter = computed(() =>
+  Array.from({ length: 5 }, (_, y) =>
+    flakeCells.value.slice(y * 5, y * 5 + 5).map((on) => (on ? '1' : '.')).join('')
+  )
+);
+const flakePreview = computed(() => ogonekFlakeSprite(flakeQuarter.value));
+const flakeHasCells = computed(() => flakeCells.value.some(Boolean));
+const toggleFlake = (i: number) => {
+  flakeCells.value[i] = !flakeCells.value[i];
+};
 
-const toyHasPixels = computed(() => toyPixels.value.some((r) => /[0-7]/.test(r)));
-const flakeHasPixels = computed(() => flakePixels.value.some((r) => /[0-7]/.test(r)));
+const toyHasPixels = computed(() => toyPixels.value.some((r) => /[^.]/.test(r)));
+
 
 const resetToy = () => { toyPixels.value = blankToy(); };
-const resetFlake = () => { flakePixels.value = blankSheet(); };
 
 function send(kind: string, payload: Record<string, unknown>) {
   error.value = '';
@@ -360,18 +367,19 @@ function hangToy() {
 }
 
 function sendFlake() {
-  send('snowflake', { pixels: flakePixels.value });
+  send('snowflake', { pixels: flakeQuarter.value });
 }
 
 function sendThanks() {
+  // Поля чистит watch по props.player.thanksSent — только после ответа
+  // сервера. Иначе на любой ошибке написанное пропадало бы вместе с формой.
   send('thanks', { toEmployeeId: thanksTo.value, text: thanksText.value });
-  thanksText.value = '';
-  thanksTo.value = 0;
 }
 
 function sendLetter() {
+  // Письмо не чистим: при успехе форму заменяет блок «запечатано», при
+  // ошибке текст должен остаться на месте.
   send('letter', { text: letter.value });
-  letter.value = '';
 }
 
 function formatDateTime(iso: string): string {
@@ -382,6 +390,17 @@ function formatDateTime(iso: string): string {
 
 defineExpose({ setError: (m: string) => { error.value = m; } });
 
+/** Открытка ушла — очищаем форму. Признак успеха приходит с сервера. */
+watch(
+  () => props.player.thanksSent,
+  (now, before) => {
+    if (now > (before ?? 0)) {
+      thanksText.value = '';
+      thanksTo.value = 0;
+    }
+  }
+);
+
 watch(
   () => props.player,
   (p) => {
@@ -390,7 +409,7 @@ watch(
       toyPixels.value = p.toy.pixels;
       wish.value = p.toy.wish;
     }
-    if (p.snowflake) flakePixels.value = p.snowflake.pixels;
+    if (p.snowflake) flakeCells.value = [...p.snowflake.pixels.join('')].map((c) => c === '1');
   },
   { deep: true }
 );
@@ -409,182 +428,155 @@ watch(
 </script>
 
 <style scoped>
+/* Токены задаёт страница (.og-theme): окно живёт внутри раскрытого дня. */
 .og-win {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  color: #e8d7b4;
-}
-
-.og-win__head {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.og-win__icon { flex: none; }
-
-.og-win__day {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.7;
-}
-
-.og-win__title {
-  margin: 2px 0 0;
-  font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 24px;
-  color: #f5efe3;
-}
-
-.og-win__produces {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: #d99a2b;
-}
-
-.og-win__lead p {
-  margin: 0 0 8px;
-  line-height: 1.55;
-}
-
-.og-win__draft {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.55;
-  font-style: italic;
-}
-
-.og-win__body {
-  display: flex;
-  flex-direction: column;
   gap: 12px;
+  margin-top: 6px;
+  color: #f6d9d6;
 }
 
-.og-win__body--row {
-  flex-direction: row;
-  align-items: center;
-  gap: 20px;
-}
+.og-win__body { display: flex; flex-direction: column; gap: 12px; }
+.og-win__body--row { flex-direction: row; align-items: center; gap: 20px; }
+.og-win__col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.og-win__row { display: flex; gap: 10px; flex-wrap: wrap; }
+.og-win__editor { display: flex; gap: 20px; flex-wrap: wrap; }
 
-.og-win__col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-.og-win__row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.og-win__editor {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.og-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-}
+.og-field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--og-muted); }
 
 .og-field input,
 .og-field textarea,
 .og-field select {
-  background: rgba(26, 20, 18, 0.55);
-  border: 1px solid rgba(232, 215, 180, 0.3);
-  border-radius: 6px;
-  color: #f5efe3;
-  padding: 9px 11px;
-  font: inherit;
   width: 100%;
-  max-width: 460px;
+  background: var(--og-bg);
+  color: var(--og-snow);
+  border: 2px solid var(--og-line);
+  border-radius: 0;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
 }
 
-.og-field textarea { resize: vertical; }
+.og-field textarea { min-height: 110px; resize: vertical; }
 
+/* Пиксельная кнопка с жёсткой тенью — как в прототипе */
 .og-btn {
   align-self: flex-start;
-  background: #d99a2b;
-  color: #1a1412;
-  border: 2px solid #1a1412;
-  border-radius: 6px;
-  padding: 9px 16px;
-  font-weight: 600;
+  font-family: var(--og-pixel);
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  background: var(--og-gold);
+  color: #3a2600;
+  box-shadow: 3px 3px 0 #6b2a00;
 }
 
-.og-btn:hover:not(:disabled) { transform: translateY(-2px); background: #e8a87c; }
+.og-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #6b2a00; }
 .og-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .og-btn--ghost {
   background: transparent;
-  color: #e8d7b4;
-  border-color: rgba(232, 215, 180, 0.4);
+  color: #ffd9d6;
+  box-shadow: none;
+  border: 2px solid var(--og-line);
 }
 
-.og-btn--small { padding: 5px 11px; font-size: 13px; }
+.og-btn--small { padding: 7px 10px; font-size: 8px; }
 
-.og-win__note { margin: 0; font-size: 13px; opacity: 0.78; }
-.og-win__done { margin: 0; color: #2f7f7a; font-weight: 600; }
-.og-win__error { margin: 0; color: #e8a87c; }
+.og-win__note { margin: 0; font-size: 15px; color: var(--og-muted); }
+.og-win__done { margin: 0; color: var(--og-green); font-weight: 700; }
+.og-win__error { margin: 0; color: var(--og-gold-soft); }
 
 .og-win__sub {
   margin: 10px 0 0;
-  font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 16px;
-  color: #f5efe3;
+  font-family: var(--og-pixel);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--og-snow);
 }
 
 .og-win__inbox { margin-top: 10px; }
-.og-win__inbox h3 { font-size: 15px; margin: 0 0 6px; }
+.og-win__inbox h3 { font-family: var(--og-pixel); font-size: 10px; margin: 0 0 8px; color: var(--og-gold-soft); }
 .og-win__inbox blockquote {
   margin: 0 0 8px;
-  padding: 8px 12px;
-  border-left: 3px solid #d99a2b;
-  background: rgba(26, 20, 18, 0.35);
+  padding: 6px 12px;
+  border-left: 3px solid var(--og-gold);
+  color: var(--og-snow);
 }
 
 .og-recipes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.og-recipes li {
-  padding: 10px 12px;
-  border: 1px solid rgba(232, 215, 180, 0.22);
-  border-radius: 8px;
-  background: rgba(26, 20, 18, 0.3);
-}
-.og-recipes li.is-mine { border-color: rgba(217, 154, 43, 0.6); }
-.og-recipes__head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.og-recipes__who { font-size: 12px; opacity: 0.7; }
-.og-recipes__text { margin: 6px 0; font-size: 14px; line-height: 1.5; }
-.og-recipes__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.og-recipes li { padding: 12px 14px; background: var(--og-bg-3); border: 2px solid var(--og-line); }
+.og-recipes li.is-mine { border-color: var(--og-gold); }
+.og-recipes__head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--og-snow); }
+.og-recipes__who { font-size: 13px; color: var(--og-muted); }
+.og-recipes__text { margin: 6px 0; font-size: 15px; line-height: 1.5; }
+.og-recipes__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
 
-.og-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Варианты выбора — как варианты ответа в прототипе */
+.og-chips { display: grid; gap: 10px; }
 .og-chip {
-  background: rgba(26, 20, 18, 0.4);
-  border: 1px solid rgba(232, 215, 180, 0.3);
-  color: #e8d7b4;
-  border-radius: 999px;
-  padding: 7px 14px;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--og-bg-3);
+  border: 2px solid var(--og-line);
+  border-radius: 0;
+  color: var(--og-snow);
   cursor: pointer;
+  font-size: 16px;
 }
-.og-chip.is-active { background: #2f7f7a; border-color: #2f7f7a; color: #f5efe3; }
+.og-chip:hover { border-color: #d0505c; }
+.og-chip.is-active { border-color: var(--og-green); background: #1f4a2c; }
 
-.og-final { margin: 0; padding-left: 18px; line-height: 1.7; }
+.og-final { margin: 0; padding-left: 18px; line-height: 1.8; color: var(--og-snow); }
 
-.og-link { color: #d99a2b; text-decoration: none; font-weight: 600; }
+.og-link { color: var(--og-gold); text-decoration: none; font-weight: 700; }
 .og-link:hover { text-decoration: underline; }
 
+/* Редактор снежинки: четверть и превью */
+.og-fl { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.og-fl__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  gap: 3px;
+  padding: 6px;
+  background: var(--og-bg);
+  border: 2px solid var(--og-line);
+}
+.og-fl__cell { width: 30px; height: 30px; border: 0; padding: 0; background: #6a1e29; cursor: pointer; }
+.og-fl__cell.is-on { background: var(--og-snow); }
+.og-fl__prev {
+  width: 120px;
+  height: 120px;
+  background: var(--og-bg);
+  border: 2px solid var(--og-line);
+  display: grid;
+  place-items: center;
+}
+.og-fl__cap { margin: 4px 0 0; font-size: 13px; color: var(--og-muted); }
+
+/* Штамп «засчитано» — как печать на листке */
+.og-stamp {
+  align-self: flex-start;
+  font-family: var(--og-pixel);
+  font-size: 11px;
+  color: var(--og-gold);
+  border: 3px solid var(--og-gold);
+  padding: 8px 10px;
+  transform: rotate(-4deg);
+  background: rgba(255, 207, 74, 0.08);
+  animation: og-stamp 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes og-stamp {
+  from { transform: rotate(-4deg) scale(2.2); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .og-btn { transition: none; }
-  .og-btn:hover:not(:disabled) { transform: none; }
+  .og-stamp { animation: none; }
 }
 
 @media (max-width: 760px) {

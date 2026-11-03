@@ -4,7 +4,8 @@
     <div class="og-decor__garland" :style="garlandStyle" />
 
     <!-- Снегопад: три слоя глубины, у каждого своя скорость -->
-    <canvas v-if="motionAllowed" ref="canvasRef" class="og-decor__snow" />
+    <!-- На странице адвента свой снег, с подписями снежинок: второй не нужен -->
+    <canvas v-if="motionAllowed && !isAdvent" ref="canvasRef" class="og-decor__snow" />
 
     <!-- Камин: только на главной, в углу -->
     <ClientOnly>
@@ -33,6 +34,7 @@ import { ogonekSpriteUrl, ogonekSpriteUrlByValue } from '~/utils/ogonekRender';
 const { enabled, motionAllowed, state } = useOgonekDecor();
 const route = useRoute();
 const isHome = computed(() => route.path === '/');
+const isAdvent = computed(() => route.path.startsWith('/event/ogonek'));
 
 const garlandStyle = computed(() => {
   const url = ogonekSpriteUrl(OGONEK_DECOR.garland);

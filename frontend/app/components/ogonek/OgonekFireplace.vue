@@ -23,7 +23,7 @@
  * вразнобой, под ними тёплое пятно света. Никакого мигания — только
  * медленное колебание, иначе в углу экрана это быстро начинает раздражать.
  */
-import { OGONEK_DECOR, OGONEK_OBJECTS } from '~/events/ogonek/sprites';
+import { OGONEK_DECOR } from '~/events/ogonek/sprites';
 import { ogonekSpriteUrl } from '~/utils/ogonekRender';
 
 withDefaults(defineProps<{ width?: number }>(), { width: 150 });
@@ -36,7 +36,7 @@ const FLAMES = [
 
 const mounted = ref(false);
 onMounted(() => { mounted.value = true; });
-const flameUrl = computed(() => (mounted.value ? ogonekSpriteUrl(OGONEK_OBJECTS.ogonek) : ''));
+const flameUrl = computed(() => (mounted.value ? ogonekSpriteUrl(OGONEK_DECOR.flame) : ''));
 </script>
 
 <style scoped>
@@ -47,8 +47,9 @@ const flameUrl = computed(() => (mounted.value ? ogonekSpriteUrl(OGONEK_OBJECTS.
 
 .og-fire__flame {
   position: absolute;
-  bottom: 12%;
-  aspect-ratio: 1 / 1;
+  bottom: 10%;
+  /* Язычок вытянутый: 16×24, квадратом он выглядел бы раздавленным. */
+  aspect-ratio: 16 / 24;
   background-repeat: no-repeat;
   background-size: 100% 100%;
   image-rendering: pixelated;

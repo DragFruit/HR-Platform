@@ -46,18 +46,20 @@ function ago(iso: string): string {
 
 <style scoped>
 .og-feed {
-  background: rgba(26, 20, 18, 0.55);
-  border: 1px solid rgba(232, 215, 180, 0.2);
-  border-radius: 10px;
-  padding: 14px 16px;
-  color: #e8d7b4;
+  background: var(--og-bg-2, #5a0e1a);
+  border: 2px solid var(--og-line, #a02a36);
+  box-shadow: 4px 4px 0 var(--og-shade, #1c0307);
+  padding: 12px 14px;
+  color: var(--og-muted, #e7b9bd);
 }
 
 .og-feed__title {
   margin: 0 0 10px;
-  font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 15px;
-  color: #f5efe3;
+  font-family: var(--og-pixel, monospace);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--og-gold, #ffcf4a);
 }
 
 .og-feed__empty { margin: 0; font-size: 13px; opacity: 0.7; }
@@ -78,14 +80,15 @@ function ago(iso: string): string {
   grid-template-columns: 10px 1fr auto;
   gap: 8px;
   align-items: baseline;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
 }
+
+.og-feed__item strong { color: var(--og-snow, #fbf7f4); }
 
 .og-feed__dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
   background: #d99a2b;
   align-self: center;
 }

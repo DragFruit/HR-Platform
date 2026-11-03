@@ -13,20 +13,8 @@ import {
 } from '../../app/events/ogonek/timeline';
 import { OGONEK_DAYS } from '../../app/events/ogonek/content';
 import type { OgonekPlayer } from './ogonekStore';
-import { getDeployAppEnv } from './appEnv';
+import type { OgonekClock } from './ogonekClock';
 
-/**
- * Отладочный режим: все 19 окон открыты сразу, декабрьское расписание и
- * очередь «сначала предыдущее» не действуют. Нужен, чтобы заказчик мог
- * пощупать весь адвент в ноябре.
- *
- * Снимается одним движением: `OGONEK_DEBUG_ALL_OPEN=0`. На бою режим
- * игнорируется всегда — там окна открывает только календарь.
- */
-export function ogonekDebugAllOpen(): boolean {
-  if (getDeployAppEnv() === 'production') return false;
-  return String(process.env.OGONEK_DEBUG_ALL_OPEN ?? '1').trim() !== '0';
-}
 
 /**
  * Очередь догоняющего: окно N держит первое предыдущее неоткрытое окно.
@@ -42,27 +30,28 @@ export function blockingDay(player: OgonekPlayer, id: OgonekDayId): OgonekDayId 
 }
 
 /** Окно можно распечатать прямо сейчас. */
-export function isDayOpenable(player: OgonekPlayer, id: OgonekDayId, now: Date): boolean {
+export function isDayOpenable(player: OgonekPlayer, id: OgonekDayId, clock: OgonekClock): boolean {
   if (player.opened.includes(id)) return true;
-  if (!ogonekDebugAllOpen() && !ogonekDayScheduleOpen(id, now)) return false;
+  if (clock.debugAllOpen) return true;
+  if (!ogonekDayScheduleOpen(id, clock.now)) return false;
   return blockingDay(player, id) === null;
 }
 
 /** Содержимое окна человеку уже доступно. */
-export function isDayUnlocked(player: OgonekPlayer, id: OgonekDayId, now: Date): boolean {
-  return player.opened.includes(id) && isDayOpenable(player, id, now);
+export function isDayUnlocked(player: OgonekPlayer, id: OgonekDayId, clock: OgonekClock): boolean {
+  return player.opened.includes(id) && isDayOpenable(player, id, clock);
 }
 
 /**
  * Окна для клиента. Нераспечатанное окно приезжает без текста и без подписи
  * «ждём данные» — снаружи видна только рамка и дата.
  */
-export function buildDayViews(player: OgonekPlayer, now: Date): OgonekDayView[] {
-  const todayId = ogonekTodayDayId(now);
+export function buildDayViews(player: OgonekPlayer, clock: OgonekClock): OgonekDayView[] {
+  const todayId = ogonekTodayDayId(clock.now);
   return OGONEK_DAYS.map((day) => {
-    const scheduleOpen = ogonekDebugAllOpen() || ogonekDayScheduleOpen(day.id, now);
+    const scheduleOpen = clock.debugAllOpen || ogonekDayScheduleOpen(day.id, clock.now);
     const opened = player.opened.includes(day.id);
-    const openable = isDayOpenable(player, day.id, now);
+    const openable = isDayOpenable(player, day.id, clock);
     return {
       id: day.id,
       dateIso: day.dateIso,
@@ -74,6 +63,9 @@ export function buildDayViews(player: OgonekPlayer, now: Date): OgonekDayView[] 
       opened,
       openable,
       today: todayId === day.id,
+      done: player.done.includes(day.id),
+      // Пропущено: день уже прошёл, а листок так и не оторван.
+      missed: !opened && scheduleOpen && !clock.debugAllOpen && todayId !== day.id,
       opensAt: ogonekDayOpensAt(day.id),
       blockedBy: scheduleOpen && !opened ? blockingDay(player, day.id) : null,
       lead: opened ? day.lead : [],
@@ -85,8 +77,8 @@ export function buildDayViews(player: OgonekPlayer, now: Date): OgonekDayView[] 
 }
 
 /** Действие окна N разрешено только если окно распечатано. */
-export function requireUnlockedDay(player: OgonekPlayer, id: OgonekDayId, now: Date): void {
-  if (!isDayUnlocked(player, id, now)) {
+export function requireUnlockedDay(player: OgonekPlayer, id: OgonekDayId, clock: OgonekClock): void {
+  if (!isDayUnlocked(player, id, clock)) {
     throw createError({ statusCode: 403, statusMessage: `ogonek: окно ${id} ещё закрыто` });
   }
 }

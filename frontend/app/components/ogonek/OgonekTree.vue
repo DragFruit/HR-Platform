@@ -116,16 +116,16 @@ const openToy = computed(() => props.toys.find((t) => t.id === openId.value) ?? 
   transform: translate(-50%, 14px);
   min-width: 190px;
   max-width: 260px;
-  background: #1a1412;
-  border: 2px solid #d99a2b;
-  border-radius: 8px;
+  background: #f3efe9;
+  border: 0;
+  box-shadow: 4px 4px 0 #1c0307;
   padding: 10px 12px;
-  color: #e8d7b4;
+  color: #2a1216;
   z-index: 5;
 }
 
 .og-tree__wish { margin: 0; font-size: 14px; line-height: 1.45; }
-.og-tree__who { margin: 6px 0 0; font-size: 12px; opacity: 0.7; }
+.og-tree__who { margin: 6px 0 0; font-size: 12px; color: #7a5a5e; }
 
 @media (prefers-reduced-motion: reduce) {
   .og-tree__toy {

@@ -1,9 +1,9 @@
 import { getVbiSessionChecked } from '../../../utils/session';
-import { ogonekNow } from '../../../utils/ogonekClock';
+import { ogonekClock } from '../../../utils/ogonekClock';
 import { readOgonekState } from '../../../utils/ogonekStore';
 import { demoSnowflakes } from '../../../utils/ogonekDemo';
-import { ogonekDebugAllOpen } from '../../../utils/ogonekGate';
 import { OGONEK_DAY_IDS, ogonekDayScheduleOpen } from '../../../../app/events/ogonek/timeline';
+import { ogonekFlakeSprite } from '../../../../app/events/ogonek/snowflake';
 
 /**
  * Лёгкая ручка для декора платформы: её дёргает слой, который висит на всех
@@ -16,19 +16,21 @@ import { OGONEK_DAY_IDS, ogonekDayScheduleOpen } from '../../../../app/events/og
  */
 export default defineEventHandler(async (event) => {
   const session = await getVbiSessionChecked(event);
-  if (!session) return { plugged: false, hat: false, authorFlakes: [] as string[][] };
+  if (!session) return { seasonOn: false, plugged: false, hat: false, authorFlakes: [] as string[][] };
 
-  const now = ogonekNow();
+  const clock = ogonekClock(event);
   const state = await readOgonekState();
   const player = state.players.find((p) => p.userId === session.id);
 
-  const flakesOpen = ogonekDebugAllOpen() || ogonekDayScheduleOpen(12, now);
+  const flakesOpen = clock.debugAllOpen || ogonekDayScheduleOpen(12, clock.now);
+  // Снегопад платформы рисует сетками палитры, поэтому четверть сразу
+  // отражаем в полный рисунок.
   const authorFlakes = flakesOpen
-    ? [...state.snowflakes, ...demoSnowflakes()].slice(-24).map((s) => s.pixels)
+    ? [...state.snowflakes, ...demoSnowflakes()].slice(-24).map((s) => ogonekFlakeSprite(s.pixels))
     : [];
 
   // Декор идёт с 1 декабря: до старта адвента нечего зажигать.
-  const seasonOn = ogonekDebugAllOpen() || ogonekDayScheduleOpen(OGONEK_DAY_IDS[0]!, now);
+  const seasonOn = clock.debugAllOpen || ogonekDayScheduleOpen(OGONEK_DAY_IDS[0]!, clock.now);
 
   return {
     seasonOn,

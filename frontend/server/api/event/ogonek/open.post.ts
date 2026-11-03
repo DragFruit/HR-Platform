@@ -1,5 +1,5 @@
 import { requireVbiSession } from '../../../utils/session';
-import { ogonekNow } from '../../../utils/ogonekClock';
+import { ogonekClock } from '../../../utils/ogonekClock';
 import { findOrCreateOgonekPlayer, mutateOgonek, pushOgonekFeed } from '../../../utils/ogonekStore';
 import { blockingDay, buildDayViews, isDayOpenable } from '../../../utils/ogonekGate';
 import { ogonekRankFor } from '../../../../app/events/ogonek/content';
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   if (!Number.isInteger(dayId) || dayId < 1 || dayId > 19) {
     throw createError({ statusCode: 400, statusMessage: 'dayId 1..19 required' });
   }
-  const now = ogonekNow();
+  const clock = ogonekClock(event);
 
   return mutateOgonek((state) => {
     const player = findOrCreateOgonekPlayer(
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
       session.department || ''
     );
     if (!player.opened.includes(dayId)) {
-      if (!isDayOpenable(player, dayId, now)) {
+      if (!isDayOpenable(player, dayId, clock)) {
         const blocker = blockingDay(player, dayId);
         throw createError({
           statusCode: 403,
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       ok: true,
       opened: player.opened,
       rank: ogonekRankFor(player.opened.length),
-      days: buildDayViews(player, now)
+      days: buildDayViews(player, clock)
     };
   });
 });

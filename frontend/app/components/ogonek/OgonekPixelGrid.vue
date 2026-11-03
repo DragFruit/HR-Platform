@@ -180,7 +180,18 @@ function applyOne(x: number, y: number, ch: string) {
   border: 2px solid #d99a2b;
   border-radius: 4px;
   width: max-content;
+  max-width: 100%;
   touch-action: none;
+}
+
+/*
+  На телефоне 16 клеток по 20px не влезают в модалку шириной 375px.
+  Клетка ужимается, и сетка остаётся целой — горизонтального скролла нет.
+*/
+@media (max-width: 460px) {
+  .og-grid {
+    --og-grid-px: min(var(--og-grid-px), calc((100vw - 76px) / var(--og-grid-n)));
+  }
 }
 
 .og-grid__cell {
