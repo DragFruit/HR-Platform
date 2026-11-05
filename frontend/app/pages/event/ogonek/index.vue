@@ -93,7 +93,7 @@
 
       <!-- Снег над календарём: снежинки участников с подписью при наведении -->
       <Teleport to="body">
-        <div v-if="festive" class="og-theme">
+        <div v-if="festive" class="og-theme" :class="{ 'og-snow-over': fullscreen }">
           <OgonekSnowField :authors="flakeAuthors" />
         </div>
       </Teleport>
@@ -792,9 +792,13 @@ onBeforeUnmount(() => {
 .og-btn--ghost { background: transparent; color: #ffd9d6; box-shadow: none; border: 2px solid var(--og-line); }
 
 /* ——— раскрытый день ——— */
+/* Снег в полном экране идёт поверх календаря, но под раскрытым днём */
+.og-snow-over { position: relative; z-index: 71; }
+
 .og-ov {
   position: fixed;
-  z-index: 50;
+  /* Выше слоя полного экрана (70), иначе день открывается под ним */
+  z-index: 75;
   background: var(--og-bg-2);
   border: 2px solid var(--og-gold);
   box-shadow: 0 0 0 4px var(--og-shade), 0 0 40px rgba(255, 207, 74, 0.25);
