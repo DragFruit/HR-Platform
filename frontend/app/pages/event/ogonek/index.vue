@@ -356,20 +356,37 @@ const px = (r: { left: number; top: number; width: number; height: number }) => 
   height: `${r.height}px`
 });
 
-/** Куда раскрывается день: сцена календаря, но целиком в экране. */
-function targetRect() {
+/**
+ * Куда раскрывается день: по центру видимой части страницы, а не в рамку
+ * календаря, иначе окно уезжает за экран и его приходится догонять скроллом.
+ * По ширине — как сцена, по высоте — по содержимому. Длинное содержимое
+ * прокручивается внутри окна.
+ */
+function overlayFrame() {
   const m = 8;
   const vw = window.innerWidth;
-  const vh = window.innerHeight;
   const minTop = (fullscreen.value ? 0 : stickyTop.value) + m;
   const s = stageRef.value?.getBoundingClientRect();
-  if (!s) return { left: m, top: minTop, width: vw - 2 * m, height: vh - minTop - m };
-  const top = Math.max(s.top, minTop);
-  const bottom = Math.min(s.bottom, vh - m);
-  const left = Math.max(s.left, m);
-  const right = Math.min(s.right, vw - m);
-  if (bottom - top < 420) return { left, top: minTop, width: right - left, height: vh - minTop - m };
-  return { left, top, width: right - left, height: bottom - top };
+  const left = s ? Math.max(s.left, m) : m;
+  const right = s ? Math.min(s.right, vw - m) : vw - m;
+  return { left, width: right - left, minTop, avail: window.innerHeight - minTop - m };
+}
+
+function targetRect(contentH?: number) {
+  const f = overlayFrame();
+  const height = Math.min(contentH ?? f.avail, f.avail);
+  return { left: f.left, top: f.minTop + (f.avail - height) / 2, width: f.width, height };
+}
+
+/** Меряем окно по содержимому и ставим по центру. */
+function fitOverlay() {
+  const ov = overlayRef.value;
+  if (!ov) return targetRect();
+  ov.style.height = 'auto';
+  const box = targetRect(ov.offsetHeight);
+  ov.style.height = `${box.height}px`;
+  overlayBox.value = px(box);
+  return box;
 }
 
 async function openDay(id: number) {
@@ -411,12 +428,13 @@ async function openDay(id: number) {
   puffOnClose = false;
   document.body.classList.add('og-locked-scroll');
   const from = sheets.get(id)?.el?.getBoundingClientRect();
-  const to = targetRect();
-  overlayBox.value = px(to);
+  overlayBox.value = px(targetRect());
   overlayReady.value = false;
   openId.value = id;
   await nextTick();
 
+  const to = fitOverlay();
+  await nextTick();
   const ov = overlayRef.value;
   if (ov && from && !reduce()) {
     await ov.animate(
@@ -425,7 +443,7 @@ async function openDay(id: number) {
     ).finished;
   }
   overlayReady.value = true;
-  closeRef.value?.focus();
+  closeRef.value?.focus({ preventScroll: true });
   busy.value = false;
 }
 
@@ -467,6 +485,9 @@ async function onSubmit(kind: string, payload: Record<string, unknown>) {
     if (kind === 'plug') decor.setPlugged(Boolean(payload.on));
     if (kind === 'hat') decor.setHat(Boolean(payload.on));
     await load();
+    // Содержимое могло вырасти: появился штамп, новая подпись.
+    await nextTick();
+    if (openId.value !== null) fitOverlay();
     if (kind === 'snowflake') {
       void decor.refresh();
       toast('Ваша снежинка уже летит');
@@ -573,7 +594,7 @@ function onKey(e: KeyboardEvent) {
 
 function onResize() {
   measureStickyTop();
-  if (openId.value !== null && !busy.value) overlayBox.value = px(targetRect());
+  if (openId.value !== null && !busy.value) fitOverlay();
 }
 
 /**
@@ -796,6 +817,7 @@ onBeforeUnmount(() => {
 .og-snow-over { position: relative; z-index: 71; }
 
 .og-ov {
+  box-sizing: border-box;
   position: fixed;
   /* Выше слоя полного экрана (70), иначе день открывается под ним */
   z-index: 75;
