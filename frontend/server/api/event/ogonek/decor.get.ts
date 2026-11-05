@@ -16,7 +16,7 @@ import { ogonekFlakeSprite } from '../../../../app/events/ogonek/snowflake';
  */
 export default defineEventHandler(async (event) => {
   const session = await getVbiSessionChecked(event);
-  if (!session) return { seasonOn: false, plugged: false, hat: false, authorFlakes: [] as string[][] };
+  if (!session) return { seasonOn: false, plugged: false, hat: false, everPlugged: false, authorFlakes: [] as string[][] };
 
   const clock = ogonekClock(event);
   const state = await readOgonekState();
@@ -36,6 +36,7 @@ export default defineEventHandler(async (event) => {
     seasonOn,
     plugged: Boolean(player?.plugged),
     hat: Boolean(player?.hat),
+    everPlugged: Boolean(player?.plugged || player?.done.includes(4)),
     authorFlakes
   };
 });

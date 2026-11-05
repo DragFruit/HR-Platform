@@ -79,6 +79,12 @@ export default defineEventHandler(async (event) => {
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 30);
 
+  // Сколько человек выбрали каждый образ: видно, не оденутся ли все одинаково.
+  const dresscodeCounts: Record<string, number> = {};
+  for (const p of state.players) {
+    if (p.dresscode) dresscodeCounts[p.dresscode] = (dresscodeCounts[p.dresscode] ?? 0) + 1;
+  }
+
   const toys = [...state.toys, ...demoToys()];
   const snowflakes = [...state.snowflakes, ...demoSnowflakes()];
 
@@ -102,6 +108,7 @@ export default defineEventHandler(async (event) => {
     feed,
     recipes,
     thanks: myThanks,
+    dresscodeCounts,
     treeCount: toys.length,
     snowflakeCount: snowflakes.length,
     // Авторские снежинки для снегопада над календарём — с 16 декабря (окно 12),

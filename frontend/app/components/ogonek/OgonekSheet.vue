@@ -374,6 +374,11 @@ defineExpose({ tear, shake, pulse, settle, el: rootRef });
 }
 
 @media (max-width: 620px) {
+  /* Узкая карточка: выше и с мелким предметом, иначе его срезает корешок */
+  .ogs { aspect-ratio: 3 / 4.7; }
+  .ogs__under { justify-content: flex-start; padding: calc(16% + 12px) 4px 6px; gap: 4px; }
+  .ogs__ico { max-width: 56px; }
+  .ogs__t { font-size: 12px; }
   .ogs__n { display: none; }
   .ogs__sun { display: none; }
   .ogs__sheet { justify-content: space-evenly; }

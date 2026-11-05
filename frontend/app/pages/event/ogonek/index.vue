@@ -24,7 +24,7 @@
               </div>
             </header>
 
-            <OgonekGarlandBar ref="garlandRef" :days="state.days" />
+            <OgonekGarlandBar ref="garlandRef" :days="state.days" :power="festive" />
 
             <main ref="stageRef" class="og-stage">
               <div class="og-stage__head">
@@ -93,7 +93,7 @@
 
       <!-- Снег над календарём: снежинки участников с подписью при наведении -->
       <Teleport to="body">
-        <div class="og-theme">
+        <div v-if="festive" class="og-theme">
           <OgonekSnowField :authors="flakeAuthors" />
         </div>
       </Teleport>
@@ -140,6 +140,7 @@
                   :colleagues="colleagues"
                   :recipes="state.recipes"
                   :thanks="state.thanks"
+                  :dresscode-counts="state.dresscodeCounts"
                   :tree-count="state.treeCount"
                   :snowflake-count="state.snowflakeCount"
                   :busy="busy"
@@ -223,6 +224,7 @@ type AdventState = {
     votes: number; mine: boolean; myVote: boolean;
   }[];
   thanks: { id: string; text: string; createdAt: string }[];
+  dresscodeCounts: Record<string, number>;
   treeCount: number;
   snowflakeCount: number;
   snowflakes?: { name: string; pixels: string[]; mine: boolean }[];
@@ -249,6 +251,7 @@ const toastText = ref('');
 
 const { employees, hydrate } = useEmployees();
 const decor = useOgonekDecor();
+const { festive } = decor;
 
 const stageRef = ref<HTMLElement | null>(null);
 const garlandRef = ref<{ puff: (id: number) => void; isVisible: (id: number) => boolean } | null>(null);
@@ -544,6 +547,7 @@ async function resetProgress() {
   try {
     await $fetch('/api/event/ogonek/submit', { method: 'POST', body: { kind: 'devReset' } });
     await load();
+    void decor.refresh();
     toast('Прогресс сброшен: листки снова целые, огоньки погашены');
   } catch (err) {
     toast(errText(err));

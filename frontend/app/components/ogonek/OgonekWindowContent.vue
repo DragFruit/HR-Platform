@@ -30,7 +30,7 @@
 
     <!-- 4. Вилка в розетку -->
     <section v-else-if="day.kind === 'plug'" class="og-win__body">
-      <OgonekPlugSocket :plugged="player.plugged" @change="(on) => send('plug', { on })" />
+      <OgonekPlugSocket :key="plugKey" :plugged="player.plugged" @change="(on) => send('plug', { on })" />
     </section>
 
     <!-- 5. Каток -->
@@ -160,14 +160,17 @@
         <span>Рецепт</span>
         <textarea v-model="recipeText" rows="5" maxlength="1200" placeholder="Что и в каком порядке" />
       </label>
-      <button
-        type="button"
-        class="og-btn"
-        :disabled="busy || !recipeTitle.trim() || !recipeText.trim()"
-        @click="send('recipe', { title: recipeTitle, text: recipeText })"
-      >
-        {{ player.recipeId ? 'Обновить рецепт' : 'Выложить рецепт' }}
-      </button>
+      <div class="og-win__row og-win__row--center">
+        <button
+          type="button"
+          class="og-btn"
+          :disabled="busy || !recipeTitle.trim() || !recipeText.trim()"
+          @click="send('recipe', { title: recipeTitle, text: recipeText })"
+        >
+          {{ player.recipeId ? 'Обновить рецепт' : 'Выложить рецепт' }}
+        </button>
+        <div v-if="day.done" class="og-stamp">ЗАСЧИТАНО · ОГОНЁК №{{ day.id }}</div>
+      </div>
 
       <h3 class="og-win__sub">Рецепты коллег</h3>
       <ul class="og-recipes">
@@ -196,20 +199,38 @@
 
     <!-- 8. Дресс-код -->
     <section v-else-if="day.kind === 'dresscode'" class="og-win__body">
-      <div class="og-chips">
+      <figure class="og-look-cover">
+        <img :src="OGONEK_DRESSCODE_COVER" alt="Коллеги в костюмах на новогоднем утреннике" loading="lazy" />
+        <figcaption>
+          <p v-for="rule in OGONEK_DRESSCODE_RULES" :key="rule">{{ rule }}</p>
+        </figcaption>
+      </figure>
+      <div class="og-looks">
         <button
-          v-for="c in DRESSCODE_OPTIONS"
-          :key="c"
+          v-for="look in OGONEK_LOOKS"
+          :key="look.id"
           type="button"
-          class="og-chip"
-          :class="{ 'is-active': player.dresscode === c }"
+          class="og-look"
+          :class="{ 'is-active': player.dresscode === look.title }"
+          :aria-pressed="player.dresscode === look.title"
           :disabled="busy"
-          @click="send('dresscode', { choice: player.dresscode === c ? '' : c })"
+          @click="send('dresscode', { choice: player.dresscode === look.title ? '' : look.title })"
         >
-          {{ c }}
+          <span v-if="look.images.length" class="og-look__imgs">
+            <img v-for="src in look.images" :key="src" :src="src" alt="" loading="lazy" />
+          </span>
+          <!-- Фото снежинки в таблице заказчика нет: показываем нашу, пиксельную -->
+          <span v-else class="og-look__imgs og-look__imgs--sprite">
+            <OgonekSprite :rows="OGONEK_OBJECTS.snowflake" :width="96" />
+          </span>
+          <span class="og-look__title">{{ look.title }}</span>
+          <span v-if="look.text" class="og-look__text">{{ look.text }}</span>
+          <span class="og-look__count">
+            {{ player.dresscode === look.title ? 'Ваш выбор · ' : '' }}выбрали: {{ dresscodeCounts[look.title] ?? 0 }}
+          </span>
         </button>
       </div>
-      <OgonekAwaiting :label="awaitingLabel" :text="day.awaiting" />
+      <p class="og-win__note">Условия конкурса костюмов ждём от заказчика.</p>
     </section>
 
     <!-- 19. Финал -->
@@ -221,6 +242,37 @@
         <li>Ваше звание: <strong>{{ player.rank }}</strong></li>
       </ul>
       <NuxtLink class="og-link" to="/event/ogonek/tree">Открыть ёлку целиком →</NuxtLink>
+
+      <h3 class="og-win__sub">Ещё спасибо</h3>
+      <p class="og-win__note">В последний день открыток можно отправить сколько угодно. Они тоже анонимны.</p>
+      <label class="og-field">
+        <span>Кому</span>
+        <select v-model.number="thanksTo">
+          <option :value="0" disabled>Выберите коллегу</option>
+          <option v-for="e in colleagues" :key="e.id" :value="e.id">
+            {{ e.name }}<template v-if="e.department"> · {{ e.department }}</template>
+          </option>
+        </select>
+      </label>
+      <label class="og-field">
+        <span>За что спасибо</span>
+        <textarea v-model="thanksText" rows="3" maxlength="400" placeholder="Коротко и честно" />
+      </label>
+      <button
+        type="button"
+        class="og-btn og-btn--ghost"
+        :disabled="busy || !thanksTo || !thanksText.trim()"
+        @click="sendThanks"
+      >
+        Отправить открытку
+      </button>
+      <p v-if="player.thanksSent" class="og-win__done">Отправлено открыток: {{ player.thanksSent }}.</p>
+    </section>
+
+    <!-- 3. Мерч: ковёр ткётся из нитей и оказывается на футболке -->
+    <section v-else-if="day.kind === 'merch'" class="og-win__body">
+      <OgonekMerchReveal />
+      <OgonekAwaiting :label="awaitingLabel" :text="day.awaiting" />
     </section>
 
     <!-- Окна, которые ждут материалы -->
@@ -251,7 +303,7 @@
       Зажечь огонёк
     </button>
 
-    <div v-if="day.done" class="og-stamp">ЗАСЧИТАНО · ОГОНЁК №{{ day.id }}</div>
+    <div v-if="day.done && day.kind !== 'olivier'" class="og-stamp">ЗАСЧИТАНО · ОГОНЁК №{{ day.id }}</div>
 
     <p v-if="error" class="og-win__error" role="alert">{{ error }}</p>
   </div>
@@ -265,8 +317,10 @@
  * Окна, где нужны материалы заказчика, не выдумывают содержимое, а честно
  * пишут, чего ждут (спека, раздел 6).
  */
+import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
 import { ogonekTreeSpot } from '~/events/ogonek/treePlacement';
 import { OGONEK_BASE_FLAKE, ogonekFlakeSprite } from '~/events/ogonek/snowflake';
+import { OGONEK_DRESSCODE_COVER, OGONEK_DRESSCODE_RULES, OGONEK_LOOKS } from '~/events/ogonek/dresscode';
 import type { OgonekDayView } from '~/events/ogonek/types';
 
 type PlayerView = {
@@ -296,6 +350,7 @@ const props = defineProps<{
     votes: number; mine: boolean; myVote: boolean;
   }[];
   thanks: { id: string; text: string; createdAt: string }[];
+  dresscodeCounts: Record<string, number>;
   treeCount: number;
   snowflakeCount: number;
   busy?: boolean;
@@ -308,14 +363,8 @@ const emit = defineEmits<{
 
 const error = ref('');
 
-/** Черновик: в спеке конкретных вариантов дресс-кода нет. */
-const DRESSCODE_OPTIONS = [
-  'Советский Новый год',
-  'Голубой огонёк',
-  'Свитер с оленями',
-  'Блеск и мишура',
-  'Ещё думаю'
-];
+/** Сервер отказал — вилка возвращается туда, где она на самом деле. */
+const plugKey = ref(0);
 
 /** Засчитывается прочтением: окно ждёт материалы или само по себе финал. */
 const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind === 'final');
@@ -373,7 +422,7 @@ function sendFlake() {
 function sendThanks() {
   // Поля чистит watch по props.player.thanksSent — только после ответа
   // сервера. Иначе на любой ошибке написанное пропадало бы вместе с формой.
-  send('thanks', { toEmployeeId: thanksTo.value, text: thanksText.value });
+  send('thanks', { toEmployeeId: thanksTo.value, text: thanksText.value, dayId: props.day.id });
 }
 
 function sendLetter() {
@@ -388,7 +437,12 @@ function formatDateTime(iso: string): string {
   return d.toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 }
 
-defineExpose({ setError: (m: string) => { error.value = m; } });
+defineExpose({
+  setError: (m: string) => {
+    error.value = m;
+    plugKey.value += 1;
+  }
+});
 
 /** Открытка ушла — очищаем форму. Признак успеха приходит с сервера. */
 watch(
@@ -441,6 +495,7 @@ watch(
 .og-win__body--row { flex-direction: row; align-items: center; gap: 20px; }
 .og-win__col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .og-win__row { display: flex; gap: 10px; flex-wrap: wrap; }
+.og-win__row--center { align-items: center; gap: 16px; }
 .og-win__editor { display: flex; gap: 20px; flex-wrap: wrap; }
 
 .og-field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--og-muted); }
@@ -516,20 +571,35 @@ watch(
 .og-recipes__text { margin: 6px 0; font-size: 15px; line-height: 1.5; }
 .og-recipes__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
 
-/* Варианты выбора — как варианты ответа в прототипе */
-.og-chips { display: grid; gap: 10px; }
-.og-chip {
+/* Дресс-код: обложка с правилами и карточки образов */
+.og-look-cover { margin: 0; position: relative; border: 2px solid var(--og-line); box-shadow: 4px 4px 0 var(--og-shade); }
+.og-look-cover img { display: block; width: 100%; max-height: 190px; object-fit: cover; object-position: center 12%; }
+.og-look-cover figcaption { padding: 10px 12px; background: var(--og-bg-3); }
+.og-look-cover p { margin: 0; font-family: var(--og-pixel); font-size: 10px; line-height: 1.8; color: var(--og-gold-soft); }
+
+.og-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.og-look {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 10px;
   text-align: left;
-  padding: 12px 14px;
   background: var(--og-bg-3);
   border: 2px solid var(--og-line);
-  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--og-shade);
   color: var(--og-snow);
   cursor: pointer;
-  font-size: 16px;
+  font: inherit;
 }
-.og-chip:hover { border-color: #d0505c; }
-.og-chip.is-active { border-color: var(--og-green); background: #1f4a2c; }
+.og-look:hover:not(:disabled) { border-color: #d0505c; }
+.og-look.is-active { border-color: var(--og-gold); }
+.og-look__imgs { display: flex; gap: 4px; }
+.og-look__imgs img { flex: 1; min-width: 0; height: 150px; object-fit: cover; object-position: center top; display: block; }
+.og-look__imgs--sprite { height: 150px; align-items: center; justify-content: center; background: var(--og-bg); }
+.og-look__title { font-family: var(--og-pixel); font-size: 10px; line-height: 1.6; color: var(--og-gold-soft); }
+.og-look__text { font-size: 14px; line-height: 1.35; color: #f6d9d6; }
+.og-look__count { margin-top: auto; font-size: 13px; color: var(--og-muted); }
+.og-look.is-active .og-look__count { color: var(--og-gold); }
 
 .og-final { margin: 0; padding-left: 18px; line-height: 1.8; color: var(--og-snow); }
 

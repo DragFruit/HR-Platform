@@ -93,7 +93,9 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const dayId = kind === 'complete' ? Number(body.dayId) : DAY_OF[kind];
+  // Открытку можно отправить и из финала (окно 19): без ограничения по числу.
+  const fromFinal = kind === 'thanks' && Number(body.dayId) === 19;
+  const dayId = kind === 'complete' ? Number(body.dayId) : fromFinal ? 19 : DAY_OF[kind];
   if (!dayId || !Number.isInteger(dayId) || dayId < 1 || dayId > 19) {
     throw createError({ statusCode: 400, statusMessage: 'unknown kind' });
   }
@@ -233,7 +235,8 @@ export default defineEventHandler(async (event) => {
         player.thanksSent += 1;
         // Имени отправителя нет и в хранилище: открытка анонимна.
         pushOgonekFeed(state, 'thanks', 'кто-то сказал спасибо коллеге', null);
-        done();
+        // Финал засчитывается своей кнопкой, открытка его не закрывает.
+        if (!fromFinal) done();
         return { ok: true, thanksSent: player.thanksSent };
       }
       case 'letter': {
