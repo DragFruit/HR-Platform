@@ -4,6 +4,14 @@
 
 ## 2026-11-13
 
+### Бой на офисном сервере: host-gate замков, ключи Битрикса, первый релиз
+
+- Host-gate боя (`frontend/app/utils/productionHost.ts`) знает новый адрес `178.176.44.94`: бой снаружи `:9180` (проброс на nginx `:80`), а также `:80` / без порта. Стейдж `:8080` на том же IP боем не считается. Старый `45.12.74.25` (без порта / `:80`) оставлен. Замки не ослаблены: `useAppEnv` / `useLaunchScope` на хосте боя по-прежнему форсят `production` + `vacations`. nginx передаёт `Host` как `$http_host`, поэтому порт виден и на SSR. Тест: `tests/unit/productionHost.test.ts`.
+- В `/etc/vbi-hr/bitrix-production.env` и `/etc/vbi-hr/bitrix.env` заполнены `BITRIX_WEBHOOK_URL`, `WG_EASY_PASSWORD`, `AWG_EASY_PASSWORD`, `EMAIL_LOGIN`, `EMAIL_PASSWORD`, `TELEGRAM_BOT_TOKEN`; на стейдже ещё `BITRIX_CLIENT_ID` / `BITRIX_CLIENT_SECRET` (приложение «VBI HR Platform (staging)»). Пусты: OAuth-приложение боя (`BITRIX_CLIENT_ID` / `BITRIX_CLIENT_SECRET`), `BITRIX_SERVICE_REFRESH_TOKEN`, `BITRIX_IMBOT_ID`, мост колокольчика, `VIBE_CREDENTIALS_SECRET`, Yandex GPT, `TELEGRAM_CHAT_ID`.
+- Безопасность при пустой базе: автоматическое обслуживание отпусков (повтор, перенос, сверка в 04:00 МСК) трогает только заявки `synced` / `failed` / `skipped` с `end` ≥ сегодня и ничего не удаляет; в сиде из git таких нет, поэтому в Bitrix оно ничего не пишет. Колокольчики и бот на бою невозможны, пока пусты `BITRIX_SERVICE_REFRESH_TOKEN` и `BITRIX_IMBOT_ID`; таймеры напоминаний `vbi-hr-vacation-*-reminders.timer` на новом сервере не включены. Включать их только после восстановления данных.
+- В Битриксе нужно поменять «Путь вашего обработчика»: бой `http://178.176.44.94:9180/api/auth/bitrix/callback`, стейдж `http://178.176.44.94:8080/api/auth/bitrix/callback`.
+- Проверить: `http://178.176.44.94:9180/` открывается, в меню открыты только разделы пилота «отпуска»; `http://178.176.44.94:8080/` без замков.
+
 ### Новый сервер vbi-free вместо упавшего VPS 45.12.74.25
 
 - Старый VPS (Beget) недоступен, данные с него пока не получены. Подготовлен офисный сервер vbi-free (Ubuntu 24.04, LAN `192.168.1.55`, снаружи `178.176.44.94`): бой `:9180` → 80, стейдж `:8080`, SSH `:4522` → 22. Только база и раскладка, кода и данных приложения на сервере ещё нет.
