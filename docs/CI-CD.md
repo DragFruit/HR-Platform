@@ -3,7 +3,7 @@
 Два независимых контура. **С компьютера на сервер напрямую не деплоим** — только через GitLab.
 
 ```
-[Mac] ──push──► [GitLab] ──CI/CD──► [сервер 45.38.3.116:4522]
+[Mac] ──push──► [GitLab] ──CI/CD──► [сервер 178.176.44.94:4522]
          задача 1          задача 2
 ```
 
@@ -64,7 +64,7 @@ ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
 | Variable | Value | Protected | Masked |
 |----------|-------|-----------|--------|
 | `SSH_PRIVATE_KEY` | файл ключа (см. ниже) | ✓ | **не Masked** — только File или Protected |
-| `DEPLOY_HOST` | `45.38.3.116` | ✓ | — |
+| `DEPLOY_HOST` | `178.176.44.94` | ✓ | — |
 | `DEPLOY_PORT` | `4522` | ✓ | — |
 | `DEPLOY_USER` | `deploy` | ✓ | — |
 
@@ -124,8 +124,8 @@ bash deploy/scripts/verify-ci-key-local.sh
 
 | Стенд | URL | systemd |
 |-------|-----|---------|
-| Тест | http://45.38.3.116:8080 | `vbi-hr-staging` |
-| Бой | http://45.38.3.116:9180 | `vbi-hr` |
+| Тест | http://178.176.44.94:8080 | `vbi-hr-staging` |
+| Бой | http://178.176.44.94:9180 | `vbi-hr` |
 
 ### Стадии pipeline
 
@@ -189,7 +189,7 @@ bash scripts/gitlab-play-deploy-production.sh
 
 Без токена — exit `1` и подсказка, куда добавить `GITLAB_TOKEN`.
 
-**Важно:** это запуск **деплоя на бой** (`45.38.3.116:9180` → сервер :80). Перед play убедитесь, что в pipeline успешен `build:production` и изменения действительно должны идти на production (см. правила deploy-production в репозитории).
+**Важно:** это запуск **деплоя на бой** (`178.176.44.94:9180` → сервер :80). Перед play убедитесь, что в pipeline успешен `build:production` и изменения действительно должны идти на production (см. правила deploy-production в репозитории).
 
 ---
 
@@ -210,7 +210,7 @@ bash scripts/gitlab-play-deploy-production.sh
 Ручная проверка деплоя (экстренно, не основной поток):
 
 ```bash
-export DEPLOY_HOST=45.38.3.116 DEPLOY_PORT=4522 DEPLOY_USER=deploy
+export DEPLOY_HOST=178.176.44.94 DEPLOY_PORT=4522 DEPLOY_USER=deploy
 bash deploy/scripts/build-and-deploy.sh staging
 ```
 

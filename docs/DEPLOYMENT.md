@@ -2,14 +2,14 @@
 
 ## Сервер (с 13.11.2026)
 
-Старый VPS `45.12.74.25` (Beget) недоступен. Новый: офисный сервер **vbi-free**, Ubuntu 24.04, 2 CPU, 3,8 ГБ RAM + 4 ГБ swap, 53 ГБ диска, LAN `192.168.1.55`. Снаружи через NAT роутера на внешнем IP `45.38.3.116`:
+Старый VPS `45.12.74.25` (Beget) недоступен. Новый: офисный сервер **vbi-free**, Ubuntu 24.04, 2 CPU, 3,8 ГБ RAM + 4 ГБ swap, 53 ГБ диска, LAN `192.168.1.55`. Снаружи через NAT роутера на внешнем IP `178.176.44.94`:
 
 | Внешний порт | → сервер | Что |
 |---|---|---|
 | `9180` | `80` | бой (nginx → `127.0.0.1:3300`, `vbi-hr`) |
 | `9443` | `443` | зарезервировано под HTTPS (сертификата пока нет) |
 | `8080` | `8080` | стейдж (nginx → `127.0.0.1:3301`, `vbi-hr-staging`) |
-| `4522` | `22` | SSH (CI деплоит `deploy@45.38.3.116 -p 4522`) |
+| `4522` | `22` | SSH (CI деплоит `deploy@178.176.44.94 -p 4522`) |
 
 Раскладка та же, что на старом VPS: `/var/www/vbi-hr` и `/var/www/vbi-hr-staging` (владелец `deploy`), unit-ы и таймеры из `deploy/systemd/`, nginx из `deploy/nginx/*.conf.example` (`server_name _`, `default_server`), sudoers `deploy/sudoers/vbi-hr-deploy`, PostgreSQL 16 через `deploy/scripts/install-postgres.sh` (базы `vbi_prod`, `vbi_staging`, только localhost). Часовой пояс сервера UTC (расписания таймеров в UTC). Node 22 (NodeSource), ufw: 22, 80, 443, 8080; unattended-upgrades включены.
 

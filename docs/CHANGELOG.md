@@ -6,13 +6,13 @@
 
 ### Новый сервер vbi-free вместо упавшего VPS 45.12.74.25
 
-- Старый VPS (Beget) недоступен, данные с него пока не получены. Подготовлен офисный сервер vbi-free (Ubuntu 24.04, LAN `192.168.1.55`, снаружи `45.38.3.116`): бой `:9180` → 80, стейдж `:8080`, SSH `:4522` → 22. Только база и раскладка, кода и данных приложения на сервере ещё нет.
+- Старый VPS (Beget) недоступен, данные с него пока не получены. Подготовлен офисный сервер vbi-free (Ubuntu 24.04, LAN `192.168.1.55`, снаружи `178.176.44.94`): бой `:9180` → 80, стейдж `:8080`, SSH `:4522` → 22. Только база и раскладка, кода и данных приложения на сервере ещё нет.
 - Поставлено: Node 22 (NodeSource), nginx, PostgreSQL 16 (`install-postgres.sh`, базы `vbi_prod` / `vbi_staging`), ufw (22, 80, 443, 8080), unattended-upgrades, часовой пояс UTC. Пользователь `deploy` с ключом CI `vbi_hr_deploy` и sudoers из `deploy/sudoers/vbi-hr-deploy`, unit-ы и таймеры из `deploy/systemd/`, сайты nginx из `deploy/nginx/`.
 - Env `/etc/vbi-hr/bitrix-production.env` и `/etc/vbi-hr/bitrix.env` (`root:deploy 640`): на бою все `DB_*=1` и `NUXT_PUBLIC_LAUNCH_SCOPE=vacations`, на стейдже `NUXT_PUBLIC_QA_TEST_DEPARTMENT=1`. Секреты Битрикса, VPN, Yandex GPT, почты и Telegram пустые с пометкой `TODO-SECRET`.
-- CI: `DEPLOY_HOST=45.38.3.116`, новая переменная `DEPLOY_PORT=4522` (`.gitlab-ci.yml`, `ssh-keyscan -p`); `deploy/scripts/deploy-remote.sh` и `rollback-remote.sh` принимают `DEPLOY_PORT` (по умолчанию 22).
+- CI: `DEPLOY_HOST=178.176.44.94`, новая переменная `DEPLOY_PORT=4522` (`.gitlab-ci.yml`, `ssh-keyscan -p`); `deploy/scripts/deploy-remote.sh` и `rollback-remote.sh` принимают `DEPLOY_PORT` (по умолчанию 22).
 - Документация: `docs/DEPLOYMENT.md` (раздел «Сервер (с 13.11.2026)»), `docs/CI-CD.md`.
 - Осталось: проброс портов на роутере, `SSH_PRIVATE_KEY` в новом GitLab, восстановление данных, внешняя копия бэкапов, HTTPS. Host-gate замков меню всё ещё на старом IP.
-- Проверить: после проброса портов `ssh -i ~/.ssh/vbi_hr_deploy -p 4522 deploy@45.38.3.116 'sudo systemctl is-active vbi-hr-staging'`, затем push в `staging` и зелёный `deploy:staging`.
+- Проверить: после проброса портов `ssh -i ~/.ssh/vbi_hr_deploy -p 4522 deploy@178.176.44.94 'sudo systemctl is-active vbi-hr-staging'`, затем push в `staging` и зелёный `deploy:staging`.
 
 ## 2026-11-05
 
