@@ -53,6 +53,11 @@ elif [[ -f "${HOME}/.ssh/vbi_hr_deploy" ]]; then
   RSYNC_SSH+=( -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes )
   SCP_CMD=(scp -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes)
 fi
+# SSH-порт сервера (офисный сервер за NAT: внешний 4522 → 22). По умолчанию 22.
+DEPLOY_PORT="${DEPLOY_PORT:-22}"
+SSH_CMD+=( -p "${DEPLOY_PORT}" )
+RSYNC_SSH+=( -p "${DEPLOY_PORT}" )
+SCP_CMD+=( -P "${DEPLOY_PORT}" )
 
 echo "→ ${ENV}: rsync .output → ${REMOTE}:${DEPLOY_PATH}/.output/"
 "${SSH_CMD[@]}" "${REMOTE}" "sudo chown -R '${DEPLOY_USER}:www-data' '${DEPLOY_PATH}'"

@@ -3,11 +3,11 @@
 Два независимых контура. **С компьютера на сервер напрямую не деплоим** — только через GitLab.
 
 ```
-[Mac] ──push──► [GitLab] ──CI/CD──► [VPS 45.12.74.25]
+[Mac] ──push──► [GitLab] ──CI/CD──► [сервер 45.38.3.116:4522]
          задача 1          задача 2
 ```
 
-Подробности сервера: [DEPLOYMENT.md](DEPLOYMENT.md), Beget: [../deploy/SETUP-ILNIZUMAK.md](../deploy/SETUP-ILNIZUMAK.md).
+Подробности сервера: [DEPLOYMENT.md](DEPLOYMENT.md#сервер-с-13112026) (с 13.11.2026 офисный сервер vbi-free, старый VPS 45.12.74.25 недоступен), старый Beget: [../deploy/SETUP-ILNIZUMAK.md](../deploy/SETUP-ILNIZUMAK.md).
 
 ---
 
@@ -64,8 +64,11 @@ ssh -i ~/.ssh/vbi_hr_deploy -p 2222 -T git@ilnizumak.beget.app
 | Variable | Value | Protected | Masked |
 |----------|-------|-----------|--------|
 | `SSH_PRIVATE_KEY` | файл ключа (см. ниже) | ✓ | **не Masked** — только File или Protected |
-| `DEPLOY_HOST` | `45.12.74.25` | ✓ | — |
+| `DEPLOY_HOST` | `45.38.3.116` | ✓ | — |
+| `DEPLOY_PORT` | `4522` | ✓ | — |
 | `DEPLOY_USER` | `deploy` | ✓ | — |
+
+`DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER` уже заданы в `.gitlab-ci.yml`. Если в проекте GitLab есть одноимённые переменные, они перекрывают yml: удалить их или поставить новые значения. Ключ CI тот же `~/.ssh/vbi_hr_deploy`, его публичная часть уже в `authorized_keys` у `deploy` на новом сервере.
 
 **Проверка ключа на Mac перед настройкой GitLab:**
 
@@ -121,8 +124,8 @@ bash deploy/scripts/verify-ci-key-local.sh
 
 | Стенд | URL | systemd |
 |-------|-----|---------|
-| Тест | http://45.12.74.25:8080 | `vbi-hr-staging` |
-| Бой | http://45.12.74.25 | `vbi-hr` |
+| Тест | http://45.38.3.116:8080 | `vbi-hr-staging` |
+| Бой | http://45.38.3.116:9180 | `vbi-hr` |
 
 ### Стадии pipeline
 
@@ -186,7 +189,7 @@ bash scripts/gitlab-play-deploy-production.sh
 
 Без токена — exit `1` и подсказка, куда добавить `GITLAB_TOKEN`.
 
-**Важно:** это запуск **деплоя на бой** (`45.12.74.25`, порт 80). Перед play убедитесь, что в pipeline успешен `build:production` и изменения действительно должны идти на production (см. правила deploy-production в репозитории).
+**Важно:** это запуск **деплоя на бой** (`45.38.3.116:9180` → сервер :80). Перед play убедитесь, что в pipeline успешен `build:production` и изменения действительно должны идти на production (см. правила deploy-production в репозитории).
 
 ---
 
@@ -207,7 +210,7 @@ bash scripts/gitlab-play-deploy-production.sh
 Ручная проверка деплоя (экстренно, не основной поток):
 
 ```bash
-export DEPLOY_HOST=45.12.74.25 DEPLOY_USER=deploy
+export DEPLOY_HOST=45.38.3.116 DEPLOY_PORT=4522 DEPLOY_USER=deploy
 bash deploy/scripts/build-and-deploy.sh staging
 ```
 

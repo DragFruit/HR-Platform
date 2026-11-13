@@ -1,6 +1,6 @@
 # GitLab CI/CD — задача 2: Git → сервер
 # Задача 1 (Mac → Git): scripts/push-to-gitlab.sh, docs/CI-CD.md
-# Variables: SSH_PRIVATE_KEY, DEPLOY_HOST, DEPLOY_USER
+# Variables: SSH_PRIVATE_KEY, DEPLOY_HOST, DEPLOY_USER, DEPLOY_PORT
 
 stages:
   - test
@@ -12,7 +12,9 @@ default:
 
 variables:
   NPM_CONFIG_CACHE: $CI_PROJECT_DIR/.npm
-  DEPLOY_HOST: "45.12.74.25"
+  # Офисный сервер vbi-free (LAN 192.168.1.55), снаружи через NAT: 4522 → 22
+  DEPLOY_HOST: "45.38.3.116"
+  DEPLOY_PORT: "4522"
   DEPLOY_USER: "deploy"
 
 # Один кэш на все ветки, пока не меняется package-lock: меньше копий node_modules на диске раннера.
@@ -102,7 +104,7 @@ build:production:
   before_script:
     - apk add --no-cache openssh-client rsync bash openssl
     - . deploy/scripts/setup-ci-ssh-key.sh
-    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+    - ssh-keyscan -H -p "$DEPLOY_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
 .deploy:staging:
   extends: .deploy

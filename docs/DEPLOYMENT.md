@@ -1,5 +1,24 @@
 # Деплой: тест и бой
 
+## Сервер (с 13.11.2026)
+
+Старый VPS `45.12.74.25` (Beget) недоступен. Новый: офисный сервер **vbi-free**, Ubuntu 24.04, 2 CPU, 3,8 ГБ RAM + 4 ГБ swap, 53 ГБ диска, LAN `192.168.1.55`. Снаружи через NAT роутера на внешнем IP `45.38.3.116`:
+
+| Внешний порт | → сервер | Что |
+|---|---|---|
+| `9180` | `80` | бой (nginx → `127.0.0.1:3300`, `vbi-hr`) |
+| `9443` | `443` | зарезервировано под HTTPS (сертификата пока нет) |
+| `8080` | `8080` | стейдж (nginx → `127.0.0.1:3301`, `vbi-hr-staging`) |
+| `4522` | `22` | SSH (CI деплоит `deploy@45.38.3.116 -p 4522`) |
+
+Раскладка та же, что на старом VPS: `/var/www/vbi-hr` и `/var/www/vbi-hr-staging` (владелец `deploy`), unit-ы и таймеры из `deploy/systemd/`, nginx из `deploy/nginx/*.conf.example` (`server_name _`, `default_server`), sudoers `deploy/sudoers/vbi-hr-deploy`, PostgreSQL 16 через `deploy/scripts/install-postgres.sh` (базы `vbi_prod`, `vbi_staging`, только localhost). Часовой пояс сервера UTC (расписания таймеров в UTC). Node 22 (NodeSource), ufw: 22, 80, 443, 8080; unattended-upgrades включены.
+
+Env-файлы `/etc/vbi-hr/bitrix-production.env` и `/etc/vbi-hr/bitrix.env`: владелец `root:deploy`, права `640` (их читает процесс от `deploy` и `deploy-remote.sh`). Секреты, которых нет на сервере, помечены `TODO-SECRET` и пустые: заполнить вручную, затем деплой (он копирует файл в `<стенд>/.env`). В боевом env стоят все флаги `DB_*=1` и `NUXT_PUBLIC_LAUNCH_SCOPE=vacations`.
+
+SSH-порт в скриптах: `DEPLOY_PORT` (по умолчанию 22) в `deploy-remote.sh` и `rollback-remote.sh`, в `.gitlab-ci.yml` задан `4522`.
+
+**Ещё не сделано:** проброс портов на роутере, `SSH_PRIVATE_KEY` в новом GitLab, восстановление данных (`server/data` и дампы базы) со старого сервера, копия бэкапов вне сервера (`BACKUP_REMOTE` в `/etc/vbi-hr/backup.env`), HTTPS. Host-gate замков меню (`frontend/app/utils/productionHost.ts`) по-прежнему привязан к `45.12.74.25`: на новом адресе бой держится только на запечённом `LAUNCH_SCOPE=vacations`, менять gate только по решению заказчика.
+
 ## Ветки Git
 
 | Ветка | Назначение | `NUXT_PUBLIC_APP_ENV` | Порт на сервере |

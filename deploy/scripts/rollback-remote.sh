@@ -31,6 +31,7 @@ if [[ -n "${DEPLOY_SSH_KEY:-}" && -f "${DEPLOY_SSH_KEY}" ]]; then
 elif [[ -f "${HOME}/.ssh/vbi_hr_deploy" ]]; then
   SSH_CMD+=( -i "${HOME}/.ssh/vbi_hr_deploy" -o IdentitiesOnly=yes )
 fi
+SSH_CMD+=( -p "${DEPLOY_PORT:-22}" )
 
 echo "→ rollback ${ENV}: ${REMOTE}:${DEPLOY_PATH}/.output.prev → .output"
 "${SSH_CMD[@]}" "${REMOTE}" bash -s -- "${DEPLOY_PATH}" "${SERVICE}" <<'REMOTE'
