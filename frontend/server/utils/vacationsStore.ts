@@ -9,6 +9,7 @@ import {
 import { getDb, isDbEnabled } from '../db/client';
 import { createPgVacationsRepo } from '../db/repositories/vacations';
 import { createJsonVacationsRepo, VACATIONS_JSON_FILE } from '../vacations/jsonStore';
+import { stripQaPersonVacations } from './qaProdContent';
 import type { VacationsRepo, VacationWriteContext } from '../vacations/types';
 
 export type { VacationRequest, VacationReservation };
@@ -133,7 +134,8 @@ export async function readVacations(): Promise<VacationStoreState> {
 /** Полное состояние, включая `yearRollover` (только для перехода года). */
 export async function readVacationsWithServiceFields(): Promise<VacationStoreState> {
   const raw = await (await vacationsRepo()).readRaw();
-  return mergeQaTestVacationState(normalizeVacationStoreState(raw));
+  // бой: заявки QA-сотрудников из сида git не показываем (на стенде с QA-флагом — no-op)
+  return mergeQaTestVacationState(stripQaPersonVacations(normalizeVacationStoreState(raw)));
 }
 
 /** Перезаписать состояние целиком (rollover). Возвращает то же состояние, что передали. */
@@ -158,7 +160,7 @@ export async function mutateVacations(
 ): Promise<VacationStoreState> {
   let result!: VacationStoreState;
   await (await vacationsRepo()).mutateRaw(async (raw) => {
-    const current = mergeQaTestVacationState(normalizeVacationStoreState(raw));
+    const current = mergeQaTestVacationState(stripQaPersonVacations(normalizeVacationStoreState(raw)));
     result = await mutator(current);
     return stripQaFromVacationState(result);
   }, ctx);

@@ -6,6 +6,7 @@ import { loadVacationRows, lockVacations } from '../db/repositories/vacations';
 import { vacationRequests, vacationReservations, vacationState, vacationsJsonImports } from '../db/schema';
 import { normalizeVacationStoreState } from '../utils/vacationsStore';
 import { readVacationsJson } from './jsonStore';
+import { stripQaPersonVacations } from '../utils/qaProdContent';
 import { rowToRequest, rowToReservation, rowsToState, stateToRows } from './rowMapping';
 
 export const VACATIONS_IMPORT_SOURCE = 'vacations.json';
@@ -50,7 +51,8 @@ export async function importVacationsFromJson(
       };
     }
 
-    const raw = await readVacationsJson(file);
+    // бой: заявки и брони QA-сотрудников из сида git в базу не попадают
+    const raw = stripQaPersonVacations(await readVacationsJson(file));
     const rows = stateToRows(raw);
     const fileCount =
       Object.values(raw.requestsByYear ?? {}).reduce((n, l) => n + (Array.isArray(l) ? l.length : 0), 0) +

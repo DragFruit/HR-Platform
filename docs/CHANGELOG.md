@@ -2,6 +2,16 @@
 
 Формат: кратко по датам. При каждой заметной фиче добавляйте запись сверху.
 
+## 2026-11-16
+
+### Бой: тестовые данные QA-отдела не попадают из сидов git
+
+- Причина: новый бой на офисном сервере стартовал с пустой базой, деплой положил `ideas.json` и `vacations.json` из git, а первый старт импортировал их в Postgres. В сидах git лежали записи QA-отдела «Тестировщики»: идея «Мяя» (Даша Тестова) и 11 заявок на отпуск Даши, Константина и Василия Тестовых (id 1003, 1005, 1103–1111).
+- Исправление: при выключенном QA-флаге (`NUXT_PUBLIC_QA_TEST_DEPARTMENT` не `1`, бой) контент QA-сотрудников вырезается при импорте JSON → Postgres и при чтении/записи: идеи (по ФИО автора), заявки и брони отпусков (по `employee_id` или ФИО), лента активности (по `employee_id`, сид юбиляра 9100), строки сотрудников с QA-id (`mergeQaTestEmployees`). Признак — фиксированный состав QA-отдела (`buildQaTestEmployees`, `isQaTestPersonName`), не слова «тест». На localhost и стейдже с QA-флагом всё как раньше.
+- Пути: `frontend/server/utils/qaProdContent.ts` (новый), `frontend/app/data/qaTestDepartment.ts`, `frontend/server/utils/{ideasStore,vacationsStore,profileStore}.ts`, `frontend/server/ideas/domain.ts`, `frontend/server/vacations/importJson.ts`, `frontend/server/profile/importJson.ts`.
+- На бою вручную разово удалены эти записи из базы `vbi_prod` и из `server/data/{ideas,vacations}.json`; бэкап до чистки: `/var/backups/vbi-hr/pre-qa-cleanup-20261116.sql` и `pre-qa-cleanup-20261116-data.tar.gz`.
+- Проверка: `npx vitest run tests/unit/qaProdContent.test.ts`; бой `/ideas` без «Мяя», в графике отпусков нет Тестовых.
+
 ## 2026-11-13
 
 ### Бой на офисном сервере: host-gate замков, ключи Битрикса, первый релиз

@@ -13,6 +13,7 @@ import {
   type StateImportResult
 } from '../db/repositories/keyedState';
 import { writeJsonAtomic } from '../utils/atomicJson';
+import { stripQaAuthoredIdeas } from '../utils/qaProdContent';
 
 /**
  * Этап 7: банк идей (server/data/ideas.json) → схема ideas. Маппинг «объект ↔ строка»
@@ -137,5 +138,7 @@ export async function importIdeasFromJson(
   def: KeyedStateDef,
   file = IDEAS_JSON_FILE
 ): Promise<StateImportResult> {
-  return importStateFromJson(db, def, { source: 'ideas.json', jsonImports: ideasJsonImports, raw: await readIdeasFileForImport(file) });
+  // бой: идеи QA-сотрудников из сида git в базу не попадают
+  const raw = stripQaAuthoredIdeas((await readIdeasFileForImport(file)) as RawState);
+  return importStateFromJson(db, def, { source: 'ideas.json', jsonImports: ideasJsonImports, raw });
 }

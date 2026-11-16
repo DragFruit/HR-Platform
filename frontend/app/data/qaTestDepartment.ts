@@ -77,6 +77,25 @@ export function isQaTestEmployeeRow(row: { id: number }): boolean {
   return isQaTestEmployeeId(row.id);
 }
 
+const normalizeQaPersonName = (name: unknown) =>
+  String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ');
+
+let qaPersonNameKeys: Set<string> | null = null;
+
+/**
+ * ФИО из фиксированного состава QA-отдела (buildQaTestEmployees), точное совпадение.
+ * Это не поиск по слову «тест»: «Тестовый бриф» или «Тестов Иван» не совпадут.
+ */
+export function isQaTestPersonName(name: unknown): boolean {
+  qaPersonNameKeys ??= new Set(buildQaTestEmployees().map((e) => normalizeQaPersonName(e.name)));
+  const key = normalizeQaPersonName(name);
+  return key !== '' && qaPersonNameKeys.has(key);
+}
+
 export function buildQaTestEmployees(): Employee[] {
   return [
     {
@@ -192,7 +211,8 @@ export function buildQaTestEmployees(): Employee[] {
 }
 
 export function mergeQaTestEmployees<T extends { id: number }>(list: T[]): T[] {
-  if (!isQaTestDepartmentEnabledFromEnv()) return list;
+  /** Бой (QA-флаг выключен): QA-строки, попавшие в хранилище из сида git, не показываем. */
+  if (!isQaTestDepartmentEnabledFromEnv()) return stripQaTestEmployees(list);
   const withoutQa = list.filter((row) => !isQaTestEmployeeRow(row));
   return [...withoutQa, ...(buildQaTestEmployees() as T[])];
 }

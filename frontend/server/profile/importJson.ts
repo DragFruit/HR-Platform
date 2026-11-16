@@ -20,6 +20,7 @@ import {
   readWishlistsFile,
   wishlistEntriesFromFile
 } from './domains';
+import { stripQaProfileActivity } from '../utils/qaProdContent';
 
 /**
  * Разовые импорты этапа 6 (каждый — своя транзакция под advisory lock своего домена, маркер в
@@ -46,7 +47,7 @@ export async function importProfileActivityFromJson(db: Db, file = PROFILE_ACTIV
   return importKeyedListFromJson(db, PROFILE_ACTIVITY_DEF, {
     source: 'profile-activity.json',
     jsonImports: profileJsonImports,
-    items: await readProfileActivityFileItems(file)
+    items: stripQaProfileActivity(await readProfileActivityFileItems(file))
   });
 }
 

@@ -3,6 +3,7 @@ import type { KeyedListWriteContext } from '../db/repositories/keyedList';
 import { createJsonStateRepo, createStateGate, type KeyedStateDef, type RawState } from '../db/repositories/keyedState';
 import { IDEAS_STATE_DEF, ideasJsonIo } from '../ideas/domain';
 import { normalizeIdeaCategory, type Idea } from '../../app/composables/useIdeasBank';
+import { stripQaAuthoredIdeas } from './qaProdContent';
 
 export type IdeaVoteDirection = 'up' | 'down';
 export type IdeaVotesByUser = Record<string, IdeaVoteDirection>;
@@ -117,7 +118,7 @@ async function withAttachmentFlags(state: IdeasStoreState): Promise<IdeasStoreSt
 
 export async function readIdeas(): Promise<IdeasStoreState> {
   const raw = await (await gate.repo()).read();
-  return withAttachmentFlags(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>));
+  return withAttachmentFlags(stripQaAuthoredIdeas(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>)));
 }
 
 export async function writeIdeas(state: IdeasStoreState, ctx: KeyedListWriteContext = {}): Promise<IdeasStoreState> {
@@ -133,7 +134,8 @@ export async function mutateIdeas(
   ctx: KeyedListWriteContext = {}
 ): Promise<IdeasStoreState> {
   return (await gate.repo()).mutate(async (raw) => {
-    const current = await withAttachmentFlags(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>));
+    // бой: идеи QA-сотрудников не видны и уходят из хранилища при первой записи
+    const current = await withAttachmentFlags(stripQaAuthoredIdeas(normalizeIdeasStoreState(raw as Partial<IdeasStoreState>)));
     const next = normalizeIdeasStoreState(await mutator(current));
     return { next: next as unknown as RawState, result: next };
   }, ctx);

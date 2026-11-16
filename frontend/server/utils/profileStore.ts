@@ -20,6 +20,7 @@ import {
   normalizeProfileActivityKind
 } from '../profile/domains';
 import seed from '../data/profile-activity.json';
+import { stripQaProfileActivity } from './qaProdContent';
 
 /**
  * Хранилища профиля (этап 6): аватары, лента активности, награды продаж, пароли Vibe.
@@ -60,7 +61,7 @@ function profileGate<T>(label: string, def: KeyedListDef<T>, makeJson: () => Key
 
 /** Начальная лента из git (server/data/profile-activity.json в сборке) — как было до этапа 6. */
 export const profileActivitySeedItems = (): ProfileActivityRaw[] =>
-  ((seed as { items?: ProfileActivityRaw[] }).items || []).map((row) => ({
+  stripQaProfileActivity((seed as { items?: ProfileActivityRaw[] }).items || []).map((row) => ({
     ...row,
     kind: normalizeProfileActivityKind(row.kind as string),
     source: row.source === 'manual' ? 'manual' : 'seed'
