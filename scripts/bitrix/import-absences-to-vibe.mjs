@@ -29,6 +29,13 @@ const APPLY = args.includes('--apply');
 /** Заявки Vibe «на согласовании» с теми же датами, что элемент в графике Bitrix → approved + привязка. */
 const APPROVE_PENDING = args.includes('--approve-pending');
 const FROM = (args.find((a) => a.startsWith('--from=')) || '--from=2026-01-01').slice(7);
+const idList = (flag) =>
+  (args.find((a) => a.startsWith(`--${flag}=`)) || '').slice(flag.length + 3).split(',').map(Number).filter((n) => n > 0);
+/** Добавить в справочник сотрудников Bitrix с этими id (как импорт новых в bitrixSync.ts). Только по решению заказчика. */
+const ADD_EMPLOYEES = idList('add-employees');
+/** Ограничить импорт отпусков этими пользователями Bitrix. */
+const ONLY_USERS = idList('only-users');
+const CORE_WRITE_LOCK_KEY = 72_461_003;
 const TODAY = new Date().toISOString().slice(0, 10);
 const REASON = `bitrix-import-${TODAY}`;
 const METHOD = 'bitrix-import';
@@ -216,22 +223,167 @@ const absences = elements.map((el) => ({
 const typeCounts = {};
 for (const a of absences) typeCounts[a.type || '(пусто)'] = (typeCounts[a.type || '(пусто)'] || 0) + 1;
 const vacations = absences.filter((a) => a.type === TYPE_ENUM && a.start && a.end);
-const inScope = vacations.filter((a) => a.start >= FROM);
-const earlier = vacations.length - inScope.length;
+const inScope = vacations.filter((a) => a.start >= FROM && (!ONLY_USERS.length || ONLY_USERS.includes(a.userId)));
+const earlier = vacations.filter((a) => a.start < FROM && (!ONLY_USERS.length || ONLY_USERS.includes(a.userId))).length;
+
+// ---------- Сотрудники: добавление выбранных людей из Bitrix ----------
+/** PERSONAL_BIRTHDAY → YYYY-MM-DD или MM-DD (как normalizeBitrixBirthday в server/utils/bitrixBirthday.ts). */
+function normalizeBirthday(raw, now = new Date()) {
+  const value = raw == null || raw === false ? '' : String(raw).trim();
+  if (!value) return null;
+  const pad = (n) => String(n).padStart(2, '0');
+  const dim = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const build = (y, m, d) => {
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= dim[m - 1])) return null;
+    if (y != null && y > 1900 && y <= now.getFullYear()) {
+      const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+      if (m === 2 && d === 29 && !leap) return null;
+      return `${y}-${pad(m)}-${pad(d)}`;
+    }
+    return `${pad(m)}-${pad(d)}`;
+  };
+  let m = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T\s])/);
+  if (m) return build(+m[1], +m[2], +m[3]);
+  m = value.match(/^--(\d{1,2})-(\d{1,2})$/);
+  if (m) return build(null, +m[1], +m[2]);
+  m = value.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?(?:$|\s)/);
+  if (m) return build(m[3] ? +m[3] : null, +m[2], +m[1]);
+  return null;
+}
+
+/**
+ * Новый сотрудник в форме импорта bitrixSync.ts (ветка importNew): id = bitrix id, ФИО «Фамилия Имя»,
+ * должность, руководитель = UF_HEAD отдела, дата приёма = DATE_REGISTER, email, день рождения,
+ * account_role ''. Отдел: в Vibe отделы свои («Digital», «DEV», «SEO / ORM»), а не названия Bitrix,
+ * и от них зависят группы отпусков и лимиты. Поэтому берём отдел коллег с тем же руководителем
+ * (или отдел самого руководителя); если таких нет, название из Bitrix, как в приложении.
+ * Остаток на 01.01, юрлицо и форма договора не заполняются (в Bitrix их нет).
+ */
+async function addEmployees(users, departments) {
+  const deptName = new Map(departments.map((d) => [Number(d.ID), String(d.NAME || '').trim() || `Отдел ${d.ID}`]));
+  const deptHead = new Map(departments.filter((d) => Number(d.UF_HEAD) > 0).map((d) => [Number(d.ID), Number(d.UF_HEAD)]));
+  const deptParent = new Map(departments.filter((d) => Number(d.PARENT) > 0).map((d) => [Number(d.ID), Number(d.PARENT)]));
+  /** Руководитель: UF_HEAD отдела; нет его (или это сам человек) → вверх по PARENT. */
+  const headFor = (deptId, self) => {
+    for (let id = deptId, guard = 0; id && guard < 20; id = deptParent.get(id), guard += 1) {
+      const h = deptHead.get(id);
+      if (h && h !== self) return h;
+    }
+    return null;
+  };
+  const primaryDept = (u) => (Array.isArray(u?.UF_DEPARTMENT) && u.UF_DEPARTMENT.length ? Number(u.UF_DEPARTMENT[0]) : null);
+  const userById = new Map(users.map((u) => [Number(u.ID), u]));
+  const userName = new Map(users.map((u) => [Number(u.ID), [u.LAST_NAME, u.NAME].map((x) => String(x || '').trim()).filter(Boolean).join(' ')]));
+  const current = await sql`select id, name, department, manager, bitrix_user_id from core.employees`;
+  const denied = await sql`select bitrix_user_id, platform_user_id, employee_id, name from core.access_denylist`;
+  const rows = [];
+  for (const bid of ADD_EMPLOYEES) {
+    const u = users.find((x) => Number(x.ID) === bid);
+    if (!u) throw new Error(`пользователь Bitrix ${bid} не найден среди активных`);
+    if (current.some((e) => Number(e.bitrix_user_id) === bid || Number(e.id) === bid)) {
+      console.log(`  = ${bid} ${userName.get(bid)}: уже в справочнике`);
+      continue;
+    }
+    if (denied.some((d) => [d.bitrix_user_id, d.platform_user_id, d.employee_id].map(Number).includes(bid))) {
+      throw new Error(`${bid} ${userName.get(bid)} в стоп-листе доступа: добавление только через приложение`);
+    }
+    const deptId = primaryDept(u);
+    const headId = deptId ? headFor(deptId, bid) : null;
+    const manager = headId ? userName.get(headId) || '' : '';
+    const bitrixDept = deptId ? deptName.get(deptId) || '' : '';
+    const majority = (list) => {
+      const counts = {};
+      for (const e of list) if (e.department) counts[e.department] = (counts[e.department] || 0) + 1;
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    };
+    // коллеги по тому же отделу Bitrix, затем по тому же руководителю
+    const sameDept = majority(current.filter((e) => e.bitrix_user_id && primaryDept(userById.get(Number(e.bitrix_user_id))) === deptId));
+    const sameManager = majority(current.filter((e) => manager && nameKey(e.manager) === nameKey(manager)));
+    const head = current.find((e) => manager && nameKey(e.name) === nameKey(manager));
+    const peerDept = sameDept || sameManager;
+    const department = peerDept || head?.department || bitrixDept;
+    const item = {
+      id: bid,
+      bitrix_user_id: bid,
+      name: userName.get(bid) || `Сотрудник ${bid}`,
+      title: String(u.WORK_POSITION || '').trim(),
+      department,
+      manager,
+      hired_at: String(u.DATE_REGISTER || '').slice(0, 10) || TODAY,
+      platform_user_id: bid,
+      email: String(u.EMAIL || '').trim().toLowerCase(),
+      birthday: normalizeBirthday(u.PERSONAL_BIRTHDAY),
+      account_role: ''
+    };
+    rows.push(item);
+    console.log(
+      `  + ${bid} ${item.name} | ${item.title} | отдел ${department} (Bitrix: ${bitrixDept}; ${peerDept ? 'как у коллег' : head ? 'как у руководителя' : 'из Bitrix'}) | рук. ${manager || '-'} | приём ${item.hired_at}`
+    );
+  }
+  if (!APPLY || !rows.length) return;
+  await sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(${CORE_WRITE_LOCK_KEY})`;
+    const [{ max }] = await tx`select coalesce(max(position), -1) as max from core.employees`;
+    let position = Number(max);
+    for (const item of rows) {
+      const [exists] = await tx`select id from core.employees where id = ${item.id} or bitrix_user_id = ${item.id}`;
+      if (exists) continue;
+      position += 1;
+      await tx`insert into core.employees ${tx({
+        id: item.id,
+        name: item.name,
+        title: item.title,
+        department: item.department,
+        manager: item.manager,
+        hired_at: item.hired_at,
+        birthday: item.birthday,
+        platform_user_id: item.platform_user_id,
+        bitrix_user_id: item.bitrix_user_id,
+        email: item.email,
+        account_role: item.account_role,
+        position,
+        source_keys: Object.keys(item)
+      })}`;
+      await tx`insert into core.employee_assignment_history ${tx({
+        employee_id: item.id,
+        department: item.department,
+        title: item.title,
+        manager: item.manager,
+        manager_id: null,
+        valid_from: new Date(),
+        source: 'added'
+      })}`;
+      await tx`insert into audit.audit_log ${tx({
+        action: 'create',
+        entity: 'core.employee',
+        entity_id: String(item.id),
+        after: tx.json({ reason: `bitrix-add-employee-${TODAY}`, ...item })
+      })}`;
+    }
+  });
+  console.log(`Сотрудников добавлено: ${rows.length}`);
+}
 
 // ---------- 2. Vibe: сотрудники и заявки ----------
 const postgres = await loadPostgres();
 const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 try {
+  const [users, departments] = await Promise.all([
+    bitrixAll('user.get', {
+      filter: { ACTIVE: true },
+      select: ['ID', 'NAME', 'LAST_NAME', 'EMAIL', 'WORK_POSITION', 'DATE_REGISTER', 'PERSONAL_BIRTHDAY', 'UF_DEPARTMENT']
+    }),
+    bitrixAll('department.get', { select: ['ID', 'NAME', 'UF_HEAD', 'PARENT'] })
+  ]);
+  if (ADD_EMPLOYEES.length) await addEmployees(users, departments);
+  if (args.includes('--skip-vacations')) {
+    console.log('--skip-vacations: отпуска не трогаем');
+  } else {
   const employees = await sql`select id, name, bitrix_user_id from core.employees`;
   const byBitrix = new Map();
   for (const e of employees) if (e.bitrix_user_id) byBitrix.set(Number(e.bitrix_user_id), e);
 
   // Сверка справочника (только отчёт; новых людей не добавляем, решает заказчик)
-  const [users, departments] = await Promise.all([
-    bitrixAll('user.get', { filter: { ACTIVE: true }, select: ['ID', 'NAME', 'LAST_NAME', 'WORK_POSITION', 'UF_DEPARTMENT', 'DATE_REGISTER'] }),
-    bitrixAll('department.get', { select: ['ID', 'NAME'] })
-  ]);
   const deptName = new Map(departments.map((d) => [String(d.ID), String(d.NAME || '')]));
   const activeIds = new Set(users.map((u) => Number(u.ID)));
   const notInVibe = users.filter((u) => !byBitrix.has(Number(u.ID)));
@@ -456,6 +608,7 @@ try {
     for (const r of inserted) console.log(`  #${r.id} ${r.employee} ${r.start}–${r.end} ← Bitrix ${r.bitrix_absence_id}`);
   } else {
     console.log('Нечего импортировать');
+  }
   }
 } finally {
   await sql.end();
