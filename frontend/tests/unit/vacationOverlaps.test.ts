@@ -134,6 +134,6 @@ describe('dailyAbsences / absenceLoadLevel', () => {
     const map = dailyAbsences([req(1, 'A', '2026-12-30', '2027-01-02')], '2026-12-29', '2027-01-03');
     expect([...map.keys()]).toHaveLength(6);
     expect(map.get('2027-01-01')).toHaveLength(1);
-    expect([0, 1, 2, 3, 7].map(absenceLoadLevel)).toEqual([0, 1, 2, 3, 3]);
+    expect([0, 1, 2, 3, 4, 5, 9].map(absenceLoadLevel)).toEqual([0, 1, 2, 3, 4, 5, 5]);
   });
 });

@@ -9,10 +9,10 @@
       <div class="vac-ovl-tl__row vac-ovl-tl__row--head">
         <span class="vac-ovl-tl__name vac-ovl-tl__name--head">{{ monthLabel }}</span>
         <span
-          v-for="day in days"
+          v-for="(day, idx) in days"
           :key="`h-${day.iso}`"
           class="vac-ovl-tl__day"
-          :class="{ 'is-weekend': day.weekend, 'is-month-start': day.monthStart }"
+          :class="[{ 'is-weekend': day.weekend, 'is-month-start': day.monthStart }, clashEdge(idx)]"
         >{{ day.day }}</span>
       </div>
 
@@ -22,7 +22,7 @@
           v-for="(state, idx) in selfCells"
           :key="`s-${days[idx]!.iso}`"
           class="vac-ovl-tl__cell"
-          :class="[state ? `is-${state}` : '', edgeClass(selfCells, idx), { 'is-weekend': days[idx]!.weekend }]"
+          :class="[state ? `is-${state}` : '', edgeClass(selfCells, idx), clashEdge(idx), { 'is-weekend': days[idx]!.weekend }]"
           :title="cellTitle(days[idx]!.iso, state)"
         />
       </div>
@@ -35,7 +35,7 @@
           v-for="(state, idx) in row.cells"
           :key="`${row.employee}-${days[idx]!.iso}`"
           class="vac-ovl-tl__cell"
-          :class="[state ? `is-${state}` : '', edgeClass(row.cells, idx), { 'is-weekend': days[idx]!.weekend }]"
+          :class="[state ? `is-${state}` : '', edgeClass(row.cells, idx), clashEdge(idx), { 'is-weekend': days[idx]!.weekend }]"
           :title="cellTitle(days[idx]!.iso, state)"
         />
       </div>
@@ -48,7 +48,7 @@ import { formatEmployeeShortName } from '~/utils/employeeName';
 import { isRuHoliday, MONTHS_RU } from '~/utils/vacationCalendar';
 import { isoDaysBetween, type VacationOverlapEntry } from '~/utils/vacationOverlaps';
 
-type CellState = '' | 'approved' | 'pending' | 'clash' | 'self' | 'self-clash';
+type CellState = '' | 'approved' | 'pending' | 'self';
 
 const props = defineProps<{
   request: { employee: string; start: string; end: string };
@@ -109,18 +109,27 @@ const rows = computed(() => {
     cells: days.value.map(({ iso }): CellState => {
       const hit = list.filter((e) => iso >= e.start && iso <= e.end);
       if (!hit.length) return '';
-      if (inRequest(iso)) return 'clash';
       return hit.some((e) => e.status === 'approved') ? 'approved' : 'pending';
     })
   }));
 });
 
+/** Заявка всегда своим цветом (на согласовании), без красного: статус должен читаться. */
 const selfCells = computed(() =>
-  days.value.map(({ iso }, idx): CellState => {
-    if (!inRequest(iso)) return '';
-    return rows.value.some((row) => row.cells[idx] === 'clash') ? 'self-clash' : 'self';
-  })
+  days.value.map(({ iso }): CellState => (inRequest(iso) ? 'self' : ''))
 );
+
+/** Дни пересечения: внутри заявки и кто-то из коллег тоже отсутствует. */
+const clashDays = computed(() =>
+  days.value.map(({ iso }, idx) => inRequest(iso) && rows.value.some((row) => Boolean(row.cells[idx])))
+);
+
+/** Границы зоны пересечения: вертикальный пунктир через все строки. */
+const clashEdge = (idx: number) => {
+  const flags = clashDays.value;
+  if (!flags[idx]) return '';
+  return ['is-clash-col', !flags[idx - 1] ? 'is-clash-start' : '', !flags[idx + 1] ? 'is-clash-end' : ''].join(' ');
+};
 
 /** Скругление краёв непрерывного отрезка. */
 const edgeClass = (cells: CellState[], idx: number) => {
@@ -138,11 +147,11 @@ const cellTitle = (iso: string, state: CellState) => {
   const label: Record<Exclude<CellState, ''>, string> = {
     approved: 'согласованный отпуск',
     pending: 'заявка на согласовании',
-    clash: 'пересечение',
-    self: 'эта заявка',
-    'self-clash': 'эта заявка, есть пересечение'
+    self: 'эта заявка'
   };
-  return state ? `${fmtDate(iso)}: ${label[state]}` : fmtDate(iso);
+  const clash = days.value.findIndex((d) => d.iso === iso);
+  const suffix = clash >= 0 && clashDays.value[clash] ? ', пересечение' : '';
+  return state ? `${fmtDate(iso)}: ${label[state]}${suffix}` : fmtDate(iso);
 };
 
 const shortName = (name: string) => formatEmployeeShortName(name);

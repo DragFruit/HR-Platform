@@ -9317,11 +9317,10 @@ button.org-unit-head--link:hover {
 }
 
 .vac-ovl-tl {
-  --vac-ovl-name-w: 128px;
+  --vac-ovl-name-w: 190px;
   --vac-ovl-row-h: 20px;
   --vac-ovl-approved: #22c55e; /* как .vac-detailed-bar.approved */
   --vac-ovl-pending: #f59e0b; /* как .vac-detailed-bar.pending */
-  --vac-ovl-clash: var(--vac-pill-rejected-bg);
   flex: 1 1 100%;
   min-width: 0;
   border: 1px solid var(--border);
@@ -9340,10 +9339,10 @@ button.org-unit-head--link:hover {
 
 .vac-ovl-tl__row {
   display: grid;
-  grid-template-columns: var(--vac-ovl-name-w) repeat(var(--vac-ovl-days), minmax(14px, 1fr));
+  grid-template-columns: var(--vac-ovl-name-w) repeat(var(--vac-ovl-days), minmax(12px, 1fr));
   align-items: center;
   height: var(--vac-ovl-row-h);
-  min-width: calc(var(--vac-ovl-name-w) + var(--vac-ovl-days) * 14px);
+  min-width: calc(var(--vac-ovl-name-w) + var(--vac-ovl-days) * 12px);
 }
 
 .vac-ovl-tl__row--head {
@@ -9440,9 +9439,15 @@ button.org-unit-head--link:hover {
   background: var(--vac-ovl-pending);
 }
 
-.vac-ovl-tl__cell.is-clash::after,
-.vac-ovl-tl__cell.is-self-clash::after {
-  background: var(--vac-ovl-clash);
+/* Зона пересечения: вертикальный пунктир по границам через все строки, бары своим цветом статуса. */
+.vac-ovl-tl__cell.is-clash-start,
+.vac-ovl-tl__day.is-clash-start {
+  border-left: 1.5px dashed var(--text-muted);
+}
+
+.vac-ovl-tl__cell.is-clash-end,
+.vac-ovl-tl__day.is-clash-end {
+  border-right: 1.5px dashed var(--text-muted);
 }
 
 .vac-ovl-tl__cell.is-run-start::after {
@@ -10765,7 +10770,7 @@ button.org-unit-head--link:hover {
       var(--vac-detailed-head-r4, 0px)
   );
   z-index: 8;
-  height: 14px;
+  height: 16px;
   padding: 0;
   background: #f0f2f5;
 }
@@ -10777,30 +10782,49 @@ button.org-unit-head--link:hover {
   text-align: left;
   font-size: 0.68rem;
   font-weight: 600;
-  line-height: 14px;
+  line-height: 16px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-load > th.vac-load-cell {
   cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 var(--vac-grid-line);
 }
 
+/* Число отсутствующих в клетке; чем больше людей, тем ярче красный. */
 .vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-0 {
   background: #ffffff;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-1 {
-  background: #fde4a8;
+  background: #fcebeb;
+  color: #791f1f;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-2 {
-  background: #f39a54;
+  background: #f7c1c1;
+  color: #791f1f;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-3 {
-  background: var(--vac-pill-rejected-bg);
+  background: #f09595;
+  color: #501313;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-4 {
+  background: #e24b4a;
+  color: #ffffff;
+}
+
+.vac-detailed-timeline tr.vac-detailed-head-load > th.is-load-5 {
+  background: #c62828;
+  color: #ffffff;
 }
 
 .vac-detailed-timeline tr.vac-detailed-head-load > th.vac-load-cell:hover,

@@ -374,14 +374,14 @@ const overlapsByRequestId = computed(() => {
 
 const overlapsFor = (req: VacationRequest) => overlapsByRequestId.value.get(req.id) ?? [];
 
-/** Таймлайн пересечений раскрыт по умолчанию; свёрнутые карточки — по клику на плашку. */
-const collapsedOverlapIds = ref(new Set<number>());
-const isOverlapOpen = (id: number) => !collapsedOverlapIds.value.has(id);
+/** Таймлайн пересечений скрыт по умолчанию (меньше шума); раскрывается кликом по плашке. */
+const expandedOverlapIds = ref(new Set<number>());
+const isOverlapOpen = (id: number) => expandedOverlapIds.value.has(id);
 const toggleOverlap = (id: number) => {
-  const next = new Set(collapsedOverlapIds.value);
+  const next = new Set(expandedOverlapIds.value);
   if (next.has(id)) next.delete(id);
   else next.add(id);
-  collapsedOverlapIds.value = next;
+  expandedOverlapIds.value = next;
 };
 
 /** Все заявки всех лет: остаток для следующего года считается через переходящий остаток. */

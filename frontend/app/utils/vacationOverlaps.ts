@@ -186,5 +186,5 @@ export const dailyAbsences = (
 };
 
 /** Уровень загрузки клетки: 0 / 1 / 2 / 3+ человек. */
-export const absenceLoadLevel = (count: number): 0 | 1 | 2 | 3 =>
-  count <= 0 ? 0 : count >= 3 ? 3 : (count as 1 | 2);
+export const absenceLoadLevel = (count: number): 0 | 1 | 2 | 3 | 4 | 5 =>
+  count <= 0 ? 0 : count >= 5 ? 5 : (Math.floor(count) as 1 | 2 | 3 | 4);

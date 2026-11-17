@@ -131,7 +131,7 @@
               :class="[`is-load-${loadLevelFor(cell.iso)}`, { 'is-selected': loadPopover?.iso === cell.iso }]"
               :title="loadTitle(cell.iso)"
               @click="openLoadPopover(cell.iso, $event)"
-            />
+            >{{ loadCountFor(cell.iso) || '' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -560,7 +560,8 @@ const loadByDay = computed(() => {
   );
 });
 
-const loadLevelFor = (iso: string) => absenceLoadLevel(loadByDay.value.get(iso)?.length ?? 0);
+const loadCountFor = (iso: string) => loadByDay.value.get(iso)?.length ?? 0;
+const loadLevelFor = (iso: string) => absenceLoadLevel(loadCountFor(iso));
 
 const formatLoadDate = (iso: string) =>
   parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' });
