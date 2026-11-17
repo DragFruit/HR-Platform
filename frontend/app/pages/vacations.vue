@@ -22,6 +22,7 @@
             :requests="yearRequests"
             :reservations="yearReservations"
             :get-month-entries="getMonthEntries"
+            show-load-strip
           />
         </div>
       </div>

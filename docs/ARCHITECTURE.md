@@ -429,6 +429,8 @@ OrgLink        // from/to ports + optional mid
 
 **Режимы UI на `/vacations`:** сотрудник — `EmployeeVacationPanel` + `EmployeeVacationAside`. У сотрудников с командным календарём — вкладки «Мой календарь / Общий» (`VacationCalendarScopeToggle`, `useEmployeeVacationTeamView`, `vacationTeamScope.ts`); «Общий» — `VacationTeamCalendar` variant `employee-team` (в т.ч. весь отдел DEV для сотрудников без права согласования). Руководитель/HR — `ManagerVacationAside`: переключатель «Режим» (slide toggle) всегда сверху; в режиме «Сотрудник» под ним тот же `EmployeeVacationAside`, что у сотрудника; в режиме «Руководитель» — статистика команды и блок обучалки `ManagerVacationTrainingPrompt` под «Заявки».
 
+**Пересечения отпусков (согласующий):** `utils/vacationOverlaps.ts` — чистые функции `findRequestOverlaps`, `countOverlapPeople`, `resolveOverlapScope` (`team` для руководителя / `requester-department` для админа), `dailyAbsences`, `absenceLoadLevel`; тест `tests/unit/vacationOverlaps.test.ts`. UI: `VacationOverlapBadge.vue` + `VacationOverlapTimeline.vue` в карточках согласования (`VacationsManagerExperience.vue`, `pages/admin/vacations.vue`), полоса загрузки — строка `vac-detailed-head-load` в шапке `VacationDetailedCalendar.vue` (проп `showLoadStrip`, пробрасывает `VacationTeamCalendar`). Старый `VacOverlapPopover` остаётся только у сотрудника (`EmployeeVacationPanel`).
+
 **Обучалки отпусков:** сотрудник — `useVacationTraining` + `VacationTrainingPrompt/Overlay`; руководитель — `useManagerVacationTraining` + `ManagerVacationTrainingPrompt/Overlay`. Для роли руководителя ачивка «Календарь отпусков» выдаётся только после завершения обоих квестов.
 
 Референс бизнес-логики: `_vacation_source/График отпусков/`.

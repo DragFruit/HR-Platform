@@ -27,6 +27,7 @@
         :get-month-entries="getMonthEntries"
         :show-department-daily-counts="showDepartmentDailyCounts"
         :highlight-employee-names="vacationFocusNames"
+        show-load-strip
         @update:view-mode="managerViewMode = $event"
       />
 
@@ -64,10 +65,11 @@
                   >
                     {{ approvalStepLabel(entry.request) }}
                   </span>
-                  <VacOverlapPopover
-                    v-if="overlapDetails(entry.request).length"
-                    :items="overlapDetails(entry.request)"
-                    :format-range="formatRange"
+                  <VacationOverlapBadge
+                    v-if="overlapsFor(entry.request).length"
+                    :count="countOverlapPeople(overlapsFor(entry.request))"
+                    :open="isOverlapOpen(entry.request.id)"
+                    @toggle="toggleOverlap(entry.request.id)"
                   />
                   <VacAdvancePopover
                     v-if="advanceAssessment(entry.request).status === 'advance'"
@@ -88,6 +90,11 @@
                   </button>
                 </template>
               </div>
+              <VacationOverlapTimeline
+                v-if="overlapsFor(entry.request).length && isOverlapOpen(entry.request.id)"
+                :request="entry.request"
+                :entries="overlapsFor(entry.request)"
+              />
             </div>
           </li>
         </ul>
@@ -126,7 +133,13 @@ import {
   isVacationGroupLead,
   resolveManagerCalendarDepartments
 } from '~/utils/vacationDepartmentGroups';
-import { findVacationOverlapDetails, namesOnVacationOnIso, todayIso } from '~/utils/vacationCalendar';
+import { namesOnVacationOnIso, todayIso } from '~/utils/vacationCalendar';
+import {
+  countOverlapPeople,
+  findRequestOverlaps,
+  resolveOverlapScope,
+  type VacationOverlapEntry
+} from '~/utils/vacationOverlaps';
 import { assessVacationBalance } from '~/utils/vacationBalance';
 import { requestsAroundYear } from '~/utils/vacationBookingYears';
 
@@ -339,13 +352,37 @@ const employeeInitials = (name: string) => {
   return (parts[0] ?? '?').slice(0, 2).toUpperCase();
 };
 
-const overlapScopeNames = computed(() => {
-  if (usesScopedTeamView.value) return calendarEmployeeNames.value;
-  return undefined;
+/**
+ * Пересечения в карточке согласования: руководитель видит свою команду (как в календаре),
+ * админ/HR/«видит всё» видит отдел заявителя.
+ */
+const overlapsByRequestId = computed(() => {
+  const map = new Map<number, VacationOverlapEntry[]>();
+  for (const { request } of approvalPanelEntries.value) {
+    const scope = usesScopedTeamView.value
+      ? resolveOverlapScope({ mode: 'team', teamNames: calendarEmployeeNames.value })
+      : resolveOverlapScope({
+          mode: 'requester-department',
+          requesterName: request.employee,
+          employees: employees.value
+        });
+    const pool = requestsAroundYear(state.value.requestsByYear, Number(request.start.slice(0, 4)));
+    map.set(request.id, findRequestOverlaps(request, pool, scope));
+  }
+  return map;
 });
 
-const overlapDetails = (req: VacationRequest) =>
-  findVacationOverlapDetails(req, requestsAroundYear(state.value.requestsByYear, Number(req.start.slice(0, 4))), overlapScopeNames.value);
+const overlapsFor = (req: VacationRequest) => overlapsByRequestId.value.get(req.id) ?? [];
+
+/** Таймлайн пересечений раскрыт по умолчанию; свёрнутые карточки — по клику на плашку. */
+const collapsedOverlapIds = ref(new Set<number>());
+const isOverlapOpen = (id: number) => !collapsedOverlapIds.value.has(id);
+const toggleOverlap = (id: number) => {
+  const next = new Set(collapsedOverlapIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  collapsedOverlapIds.value = next;
+};
 
 /** Все заявки всех лет: остаток для следующего года считается через переходящий остаток. */
 const allRealRequests = computed(() => Object.values(state.value.requestsByYear).flat());

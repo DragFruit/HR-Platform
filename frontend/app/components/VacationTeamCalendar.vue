@@ -41,6 +41,7 @@
               :show-department-daily-counts="showDepartmentDailyCounts"
               :show-title-column="showTitleColumn"
               :highlight-employee-names="highlightEmployeeNames"
+              :show-load-strip="showLoadStrip"
               title-column-toggleable
               @toggle-title-column="toggleTitleColumn"
             />
@@ -132,8 +133,11 @@ const props = withDefaults(
     showDepartmentDailyCounts?: boolean;
     /** Подсветка строк (например «сейчас в отпуске»); null = выкл. */
     highlightEmployeeNames?: string[] | null;
+    /** Полоса загрузки «Отсутствуют» над детальной сеткой (руководитель/админ). */
+    showLoadStrip?: boolean;
   }>(),
   {
+    showLoadStrip: false,
     variant: 'manager',
     defaultViewMode: 'detailed',
     hideChrome: false,

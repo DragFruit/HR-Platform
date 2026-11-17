@@ -116,6 +116,23 @@
               {{ departmentCountForDay(cell.iso) || '' }}
             </th>
           </tr>
+          <tr v-if="showLoadStrip" class="vac-detailed-head-load">
+            <th
+              :colspan="showTitleColumn ? 3 : 2"
+              class="vac-load-label"
+              title="Сколько человек отсутствует в день (согласованные и ожидающие)"
+            >
+              Отсутствуют
+            </th>
+            <th
+              v-for="cell in yearDays"
+              :key="`l-${cell.iso}`"
+              class="vac-load-cell"
+              :class="[`is-load-${loadLevelFor(cell.iso)}`, { 'is-selected': loadPopover?.iso === cell.iso }]"
+              :title="loadTitle(cell.iso)"
+              @click="openLoadPopover(cell.iso, $event)"
+            />
+          </tr>
         </thead>
         <tbody>
           <tr
@@ -156,6 +173,36 @@
         </tbody>
       </table>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="loadPopover"
+        ref="loadPopoverRef"
+        class="vac-load-popover"
+        role="dialog"
+        :aria-label="`Отсутствуют ${formatLoadDate(loadPopover.iso)}`"
+        :style="{ top: `${loadPopover.top}px`, left: `${loadPopover.left}px` }"
+      >
+        <div class="vac-load-popover__head">
+          <strong>{{ formatLoadDate(loadPopover.iso) }}</strong>
+          <span class="vac-load-popover__count">{{ loadPopoverList.length }}</span>
+          <button
+            type="button"
+            class="vac-load-popover__close"
+            aria-label="Закрыть"
+            @click="loadPopover = null"
+          >×</button>
+        </div>
+        <p v-if="!loadPopoverList.length" class="vac-load-popover__empty">Никто не отсутствует</p>
+        <ul v-else class="list-reset vac-load-popover__list">
+          <li v-for="item in loadPopoverList" :key="item.employee">
+            <span class="vac-load-popover__dot" :class="item.status" aria-hidden="true" />
+            {{ formatEmployeeShortName(item.employee) }}
+            <span class="vac-load-popover__status">{{ item.status === 'approved' ? 'согласован' : 'ожидает' }}</span>
+          </li>
+        </ul>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -167,6 +214,7 @@ import { vacationBelongsToEmployee } from '~/utils/vacationEmployeeRef';
 import { MONTHS_RU, WEEKDAYS_SHORT, isRuHoliday, isWeekendDay } from '~/utils/vacationCalendar';
 import { buildFontFromStyle, measureCssText } from '~/utils/measureCssText';
 import { calcEmployeeBalance } from '~/utils/vacationBalance';
+import { absenceLoadLevel, dailyAbsences, type DayAbsence } from '~/utils/vacationOverlaps';
 import {
   formatReservationLabel,
   type VacationReservation
@@ -213,8 +261,11 @@ const props = withDefaults(
     titleColumnToggleable?: boolean;
     /** Подсветка ФИО; null = режим выкл. */
     highlightEmployeeNames?: string[] | null;
+    /** Полоса загрузки над сеткой: сколько людей отсутствует в день (руководитель/админ). */
+    showLoadStrip?: boolean;
   }>(),
   {
+    showLoadStrip: false,
     showDepartmentDailyCounts: false,
     showTitleColumn: true,
     titleColumnToggleable: false,
@@ -260,6 +311,8 @@ const measureStickyHeaderHeights = () => {
   if (rowWeekdays && tableRef.value) {
     tableRef.value.style.setProperty('--vac-detailed-head-r3', `${rowWeekdays.offsetHeight}px`);
   }
+  const rowCounts = tableRef.value?.querySelector('.vac-detailed-head-counts') as HTMLElement | null;
+  tableRef.value?.style.setProperty('--vac-detailed-head-r4', `${rowCounts?.offsetHeight ?? 0}px`);
 };
 
 const maxDomTextWidth = (root: HTMLElement | null | undefined) => {
@@ -496,6 +549,62 @@ const departmentCountTitle = (iso: string) => {
   return `${count} в отпуске`;
 };
 
+/** Полоса загрузки: кто отсутствует по дням среди видимых в календаре сотрудников. */
+const loadByDay = computed(() => {
+  if (!props.showLoadStrip) return new Map<string, DayAbsence[]>();
+  return dailyAbsences(
+    props.requests,
+    `${props.year}-01-01`,
+    `${props.year}-12-31`,
+    visibleEmployeeNames.value
+  );
+});
+
+const loadLevelFor = (iso: string) => absenceLoadLevel(loadByDay.value.get(iso)?.length ?? 0);
+
+const formatLoadDate = (iso: string) =>
+  parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' });
+
+const loadTitle = (iso: string) => {
+  const list = loadByDay.value.get(iso) ?? [];
+  if (!list.length) return `${formatLoadDate(iso)}: все на месте`;
+  return `${formatLoadDate(iso)}: ${list.map((a) => formatEmployeeShortName(a.employee)).join(', ')}`;
+};
+
+const loadPopover = ref<{ iso: string; top: number; left: number } | null>(null);
+const loadPopoverRef = ref<HTMLElement | null>(null);
+const loadPopoverList = computed(() =>
+  loadPopover.value ? loadByDay.value.get(loadPopover.value.iso) ?? [] : []
+);
+
+const LOAD_POPOVER_W = 240;
+
+const openLoadPopover = (iso: string, event: MouseEvent) => {
+  if (loadPopover.value?.iso === iso) {
+    loadPopover.value = null;
+    return;
+  }
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const left = Math.min(
+    Math.max(8, rect.left + rect.width / 2 - 24),
+    window.innerWidth - LOAD_POPOVER_W - 8
+  );
+  loadPopover.value = { iso, top: rect.bottom + 6, left };
+};
+
+const onLoadPopoverOutside = (event: Event) => {
+  if (!loadPopover.value) return;
+  const target = event.target as HTMLElement | null;
+  if (target?.closest('.vac-load-popover') || target?.closest('.vac-load-cell')) return;
+  loadPopover.value = null;
+};
+
+const closeLoadPopover = (event?: Event) => {
+  const target = event?.target as HTMLElement | null;
+  if (target?.closest?.('.vac-load-popover')) return;
+  loadPopover.value = null;
+};
+
 const dayHeaderClass = (cell: YearDayCell) => {
   const classes: string[] = [];
   if (cell.weekend) classes.push('is-weekend');
@@ -604,6 +713,9 @@ const scheduleScrollToToday = () => {
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
+  document.addEventListener('pointerdown', onLoadPopoverOutside, true);
+  window.addEventListener('resize', closeLoadPopover);
+  document.addEventListener('scroll', closeLoadPopover, { capture: true, passive: true });
   scheduleScrollToToday();
   void scheduleRemeasureNameCol();
   if (typeof document !== 'undefined' && document.fonts?.ready) {
@@ -619,6 +731,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', onLoadPopoverOutside, true);
+  window.removeEventListener('resize', closeLoadPopover);
+  document.removeEventListener('scroll', closeLoadPopover, { capture: true });
   resizeObserver?.disconnect();
   resizeObserver = null;
 });
