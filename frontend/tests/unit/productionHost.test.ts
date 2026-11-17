@@ -21,6 +21,14 @@ describe('isProductionBrowserHost', () => {
     expect(isProductionBrowserHost('45.12.74.25', '9180')).toBe(false);
   });
 
+  it('домен vibe.testvbi.ru: бой без порта / :80 / :443, остальные порты не бой', () => {
+    expect(isProductionBrowserHost('vibe.testvbi.ru', '')).toBe(true);
+    expect(isProductionBrowserHost('vibe.testvbi.ru', '80')).toBe(true);
+    expect(isProductionBrowserHost('vibe.testvbi.ru', '443')).toBe(true);
+    expect(isProductionBrowserHost('vibe.testvbi.ru', '8080')).toBe(false);
+    expect(isProductionBrowserHost('git.testvbi.ru', '')).toBe(false);
+  });
+
   it('localhost и чужие хосты не бой', () => {
     expect(isProductionBrowserHost('localhost', '3000')).toBe(false);
     expect(isProductionBrowserHost('localhost', '')).toBe(false);
