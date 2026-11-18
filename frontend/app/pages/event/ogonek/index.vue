@@ -55,20 +55,36 @@
                     </template>
                   </div>
 
-                  <NuxtLink v-else-if="cell.tile === 'tree'" class="og-tile og-tile--link" to="/event/ogonek/tree">
+                  <NuxtLink v-else-if="cell.tile === 'tree'" class="og-tile og-tile--link og-tile--tree" to="/event/ogonek/tree">
                     <span class="og-tile__k">ЁЛКА ЖЕЛАНИЙ</span>
-                    <b class="og-tile__big">{{ state.treeCount }}</b>
-                    <span class="og-tile__sub">{{ plural(state.treeCount, 'игрушка', 'игрушки', 'игрушек') }} висит</span>
-                    <span class="og-tile__go">Смотреть →</span>
+                    <span class="og-mini-tree" aria-hidden="true">
+                      <span class="og-mini-tree__img" :style="miniTree ? { backgroundImage: `url(${miniTree.url})` } : undefined" />
+                      <span
+                        v-for="(b, i) in miniTree?.bulbs ?? []"
+                        :key="i"
+                        class="og-mini-tree__bulb"
+                        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, animationDelay: `${b.delay}s` }"
+                      />
+                    </span>
+                    <span class="og-tile__sub"><b class="og-tile__num">{{ state.treeCount }}</b> {{ plural(state.treeCount, 'игрушка', 'игрушки', 'игрушек') }}</span>
                   </NuxtLink>
 
-                  <div v-else-if="cell.tile === 'feed'" class="og-tile og-tile--feed">
-                    <span class="og-tile__k">{{ state.micro.feedTitle }}</span>
+                  <!-- Живая доска: опрос раз в 5 с, новое въезжает сверху и вспыхивает -->
+                  <div v-else-if="cell.tile === 'feed'" class="og-tile og-tile--feed og-live">
+                    <div class="og-live__head">
+                      <span class="og-live__on" :class="{ 'is-off': !liveOk }"><i aria-hidden="true" />{{ liveOk ? 'В ЭФИРЕ' : 'НЕТ СВЯЗИ' }}</span>
+                      <span class="og-tile__k">{{ state.micro.feedTitle }}</span>
+                      <span v-if="online > 0" class="og-live__online">{{ online }} {{ plural(online, 'смотрит', 'смотрят', 'смотрят') }}</span>
+                    </div>
                     <p v-if="!state.feed.length" class="og-tile__sub">{{ state.micro.feedEmpty }}</p>
-                    <TransitionGroup v-else name="og-feed" tag="ul" class="og-tile__feed">
-                      <li v-for="item in state.feed.slice(0, 5)" :key="item.id">
-                        <template v-if="item.name"><b>{{ item.name }}</b> {{ item.text }}</template>
-                        <template v-else>{{ item.text }}</template>
+                    <TransitionGroup v-else name="og-live" tag="ul" class="og-live__list" aria-live="polite">
+                      <li v-for="item in state.feed.slice(0, 5)" :key="item.id" :class="{ 'is-fresh': freshIds.has(item.id) }">
+                        <span class="og-live__dot" :class="`og-live__dot--${item.kind}`" aria-hidden="true" />
+                        <span class="og-live__text">
+                          <template v-if="item.name"><b>{{ item.name }}</b> {{ item.text }}</template>
+                          <template v-else>{{ item.text }}</template>
+                        </span>
+                        <time class="og-live__ago" :datetime="item.at">{{ agoShort(item.at) }}</time>
                       </li>
                     </TransitionGroup>
                   </div>
@@ -178,6 +194,7 @@
  */
 import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
 import { ogonekRankArt } from '~/events/ogonek/rankArt';
+import { ogonekMiniTreeImage } from '~/events/ogonek/treeArt';
 import {
   CARPET_BAND_H,
   CARPET_BAND_V,
@@ -281,6 +298,9 @@ const cells = computed<Cell[]>(() => {
   });
   return out;
 });
+
+/** Пушистая ёлка в плитке: рисуется на canvas, поэтому только в браузере. */
+const miniTree = ref<ReturnType<typeof ogonekMiniTreeImage> | null>(null);
 
 const rankArt = computed(() => ogonekRankArt(state.value?.player.rank ?? ''));
 const nextRankLabel = computed(() => {
@@ -579,13 +599,50 @@ async function onSubmit(kind: string, payload: Record<string, unknown>) {
   }
 }
 
+/* ------------------------------------------------------- живая доска */
+
+const online = ref(0);
+const liveOk = ref(true);
+/** Записи, пришедшие с последним опросом: подсвечиваются на несколько секунд. */
+const freshIds = ref(new Set<string>());
+
 async function refreshFeed() {
   try {
-    const res = await $fetch<{ feed: OgonekFeedItem[] }>('/api/event/ogonek/feed');
-    if (state.value) state.value.feed = res.feed;
+    const res = await $fetch<{ feed: OgonekFeedItem[]; online: number }>('/api/event/ogonek/feed');
+    liveOk.value = true;
+    online.value = res.online;
+    if (!state.value) return;
+    const known = new Set(state.value.feed.map((f) => f.id));
+    const fresh = res.feed.filter((f) => !known.has(f.id)).map((f) => f.id);
+    state.value.feed = res.feed;
+    if (fresh.length && known.size) {
+      freshIds.value = new Set(fresh);
+      setTimeout(() => { freshIds.value = new Set(); }, 4000);
+    }
   } catch {
-    /* лента не критична — молча пропускаем */
+    // Лента не критична: показываем, что связь пропала, и пробуем дальше
+    liveOk.value = false;
   }
+}
+
+/** «сейчас», «3 мин», «2 ч» — по серверным часам, тикает каждую секунду. */
+function agoShort(at: string) {
+  const sec = Math.max(0, Math.round((nowMs.value + clockSkew.value - Date.parse(at)) / 1000));
+  if (sec < 45) return 'сейчас';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} мин`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} ч`;
+  return `${Math.floor(h / 24)} дн`;
+}
+
+const FEED_POLL_MS = 5000;
+/** Фоновая вкладка не опрашивает сервер; вернулись — сразу свежие данные. */
+function pollFeed() {
+  if (document.visibilityState === 'visible') void refreshFeed();
+}
+function onVisibility() {
+  if (document.visibilityState === 'visible') void refreshFeed();
 }
 
 /** Салют в финальном окне. */
@@ -698,8 +755,11 @@ onMounted(async () => {
   window.addEventListener('resize', onResize);
   measureStickyTop();
   paintCarpet();
+  miniTree.value = ogonekMiniTreeImage();
   tick = setInterval(() => { nowMs.value = Date.now(); }, 1000);
-  feedTimer = setInterval(refreshFeed, 30000);
+  feedTimer = setInterval(pollFeed, FEED_POLL_MS);
+  document.addEventListener('visibilitychange', onVisibility);
+  void refreshFeed();
   void hydrate();
   await load();
   void decor.refresh();
@@ -718,6 +778,7 @@ onBeforeUnmount(() => {
   document.body.classList.remove('og-locked-scroll');
   if (tick) clearInterval(tick);
   if (feedTimer) clearInterval(feedTimer);
+  document.removeEventListener('visibilitychange', onVisibility);
 });
 </script>
 
@@ -856,6 +917,38 @@ onBeforeUnmount(() => {
 .og-tile--link { cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
 .og-tile--link:hover { border-color: var(--og-gold); background: rgba(30, 12, 14, 0.6); }
 
+.og-tile--tree { justify-content: space-between; gap: 2px; }
+.og-tile__num { font-family: var(--og-pixel); font-size: 13px; color: var(--og-gold); font-weight: 400; }
+
+.og-mini-tree {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 150px;
+  aspect-ratio: 96 / 108;
+}
+.og-mini-tree__img {
+  position: absolute;
+  inset: 0;
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  transition: transform 0.25s ease;
+}
+.og-tile--tree:hover .og-mini-tree__img { transform: translateY(-2px) scale(1.03); }
+.og-mini-tree__bulb {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c) 0, transparent 70%);
+  animation: og-mini-bulb 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes og-mini-bulb { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.85; } }
+@media (prefers-reduced-motion: reduce) { .og-mini-tree__bulb { animation: none; opacity: 0.5; } }
+
 .og-tile--feed {
   grid-column: span 2;
   aspect-ratio: auto;
@@ -865,21 +958,74 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
 }
 
-.og-tile__feed {
+.og-live { gap: 8px; }
+.og-live__head { display: flex; align-items: center; gap: 10px; }
+.og-live__on {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--og-pixel);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  color: #ffb3b3;
+  padding: 4px 6px;
+  background: rgba(224, 70, 79, 0.18);
+}
+.og-live__on i { width: 7px; height: 7px; border-radius: 50%; background: #ff4d5a; animation: og-live-pulse 1.4s ease-in-out infinite; }
+.og-live__on.is-off { color: var(--og-muted); background: rgba(255, 255, 255, 0.06); }
+.og-live__on.is-off i { background: #8a6b6e; animation: none; }
+@keyframes og-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 90, 0.6); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 77, 90, 0); }
+}
+.og-live__online { margin-left: auto; font-size: 12px; color: var(--og-muted); white-space: nowrap; }
+
+.og-live__list {
+  position: relative;
   list-style: none;
-  margin: 2px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.3;
   color: #f6d9d6;
 }
-.og-tile__feed b { color: #fff3e6; font-weight: 700; }
+.og-live__list li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  transition: background-color 1.2s ease;
+}
+.og-live__list li.is-fresh { background: rgba(255, 207, 74, 0.16); transition: none; }
+.og-live__list b { color: #fff3e6; font-weight: 700; }
+.og-live__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.og-live__ago { font-size: 11px; color: var(--og-muted); font-variant-numeric: tabular-nums; }
 
-.og-feed-enter-active { transition: opacity 0.4s ease, transform 0.4s ease; }
-.og-feed-enter-from { opacity: 0; transform: translateY(-6px); }
+.og-live__dot { width: 8px; height: 8px; background: var(--og-gold-soft); }
+.og-live__dot--toy { background: #e0464f; }
+.og-live__dot--snowflake { background: #7ad8cf; }
+.og-live__dot--thanks { background: #f8b386; }
+.og-live__dot--window { background: #ffd35c; }
+.og-live__dot--recipe { background: #f4e6c8; }
+.og-live__dot--letter { background: #2fa7a8; }
+.og-live__dot--plug { background: #45bd68; }
+
+/* Новое въезжает сверху, старое уходит вниз и тает */
+.og-live-enter-active { transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.og-live-enter-from { opacity: 0; transform: translateY(-10px); }
+.og-live-leave-active { position: absolute; left: 6px; right: 6px; transition: opacity 0.3s ease; }
+.og-live-leave-to { opacity: 0; }
+.og-live-move { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .og-live__on i { animation: none; }
+  .og-live-enter-active, .og-live-move { transition: none; }
+}
 
 /* ——— отладка ——— */
 .og-demo {

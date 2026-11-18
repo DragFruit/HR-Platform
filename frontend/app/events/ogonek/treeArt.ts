@@ -18,9 +18,16 @@ import {
 
 export type OgonekTreeBulb = { x: number; y: number; color: string; delay: number };
 
-const W = OGONEK_TREE_W;
-const H = OGONEK_TREE_H;
-const TIERS = 13;
+type TreeCfg = {
+  w: number;
+  h: number;
+  top: number;
+  bottom: number;
+  tiers: number;
+  /** Полуширина кроны в долях ширины для высоты y (доля высоты). */
+  half: (y: number) => number;
+  seed: number;
+};
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -35,26 +42,64 @@ const rgb = (key: string) => {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 };
 
-let cached: { url: string; bulbs: OgonekTreeBulb[] } | null = null;
+type TreeArt = { url: string; bulbs: OgonekTreeBulb[] };
+let cached: TreeArt | null = null;
+let cachedMini: TreeArt | null = null;
 
-export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
-  if (cached) return cached;
-  const rand = rng(20271225);
-  const top = Math.round(OGONEK_TREE_TOP * H);
-  const bottom = Math.round(OGONEK_TREE_BOTTOM * H);
-  const cx = W / 2;
+/** Большая ёлка желаний 220×640. */
+export function ogonekTreeImage(): TreeArt {
+  cached ??= drawTree({
+    w: OGONEK_TREE_W,
+    h: OGONEK_TREE_H,
+    top: OGONEK_TREE_TOP,
+    bottom: OGONEK_TREE_BOTTOM,
+    tiers: 13,
+    half: ogonekTreeHalfWidth,
+    seed: 20271225
+  });
+  return cached;
+}
+
+/** Маленькая пушистая ёлка для плитки в календаре: та же рисовка, приземистая форма. */
+export function ogonekMiniTreeImage(): TreeArt {
+  cachedMini ??= drawTree({
+    w: 96,
+    h: 108,
+    top: 0.12,
+    bottom: 0.76,
+    tiers: 5,
+    half: (y) => {
+      const t = Math.min(1, Math.max(0, (y - 0.12) / 0.64));
+      return 0.05 + 0.43 * Math.pow(t, 0.8);
+    },
+    seed: 1225
+  });
+  return cachedMini;
+}
+
+function drawTree(cfg: TreeCfg): TreeArt {
+  const W = cfg.w;
+  const H = cfg.h;
+  const TIERS = cfg.tiers;
+  const halfW = cfg.half;
+  /** Размеры деталей (ствол, кадка, звезда) от большой ёлки. */
+  const sc = W / 220;
+  const rand = rng(cfg.seed);
+  const top = Math.round(cfg.top * H);
+  const bottom = Math.round(cfg.bottom * H);
+  const cx = Math.round(W / 2);
 
   // Ярус каждой точки: самый верхний, в который она попадает
   const tier = new Int16Array(W * H).fill(-1);
   const edgeY: number[][] = [];
   const tierBox: { y0: number; y1: number }[] = [];
   for (let k = 0; k < TIERS; k++) {
-    const y0 = Math.round(top + ((bottom - top) * k) / TIERS - (k ? 14 : 0));
+    const y0 = Math.round(top + ((bottom - top) * k) / TIERS - (k ? 14 * sc : 0));
     const y1 = Math.round(top + ((bottom - top) * (k + 1)) / TIERS);
     tierBox.push({ y0, y1 });
-    const hw = ogonekTreeHalfWidth(y1 / H) * W;
+    const hw = halfW(y1 / H) * W;
     const droops = 3 + Math.floor(k * 0.9);
-    const depth = 3 + k * 0.45;
+    const depth = (3 + k * 0.45) * Math.max(0.6, sc * 2);
     const phase = rand() * Math.PI;
     const edge: number[] = [];
     for (let x = 0; x < W; x++) {
@@ -64,7 +109,7 @@ export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
     edgeY.push(edge);
     for (let y = y0; y <= y1 + depth; y++) {
       const v = (y - y0) / Math.max(1, y1 - y0);
-      const half = (ogonekTreeHalfWidth(Math.min(y, y1) / H) * W) * (0.55 + 0.45 * Math.min(1, v));
+      const half = (halfW(Math.min(y, y1) / H) * W) * (0.55 + 0.45 * Math.min(1, v));
       for (let x = Math.floor(cx - half); x <= Math.ceil(cx + half); x++) {
         if (x < 0 || x >= W || y < 0 || y >= H) continue;
         if (y > edge[x]!) continue;
@@ -88,7 +133,7 @@ export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
       const k = at(x, y);
       if (k < 0) continue;
       const box = tierBox[k]!;
-      const half = ogonekTreeHalfWidth(y / H) * W;
+      const half = halfW(y / H) * W;
       const dx = (x - cx) / Math.max(1, half);
       const v = (y - box.y0) / Math.max(1, box.y1 - box.y0);
       // Контур силуэта
@@ -128,37 +173,45 @@ export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
 
   // Ствол, кадка и подарки под ёлкой
   const trunkTop = bottom - 4;
-  for (let y = trunkTop; y < trunkTop + 30; y++) {
-    for (let x = cx - 10; x <= cx + 10; x++) {
+  const tw = Math.max(3, Math.round(10 * sc));
+  const potH = Math.max(10, Math.round(30 * sc));
+  for (let y = trunkTop; y < trunkTop + potH; y++) {
+    for (let x = cx - tw; x <= cx + tw; x++) {
       if (at(x, y) >= 0) continue;
-      const edge = x === cx - 10 || x === cx + 10;
-      paint(x, y, edge ? '0' : x < cx - 4 ? '8' : x > cx + 5 ? '1' : '7');
+      const edge = x === cx - tw || x === cx + tw;
+      paint(x, y, edge ? '0' : x < cx - tw * 0.4 ? '8' : x > cx + tw * 0.5 ? '1' : '7');
     }
   }
-  const potTop = trunkTop + 26;
-  for (let y = potTop; y < potTop + 30; y++) {
-    const v = (y - potTop) / 30;
-    const half = 34 - v * 8;
+  const potTop = trunkTop + potH - Math.round(4 * sc + 1);
+  for (let y = potTop; y < potTop + potH; y++) {
+    const v = (y - potTop) / potH;
+    const half = (34 - v * 8) * Math.max(0.42, sc);
+    const band = Math.round(potH * 0.27);
     for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) {
-      const edge = Math.abs(x - cx) > half - 1 || y === potTop || y === potTop + 29;
+      const edge = Math.abs(x - cx) > half - 1 || y === potTop || y === potTop + potH - 1;
       let key = x < cx - half * 0.4 ? '3' : x > cx + half * 0.5 ? '1' : '2';
-      if (y >= potTop + 8 && y <= potTop + 12) key = x < cx ? '9' : '8';
+      if (y >= potTop + band && y <= potTop + band + Math.max(1, Math.round(4 * sc))) key = x < cx ? '9' : '8';
       paint(x, y, edge ? '0' : key);
     }
   }
-  const gift = OGONEK_OBJECTS.gift;
-  for (const [ox, oy] of [[cx - 92, potTop - 4], [cx + 52, potTop - 2], [cx - 60, potTop + 2]] as const) {
-    gift.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') paint(ox + x, oy + y, c); }));
+  // Подарки рисуем только на большой ёлке: на маленькой они больше кадки
+  if (sc > 0.6) {
+    const gift = OGONEK_OBJECTS.gift;
+    for (const [ox, oy] of [[cx - 92, potTop - 4], [cx + 52, potTop - 2], [cx - 60, potTop + 2]] as const) {
+      gift.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') paint(ox + x, oy + y, c); }));
+    }
   }
 
   // Звезда на макушке
   const sx = cx;
-  const sy = top - 10;
-  for (let y = -14; y <= 14; y++) {
-    for (let x = -14; x <= 14; x++) {
+  const ss = Math.max(0.45, sc);
+  const sy = top - Math.round(10 * ss);
+  const R = Math.ceil(14 * ss);
+  for (let y = -R; y <= R; y++) {
+    for (let x = -R; x <= R; x++) {
       const r = Math.hypot(x, y);
       const a = Math.atan2(y, x) + Math.PI / 2;
-      const spike = 6 + 8 * Math.pow(Math.abs(Math.cos((a * 5) / 2)), 3);
+      const spike = (6 + 8 * Math.pow(Math.abs(Math.cos((a * 5) / 2)), 3)) * ss;
       if (r > spike) continue;
       const key = r > spike - 1.2 ? '0' : x + y < -3 ? '9' : x + y > 4 ? '7' : '8';
       paint(Math.round(sx + x), Math.round(sy + y), key);
@@ -168,15 +221,16 @@ export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
   // Гирлянды: провисающие нити огоньков через несколько ярусов
   const bulbs: OgonekTreeBulb[] = [];
   const colors = ['2', 'b', '8', 'h', 'f'];
-  for (let k = 1; k < TIERS; k += 2) {
+  const small = TIERS < 8;
+  for (let k = 1; k < TIERS; k += small ? 1 : 2) {
     const box = tierBox[k]!;
     const y = box.y0 + (box.y1 - box.y0) * 0.55;
-    const half = ogonekTreeHalfWidth(y / H) * W * 0.86;
-    const n = 4 + Math.floor(k * 0.8);
+    const half = halfW(y / H) * W * 0.86;
+    const n = small ? 3 + k : 4 + Math.floor(k * 0.8);
     for (let i = 0; i < n; i++) {
       const u = (i + 0.5) / n;
       const x = cx - half + 2 * half * u;
-      const yy = y + 9 * Math.sin(Math.PI * u) - (k % 4 === 1 ? 4 : -2) * (u - 0.5);
+      const yy = y + 9 * sc * Math.sin(Math.PI * u) - (k % 4 === 1 ? 4 : -2) * sc * (u - 0.5);
       const key = colors[(i + k) % colors.length]!;
       paint(Math.round(x), Math.round(yy), key);
       paint(Math.round(x), Math.round(yy) + 1, key);
@@ -189,6 +243,5 @@ export function ogonekTreeImage(): { url: string; bulbs: OgonekTreeBulb[] } {
   canvas.width = W;
   canvas.height = H;
   canvas.getContext('2d')!.putImageData(new ImageData(img, W, H), 0, 0);
-  cached = { url: canvas.toDataURL('image/png'), bulbs };
-  return cached;
+  return { url: canvas.toDataURL('image/png'), bulbs };
 }
