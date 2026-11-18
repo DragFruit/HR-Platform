@@ -4,7 +4,8 @@
     :class="{
       'user-avatar--interactive': interactive,
       'user-avatar--character': Boolean(src),
-      'user-avatar--fallback': !src
+      'user-avatar--fallback': !src,
+      'user-avatar--og-hat': Boolean(src) && hatOn(userId)
     }"
     :style="containerStyle"
     :title="title"
@@ -31,6 +32,8 @@ const props = withDefaults(
 );
 
 const { getAvatarUrl } = useAvatars();
+// Новогодний колпак из окна 2 «Огонька»: только на тех, кто его надел.
+const { hatOn } = useOgonekDecor({ effects: false });
 
 const src = computed(() => getAvatarUrl(props.userId));
 

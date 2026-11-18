@@ -61,6 +61,10 @@ export type OgonekPlayer = {
   recipeVote?: string;
   /** Сколько «спасибо» отправил. */
   thanksSent: number;
+  /** Сколько писем было в коробке, когда её показали. Пришли новые — покажем снова. */
+  mailboxSeenCount: number;
+  /** Какие письма уже вскрыты. */
+  thanksRead: string[];
   updatedAt: string;
 };
 
@@ -88,6 +92,8 @@ export function emptyOgonekPlayer(userId: number, name: string, department: stri
     plugged: false,
     hat: false,
     thanksSent: 0,
+    mailboxSeenCount: 0,
+    thanksRead: [],
     updatedAt: new Date().toISOString()
   };
 }
@@ -177,6 +183,8 @@ async function readState(): Promise<OgonekState> {
         recipeId: src.recipeId ? String(src.recipeId) : undefined,
         recipeVote: src.recipeVote ? String(src.recipeVote) : undefined,
         thanksSent: Math.max(0, Number(src.thanksSent) || 0),
+        mailboxSeenCount: Math.max(0, Number(src.mailboxSeenCount) || 0),
+        thanksRead: Array.isArray(src.thanksRead) ? src.thanksRead.map(String).slice(0, 500) : [],
         updatedAt: str(src.updatedAt, 40) || new Date().toISOString()
       });
     }

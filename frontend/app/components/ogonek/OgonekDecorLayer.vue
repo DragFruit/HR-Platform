@@ -1,24 +1,19 @@
 <template>
-  <div v-if="enabled" class="og-decor" aria-hidden="true">
-    <!-- Гирлянда поверх шапки -->
-    <div class="og-decor__garland" :style="garlandStyle" />
+  <div v-if="festive" class="og-decor" aria-hidden="true">
+    <!-- Гирлянда над шапкой — только когда вилка в розетке (с 4 декабря) -->
+    <div v-if="enabled" class="og-decor__garland" :style="garlandStyle" />
 
-    <!-- Снегопад: три слоя глубины, у каждого своя скорость -->
-    <!-- На странице адвента свой снег, с подписями снежинок: второй не нужен -->
-    <canvas v-if="motionAllowed && !isAdvent" ref="canvasRef" class="og-decor__snow" />
-
-    <!-- Камин: только на главной, в углу -->
-    <ClientOnly>
-      <OgonekFireplace v-if="isHome" class="og-decor__fire" :width="118" />
-    </ClientOnly>
+    <!-- Снег идёт с 1 декабря, без вилки. На странице адвента свой снег, с подписями -->
+    <canvas v-if="snowAllowed && !isAdvent" ref="canvasRef" class="og-decor__snow" />
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * Декор платформы: гирлянда над шапкой, снегопад поверх интерфейса, камин
- * в углу главной. Иней на карточках и колпак на аватарках вешаются стилями
- * через классы `ogonek` / `ogonek-hat` на <html> — рабочие компоненты для
+ * Декор платформы. Снег идёт с 1 декабря сам, остальное (гирлянда над
+ * шапкой, иней на карточках, ковёр фоном) включается вилкой из окна 4.
+ * Вилку вынули — гаснет всё, снег тоже. Иней и колпак на аватарках вешаются стилями
+ * через класс `ogonek` на <html> и класс аватарки — рабочие компоненты для
  * этого трогать не нужно.
  *
  * Снег рисуется на canvas, а не сотней div-ов: так он не нагружает раскладку
@@ -31,9 +26,8 @@
 import { OGONEK_DECOR, OGONEK_OBJECTS } from '~/events/ogonek/sprites';
 import { ogonekSpriteUrl, ogonekSpriteUrlByValue } from '~/utils/ogonekRender';
 
-const { enabled, motionAllowed, state } = useOgonekDecor();
+const { enabled, festive, snowAllowed, state } = useOgonekDecor();
 const route = useRoute();
-const isHome = computed(() => route.path === '/');
 const isAdvent = computed(() => route.path.startsWith('/event/ogonek'));
 
 const garlandStyle = computed(() => {
@@ -66,7 +60,8 @@ function buildImages(): string[] {
 }
 
 function seed(width: number, height: number) {
-  const count = Math.round(Math.min(110, Math.max(36, (width * height) / 22000)));
+  // Рабочие страницы: снега немного, чтобы он был настроением, а не помехой чтению
+  const count = Math.round(Math.min(56, Math.max(20, (width * height) / 34000)));
   flakes = Array.from({ length: count }, () => spawn(width, height, true));
 }
 
@@ -76,8 +71,8 @@ function spawn(width: number, height: number, anywhere = false): Flake {
     x: Math.random() * width,
     y: anywhere ? Math.random() * height : -20,
     depth,
-    size: [7, 11, 17][depth]!,
-    speed: [10, 18, 30][depth]! * (0.75 + Math.random() * 0.5),
+    size: [6, 9, 13][depth]!,
+    speed: [8, 14, 22][depth]! * (0.75 + Math.random() * 0.5),
     drift: (Math.random() - 0.5) * 14,
     phase: Math.random() * Math.PI * 2,
     img: Math.floor(Math.random() * Math.max(1, images.length))
@@ -125,7 +120,7 @@ function start() {
       if (f.x > w + 24) f.x = -20;
       const img = images[f.img % images.length];
       if (!img?.complete || !img.naturalWidth) continue;
-      ctx.globalAlpha = [0.45, 0.68, 0.9][f.depth]!;
+      ctx.globalAlpha = [0.28, 0.42, 0.58][f.depth]!;
       ctx.drawImage(img, Math.round(f.x), Math.round(f.y), f.size, f.size);
     }
     ctx.globalAlpha = 1;
@@ -140,7 +135,7 @@ function start() {
 }
 
 watch(
-  [canvasRef, motionAllowed],
+  [canvasRef, snowAllowed],
   ([canvas, motion]) => {
     if (canvas && motion) nextTick(start);
   },
@@ -166,8 +161,9 @@ watch(
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
-  /* Низкая: лампы висят над шапкой, но не садятся на её заголовок. */
+  /* Верхние три строки спрайта пустые: срезаем их, чтобы лампы
+     заканчивались выше заголовка шапки, а не садились на него. */
+  top: -4px;
   height: 32px;
   background-repeat: repeat-x;
   background-size: auto 32px;
@@ -181,19 +177,12 @@ watch(
   50% { filter: brightness(1.28) drop-shadow(0 2px 14px rgba(217, 154, 43, 0.5)); }
 }
 
-.og-decor__fire {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-  pointer-events: none;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .og-decor__garland { animation: none; }
 }
 
 @media (max-width: 900px) {
-  .og-decor__fire { display: none; }
   .og-decor__garland { height: 30px; background-size: auto 30px; }
 }
 </style>

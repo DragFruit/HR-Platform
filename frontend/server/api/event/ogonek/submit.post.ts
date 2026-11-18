@@ -14,9 +14,10 @@ import {
   OGONEK_TOY_SIZE,
   OGONEK_WISH_MAX
 } from '../../../utils/ogonekStore';
-import { requireUnlockedDay } from '../../../utils/ogonekGate';
+import { ogonekSubmitOpen, requireUnlockedDay } from '../../../utils/ogonekGate';
 import { readEmployees } from '../../../utils/employeesStore';
-import { ogonekDemoAllowed } from '../../../utils/ogonekDemo';
+import { demoToys, ogonekDemoAllowed } from '../../../utils/ogonekDemo';
+import { ogonekTreeBestSpot } from '../../../../app/events/ogonek/treePlacement';
 import { OGONEK_LETTER_DELIVERY_AT } from '../../../../app/events/ogonek/timeline';
 import { ogonekDayById } from '../../../../app/events/ogonek/content';
 import { isOgonekFlakeQuarter } from '../../../../app/events/ogonek/snowflake';
@@ -61,11 +62,14 @@ function completesByReading(dayId: number): boolean {
   return Boolean(day.awaiting) || day.kind === 'final';
 }
 
-const clamp01 = (v: unknown) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0.5;
-  return Math.min(1, Math.max(0, n));
-};
+/**
+ * Что считается «добавить или отправить»: закрывается после 27 декабря.
+ * Вилка и колпак не входят: это личные выключатели, они нужны и в январе.
+ * Отметка «прочитал» тоже: она никому ничего не добавляет.
+ */
+const CLOSES_AT_DEADLINE = new Set([
+  'song', 'skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'recipe', 'recipeVote'
+]);
 
 /**
  * Единая точка для действий внутри окон. Одна ручка вместо десятка: проверка
@@ -95,6 +99,10 @@ export default defineEventHandler(async (event) => {
 
   // Открытку можно отправить и из финала (окно 19): без ограничения по числу.
   const fromFinal = kind === 'thanks' && Number(body.dayId) === 19;
+  if (CLOSES_AT_DEADLINE.has(kind) && !ogonekSubmitOpen(clock)) {
+    throw createError({ statusCode: 403, statusMessage: 'Приём закрыт 27 декабря в 23:59' });
+  }
+
   const dayId = kind === 'complete' ? Number(body.dayId) : fromFinal ? 19 : DAY_OF[kind];
   if (!dayId || !Number.isInteger(dayId) || dayId < 1 || dayId > 19) {
     throw createError({ statusCode: 400, statusMessage: 'unknown kind' });
@@ -161,6 +169,12 @@ export default defineEventHandler(async (event) => {
         const wish = String(body.wish || '').trim().slice(0, OGONEK_WISH_MAX);
         if (!wish) throw createError({ statusCode: 400, statusMessage: 'нужно пожелание на будущий год' });
         const existing = state.toys.find((t) => t.id === player.toyId);
+        // Новой игрушке место выбирает сервер: подальше от уже висящих,
+        // чтобы семьдесят игрушек разошлись по всей ёлке. Своё место
+        // перевешенная игрушка сохраняет.
+        const spot = existing
+          ? { x: existing.x, y: existing.y }
+          : ogonekTreeBestSpot(Math.random, [...state.toys, ...(ogonekDemoAllowed() ? demoToys() : [])]);
         const toy = existing ?? {
           id: ogonekId('toy'),
           userId: player.userId,
@@ -168,16 +182,16 @@ export default defineEventHandler(async (event) => {
           department: player.department,
           pixels,
           wish,
-          x: clamp01(body.x),
-          y: clamp01(body.y),
+          x: spot.x,
+          y: spot.y,
           createdAt: new Date().toISOString()
         };
         toy.pixels = pixels;
         toy.wish = wish;
         toy.name = player.name;
         toy.department = player.department;
-        toy.x = clamp01(body.x);
-        toy.y = clamp01(body.y);
+        toy.x = spot.x;
+        toy.y = spot.y;
         if (!existing) {
           state.toys.push(toy);
           pushOgonekFeed(state, 'toy', 'новая игрушка на ёлке', who);

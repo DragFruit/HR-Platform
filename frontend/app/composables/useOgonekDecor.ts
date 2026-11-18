@@ -9,7 +9,7 @@
  * Декор ничего не считает и не перехватывает клики: это только внешний вид.
  */
 
-import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
+import { OGONEK_AVATAR_HAT } from '~/events/ogonek/avatarHat';
 import { ogonekSpriteUrl } from '~/utils/ogonekRender';
 
 export type OgonekDecorState = {
@@ -18,16 +18,25 @@ export type OgonekDecorState = {
   hat: boolean;
   /** Вилку хоть раз втыкали: отличаем «ещё не дошёл до окна 4» от «вынул сам». */
   everPlugged: boolean;
+  /** Кто надел колпак в окне 2: он рисуется только на их аватарках. */
+  hatUserIds: number[];
   /** Авторские снежинки: подмешиваются в снегопад с 16 декабря. */
   authorFlakes: string[][];
 };
 
-export function useOgonekDecor() {
+/**
+ * `effects: false` — только читать состояние (так зовёт каждая аватарка):
+ * без наблюдателя за классами на <html>, иначе их было бы по одному на
+ * каждую аватарку на странице.
+ */
+export function useOgonekDecor(opts: { effects?: boolean } = {}) {
+  const effects = opts.effects ?? true;
   const state = useState<OgonekDecorState>('ogonek-decor', () => ({
     seasonOn: false,
     plugged: false,
     hat: false,
     everPlugged: false,
+    hatUserIds: [],
     authorFlakes: []
   }));
   const loaded = useState<boolean>('ogonek-decor-loaded', () => false);
@@ -47,6 +56,20 @@ export function useOgonekDecor() {
   const festive = computed(() => loaded.value && state.value.seasonOn && !pulledOut.value);
   const hatEnabled = computed(() => festive.value && state.value.hat);
 
+  /** На этой аватарке колпак: её владелец надел его, а у смотрящего декор не выключен. */
+  const hatOn = (userId: number | null | undefined) =>
+    Boolean(userId) && festive.value && state.value.hatUserIds.includes(Number(userId));
+
+  /** Снег: с 1 декабря, без вилки, пока человек её не вынул и не просил меньше движения. */
+  const snowAllowed = computed(() => {
+    if (!festive.value || !import.meta.client) return false;
+    try {
+      return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return true;
+    }
+  });
+
   const motionAllowed = computed(() => {
     if (!enabled.value || !import.meta.client) return false;
     try {
@@ -62,7 +85,7 @@ export function useOgonekDecor() {
       state.value = await $fetch<OgonekDecorState>('/api/event/ogonek/decor');
     } catch {
       // Гость или сеть отвалилась — декора просто нет, это не ошибка экрана.
-      state.value = { seasonOn: false, plugged: false, hat: false, everPlugged: false, authorFlakes: [] };
+      state.value = { seasonOn: false, plugged: false, hat: false, everPlugged: false, hatUserIds: [], authorFlakes: [] };
     } finally {
       loaded.value = true;
     }
@@ -77,25 +100,31 @@ export function useOgonekDecor() {
     };
   }
 
-  function setHat(on: boolean) {
-    state.value = { ...state.value, hat: on };
+  function setHat(on: boolean, userId?: number) {
+    const ids = state.value.hatUserIds.filter((id) => id !== userId);
+    state.value = {
+      ...state.value,
+      hat: on,
+      hatUserIds: on && userId ? [...ids, userId] : ids
+    };
   }
 
-  if (import.meta.client) {
+  if (import.meta.client && effects) {
     watchEffect(() => {
       // Колпак — пиксельный спрайт, а не файл в public: кладём его картинку
       // в CSS-переменную, стили берут её оттуда.
-      if (hatEnabled.value) {
-        const url = ogonekSpriteUrl(OGONEK_OBJECTS.hat);
+      // Картинку колпака держим всегда, когда идёт сезон: аватарка сама
+      // решает, надет ли он на её владельца.
+      if (festive.value) {
+        const url = ogonekSpriteUrl(OGONEK_AVATAR_HAT);
         if (url) document.documentElement.style.setProperty('--og-hat', `url(${url})`);
       } else {
         document.documentElement.style.removeProperty('--og-hat');
       }
       document.documentElement.classList.toggle('ogonek', enabled.value);
       document.documentElement.classList.toggle('ogonek-motion', motionAllowed.value);
-      document.documentElement.classList.toggle('ogonek-hat', hatEnabled.value);
     });
   }
 
-  return { state, enabled, festive, hatEnabled, motionAllowed, refresh, setPlugged, setHat };
+  return { state, enabled, festive, snowAllowed, hatEnabled, hatOn, motionAllowed, refresh, setPlugged, setHat };
 }

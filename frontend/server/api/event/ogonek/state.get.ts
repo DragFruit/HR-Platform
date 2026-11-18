@@ -7,7 +7,7 @@ import {
   readOgonekState,
   OGONEK_TOY_SIZE
 } from '../../../utils/ogonekStore';
-import { buildDayViews } from '../../../utils/ogonekGate';
+import { buildDayViews, ogonekSubmitOpen } from '../../../utils/ogonekGate';
 import {
   demoFeed,
   demoOpenedToday,
@@ -62,11 +62,6 @@ export default defineEventHandler(async (event) => {
     }))
     .sort((a, b) => b.votes - a.votes || a.title.localeCompare(b.title, 'ru'));
 
-  // Открытки приходят адресату; отправителя не знает даже получатель.
-  const myThanks = state.thanks
-    .filter((t) => t.toUserId === session.id)
-    .map((t) => ({ id: t.id, text: t.text, createdAt: t.createdAt }));
-
   const letter = state.letters.find((l) => l.id === player.letterId);
 
   // Социальная заметность вместо наград (спека, раздел 4a): сколько человек
@@ -93,6 +88,7 @@ export default defineEventHandler(async (event) => {
     partyAt: OGONEK_PARTY_AT,
     letterDeliveryAt: OGONEK_LETTER_DELIVERY_AT,
     debugAllOpen: clock.debugAllOpen,
+    submitOpen: ogonekSubmitOpen(clock),
     devDay: clock.devDay,
     // Панель отладки показываем только вне боя.
     devTools: getDeployAppEnv() !== 'production',
@@ -107,7 +103,6 @@ export default defineEventHandler(async (event) => {
     days,
     feed,
     recipes,
-    thanks: myThanks,
     dresscodeCounts,
     treeCount: toys.length,
     snowflakeCount: snowflakes.length,

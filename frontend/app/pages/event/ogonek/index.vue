@@ -26,7 +26,7 @@
 
             <OgonekGarlandBar ref="garlandRef" :days="state.days" :power="festive" />
 
-            <main ref="stageRef" class="og-stage">
+            <main ref="stageRef" class="og-stage" :style="carpetVars">
               <div class="og-stage__head">
                 <h2>ДЕКАБРЬ 2026</h2>
                 <button type="button" class="og-btn og-btn--ghost" @click="toggleFullscreen">
@@ -56,6 +56,15 @@
                   <span class="og-panel__k">ЁЛКА ЖЕЛАНИЙ</span>
                   <span>{{ state.treeCount }} игрушек · снежинок в метели {{ state.snowflakeCount }}</span>
                 </NuxtLink>
+                <button
+                  v-if="mailbox.state.value.open && mailbox.state.value.letters.length"
+                  type="button"
+                  class="og-panel og-panel--link og-panel--btn"
+                  @click="mailbox.show()"
+                >
+                  <span class="og-panel__k">КОРОБКА С ПИСЬМАМИ</span>
+                  <span>{{ unreadLabel }}</span>
+                </button>
                 <div v-if="state.todayId" class="og-panel">
                   <span class="og-panel__k">СЕГОДНЯ</span>
                   <span>уже открыли {{ state.openedToday }} человек</span>
@@ -82,9 +91,11 @@
                   <option v-for="d in state.days" :key="d.id" :value="String(d.id)">
                     {{ Number(d.dateIso.slice(8, 10)) }} декабря · окно {{ d.id }}
                   </option>
+                  <option v-for="(d, id) in OGONEK_DEV_EXTRA_DATES" :key="id" :value="String(id)">{{ d.label }}</option>
                 </select>
               </label>
               <button type="button" class="og-btn og-btn--ghost" @click="resetProgress">Сбросить прогресс</button>
+              <button type="button" class="og-btn og-btn--ghost" @click="replayMailbox">Коробка как при первом входе</button>
               <span class="og-demo__note">{{ devNote }}</span>
             </div>
           </div>
@@ -135,11 +146,11 @@
                   :day="openDayView"
                   :player="state.player"
                   :micro="state.micro"
+                  :submit-open="state.submitOpen"
                   :awaiting-label="state.awaitingLabel"
                   :toy-size="state.toySize"
                   :colleagues="colleagues"
                   :recipes="state.recipes"
-                  :thanks="state.thanks"
                   :dresscode-counts="state.dresscodeCounts"
                   :tree-count="state.treeCount"
                   :snowflake-count="state.snowflakeCount"
@@ -172,7 +183,16 @@
  * Страница даты не считает — иначе проверка расползётся по компонентам.
  */
 import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
-import { ogonekCountdownParts } from '~/events/ogonek/timeline';
+import {
+  CARPET_BAND_H,
+  CARPET_BAND_V,
+  CARPET_CORNER,
+  CARPET_FIELD,
+  flipX,
+  flipY
+} from '~/events/ogonek/carpetArt';
+import { ogonekSpriteUrlByValue } from '~/utils/ogonekRender';
+import { OGONEK_DEV_EXTRA_DATES, ogonekCountdownParts } from '~/events/ogonek/timeline';
 import { ogonekSun } from '~/events/ogonek/sun';
 import type { OgonekDayKind, OgonekDayView, OgonekFeedItem, OgonekRank } from '~/events/ogonek/types';
 
@@ -209,6 +229,7 @@ type AdventState = {
   serverNow: string;
   partyAt: string;
   debugAllOpen: boolean;
+  submitOpen: boolean;
   devDay: number | null;
   devTools: boolean;
   micro: Record<string, string>;
@@ -223,7 +244,6 @@ type AdventState = {
     id: string; name: string; department: string; title: string; text: string;
     votes: number; mine: boolean; myVote: boolean;
   }[];
-  thanks: { id: string; text: string; createdAt: string }[];
   dresscodeCounts: Record<string, number>;
   treeCount: number;
   snowflakeCount: number;
@@ -252,6 +272,12 @@ const toastText = ref('');
 const { employees, hydrate } = useEmployees();
 const decor = useOgonekDecor();
 const { festive } = decor;
+const mailbox = useOgonekMailbox();
+const unreadLabel = computed(() => {
+  const all = mailbox.state.value.letters;
+  const unread = all.filter((l) => !l.read).length;
+  return unread ? `не вскрыто ${unread} из ${all.length}` : `все ${all.length} прочитаны, можно перечитать`;
+});
 
 const stageRef = ref<HTMLElement | null>(null);
 const garlandRef = ref<{ puff: (id: number) => void; isVisible: (id: number) => boolean } | null>(null);
@@ -270,6 +296,26 @@ const sheets = new Map<number, SheetApi>();
 function setSheet(id: number, c: unknown) {
   if (c) sheets.set(id, c as SheetApi);
   else sheets.delete(id);
+}
+
+/**
+ * Ковёр под календарём: картинки рисуются на клиенте и отдаются стилям
+ * переменными. До отрисовки сцена просто тёмно-бордовая.
+ */
+const carpetVars = ref<Record<string, string>>({});
+function paintCarpet() {
+  const url = (rows: readonly string[]) => `url(${ogonekSpriteUrlByValue(rows)})`;
+  carpetVars.value = {
+    '--og-c-tl': url(CARPET_CORNER),
+    '--og-c-tr': url(flipX(CARPET_CORNER)),
+    '--og-c-bl': url(flipY(CARPET_CORNER)),
+    '--og-c-br': url(flipX(flipY(CARPET_CORNER))),
+    '--og-b-top': url(CARPET_BAND_H),
+    '--og-b-bottom': url(flipY(CARPET_BAND_H)),
+    '--og-b-left': url(CARPET_BAND_V),
+    '--og-b-right': url(flipX(CARPET_BAND_V)),
+    '--og-field': url(CARPET_FIELD)
+  };
 }
 
 const doneCount = computed(() => state.value?.player.done.length ?? 0);
@@ -311,7 +357,7 @@ async function load() {
     clockSkew.value = Date.parse(state.value.serverNow) - Date.now();
     loadError.value = '';
     decor.setPlugged(state.value.player.plugged);
-    decor.setHat(state.value.player.hat);
+    decor.setHat(state.value.player.hat, state.value.player.userId);
   } catch (err) {
     loadError.value = 'Не удалось открыть адвент. Обновите страницу.';
     console.warn('[ogonek] state load failed', err);
@@ -483,7 +529,7 @@ async function onSubmit(kind: string, payload: Record<string, unknown>) {
   try {
     await $fetch('/api/event/ogonek/submit', { method: 'POST', body: { kind, ...payload } });
     if (kind === 'plug') decor.setPlugged(Boolean(payload.on));
-    if (kind === 'hat') decor.setHat(Boolean(payload.on));
+    if (kind === 'hat') decor.setHat(Boolean(payload.on), state.value.player.userId);
     await load();
     // Содержимое могло вырасти: появился штамп, новая подпись.
     await nextTick();
@@ -548,6 +594,7 @@ function fireworks() {
 const devDayValue = computed(() => (state.value?.devDay ? String(state.value.devDay) : ''));
 const devNote = computed(() => {
   if (!state.value) return '';
+  if (state.value.devDay && state.value.devDay > 19) return 'Коробка с письмами открыта с 28 декабря по 22 января.';
   if (state.value.devDay) return 'Честный календарь выбранного дня: видно закрытые, сегодняшний и пропущенные листки.';
   return 'Все окна открыты принудительно. Выберите день, чтобы увидеть честное расписание.';
 });
@@ -562,6 +609,16 @@ async function onDevDay(e: Event) {
     ? `${DEV_DAY_COOKIE}=${v}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`
     : `${DEV_DAY_COOKIE}=; path=/; max-age=0; samesite=lax`;
   await load();
+  void mailbox.refresh();
+}
+
+async function replayMailbox() {
+  try {
+    await mailbox.devReset();
+    if (!mailbox.state.value.open) toast('В выбранный день коробка закрыта');
+  } catch (err) {
+    toast(errText(err));
+  }
 }
 
 async function resetProgress() {
@@ -629,11 +686,19 @@ onMounted(async () => {
   window.addEventListener('keydown', onKey);
   window.addEventListener('resize', onResize);
   measureStickyTop();
+  paintCarpet();
   tick = setInterval(() => { nowMs.value = Date.now(); }, 1000);
   feedTimer = setInterval(refreshFeed, 30000);
   void hydrate();
   await load();
   void decor.refresh();
+  // Ссылка вида /event/ogonek?day=6 (например «Повесить свою» с ёлки) сразу открывает окно
+  const askDay = Number(useRoute().query.day);
+  if (Number.isInteger(askDay) && askDay >= 1 && askDay <= 19) {
+    await nextTick();
+    void openDay(askDay);
+    void useRouter().replace({ query: {} });
+  }
 });
 
 onBeforeUnmount(() => {
@@ -713,11 +778,46 @@ onBeforeUnmount(() => {
 /* ——— сцена ——— */
 .og-stage {
   position: relative;
-  background: linear-gradient(180deg, var(--og-bg-2), #470b15 75%);
-  border: 2px solid var(--og-line);
+  /* Пиксель ковра — ровно 2 экранных: бордюр 56px, поле 48px */
+  --og-band: 56px;
+  margin: 18px 0;
+  background-color: #4e0f19;
+  background-image:
+    var(--og-c-tl), var(--og-c-tr), var(--og-c-bl), var(--og-c-br),
+    var(--og-b-top), var(--og-b-bottom), var(--og-b-left), var(--og-b-right),
+    var(--og-field);
+  background-position:
+    left top, right top, left bottom, right bottom,
+    left top, left bottom, left top, right top,
+    var(--og-band) var(--og-band);
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    repeat-x, repeat-x, repeat-y, repeat-y,
+    repeat;
+  background-size:
+    var(--og-band) var(--og-band), var(--og-band) var(--og-band),
+    var(--og-band) var(--og-band), var(--og-band) var(--og-band),
+    28px var(--og-band), 28px var(--og-band), var(--og-band) 28px, var(--og-band) 28px,
+    48px 48px;
+  image-rendering: pixelated;
   box-shadow: 6px 6px 0 var(--og-shade);
-  padding: 22px clamp(12px, 2.4vw, 26px) 26px;
+  padding: calc(var(--og-band) + 16px) calc(var(--og-band) + 14px) calc(var(--og-band) + 18px);
 }
+
+/* Бахрома по коротким сторонам ковра */
+.og-stage::before,
+.og-stage::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #f4e6c8 0 4px, transparent 4px 8px);
+  pointer-events: none;
+}
+
+.og-stage::before { bottom: 100%; }
+.og-stage::after { top: 100%; }
 
 .og-stage__head {
   display: flex;
@@ -766,6 +866,7 @@ onBeforeUnmount(() => {
 }
 
 .og-panel--link:hover { border-color: var(--og-gold); }
+.og-panel--btn { font: inherit; text-align: left; cursor: pointer; }
 .og-panel__k { font-family: var(--og-pixel); font-size: 9px; color: var(--og-gold); letter-spacing: 0.04em; }
 
 .og-ranks { list-style: none; margin: 0; }

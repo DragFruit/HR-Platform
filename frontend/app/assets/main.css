@@ -22912,26 +22912,28 @@ body.nk-body-locked {
 }
 
 /*
-  Колпак на аватарке. Отдельный класс `ogonek-hat`: надевается в окне 2,
-  то есть раньше вилки из окна 4. Гаснет, только когда вилку вынули сами,
-  вместе со всем остальным декором.
+  Колпак на аватарке персонажа. Класс `user-avatar--og-hat` ставит сам
+  UserAvatar, и только тем, кто надел колпак в окне 2: свой колпак видят
+  все, чужой — только если его надел владелец. Гаснет у того, кто вынул
+  вилку, вместе со всем остальным декором.
 
   Картинка подставляется переменной --og-hat: спрайт рисуется кодом, а не
   лежит файлом в public.
 */
-.ogonek-hat .user-avatar--character {
+.user-avatar--og-hat {
   position: relative;
   overflow: visible;
 }
 
-.ogonek-hat .user-avatar--character::after {
+.user-avatar--og-hat::after {
   content: '';
   position: absolute;
-  left: 4%;
-  top: -24%;
-  width: 62%;
-  height: 62%;
-  transform: rotate(-14deg);
+  /* Колпак 34×26: по центру головы, чуть набок, мех ложится на макушку */
+  left: 50%;
+  top: -22%;
+  width: 78%;
+  height: 60%;
+  transform: translateX(-50%) rotate(-8deg);
   background-image: var(--og-hat, none);
   background-repeat: no-repeat;
   background-size: contain;

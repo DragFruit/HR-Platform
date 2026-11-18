@@ -38,6 +38,35 @@ export const OGONEK_DAY_IDS: OgonekDayId[] = Array.from({ length: 19 }, (_, i) =
 /** Сам Огонёк: пятница 25 декабря, 18:00 МСК. */
 export const OGONEK_PARTY_AT = '2026-12-25T18:00:00+03:00';
 
+/**
+ * Коробка с письмами благодарности (окна 13 и 19). Адресат читает их только
+ * в этот срок: с понедельника 28 декабря, чтобы держать праздник перед Новым
+ * годом, и по 22 января включительно.
+ */
+export const OGONEK_MAILBOX_FROM = '2026-12-28T00:00:00+03:00';
+export const OGONEK_MAILBOX_UNTIL = '2027-01-23T00:00:00+03:00';
+
+export function ogonekMailboxInSeason(now: Date = new Date()): boolean {
+  const ms = now.getTime();
+  return ms >= Date.parse(OGONEK_MAILBOX_FROM) && ms < Date.parse(OGONEK_MAILBOX_UNTIL);
+}
+
+/**
+ * Приём закрывается перед доставкой: последняя секунда — 27 декабря, 23:59:59
+ * МСК. Писем и прочего позже добавить нельзя.
+ */
+export const OGONEK_SUBMIT_UNTIL = OGONEK_MAILBOX_FROM;
+
+export function ogonekSubmitInTime(now: Date = new Date()): boolean {
+  return now.getTime() < Date.parse(OGONEK_SUBMIT_UNTIL);
+}
+
+/** Даты панели отладки сверх 19 окон: коробка открылась и коробка закрылась. */
+export const OGONEK_DEV_EXTRA_DATES: Record<number, { iso: string; label: string }> = {
+  20: { iso: '2026-12-28', label: '28 декабря · коробка открыта' },
+  21: { iso: '2027-01-23', label: '23 января · коробка закрыта' }
+};
+
 /** Письма из окна 16 возвращаются через полгода. */
 export const OGONEK_LETTER_DELIVERY_AT = '2027-06-30T10:00:00+03:00';
 

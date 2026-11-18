@@ -154,6 +154,12 @@
     <ClientOnly>
       <OgonekDecorLayer v-if="isAuthenticated" />
     </ClientOnly>
+    <ClientOnly>
+      <!-- Коробка с письмами: только где раздел адвента открыт, поверх онбординга не лезет -->
+      <OgonekMailbox
+        v-if="isAuthenticated && user && !showOnboarding && !tenureCelebrationActive && isPathAllowed('/event/ogonek')"
+      />
+    </ClientOnly>
   </div>
 </template>
 
@@ -171,7 +177,7 @@ const { isActive: tenureCelebrationActive } = useTenureCelebration();
 const { roleLabel } = usePermissions();
 const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRole, isVacationsOnly } =
   usePlatformContext();
-const { homePath } = useLaunchScope();
+const { homePath, isPathAllowed } = useLaunchScope();
 // Сезонный декор: вешает класс на <html>, сам снимается вне окна 28.10–06.11
 useHalloweenDecor();
 // Новогодний декор «Огонька»: горит, только пока вилка из окна 4 в розетке

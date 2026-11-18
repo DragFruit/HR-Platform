@@ -19,11 +19,7 @@ import type {
 } from '../../app/events/ogonek/types';
 import { OGONEK_TOY_SIZE } from './ogonekStore';
 import { OGONEK_FLAKE_Q } from '../../app/events/ogonek/snowflake';
-import {
-  ogonekTreeSpread,
-  OGONEK_TREE_BOTTOM,
-  OGONEK_TREE_TOP
-} from '../../app/events/ogonek/treePlacement';
+import { ogonekTreeBestSpot } from '../../app/events/ogonek/treePlacement';
 import { getDeployAppEnv } from './appEnv';
 
 /** Демо разрешено только вне боя. Снимается `OGONEK_DEMO=0`. */
@@ -202,13 +198,11 @@ export function demoToys(): OgonekToy[] {
   if (cachedToys) return cachedToys;
   const rand = rng(20271225);
   const base = Date.parse('2026-12-08T10:12:00+03:00');
+  const taken: { x: number; y: number }[] = [];
   cachedToys = DEMO_PEOPLE.map((person, i) => {
-    // Ярусы заполняются сверху вниз, чтобы ёлка выглядела наряженной целиком.
-    const y =
-      OGONEK_TREE_TOP +
-      ((i + 0.5) / DEMO_PEOPLE.length) * (OGONEK_TREE_BOTTOM - OGONEK_TREE_TOP);
-    const spread = ogonekTreeSpread(y);
-    const x = 0.5 + (rand() - 0.5) * 2 * spread;
+    // Тем же правилом, что и настоящие игрушки: подальше от уже висящих
+    const { x, y } = ogonekTreeBestSpot(rand, taken);
+    taken.push({ x, y });
     return {
       id: `demo-toy-${i + 1}`,
       userId: -(i + 1),
@@ -290,6 +284,20 @@ export function demoFeed(now: Date): OgonekFeedItem[] {
     text,
     at: new Date(now.getTime() - minsAgo * 60 * 1000).toISOString()
   }));
+}
+
+/** Письма для показа коробки: без них её не посмотреть на пустой учётке. */
+export function demoThanks(): { id: string; text: string }[] {
+  if (!ogonekDemoAllowed()) return [];
+  const texts = [
+    'Спасибо, что в тот сумасшедший март ты просто взял трубку и сказал: давай разберёмся. Я это помню до сих пор.',
+    'Ты никогда не проходишь мимо, если кто-то застрял. Даже когда у самого завал. Спасибо за это.',
+    'Спасибо за шутку на той планёрке. Я в тот день был на пределе, и она меня спасла.',
+    'С тобой спокойно работать. Кажется, это лучшее, что можно сказать про коллегу, так что говорю.',
+    'Ты объяснял мне одно и то же три раза и ни разу не вздохнул. Спасибо, я запомнил с третьего.',
+    'Спасибо за этот год. Ты даже не представляешь, сколько раз одно твоё «сделаем» снимало половину тревоги.'
+  ];
+  return texts.map((text, i) => ({ id: `demo-thanks-${i + 1}`, text }));
 }
 
 /** Сколько людей «уже открыли» сегодняшнее окно — для социальной заметности. */

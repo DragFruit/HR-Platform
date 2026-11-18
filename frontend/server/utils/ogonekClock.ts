@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3';
 import { getDeployAppEnv } from './appEnv';
-import { OGONEK_DAY_DATES } from '../../app/events/ogonek/timeline';
+import { OGONEK_DAY_DATES, OGONEK_DEV_EXTRA_DATES } from '../../app/events/ogonek/timeline';
 
 /**
  * Часы адвента на один запрос: «сейчас», отладочный режим и выбранный
@@ -15,7 +15,7 @@ export type OgonekClock = {
   devDay: number | null;
 };
 
-/** Cookie панели отладки: номер окна 1..19. На бою не читается. */
+/** Cookie панели отладки: номер окна 1..19 или дата коробки 20..21. На бою не читается. */
 export const OGONEK_DEV_DAY_COOKIE = 'ogonek-dev-day';
 
 /**
@@ -43,7 +43,7 @@ export function ogonekClock(event?: H3Event): OgonekClock {
   }
 
   const raw = event ? Number(getCookie(event, OGONEK_DEV_DAY_COOKIE)) : NaN;
-  const iso = Number.isInteger(raw) ? OGONEK_DAY_DATES[raw] : undefined;
+  const iso = Number.isInteger(raw) ? OGONEK_DAY_DATES[raw] ?? OGONEK_DEV_EXTRA_DATES[raw]?.iso : undefined;
   if (iso) {
     // Выбранный день — 11:00 МСК: окно этого дня уже открылось.
     return { now: new Date(`${iso}T11:00:00+03:00`), debugAllOpen: false, devDay: raw };

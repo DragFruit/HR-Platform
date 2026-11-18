@@ -1,5 +1,9 @@
 <template>
   <div class="og-win">
+    <p v-if="locked" class="og-win__closed">Приём закрыт 27 декабря в 23:59. Посмотреть можно, добавить уже нельзя.</p>
+
+    <!-- После дедлайна форма остаётся на виду, но поля и кнопки неактивны -->
+    <fieldset class="og-win__fields" :disabled="locked">
 
     <!-- 1. Песня года -->
     <section v-if="day.kind === 'song'" class="og-win__body">
@@ -44,7 +48,7 @@
     <!-- 6. Нарисуй игрушку -->
     <section v-else-if="day.kind === 'toy'" class="og-win__body">
       <div class="og-win__editor">
-        <OgonekPixelGrid v-model="toyPixels" :size="toySize" :cell="20" :brush="brush" />
+        <OgonekPixelGrid v-model="toyPixels" :size="toySize" :cell="20" :brush="brush" :disabled="locked" />
         <div class="og-win__col">
           <OgonekPalettePicker v-model="brush" />
           <label class="og-field">
@@ -112,7 +116,7 @@
         <span>За что спасибо</span>
         <textarea v-model="thanksText" rows="4" maxlength="400" placeholder="Коротко и честно" />
       </label>
-      <p class="og-win__note">Имя отправителя не увидит ни адресат, ни мы. Открытка анонимна.</p>
+      <p class="og-win__note">Отправить можно до 27 декабря, 23:59. Письмо придёт адресату 28 декабря, имени отправителя не увидит ни он, ни мы.</p>
       <button
         type="button"
         class="og-btn"
@@ -124,10 +128,6 @@
       <p v-if="player.thanksSent" class="og-win__done">
         Отправлено открыток: {{ player.thanksSent }}.
       </p>
-      <div v-if="thanks.length" class="og-win__inbox">
-        <h3>Вам за этот год</h3>
-        <blockquote v-for="t in thanks" :key="t.id">{{ t.text }}</blockquote>
-      </div>
     </section>
 
     <!-- 16. Письмо себе -->
@@ -238,13 +238,12 @@
       <ul class="og-final">
         <li>Игрушек на ёлке: <strong>{{ treeCount }}</strong></li>
         <li>Снежинок в метели: <strong>{{ snowflakeCount }}</strong></li>
-        <li>Открыток у вас: <strong>{{ thanks.length }}</strong></li>
         <li>Ваше звание: <strong>{{ player.rank }}</strong></li>
       </ul>
       <NuxtLink class="og-link" to="/event/ogonek/tree">Открыть ёлку целиком →</NuxtLink>
 
       <h3 class="og-win__sub">Ещё спасибо</h3>
-      <p class="og-win__note">В последний день открыток можно отправить сколько угодно. Они тоже анонимны.</p>
+      <p class="og-win__note">Писем можно отправить сколько угодно, до 27 декабря, 23:59. Они тоже анонимны и придут 28 декабря в коробке.</p>
       <label class="og-field">
         <span>Кому</span>
         <select v-model.number="thanksTo">
@@ -279,6 +278,8 @@
     <section v-else class="og-win__body">
       <OgonekAwaiting :label="awaitingLabel" :text="day.awaiting" />
     </section>
+
+    </fieldset>
 
     <!--
       Где своего действия нет (ждём материалы) — окно засчитывается
@@ -318,7 +319,6 @@
  * пишут, чего ждут (спека, раздел 6).
  */
 import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
-import { ogonekTreeSpot } from '~/events/ogonek/treePlacement';
 import { OGONEK_BASE_FLAKE, ogonekFlakeSprite } from '~/events/ogonek/snowflake';
 import { OGONEK_DRESSCODE_COVER, OGONEK_DRESSCODE_RULES, OGONEK_LOOKS } from '~/events/ogonek/dresscode';
 import type { OgonekDayView } from '~/events/ogonek/types';
@@ -340,6 +340,8 @@ type PlayerView = {
 
 const props = defineProps<{
   day: OgonekDayView;
+  /** Приём открыт: сервер решает, после 27 декабря закрыто. */
+  submitOpen: boolean;
   player: PlayerView;
   micro: Record<string, string>;
   awaitingLabel: string;
@@ -349,7 +351,6 @@ const props = defineProps<{
     id: string; name: string; department: string; title: string; text: string;
     votes: number; mine: boolean; myVote: boolean;
   }[];
-  thanks: { id: string; text: string; createdAt: string }[];
   dresscodeCounts: Record<string, number>;
   treeCount: number;
   snowflakeCount: number;
@@ -368,6 +369,10 @@ const plugKey = ref(0);
 
 /** Засчитывается прочтением: окно ждёт материалы или само по себе финал. */
 const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind === 'final');
+
+/** Окна, где что-то добавляют. Вилка, колпак и окна для чтения не закрываются. */
+const CLOSING_KINDS = ['song', 'skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'olivier', 'final'];
+const locked = computed(() => !props.submitOpen && CLOSING_KINDS.includes(props.day.kind));
 
 const song = ref(props.player.song);
 const wish = ref(props.player.toy?.wish ?? '');
@@ -407,12 +412,8 @@ function send(kind: string, payload: Record<string, unknown>) {
 }
 
 function hangToy() {
-  // Игрушка садится на свободное место сама: расставлять вручную семьдесят
-  // человек не станут, а пустых веток быть не должно.
-  const spot = ogonekTreeSpot(Math.random);
-  const x = props.player.toy?.x ?? spot.x;
-  const y = props.player.toy?.y ?? spot.y;
-  send('toy', { pixels: toyPixels.value, wish: wish.value, x, y });
+  // Место на ёлке выбирает сервер: подальше от уже висящих игрушек.
+  send('toy', { pixels: toyPixels.value, wish: wish.value });
 }
 
 function sendFlake() {
@@ -491,6 +492,15 @@ watch(
   color: #f6d9d6;
 }
 
+.og-win__fields { display: contents; }
+.og-win__closed {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px dashed var(--og-gold);
+  color: var(--og-gold-soft);
+  font-size: 15px;
+}
+.og-look:disabled, .og-fl__cell:disabled { cursor: not-allowed; opacity: 0.7; }
 .og-win__body { display: flex; flex-direction: column; gap: 12px; }
 .og-win__body--row { flex-direction: row; align-items: center; gap: 20px; }
 .og-win__col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -551,15 +561,6 @@ watch(
   font-family: var(--og-pixel);
   font-size: 11px;
   line-height: 1.6;
-  color: var(--og-snow);
-}
-
-.og-win__inbox { margin-top: 10px; }
-.og-win__inbox h3 { font-family: var(--og-pixel); font-size: 10px; margin: 0 0 8px; color: var(--og-gold-soft); }
-.og-win__inbox blockquote {
-  margin: 0 0 8px;
-  padding: 6px 12px;
-  border-left: 3px solid var(--og-gold);
   color: var(--og-snow);
 }
 

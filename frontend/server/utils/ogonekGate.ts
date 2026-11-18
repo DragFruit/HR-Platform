@@ -9,6 +9,8 @@ import {
   OGONEK_DAY_IDS,
   ogonekDayOpensAt,
   ogonekDayScheduleOpen,
+  ogonekMailboxInSeason,
+  ogonekSubmitInTime,
   ogonekTodayDayId
 } from '../../app/events/ogonek/timeline';
 import { OGONEK_DAYS } from '../../app/events/ogonek/content';
@@ -74,6 +76,19 @@ export function buildDayViews(player: OgonekPlayer, clock: OgonekClock): OgonekD
       draft: opened ? day.draft : undefined
     };
   });
+}
+
+/**
+ * Коробка с письмами открыта. Единственное место, где это решается: до срока
+ * письма адресату не отдаются вообще.
+ */
+export function ogonekMailboxOpen(clock: OgonekClock): boolean {
+  return clock.debugAllOpen || ogonekMailboxInSeason(clock.now);
+}
+
+/** Приём работ и писем открыт: до конца 27 декабря по Москве. */
+export function ogonekSubmitOpen(clock: OgonekClock): boolean {
+  return clock.debugAllOpen || ogonekSubmitInTime(clock.now);
 }
 
 /** Действие окна N разрешено только если окно распечатано. */
