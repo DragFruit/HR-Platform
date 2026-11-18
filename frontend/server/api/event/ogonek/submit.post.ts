@@ -89,10 +89,16 @@ export default defineEventHandler(async (event) => {
     }
     return mutateOgonek((state) => {
       const player = findOrCreateOgonekPlayer(state, session.id, session.name || 'Сотрудник', session.department || '');
-      // Сбрасываются только листки и огоньки. Игрушка, снежинка, письмо и
-      // открытки остаются — это видимые другим артефакты.
+      // Сброс к состоянию первого входа: листки, огоньки и личные выборы окон
+      // (колпак, вилка, песня, каток, образ). Игрушка, снежинка, письмо,
+      // рецепт и открытки остаются — это видимые другим артефакты.
       player.opened = [];
       player.done = [];
+      player.plugged = false;
+      player.hat = false;
+      delete player.song;
+      delete player.skating;
+      delete player.dresscode;
       return { ok: true };
     });
   }

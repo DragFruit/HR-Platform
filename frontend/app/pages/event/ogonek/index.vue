@@ -711,7 +711,7 @@ async function resetProgress() {
     await $fetch('/api/event/ogonek/submit', { method: 'POST', body: { kind: 'devReset' } });
     await load();
     void decor.refresh();
-    toast('Прогресс сброшен: листки снова целые, огоньки погашены');
+    toast('Прогресс сброшен: листки целые, огоньки погашены, колпак снят, вилка вынута');
   } catch (err) {
     toast(errText(err));
   }
