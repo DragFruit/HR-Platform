@@ -32,6 +32,9 @@ type TreeCfg = {
   baubles: number;
   tinsel: number;
   gifts: boolean;
+  /** Убранство: шишки, банты, гирлянды. Звезда на макушке. */
+  decor: boolean;
+  star: boolean;
   seed: number;
 };
 
@@ -53,11 +56,13 @@ export function ogonekTreeImage(): TreeArt {
     h: OGONEK_TREE_H,
     top: OGONEK_TREE_TOP,
     bottom: OGONEK_TREE_BOTTOM,
-    tiers: 8,
+    tiers: 9,
     half: ogonekTreeHalfWidth,
     baubles: 0,
-    tinsel: 6,
+    tinsel: 0,
     gifts: true,
+    decor: false,
+    star: false,
     seed: 20271225
   });
   return cached;
@@ -76,8 +81,10 @@ export function ogonekMiniTreeImage(): TreeArt {
       return 0.08 + 0.4 * Math.pow(t, 0.75);
     },
     baubles: 0,
-    tinsel: 2,
+    tinsel: 0,
     gifts: false,
+    decor: false,
+    star: false,
     seed: 1225
   });
   return cachedMini;
@@ -89,10 +96,12 @@ export function ogonekMiniTreeImage(): TreeArt {
  */
 const TREE_PAL: Record<string, string> = {
   ...OGONEK_PALETTE,
-  n: '#0f2617', // глубина хвои
-  m: '#1a4126', // нижняя сторона ветки
-  l: '#2b5c32', // верх ветки
-  k: '#5b8640', // кончики на свету
+  n: '#0c170a', // глубина хвои, почти чёрная
+  m: '#1b2f12', // тень ветки
+  l: '#31501c', // ветка
+  k: '#506f26', // ветка на свету
+  j: '#7f9338', // иголки на свету, жёлто-зелёные
+  i: '#b7b863', // редкие блики на кончиках
   r: '#b3262a', // лента красная
   o: '#7a4a22', // лента коричневая, шишка
   w: '#4d6e3f', // лента зелёная
@@ -102,8 +111,20 @@ const TREE_PAL: Record<string, string> = {
   v: '#efe2c4', // бумага флажка
   x: '#4f7e77', // флажок бирюзовый, выцветший
   y: '#cf9c3c', // флажок охра
-  z: '#8f9b6c'  // флажок шалфей
+  z: '#8f9b6c', // флажок шалфей
+  // Коробки подарков: тень, основа, свет
+  A: '#5e1717', B: '#8e2622', C: '#b8473c',
+  D: '#7a571c', E: '#a87d2c', F: '#d4aa55',
+  G: '#183c3a', H: '#285e59', I: '#45827a',
+  J: '#9c8b6c', K: '#c8b690', L: '#e8dcbc',
+  // Ленты: тень, основа, свет
+  M: '#8a6420', N: '#c29a3e', O: '#ead07c',
+  P: '#24401f', Q: '#3f6634', S: '#6c9550',
+  T: '#6a1818', U: '#a52a28', V: '#d4594d'
 };
+
+/** Тона хвои от тени к свету. */
+const NEEDLE = ['n', 'm', 'l', 'k', 'j'];
 
 const BAUBLE_COLORS = ['2', '3', '8', '9', 'h', 'b', 'c', 'g'];
 const GLOW_COLORS = new Set(['3', '9', 'c', 'h']);
@@ -141,69 +162,137 @@ function drawTree(cfg: TreeCfg): TreeArt {
   const sc = W / 100;
   const u1 = Math.max(1, Math.round(sc));
 
-  // 1. Ярусы из веток-прядей. Сначала тёмная основа яруса, поверх неё —
-  //    десятки веток: каждая тянется от оси наружу и вниз и заканчивается
-  //    кончиком. Ветка светлая сверху и тёмная снизу, правый бок темнее
-  //    (свет слева сверху). Крайние ветки рисуются первыми, центральные —
-  //    поверх: центр ёлки ближе к нам. Кончики к краям провисают сильнее.
+  // 1. Ель как растёт в природе: ветки отходят от ствола мутовками
+  //    (кругами) через неравный шаг. Каждая ветка повёрнута вокруг ствола:
+  //    дальние темнее и рисуются первыми, ближние светлее и ложатся поверх.
+  //    Ветка провисает и загибает кончик вверх; от неё в обе стороны идут
+  //    боковые веточки, на них иголки. Свет слева сверху.
   const span = (bottom - top) / T;
+  // Под серединой ёлки оставляем место стволу и кадке: лапы туда не свисают
+  const capY = bottom + span * 0.35;
+  const capHalf = W * 0.13;
   const paintAt = (x: number, y: number, k: number, c: string) => {
     if (!inside(x, y)) return;
+    if (y > capY && Math.abs(x - cx) < capHalf + (y - capY) * 0.6) return;
     tierOf[y * W + x] = k;
     px[y * W + x] = c;
   };
-  const thick = Math.max(1, Math.round(sc));
-  for (let k = T - 1; k >= 0; k--) {
-    const ya = k === 0 ? top - span * 0.2 : top + span * k - span * 0.75;
-    const yb = top + span * (k + 1);
-    const hw = cfg.half(yb / H) * W;
-    // Основа: тёмная, видна в щелях между ветками
-    for (let y = Math.ceil(ya + span * 0.25); y <= yb; y++) {
-      const v = (y - ya) / (yb - ya);
-      const w = hw * 0.92 * Math.pow(v, 0.9);
-      for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, k, 'n');
+  const shade = (lv: number) => NEEDLE[Math.max(0, Math.min(4, Math.round(lv)))]!;
+
+  // Тёмная глубина кроны у ствола: видна в просветах между ветками
+  for (let y = top + 2; y <= bottom; y++) {
+    const w = cfg.half(y / H) * W * 0.5;
+    for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, 0, rand() < 0.08 ? 'm' : 'n');
+  }
+
+  const needle = (x: number, y: number, lv: number) => paintAt(Math.round(x), Math.round(y), 0, shade(lv + (rand() < 0.25 ? (rand() < 0.5 ? -1 : 1) : 0)));
+
+  /**
+   * Лапа: стебель по направлению (ux, uy) с провисом под своим весом,
+   * боковые веточки с иголками и — у главных лап — 2–3 лапы поменьше,
+   * отходящие под разными углами. Так ветки не лежат одинаковыми лучами.
+   */
+  const bough = (x0: number, y0: number, ang: number, len: number, lv: number, sag: number, level: number) => {
+    const steps = Math.max(3, Math.ceil(len * 1.2));
+    const pts: { x: number; y: number; t: number }[] = [];
+    let x = x0;
+    let y = y0;
+    let a = ang;
+    const bend = (rand() - 0.5) * 0.5 / steps;
+    for (let st = 0; st <= steps; st++) {
+      const t = st / steps;
+      pts.push({ x, y, t });
+      // Вес тянет вниз к середине, кончик чуть приподнят
+      const g = t < 0.75 ? sag : -sag * 0.8;
+      const dirX = Math.cos(a);
+      a += bend + g * (dirX >= 0 ? 1 : -1) / steps;
+      x += Math.cos(a) * (len / steps);
+      y += Math.sin(a) * (len / steps);
     }
-    const n = Math.round(hw * 1.5) + 8;
-    const strands: { u: number; r: number }[] = [];
-    for (let i = 0; i < n; i++) strands.push({ u: (i / (n - 1)) * 2 - 1 + (rand() - 0.5) * (2 / n), r: rand() });
-    strands.sort((a, b) => Math.abs(b.u) - Math.abs(a.u));
-    for (const { u, r } of strands) {
-      const au = Math.abs(u);
-      const sy = ya + (yb - ya) * (0.12 + r * 0.38);
-      const sx = cx + u * hw * (0.08 + ((sy - ya) / (yb - ya)) * 0.45);
-      const ex = cx + u * hw * (0.94 + rand() * 0.12);
-      const ey = yb - (1 - au) * span * 0.12 + Math.pow(au, 1.6) * span * 0.32 + rand() * 2.5 * sc;
-      const len = Math.hypot(ex - sx, ey - sy);
-      const steps = Math.max(2, Math.ceil(len));
-      for (let st = 0; st <= steps; st++) {
-        const t = st / steps;
-        // Ветка чуть выгнута вверх в середине — как настоящая лапа
-        const bx = sx + (ex - sx) * t;
-        const by = sy + (ey - sy) * t - Math.sin(Math.PI * t) * span * 0.08;
-        const x = Math.round(bx);
-        const y = Math.round(by);
-        const w = t > 0.85 ? 1 : thick + 1;
-        const lightSide = u < 0.3;
-        for (let d = 0; d < w; d++) {
-          let c: string;
-          const upper = d === 0;
-          if (t > 0.9) c = lightSide ? 'k' : 'l';
-          else if (upper) c = au > 0.7 && !lightSide ? 'm' : lightSide && t > 0.45 ? 'k' : 'l';
-          else c = d === w - 1 ? 'n' : lightSide ? 'l' : 'm';
-          paintAt(x, y + d, k, c);
+    const twStep = Math.max(2, Math.round(1.5 * sc));
+    for (let st = Math.round(steps * 0.1); st < pts.length - 1; st += twStep) {
+      const p0 = pts[st]!;
+      const p1 = pts[st + 1]!;
+      const al = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
+      const ux = (p1.x - p0.x) / al;
+      const uy = (p1.y - p0.y) / al;
+      for (const sgn of [-1, 1]) {
+        const ta = (0.6 + rand() * 0.5) * sgn;
+        let vx = ux * Math.cos(ta) - uy * Math.sin(ta);
+        let vy = ux * Math.sin(ta) + uy * Math.cos(ta) + 0.3;
+        const vl = Math.hypot(vx, vy);
+        vx /= vl; vy /= vl;
+        const lt = ((1 - p0.t * 0.6) * len * 0.2 + rand() * 2 * sc) * (level ? 0.8 : 1);
+        const lvTw = lv + (vy < uy ? 0.35 : -0.35) + p0.t * 0.7;
+        for (let q = 0; q <= lt; q++) {
+          const nx = p0.x + vx * q;
+          const ny = p0.y + vy * q;
+          const tq = q / Math.max(1, lt);
+          needle(nx, ny, lvTw - 0.6 + tq * 0.9);
+          const nl = 1 + Math.floor(rand() * Math.max(1, sc * 0.7));
+          for (let r = 1; r <= nl; r++) {
+            needle(nx - vy * r + vx * r * 0.5, ny + vx * r + vy * r * 0.5, lvTw - 0.3 + tq);
+            needle(nx + vy * r + vx * r * 0.5, ny - vx * r + vy * r * 0.5, lvTw + 0.4 + tq);
+          }
         }
+        if (rand() < 0.05 && lv > 1.8) paintAt(Math.round(p0.x + vx * lt), Math.round(p0.y + vy * lt), 0, 'i');
       }
     }
+    for (const p of pts) if (p.t > 0.06) needle(p.x, p.y, lv - 0.8 + p.t);
+    // Лапы поменьше от главной
+    if (level === 0) {
+      const subs = 2 + Math.floor(rand() * 2);
+      for (let k2 = 0; k2 < subs; k2++) {
+        const pt = pts[Math.floor(steps * (0.3 + rand() * 0.45))]!;
+        const off = (0.35 + rand() * 0.55) * (rand() < 0.5 ? -1 : 1);
+        bough(pt.x, pt.y, ang + off, len * (0.35 + rand() * 0.25), lv + 0.15, sag * 0.8, 1);
+      }
+    }
+  };
+
+  type Branch = { x0: number; y0: number; dir: number; depth: number; L: number };
+  const branches: Branch[] = [];
+  for (let y = top + 1; y < bottom - 2; ) {
+    const tv = (y - top) / (bottom - top);
+    const reach = cfg.half(Math.min(bottom, y + span * 0.3) / H) * W;
+    const count = 7 + Math.round(tv * 7);
+    const rot = rand() * Math.PI * 2;
+    for (let i = 0; i < count; i++) {
+      const th = rot + (i * Math.PI * 2) / count + (rand() - 0.5) * 0.8;
+      const dir = Math.cos(th);
+      const depth = Math.sin(th);
+      // Ветка, что смотрит на нас, видна от середины кроны и короче
+      const front = Math.max(0, depth) * (1 - Math.abs(dir));
+      const x0 = cx + (dir * 0.5 + (rand() - 0.5) * 0.6) * reach * front;
+      const L = reach * (0.75 + rand() * 0.4) * (0.55 + 0.45 * Math.abs(dir));
+      branches.push({ x0, y0: y + depth * sc * 2, dir, depth, L });
+    }
+    y += Math.max(2, (3.5 + rand() * 4) * sc * (0.55 + 0.45 * tv));
+  }
+  branches.sort((a, b) => a.depth - b.depth);
+
+  for (const b of branches) {
+    const sideLight = b.dir < 0 ? 0.35 : -0.35;
+    const lv = 0.2 + (b.depth + 1) * 0.75 + sideLight;
+    // Угол: от почти горизонтали до заметного наклона вниз; ближние круче
+    // Угол: боковые — от почти горизонтали до наклона вниз; те, что смотрят
+    // на нас, идут круто вниз и закрывают середину кроны
+    const frontness = Math.max(0, b.depth) * (1 - Math.abs(b.dir));
+    const side = 0.1 + rand() * 0.35;
+    const ang = b.dir >= 0
+      ? side + frontness * (Math.PI / 2 - side) * (0.6 + rand() * 0.4)
+      : Math.PI - side - frontness * (Math.PI / 2 - side) * (0.6 + rand() * 0.4);
+    bough(b.x0, b.y0, ang, Math.max(3, b.L * (1 - frontness * 0.35)), lv, 0.08 + rand() * 0.18, 0);
   }
 
   // 2. Тень яруса на ярус ниже
   const base = px.slice();
-  const darker: Record<string, string> = { k: 'l', l: 'm', m: 'n', n: '0' };
+  const darker: Record<string, string> = { i: 'k', j: 'k', k: 'l', l: 'm', m: 'n', n: 'n' };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const k = tierAt(x, y);
       if (k < 0 || base[y * W + x] === '.') continue;
-      for (let d = 1; d <= thick * 3; d++) {
+      for (let d = 1; d <= u1 * 3; d++) {
         const a = tierAt(x, y - d);
         if (a >= 0 && a < k) {
           set(x, y, darker[base[y * W + x]!] ?? base[y * W + x]!);
@@ -218,7 +307,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
   const glints: { x: number; y: number }[] = [];
 
   // Шишки: первыми, гирлянды лягут поверх
-  const cones = Math.round(4 + 8 * Math.min(1, sc));
+  const cones = cfg.decor ? Math.round(4 + 8 * Math.min(1, sc)) : 0;
   for (let i = 0, tries = 0; i < cones && tries < 400; tries++) {
     const y = Math.round(top + span * 0.6 + rand() * (bottom - top - span));
     const x = Math.round(cx + (rand() * 2 - 1) * cfg.half(y / H) * W * 0.8);
@@ -321,7 +410,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
   }
 
   // Золотые банты между гирляндами
-  const bows = Math.max(1, Math.round(cfg.tinsel * 0.6));
+  const bows = cfg.decor ? Math.max(1, Math.round(cfg.tinsel * 0.6)) : 0;
   for (let i = 0; i < bows; i++) {
     const { at } = swag(Math.min(cfg.tinsel - 1, i * 2 + 1));
     const bx = Math.round(cx + (i % 2 ? 1 : -1) * cfg.half(0.5) * W * (0.25 + 0.2 * rand()));
@@ -385,10 +474,10 @@ function drawTree(cfg: TreeCfg): TreeArt {
   }
 
   // 5. Звезда на макушке
-  const sf = u1;
+  const sf = cfg.star ? u1 : 0;
   const starX = Math.round(cx - 4.5 * sf + 0.5);
   const starY = top - 7 * sf;
-  STAR.forEach((row, y) => [...row].forEach((c, x) => {
+  if (sf) STAR.forEach((row, y) => [...row].forEach((c, x) => {
     if (c === '.') return;
     for (let dy = 0; dy < sf; dy++) for (let dx = 0; dx < sf; dx++) set(starX + x * sf + dx, starY + y * sf + dy, c);
   }));
@@ -396,10 +485,14 @@ function drawTree(cfg: TreeCfg): TreeArt {
   // 6. Ствол и красная кадка
   const tw = Math.max(1, Math.round(W * 0.035));
   const trunkH = Math.max(2, Math.round(H * 0.025));
+  // Ствол начинается под самой нижней лапой над кадкой
   let ty = bottom + 1;
-  while (ty < H && tierAt(Math.round(cx), ty) >= 0) ty++;
+  const potHalfMax = Math.round(W * 0.11);
+  for (let x = Math.round(cx - potHalfMax); x <= Math.round(cx + potHalfMax); x++) {
+    for (let y = H - 1; y > bottom - span; y--) if (tierAt(x, y) >= 0) { ty = Math.max(ty, y + 1); break; }
+  }
   for (let y = ty; y < ty + trunkH; y++) {
-    for (let x = Math.round(cx - tw); x <= Math.round(cx + tw); x++) set(x, y, x < cx ? '7' : '1');
+    for (let x = Math.round(cx - tw); x <= Math.round(cx + tw); x++) set(x, y, x < cx - tw * 0.3 ? 'u' : x > cx + tw * 0.4 ? '1' : 'o');
   }
   const potTop = ty + trunkH;
   const potH = Math.max(4, Math.round(H * 0.07));
@@ -407,30 +500,105 @@ function drawTree(cfg: TreeCfg): TreeArt {
     const v = (y - potTop) / potH;
     const half = Math.round(W * (0.11 - v * 0.03));
     for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) {
-      let c = x < cx - half * 0.4 ? '3' : x > cx + half * 0.5 ? '1' : '2';
-      if (y === potTop) c = '3';
-      if (y === potTop + 1 && x > cx + half * 0.5) c = '2';
+      // Деревянная кадка: доски и два обруча
+      let c = x < cx - half * 0.4 ? 's' : x > cx + half * 0.5 ? 'u' : 'o';
+      if ((Math.round(x - cx) % Math.max(3, u1 * 4)) === 0) c = 'u';
+      if (y === potTop) c = 't';
+      if (Math.abs(y - potTop - potH * 0.25) < u1 * 0.6 || Math.abs(y - potTop - potH * 0.75) < u1 * 0.6) c = '0';
       set(x, y, c);
     }
   }
 
-  // 7. Подарки под ёлкой
+  // 7. Подарки под ёлкой: коробки в объёме (крышка, перед, бок), свет
+  //    слева сверху, лента крест-накрест и бант. Бумага с узором.
   if (cfg.gifts) {
-    const gift = (gx: number, gw: number, gh: number, box: string, shade: string, ribbon: string) => {
-      const gy = potTop + potH - gh;
-      for (let y = 0; y < gh; y++) {
-        for (let x = 0; x < gw; x++) {
-          let c = x === gw - 1 || y === gh - 1 ? shade : box;
-          if (Math.abs(x - Math.floor(gw / 2)) < u1 || (y >= 2 * u1 && y < 3 * u1)) c = ribbon;
-          set(gx + x, gy + y, c);
+    type Tone = readonly [string, string, string]; // свет, основа, тень
+    const gift = (x0: number, fy: number, w: number, h: number, d: number, box: Tone, rib: Tone, pattern: 'dots' | 'stripes' | 'plain') => {
+      const top0 = fy - h;
+      const skew = Math.max(2, Math.round(d * 0.7));
+      const dd = Math.max(2, Math.round(d * 0.5));
+      const rw = Math.max(3, Math.round(w * 0.14));
+      const fx = x0 + Math.floor(w / 2);
+      const tone = (t: Tone, i: number) => t[Math.max(0, Math.min(2, i))]!;
+      const grain = (i: number) => (rand() < 0.06 ? i + (rand() < 0.5 ? -1 : 1) : i);
+      // Бок справа: уходит вглубь и вверх
+      for (let i = 1; i <= skew; i++) {
+        const yo = Math.round((i * dd) / skew);
+        for (let y = top0 - yo; y <= fy - yo; y++) {
+          // Бок в тени; лента огибает его посередине глубины
+          const onRib = i === Math.round(skew / 2) || i === Math.round(skew / 2) + 1;
+          set(x0 + w - 1 + i, y, onRib ? rib[2] : tone(box, grain(2)));
         }
       }
-      set(gx + Math.floor(gw / 2) - 1, gy - 1, ribbon);
-      set(gx + Math.floor(gw / 2) + 1, gy - 1, ribbon);
+      // Крышка
+      for (let r = 1; r <= dd; r++) {
+        const sh = Math.round((r * skew) / dd);
+        for (let x = x0 + sh; x <= x0 + w - 1 + sh; x++) set(x, top0 - r, tone(box, grain(0)));
+      }
+      // Перед: верх светлее, низ и правый край в тени, узор бумаги
+      for (let y = top0; y <= fy; y++) {
+        for (let x = x0; x < x0 + w; x++) {
+          let lv = 1;
+          if (y <= top0 + 1) lv = 0;
+          if (y >= fy - 1 || x >= x0 + w - 2) lv = 2;
+          if (pattern === 'dots' && (x - x0) % 7 === 3 && (y - top0) % 7 === 3) { set(x, y, tone(rib, 0)); set(x + 1, y, tone(rib, 0)); set(x, y + 1, tone(rib, 1)); set(x + 1, y + 1, tone(rib, 1)); x++; continue; }
+          if (pattern === 'stripes' && (x - x0 + (y - top0)) % 9 < 2) lv = Math.min(2, lv + 1);
+          set(x, y, tone(box, grain(lv)));
+        }
+      }
+      // Лента: вертикально по переду и по крышке вглубь, поперёк крышки
+      for (let y = top0; y <= fy; y++) {
+        for (let k2 = 0; k2 < rw; k2++) set(fx - Math.floor(rw / 2) + k2, y, k2 === 0 ? rib[0] : k2 === rw - 1 ? rib[2] : rib[1]);
+      }
+      for (let r = 1; r <= dd; r++) {
+        const sh = Math.round((r * skew) / dd);
+        for (let k2 = 0; k2 < rw; k2++) set(fx - Math.floor(rw / 2) + k2 + sh, top0 - r, k2 === 0 ? rib[0] : rib[1]);
+      }
+      const midR = Math.max(1, Math.round(dd / 2));
+      const shMid = Math.round((midR * skew) / dd);
+      for (let x = x0 + shMid; x <= x0 + w - 1 + shMid; x++) {
+        set(x, top0 - midR, rib[1]);
+        if (Math.max(2, Math.round(rw * 0.5)) > 1) set(x, top0 - midR + 1, rib[0]);
+      }
+      // Бант: две петли с тёмной серединой, узел и хвосты
+      const bx = fx + shMid;
+      const by = top0 - midR;
+      const lr = Math.max(4, Math.round(w * 0.17));
+      for (const side of [-1, 1]) {
+        const ex = bx + side * lr * 0.85;
+        const ey = by - lr * 0.45;
+        for (let y = Math.floor(ey - lr * 0.7); y <= Math.ceil(ey + lr * 0.7); y++) {
+          for (let x = Math.floor(ex - lr); x <= Math.ceil(ex + lr); x++) {
+            const e = ((x - ex) / lr) ** 2 + ((y - ey) / (lr * 0.7)) ** 2;
+            if (e > 1) continue;
+            const hole = e < 0.3;
+            set(x, y, hole ? rib[2] : y < ey - lr * 0.3 ? rib[0] : e > 0.75 && y > ey ? rib[2] : rib[1]);
+          }
+        }
+      }
+      for (let y = by - 3; y <= by + 1; y++) for (let x = bx - 2; x <= bx + 2; x++) set(x, y, Math.abs(x - bx) === 2 ? rib[2] : rib[1]);
+      set(bx - 1, by - 2, rib[0]);
+      for (let t = 1; t <= lr * 1.3; t++) {
+        set(bx - 1 - Math.round(t * 0.6), by + t, t % 3 === 0 ? rib[2] : rib[1]);
+        set(bx - 2 - Math.round(t * 0.6), by + t, rib[0]);
+        set(bx + 1 + Math.round(t * 0.5), by + t, rib[1]);
+        set(bx + 2 + Math.round(t * 0.5), by + t, rib[2]);
+      }
     };
-    gift(Math.round(cx - W * 0.26), 9 * u1, 7 * u1, 'b', 'a', '9');
-    gift(Math.round(cx + W * 0.14), 8 * u1, 6 * u1, 'h', 'g', '2');
-    gift(Math.round(cx - W * 0.17), 6 * u1, 5 * u1, '9', '7', '2');
+    const RED: Tone = ['C', 'B', 'A'];
+    const MUSTARD: Tone = ['F', 'E', 'D'];
+    const TEAL: Tone = ['I', 'H', 'G'];
+    const CREAM: Tone = ['L', 'K', 'J'];
+    const GOLD_R: Tone = ['O', 'N', 'M'];
+    const GREEN_R: Tone = ['S', 'Q', 'P'];
+    const RED_R: Tone = ['V', 'U', 'T'];
+    const floor = Math.min(H - 8, potTop + potH - 1);
+    // Сначала дальние, потом ближние
+    gift(Math.round(cx - 118), floor, 48, 34, 14, TEAL, GOLD_R, 'plain');
+    gift(Math.round(cx + 44), floor, 40, 42, 12, CREAM, RED_R, 'dots');
+    gift(Math.round(cx - 80), floor + 4, 30, 22, 10, RED, GREEN_R, 'stripes');
+    gift(Math.round(cx + 80), floor + 4, 34, 20, 10, MUSTARD, RED_R, 'plain');
+    gift(Math.round(cx - 34), floor + 7, 22, 16, 8, RED, GOLD_R, 'dots');
   }
 
   // Рендер сетки в картинку один к одному

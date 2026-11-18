@@ -111,8 +111,8 @@ function reveal(id: string) {
 
 function measure() {
   const w = rootRef.value?.clientWidth ?? 0;
-  // Пиксель ёлки 2–5 экранных: детали видны, ёлка целиком влезает по ширине
-  scale.value = Math.max(2, Math.min(5, Math.floor(w / OGONEK_TREE_W)));
+  // Пиксель ёлки 2–3 экранных: мелкий, детали читаются, ёлка влезает по ширине
+  scale.value = Math.max(2, Math.min(3, Math.floor(w / OGONEK_TREE_W)));
 }
 
 let ro: ResizeObserver | null = null;
