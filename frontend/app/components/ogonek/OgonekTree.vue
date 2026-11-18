@@ -7,7 +7,7 @@
         v-for="(b, i) in bulbs"
         :key="i"
         class="og-tree__bulb"
-        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, animationDelay: `${b.delay}s` }"
+        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 4}px`, animationDelay: `${b.delay}s` }"
         aria-hidden="true"
       />
 
@@ -64,14 +64,15 @@ import type { OgonekToy } from '~/events/ogonek/types';
 const props = withDefaults(defineProps<{ toys: OgonekToy[]; myToyId?: string | null }>(), { myToyId: null });
 
 const rootRef = ref<HTMLElement | null>(null);
-const scale = ref(3);
+const scale = ref(8);
 const art = ref<{ url: string; bulbs: OgonekTreeBulb[] } | null>(null);
+/** Игрушки рисуют люди сеткой 16×16 — у них свой масштаб, не пиксель ёлки. */
 const openId = ref('');
 const foundId = ref('');
 
 const stageW = computed(() => OGONEK_TREE_W * scale.value);
 const stageH = computed(() => OGONEK_TREE_H * scale.value);
-const toyPx = computed(() => 16 * scale.value);
+const toyPx = computed(() => (stageW.value >= 1000 ? 64 : 48));
 const bulbs = computed(() => art.value?.bulbs ?? []);
 
 /** Игрушки со старыми координатами мягко сдвигаем на хвою. */
@@ -110,7 +111,8 @@ function reveal(id: string) {
 
 function measure() {
   const w = rootRef.value?.clientWidth ?? 0;
-  scale.value = Math.max(2, Math.min(4, Math.floor(w / OGONEK_TREE_W)));
+  // Пиксель ёлки 4–9 экранных: крупно, но ёлка целиком по ширине влезает
+  scale.value = Math.max(4, Math.min(9, Math.floor(w / OGONEK_TREE_W)));
 }
 
 let ro: ResizeObserver | null = null;
@@ -128,7 +130,7 @@ defineExpose({ reveal });
 </script>
 
 <style scoped>
-.og-tree { display: flex; justify-content: center; }
+.og-tree { display: flex; justify-content: center; min-width: 0; overflow: hidden; }
 
 .og-tree__stage { position: relative; flex: none; isolation: isolate; }
 
@@ -142,9 +144,9 @@ defineExpose({ reveal });
 
 .og-tree__bulb {
   position: absolute;
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
+  width: var(--g);
+  height: var(--g);
+  margin: calc(var(--g) / -2) 0 0 calc(var(--g) / -2);
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0, transparent 66%);
   pointer-events: none;
