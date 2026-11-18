@@ -35,6 +35,8 @@ type TreeCfg = {
   /** Убранство: шишки, банты, гирлянды. Звезда на макушке. */
   decor: boolean;
   star: boolean;
+  /** Сцена: тёмная комната, силуэты лап на фоне, свечи и их тёплый свет. */
+  scene: boolean;
   seed: number;
 };
 
@@ -63,6 +65,7 @@ export function ogonekTreeImage(): TreeArt {
     gifts: true,
     decor: false,
     star: false,
+    scene: true,
     seed: 20271225
   });
   return cached;
@@ -85,6 +88,7 @@ export function ogonekMiniTreeImage(): TreeArt {
     gifts: false,
     decor: false,
     star: false,
+    scene: false,
     seed: 1225
   });
   return cachedMini;
@@ -123,11 +127,17 @@ const TREE_PAL: Record<string, string> = {
   S: '#c2bbb0', T: '#f6f2ea', U: '#ffffff',
   V: '#b98a1e', W: '#f2c63f', X: '#fff19c',
   Y: '#a51d2a', Z: '#e5404a', '!': '#ff9196',
-  '#': '#1b7b40', $: '#33b363', '%': '#8ae6a2'
+  '#': '#1b7b40', $: '#33b363', '%': '#8ae6a2',
+  // Фоновые лапы: тёмные, сливово-зелёные
+  '(': '#1c1220', ')': '#201628', '[': '#241b2a', ']': '#2a2230', '{': '#2a2230',
+  // Пламя свечи
+  '<': '#fff3c4', '>': '#ffc04a', '^': '#ff7a22'
 };
 
 /** Тона хвои от тени к свету. */
 const NEEDLE = ['n', 'm', 'l', 'k', 'j'];
+/** Тона фоновых лап. */
+const BACK = ['(', '(', ')', '[', ']'];
 
 const BAUBLE_COLORS = ['2', '3', '8', '9', 'h', 'b', 'c', 'g'];
 const GLOW_COLORS = new Set(['3', '9', 'c', 'h']);
@@ -176,7 +186,10 @@ function drawTree(cfg: TreeCfg): TreeArt {
     tierOf[y * W + x] = k;
     px[y * W + x] = c;
   };
-  const shade = (lv: number) => NEEDLE[Math.max(0, Math.min(4, Math.round(lv)))]!;
+  // ramp и mark меняются для фоновых силуэтов: свои цвета и «не ёлка»
+  let ramp: readonly string[] = NEEDLE;
+  let mark = 0;
+  const shade = (lv: number) => ramp[Math.max(0, Math.min(4, Math.round(lv)))]!;
 
   // Тёмная глубина кроны у ствола: видна в просветах между ветками
   for (let y = top + 2; y <= bottom; y++) {
@@ -184,7 +197,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
     for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, 0, rand() < 0.08 ? 'm' : 'n');
   }
 
-  const needle = (x: number, y: number, lv: number) => paintAt(Math.round(x), Math.round(y), 0, shade(lv + (rand() < 0.25 ? (rand() < 0.5 ? -1 : 1) : 0)));
+  const needle = (x: number, y: number, lv: number) => paintAt(Math.round(x), Math.round(y), mark, shade(lv + (rand() < 0.25 ? (rand() < 0.5 ? -1 : 1) : 0)));
 
   /**
    * Лапа: стебель по направлению (ux, uy) с провисом под своим весом,
@@ -234,7 +247,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
             needle(nx + vy * r + vx * r * 0.5, ny - vx * r + vy * r * 0.5, lvTw + 0.4 + tq);
           }
         }
-        if (rand() < 0.05 && lv > 1.8) paintAt(Math.round(p0.x + vx * lt), Math.round(p0.y + vy * lt), 0, 'i');
+        if (rand() < 0.05 && lv > 1.8) paintAt(Math.round(p0.x + vx * lt), Math.round(p0.y + vy * lt), mark, mark < 0 ? ramp[4]! : 'i');
       }
     }
     for (const p of pts) if (p.t > 0.06) needle(p.x, p.y, lv - 0.8 + p.t);
@@ -270,6 +283,22 @@ function drawTree(cfg: TreeCfg): TreeArt {
     y += Math.max(2, (3.5 + rand() * 4) * sc * (0.55 + 0.45 * tv));
   }
   branches.sort((a, b) => a.depth - b.depth);
+
+  // Фон сцены: крупные еловые лапы по краям, сливово-тёмные и мягкие —
+  // дальний план, который растворяется в темноте комнаты.
+  if (cfg.scene) {
+    ramp = BACK;
+    mark = -2;
+    for (let i = 0; i < 16; i++) {
+      const left = i % 2 === 0;
+      const y0 = H * (0.02 + rand() * 0.9);
+      const x0 = left ? -4 - rand() * 10 : W + 4 + rand() * 10;
+      const ang = left ? 0.15 + rand() * 0.5 : Math.PI - 0.15 - rand() * 0.5;
+      bough(x0, y0, ang, W * (0.18 + rand() * 0.16), 1 + rand() * 2.2, 0.1 + rand() * 0.15, 0);
+    }
+    ramp = NEEDLE;
+    mark = 0;
+  }
 
   for (const b of branches) {
     const sideLight = b.dir < 0 ? 0.35 : -0.35;
@@ -482,7 +511,40 @@ function drawTree(cfg: TreeCfg): TreeArt {
     for (let dy = 0; dy < sf; dy++) for (let dx = 0; dx < sf; dx++) set(starX + x * sf + dx, starY + y * sf + dy, c);
   }));
 
-  // 6. Ствол и кадки нет: низ ёлки закрывают нижние лапы и горка подарков.
+  // 6. Ствола и кадки нет: низ ёлки закрывают нижние лапы и горка подарков.
+
+  // Ретро-свечи на прищепках, как ставили на Рождество: на верхних кромках
+  // ближних лап, не теснее друг к другу. Их пламя светит на хвою (см. рендер).
+  const candles: { x: number; y: number }[] = [];
+  if (cfg.scene) {
+    const want = 22;
+    for (let tries = 0; candles.length < want && tries < 4000; tries++) {
+      const y = Math.round(top + span * 0.8 + rand() * (bottom - top - span * 0.6));
+      const x = Math.round(cx + (rand() * 2 - 1) * cfg.half(y / H) * W * 0.82);
+      if (tierAt(x, y) < 0 || !'lkj'.includes(get(x, y))) continue;
+      if (tierAt(x, y - 3) >= 0 && 'lkj'.includes(get(x, y - 3))) continue; // нужна кромка лапы, а не её середина
+      if (candles.some((c) => Math.hypot(c.x - x, (c.y - y) * 1.3) < 30)) continue;
+      candles.push({ x, y });
+    }
+    for (const c of candles) {
+      const { x, y } = c;
+      // Прищепка
+      set(x - 1, y + 1, 'V'); set(x, y + 1, 'W'); set(x + 1, y + 1, 'V'); set(x, y + 2, 'V');
+      // Свеча: 3 пикселя шириной, свет слева, наплыв воска сверху
+      const hgt = 7 + Math.floor(rand() * 3);
+      for (let yy = y - hgt; yy <= y; yy++) {
+        set(x - 1, yy, 'U'); set(x, yy, 'T'); set(x + 1, yy, 'S');
+      }
+      set(x - 1, y - hgt, 'T'); set(x + 1, y - hgt + 2, 'U');
+      // Фитиль и пламя
+      const fy = y - hgt - 1;
+      set(x, fy, '0');
+      set(x, fy - 1, '<'); set(x, fy - 2, '<'); set(x - 1, fy - 1, '>'); set(x + 1, fy - 1, '^');
+      set(x, fy - 3, '>'); set(x, fy - 4, '^');
+      c.y = fy - 2;
+      bulbs.push({ x: c.x / W, y: c.y / H, color: '#ffb347', delay: -((c.x * 0.37 + c.y * 0.11) % 3) });
+    }
+  }
 
   // 7. Подарки горкой под ёлкой: яркие коробки в объёме (крышка, перед, бок),
   //    контрастная лента крест-накрест, пышный бант с кудрявыми хвостиками,
@@ -593,16 +655,50 @@ function drawTree(cfg: TreeCfg): TreeArt {
     gift(Math.round(cx + 120), floor, 30, 22, 8, TURQ, R_GOLD, 'stars', 'X');
   }
 
-  // Рендер сетки в картинку один к одному
+  // Рендер: палитра → RGB. В сцене поверх — сливовые тени, тёмная комната
+  // и тёплый свет свечей ступенями с упорядоченным дизерингом (Байер 4×4),
+  // как свет рисуют в пиксель-арте.
   const img = new Uint8ClampedArray(W * H * 4);
-  px.forEach((c, i) => {
-    if (c === '.') return;
-    const h = TREE_PAL[c]!;
-    img[i * 4] = parseInt(h.slice(1, 3), 16);
-    img[i * 4 + 1] = parseInt(h.slice(3, 5), 16);
-    img[i * 4 + 2] = parseInt(h.slice(5, 7), 16);
-    img[i * 4 + 3] = 255;
-  });
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const LR = W * 0.13; // радиус света свечи
+  const BG = [24, 14, 28];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const c = px[i]!;
+      let r: number, g: number, b: number;
+      if (c === '.') {
+        if (!cfg.scene) continue;
+        // Комната: чуть светлее за ёлкой, к краям уходит в тёмный сливовый
+        // К краям ровно в цвет страницы, чтобы картинка не читалась рамкой
+        const d0 = Math.hypot((x - cx) / (W * 0.5), (y - H * 0.45) / (H * 0.55));
+        const v = Math.max(0, 1 - d0) ** 1.5;
+        r = BG[0]! + 18 * v; g = BG[1]! + 9 * v; b = BG[2]! + 14 * v;
+      } else {
+        const h = TREE_PAL[c]!;
+        r = parseInt(h.slice(1, 3), 16); g = parseInt(h.slice(3, 5), 16); b = parseInt(h.slice(5, 7), 16);
+        if (cfg.scene && !BACK.includes(c)) {
+          // Тени уходят в сливовый, как в тёмной комнате
+          const lum = (r * 0.3 + g * 0.59 + b * 0.11) / 255;
+          const t = Math.max(0, 0.55 - lum) * 0.9;
+          r = r * (1 - t) + 46 * t; g = g * (1 - t) + 24 * t; b = b * (1 - t) + 54 * t;
+        }
+      }
+      if (cfg.scene && candles.length) {
+        let L = 0;
+        for (const cd of candles) {
+          const d = Math.hypot(x - cd.x, (y - cd.y) * 1.1);
+          if (d < LR) L += (1 - d / LR) ** 2;
+        }
+        if (L > 0) {
+          const q = Math.floor(Math.min(1, L) * 4 + BAYER[(y % 4) * 4 + (x % 4)]! / 16) / 4;
+          const k = c === '.' ? q * 0.3 : q * 0.58;
+          r += 255 * 0.55 * k; g += 160 * 0.55 * k; b += 70 * 0.55 * k;
+        }
+      }
+      img[i * 4] = r; img[i * 4 + 1] = g; img[i * 4 + 2] = b; img[i * 4 + 3] = 255;
+    }
+  }
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;

@@ -7,7 +7,7 @@
         v-for="(b, i) in bulbs"
         :key="i"
         class="og-tree__bulb"
-        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 5}px`, animationDelay: `${b.delay}s` }"
+        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 16}px`, animationDelay: `${b.delay}s` }"
         aria-hidden="true"
       />
 
@@ -139,7 +139,6 @@ defineExpose({ reveal });
   inset: 0;
   background-size: 100% 100%;
   image-rendering: pixelated;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.35));
 }
 
 .og-tree__bulb {
@@ -148,14 +147,21 @@ defineExpose({ reveal });
   height: var(--g);
   margin: calc(var(--g) / -2) 0 0 calc(var(--g) / -2);
   border-radius: 50%;
-  background: radial-gradient(circle, var(--c) 0, transparent 66%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 70%, transparent) 0, transparent 62%);
+  mix-blend-mode: screen;
   pointer-events: none;
-  animation: og-tree-bulb 5s ease-in-out infinite;
+  animation: og-tree-candle 2.6s steps(1, end) infinite;
 }
 
-@keyframes og-tree-bulb {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.75; }
+/* Пламя свечи дрожит: неровные шаги яркости и размера */
+@keyframes og-tree-candle {
+  0% { opacity: 0.55; transform: scale(1); }
+  17% { opacity: 0.72; transform: scale(1.06); }
+  31% { opacity: 0.5; transform: scale(0.96); }
+  46% { opacity: 0.68; transform: scale(1.03); }
+  63% { opacity: 0.6; transform: scale(0.98); }
+  78% { opacity: 0.76; transform: scale(1.08); }
+  100% { opacity: 0.55; transform: scale(1); }
 }
 
 .og-tree__toy {
