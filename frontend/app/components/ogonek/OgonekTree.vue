@@ -8,8 +8,8 @@
         v-if="win"
         ref="snowRef"
         class="og-tree__snow"
-        :width="win.pw"
-        :height="win.ph"
+        :width="win.pw * snowK"
+        :height="win.ph * snowK"
         :style="{
           left: `${win.x * 100}%`,
           top: `${win.y * 100}%`,
@@ -136,17 +136,29 @@ function measure() {
 }
 
 /**
- * Снег за окном. Снежинка — пиксель картинки ёлки (холст размером со стекло,
- * растянут так же, как картинка). Ветер раз в несколько секунд выбирает
- * новое направление и силу и плавно к ним приходит; снежинки чуть качаются.
+ * Снег за окном. Холст в экранном разрешении: снежинки — квадратики размером
+ * с пиксель картинки, но двигаются плавно, без прыжков по сетке. Ветер раз в
+ * несколько секунд выбирает новое направление, а порыв — новую скорость
+ * падения; к обоим снег приходит плавно.
  */
+const snowK = computed(() => {
+  let dpr = 1;
+  try {
+    dpr = window.devicePixelRatio || 1;
+  } catch {
+    dpr = 1;
+  }
+  return Math.max(1, Math.round(scale.value * dpr));
+});
 let snowRaf = 0;
 function startSnow() {
+  cancelAnimationFrame(snowRaf);
   const cv = snowRef.value;
   const w = win.value;
   if (!cv || !w) return;
   const ctx = cv.getContext('2d');
   if (!ctx) return;
+  const K = snowK.value;
   let reduce = false;
   try {
     reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -156,18 +168,22 @@ function startSnow() {
   const flakes = Array.from({ length: Math.round((w.pw * w.ph) / 70) }, () => ({
     x: Math.random() * w.pw,
     y: Math.random() * w.ph,
-    v: 0.12 + Math.random() * 0.28,
+    v: 0.25 + Math.random() * 0.5, // скорость в пикселях картинки за секунду × 20
     big: Math.random() < 0.22,
-    ph: Math.random() * Math.PI * 2
+    ph: Math.random() * Math.PI * 2,
+    sway: 0.6 + Math.random() * 0.8
   }));
   let wind = 0;
   let windTarget = 0;
+  let speed = 1;
+  let speedTarget = 1;
   let nextGust = 0;
   const draw = () => {
-    ctx.clearRect(0, 0, w.pw, w.ph);
+    ctx.clearRect(0, 0, cv.width, cv.height);
     for (const f of flakes) {
-      ctx.fillStyle = f.big ? 'rgba(244, 238, 255, 0.95)' : 'rgba(214, 214, 245, 0.7)';
-      ctx.fillRect(Math.round(f.x), Math.round(f.y), f.big ? 2 : 1, f.big ? 2 : 1);
+      const s = f.big ? 2 * K : K;
+      ctx.fillStyle = f.big ? 'rgba(244, 238, 255, 0.95)' : 'rgba(214, 214, 245, 0.72)';
+      ctx.fillRect(f.x * K, f.y * K, s, s);
     }
   };
   if (reduce) {
@@ -176,17 +192,21 @@ function startSnow() {
   }
   let last = performance.now();
   const step = (now: number) => {
-    const dt = Math.min(3, (now - last) / 16.7);
+    const dt = Math.min(0.05, (now - last) / 1000); // секунды
     last = now;
     if (now > nextGust) {
-      windTarget = (Math.random() * 2 - 1) * 1.1;
+      windTarget = (Math.random() * 2 - 1) * 9;
+      speedTarget = 0.55 + Math.random() * 1.0;
       nextGust = now + 3000 + Math.random() * 4000;
     }
-    wind += (windTarget - wind) * 0.012 * dt;
+    // Плавное приближение: за ~2 с ветер и скорость приходят к новым значениям
+    const ease = 1 - Math.exp(-dt / 1.2);
+    wind += (windTarget - wind) * ease;
+    speed += (speedTarget - speed) * ease;
     for (const f of flakes) {
-      f.ph += 0.03 * dt;
-      f.x += (wind * (0.5 + f.v) + Math.sin(f.ph) * 0.08) * dt;
-      f.y += f.v * (f.big ? 1.25 : 1) * dt;
+      f.ph += dt * f.sway;
+      f.x += (wind * (0.6 + f.v) + Math.sin(f.ph) * 1.6) * dt;
+      f.y += f.v * 20 * speed * (f.big ? 1.2 : 1) * dt;
       if (f.y > w.ph) { f.y = -2; f.x = Math.random() * w.pw; }
       if (f.x > w.pw + 2) f.x = -2;
       if (f.x < -2) f.x = w.pw + 2;
@@ -196,6 +216,11 @@ function startSnow() {
   };
   snowRaf = requestAnimationFrame(step);
 }
+// Масштаб ёлки поменялся — холст пересоздан в новом размере, перезапускаем
+watch(snowK, async () => {
+  await nextTick();
+  startSnow();
+});
 
 let ro: ResizeObserver | null = null;
 onMounted(async () => {
@@ -230,7 +255,6 @@ defineExpose({ reveal });
 
 .og-tree__snow {
   position: absolute;
-  image-rendering: pixelated;
   mask-size: 100% 100%;
   -webkit-mask-size: 100% 100%;
   mask-repeat: no-repeat;

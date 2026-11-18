@@ -19,7 +19,6 @@
     <template v-else>
       <p v-if="!toys.length" class="ogt__state">На ёлке пока пусто. Первая игрушка появится из окна 6.</p>
       <OgonekTree ref="treeRef" :toys="toys" :my-toy-id="myToyId" />
-      <p class="ogt__foot">Это низ ёлки. Подарки, конечно, тоже есть.</p>
     </template>
   </div>
 </template>
@@ -150,11 +149,4 @@ onMounted(async () => {
 
 .ogt :deep(.og-tree) { padding-top: 36px; }
 
-.ogt__foot {
-  margin: 14px 0 0;
-  text-align: center;
-  font-family: var(--og-pixel);
-  font-size: 9px;
-  color: var(--og-muted);
-}
 </style>
