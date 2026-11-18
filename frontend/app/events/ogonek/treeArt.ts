@@ -1,5 +1,5 @@
 /**
- * Большая пышная ёлка желаний: рисуется кодом на сетке 220×640 и
+ * Большая пышная ёлка желаний: рисуется кодом на сетке 400×640 и
  * масштабируется целым множителем. Палитра та же, свет слева сверху.
  *
  * Ярусы перекрывают друг друга: верхний лежит поверх нижнего и бросает на
@@ -46,14 +46,14 @@ type TreeArt = { url: string; bulbs: OgonekTreeBulb[] };
 let cached: TreeArt | null = null;
 let cachedMini: TreeArt | null = null;
 
-/** Большая ёлка желаний 220×640. */
+/** Большая ёлка желаний 400×640. */
 export function ogonekTreeImage(): TreeArt {
   cached ??= drawTree({
     w: OGONEK_TREE_W,
     h: OGONEK_TREE_H,
     top: OGONEK_TREE_TOP,
     bottom: OGONEK_TREE_BOTTOM,
-    tiers: 13,
+    tiers: 11,
     half: ogonekTreeHalfWidth,
     seed: 20271225
   });
@@ -99,7 +99,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
     tierBox.push({ y0, y1 });
     const hw = halfW(y1 / H) * W;
     const droops = 3 + Math.floor(k * 0.9);
-    const depth = (3 + k * 0.45) * Math.max(0.6, sc * 2);
+    const depth = (3 + k * 0.45) * Math.max(0.85, sc);
     const phase = rand() * Math.PI;
     const edge: number[] = [];
     for (let x = 0; x < W; x++) {
@@ -173,8 +173,10 @@ function drawTree(cfg: TreeCfg): TreeArt {
 
   // Ствол, кадка и подарки под ёлкой
   const trunkTop = bottom - 4;
-  const tw = Math.max(3, Math.round(10 * sc));
-  const potH = Math.max(10, Math.round(30 * sc));
+  // Ствол и кадка растут медленнее кроны: иначе не влезают под ёлку
+  const sd = Math.min(sc, 1.4);
+  const tw = Math.max(3, Math.round(10 * sd));
+  const potH = Math.max(10, Math.round(30 * sd));
   for (let y = trunkTop; y < trunkTop + potH; y++) {
     for (let x = cx - tw; x <= cx + tw; x++) {
       if (at(x, y) >= 0) continue;
@@ -182,22 +184,22 @@ function drawTree(cfg: TreeCfg): TreeArt {
       paint(x, y, edge ? '0' : x < cx - tw * 0.4 ? '8' : x > cx + tw * 0.5 ? '1' : '7');
     }
   }
-  const potTop = trunkTop + potH - Math.round(4 * sc + 1);
+  const potTop = trunkTop + potH - Math.round(4 * sd + 1);
   for (let y = potTop; y < potTop + potH; y++) {
     const v = (y - potTop) / potH;
-    const half = (34 - v * 8) * Math.max(0.42, sc);
+    const half = (34 - v * 8) * Math.max(0.42, sd);
     const band = Math.round(potH * 0.27);
     for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) {
       const edge = Math.abs(x - cx) > half - 1 || y === potTop || y === potTop + potH - 1;
       let key = x < cx - half * 0.4 ? '3' : x > cx + half * 0.5 ? '1' : '2';
-      if (y >= potTop + band && y <= potTop + band + Math.max(1, Math.round(4 * sc))) key = x < cx ? '9' : '8';
+      if (y >= potTop + band && y <= potTop + band + Math.max(1, Math.round(4 * sd))) key = x < cx ? '9' : '8';
       paint(x, y, edge ? '0' : key);
     }
   }
   // Подарки рисуем только на большой ёлке: на маленькой они больше кадки
   if (sc > 0.6) {
     const gift = OGONEK_OBJECTS.gift;
-    for (const [ox, oy] of [[cx - 92, potTop - 4], [cx + 52, potTop - 2], [cx - 60, potTop + 2]] as const) {
+    for (const [ox, oy] of [[cx - 110, potTop - 2], [cx + 64, potTop], [cx - 72, potTop + 6]] as const) {
       gift.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') paint(ox + x, oy + y, c); }));
     }
   }

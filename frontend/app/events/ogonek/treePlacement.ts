@@ -1,18 +1,18 @@
 /**
  * Геометрия большой ёлки желаний и места для игрушек.
  *
- * Ёлка нарисована на сетке 220×640 (treeArt.ts) и прокручивается вниз на
+ * Ёлка нарисована на сетке 400×640 (treeArt.ts) и прокручивается вниз на
  * несколько экранов. Координаты игрушек — доли 0..1 этой сетки. Силуэт один
  * на всех: по нему рисуется ёлка, по нему сервер выбирает место игрушке и по
  * нему же клиент поправляет старые координаты, если они вылезли за хвою.
  */
 
-export const OGONEK_TREE_W = 220;
+export const OGONEK_TREE_W = 400;
 export const OGONEK_TREE_H = 640;
 
 /** Хвоя занимает эту полосу по высоте: выше звезда, ниже ствол и кадка. */
-export const OGONEK_TREE_TOP = 0.05;
-export const OGONEK_TREE_BOTTOM = 0.86;
+export const OGONEK_TREE_TOP = 0.06;
+export const OGONEK_TREE_BOTTOM = 0.85;
 
 /** Игрушка 16×16 в долях сетки: от центра до края. */
 const TOY_HALF_X = 8 / OGONEK_TREE_W;
@@ -20,7 +20,8 @@ const TOY_HALF_X = 8 / OGONEK_TREE_W;
 /** Половина ширины хвои на высоте y, в долях ширины сетки. */
 export function ogonekTreeHalfWidth(y: number): number {
   const t = Math.min(1, Math.max(0, (y - OGONEK_TREE_TOP) / (OGONEK_TREE_BOTTOM - OGONEK_TREE_TOP)));
-  return 0.035 + 0.44 * Math.pow(t, 0.92);
+  // Пышная: быстро раздаётся от макушки, внизу почти во всю ширину
+  return 0.06 + 0.42 * Math.pow(t, 0.7);
 }
 
 /** Насколько далеко от оси можно повесить игрушку, чтобы она висела на лапах. */
