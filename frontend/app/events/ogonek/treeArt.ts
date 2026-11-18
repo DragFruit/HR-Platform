@@ -2,8 +2,8 @@
  * Ёлка желаний: рисуется кодом на сетке 200×320 мелким пикселем и
  * растягивается целым множителем. Стиль — как у классической пиксельной
  * ёлки: ярусы с рваными лапами, у каждого светлый верх и тёмный низ,
- * золотая мишура наискосок, звезда и красная кадка. Шариков нет:
- * игрушки на ёлке только от людей.
+ * ретро-убранство: баранки на бечёвке с лентами, бумажные флажки,
+ * золотые банты, шишки. Шариков нет: игрушки на ёлке только от людей.
  *
  * Свет слева сверху. Часть шариков светится: их координаты отдаются
  * отдельно, свечение рисуется элементами поверх картинки.
@@ -56,7 +56,7 @@ export function ogonekTreeImage(): TreeArt {
     tiers: 8,
     half: ogonekTreeHalfWidth,
     baubles: 0,
-    tinsel: 5,
+    tinsel: 6,
     gifts: true,
     seed: 20271225
   });
@@ -82,6 +82,28 @@ export function ogonekMiniTreeImage(): TreeArt {
   });
   return cachedMini;
 }
+
+/**
+ * Тёплые цвета ретро-ёлки поверх общей палитры: глубокая оливковая хвоя,
+ * баранки, ленты, бумага флажков. Ключи — буквы после h, чтобы не пересечься.
+ */
+const TREE_PAL: Record<string, string> = {
+  ...OGONEK_PALETTE,
+  n: '#0f2617', // глубина хвои
+  m: '#1a4126', // нижняя сторона ветки
+  l: '#2b5c32', // верх ветки
+  k: '#5b8640', // кончики на свету
+  r: '#b3262a', // лента красная
+  o: '#7a4a22', // лента коричневая, шишка
+  w: '#4d6e3f', // лента зелёная
+  s: '#c98a3f', // баранка
+  t: '#ebbd72', // баранка, блик
+  u: '#8e5a26', // баранка, тень
+  v: '#efe2c4', // бумага флажка
+  x: '#4f7e77', // флажок бирюзовый, выцветший
+  y: '#cf9c3c', // флажок охра
+  z: '#8f9b6c'  // флажок шалфей
+};
 
 const BAUBLE_COLORS = ['2', '3', '8', '9', 'h', 'b', 'c', 'g'];
 const GLOW_COLORS = new Set(['3', '9', 'c', 'h']);
@@ -139,7 +161,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
     for (let y = Math.ceil(ya + span * 0.25); y <= yb; y++) {
       const v = (y - ya) / (yb - ya);
       const w = hw * 0.92 * Math.pow(v, 0.9);
-      for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, k, '4');
+      for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, k, 'n');
     }
     const n = Math.round(hw * 1.5) + 8;
     const strands: { u: number; r: number }[] = [];
@@ -165,18 +187,18 @@ function drawTree(cfg: TreeCfg): TreeArt {
         for (let d = 0; d < w; d++) {
           let c: string;
           const upper = d === 0;
-          if (t > 0.9) c = lightSide ? '6' : '5';
-          else if (upper) c = au > 0.7 && !lightSide ? '5' : lightSide && t > 0.35 ? '6' : '5';
-          else c = d === w - 1 ? '4' : lightSide ? '5' : '4';
+          if (t > 0.9) c = lightSide ? 'k' : 'l';
+          else if (upper) c = au > 0.7 && !lightSide ? 'm' : lightSide && t > 0.45 ? 'k' : 'l';
+          else c = d === w - 1 ? 'n' : lightSide ? 'l' : 'm';
           paintAt(x, y + d, k, c);
         }
       }
     }
   }
 
-  // 2. Тень яруса на ярус ниже, затем снег на открытых сверху лапах
+  // 2. Тень яруса на ярус ниже
   const base = px.slice();
-  const darker: Record<string, string> = { '6': '5', '5': '4', '4': 'a' };
+  const darker: Record<string, string> = { k: 'l', l: 'm', m: 'n', n: '0' };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const k = tierAt(x, y);
@@ -190,45 +212,142 @@ function drawTree(cfg: TreeCfg): TreeArt {
       }
     }
   }
-  const withShade = px.slice();
-  for (let x = 0; x < W; x++) {
-    for (let y = 1; y < H - 3; y++) {
-      if (tierAt(x, y) < 0) continue;
-      if (withShade[(y - 1) * W + x] !== '.') continue;
-      // Снег ложится на толстые лапы, тонкие кончики — без снега
-      const solid = tierAt(x, y + 1) >= 0 && tierAt(x, y + 2) >= 0 && tierAt(x, y + 3) >= 0;
-      if (!solid || rand() < 0.12) continue;
-      const depth = 1 + (rand() < 0.5 ? 1 : 0) + (sc > 1.5 ? 1 : 0);
-      for (let d = 0; d < depth; d++) set(x, y + d, d === 0 ? 'f' : d === depth - 1 ? 'c' : 'e');
+  // 3. Ретро-убранство: гирлянды из баранок с лентами и бумажные флажки
+  //    чередуются провисающими дугами, сверху — золотые банты, по хвое шишки.
+  const isNeedle = (x: number, y: number) => 'nmlk0'.includes(get(x, y)) && tierAt(x, y) >= 0;
+  const glints: { x: number; y: number }[] = [];
+
+  // Шишки: первыми, гирлянды лягут поверх
+  const cones = Math.round(4 + 8 * Math.min(1, sc));
+  for (let i = 0, tries = 0; i < cones && tries < 400; tries++) {
+    const y = Math.round(top + span * 0.6 + rand() * (bottom - top - span));
+    const x = Math.round(cx + (rand() * 2 - 1) * cfg.half(y / H) * W * 0.8);
+    if (!isNeedle(x, y) || !isNeedle(x, y + 4 * u1)) continue;
+    i++;
+    const cw = Math.max(2, Math.round(1.6 * sc));
+    const ch = Math.max(3, Math.round(2.6 * sc));
+    for (let dy = 0; dy < ch; dy++) {
+      const half = Math.max(0.5, cw * (1 - Math.abs(dy / ch - 0.45) * 1.1));
+      for (let dx = Math.floor(-half); dx <= Math.ceil(half) - 1; dx++) {
+        set(x + dx, y + dy, (dx + dy) % 2 === 0 ? 'o' : dy < ch / 2 ? 'u' : '1');
+      }
+    }
+    set(x, y - 1, '0');
+  }
+
+  const swag = (i: number) => {
+    // Нижняя дуга заканчивается над кадкой, не на ней
+    const yA = top + (bottom - top - span * 0.9) * ((i + 0.75) / (cfg.tinsel + 0.1));
+    const tilt = (i % 2 ? -1 : 1) * span * 0.45;
+    const hw = cfg.half(yA / H) * W * 0.97;
+    return { hw, at: (x: number) => {
+      const u = (x - (cx - hw)) / (2 * hw);
+      return yA + tilt * (u - 0.5) + span * 0.55 * Math.sin(Math.PI * u);
+    } };
+  };
+
+  const ribbon = (x0: number, y0: number, len: number, col: string, phase: number) => {
+    for (let t = 0; t < len; t++) {
+      const x = Math.round(x0 + Math.sin(t / (3 * sc + 1) + phase) * sc * 0.7);
+      for (let d = 0; d < u1; d++) set(x + d, y0 + t, d === 0 ? col : col === 'r' ? '1' : col === 'w' ? 'm' : 'u');
+    }
+    // Срез ленты «ласточкин хвост»
+    set(Math.round(x0), y0 + len, col);
+  };
+
+  for (let i = 0; i < cfg.tinsel; i++) {
+    const { hw, at } = swag(i);
+    const x0 = Math.ceil(cx - hw);
+    const x1 = Math.floor(cx + hw);
+    if (i % 2 === 0) {
+      // Баранки на бечёвке; у каждой третьей — бантик и пучок лент
+      const D = Math.max(4, Math.round(4.4 * sc));
+      const R = D / 2;
+      const ringW = Math.max(1, sc * 1.1);
+      for (let x = x0; x <= x1; x++) set(x, Math.round(at(x)), '7');
+      let n = 0;
+      for (let bx = x0 + 1; bx <= x1 - D; bx += D + Math.max(1, Math.round(sc * 0.6)), n++) {
+        const by = Math.round(at(bx + R)) - Math.floor(R);
+        for (let dy = 0; dy < D; dy++) {
+          for (let dx = 0; dx < D; dx++) {
+            const r = Math.hypot(dx + 0.5 - R, dy + 0.5 - R);
+            if (r > R || r < R - ringW - 0.4) continue;
+            const lit = dx + dy < D - 1;
+            const rim = r > R - 0.9;
+            set(bx + dx, by + dy, rim && !lit ? 'u' : lit && r > R - ringW * 0.6 ? 't' : rim ? 's' : lit ? 's' : 'u');
+          }
+        }
+        if (n % 3 === 1) {
+          const kx = bx + Math.floor(R);
+          const ky = by + D;
+          set(kx - 1, ky, 'r'); set(kx, ky, '1'); set(kx + 1, ky, 'r');
+          const cols = ['r', 'o', 'w', 'r'];
+          for (let q = 0; q < 3; q++) {
+            ribbon(kx - 1 + q, ky + 1, Math.round(span * (0.45 + rand() * 0.45)), cols[(n + q) % cols.length]!, rand() * 6);
+          }
+        }
+      }
+    } else {
+      // Бумажные флажки на нитке: ретро-открытки с каймой и рисунком
+      for (let x = x0; x <= x1; x++) set(x, Math.round(at(x)), 'd');
+      const fw = Math.max(3, Math.round(4.6 * sc));
+      const fh = Math.max(4, Math.round(6 * sc));
+      const gap = Math.max(1, Math.round(1.6 * sc));
+      const fills = ['r', 'x', 'y', 'z', 'r', 'v'];
+      let n = 0;
+      for (let fx = x0 + 2; fx <= x1 - fw - 1; fx += fw + gap, n++) {
+        const fy = Math.round(at(fx + fw / 2)) + 1;
+        const fill = fills[(n * 7 + i) % fills.length]!;
+        const notch = Math.max(1, Math.round(fh * 0.3));
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            // Низ — ласточкин хвост
+            const fromMid = Math.abs(dx - (fw - 1) / 2);
+            if (dy >= fh - notch && fromMid < (dy - (fh - notch) + 1) * ((fw / 2) / notch)) continue;
+            const edge = dx === 0 || dx === fw - 1 || dy === 0;
+            set(fx + dx, fy + dy, edge && fill !== 'v' ? 'v' : edge ? 'd' : fill);
+          }
+        }
+        // Рисунок на открытке: фигурка-силуэт 2–3 пикселя
+        const mx = fx + Math.floor(fw / 2);
+        const my = fy + Math.floor(fh * 0.38);
+        const ink = fill === 'v' || fill === 'y' ? '1' : 'v';
+        set(mx, my, ink); set(mx - 1, my + 1, ink); set(mx, my + 1, ink); set(mx + 1, my + 1, ink);
+        if (sc > 1.5) { set(mx, my - 1, ink); set(mx - 1, my + 2, ink); set(mx + 1, my + 2, ink); }
+        // Тень флажка на хвою
+        for (let dy = 1; dy < fh - notch; dy++) if (isNeedle(fx + fw, fy + dy)) set(fx + fw, fy + dy, 'n');
+      }
     }
   }
 
-  // 3. Мишура: витой золотой шнур наискосок с провисом, поверх хвои.
-  //    Свет и тень чередуются — шнур читается как скрученный.
-  const glints: { x: number; y: number }[] = [];
-  for (let i = 0; i < cfg.tinsel; i++) {
-    const yA = top + (bottom - top) * ((i + 0.8) / (cfg.tinsel + 0.6));
-    const tilt = (i % 2 ? -1 : 1) * span * 0.6;
-    const hw = cfg.half(yA / H) * W * 1.05;
-    const twist = Math.max(2, Math.round(3 * sc));
-    for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
-      const u = (x - (cx - hw)) / (2 * hw);
-      const y = Math.round(yA + tilt * (u - 0.5) + span * 0.35 * Math.sin(Math.PI * u));
-      if (tierAt(x, y) < 0) continue;
-      const ph = (x + i * 2) % twist;
-      for (let t = 0; t < u1; t++) {
-        if (tierAt(x, y + t) < 0) continue;
-        set(x, y + t, ph === 0 ? '9' : t === u1 - 1 ? '7' : '8');
+  // Золотые банты между гирляндами
+  const bows = Math.max(1, Math.round(cfg.tinsel * 0.6));
+  for (let i = 0; i < bows; i++) {
+    const { at } = swag(Math.min(cfg.tinsel - 1, i * 2 + 1));
+    const bx = Math.round(cx + (i % 2 ? 1 : -1) * cfg.half(0.5) * W * (0.25 + 0.2 * rand()));
+    const by = Math.round(at(bx) + span * 0.55);
+    const bw = Math.max(3, Math.round(3.4 * sc));
+    const bh = Math.max(2, Math.round(2.4 * sc));
+    for (const side of [-1, 1]) {
+      for (let dx = 1; dx <= bw; dx++) {
+        const h = Math.round(bh * (dx / bw));
+        for (let dy = -h; dy <= h; dy++) set(bx + side * dx, by + dy, Math.abs(dy) === h ? '7' : dy < 0 ? '9' : '8');
       }
-      if (tierAt(x, y + u1) >= 0) set(x, y + u1, ph === 1 ? '7' : get(x, y + u1) === 'a' ? 'a' : '4');
-      if (ph === 0 && rand() < 0.25) glints.push({ x, y });
     }
+    set(bx, by, '7'); set(bx, by - 1, '8'); set(bx, by + 1, '7');
+    // Хвосты банта
+    for (let t = 1; t <= bh * 2; t++) {
+      set(bx - Math.ceil(t / 2), by + t, '8');
+      set(bx + Math.ceil(t / 2), by + t, '7');
+    }
+    glints.push({ x: bx, y: by });
   }
 
   // 4. Шарики, если заданы (на ёлке желаний их нет: игрушки — только от людей)
   const bulbs: OgonekTreeBulb[] = [];
   const placed: [number, number][] = [];
   const big = W >= 80;
+  // Мягкий тёплый отблеск на золотых бантах
   for (const g of glints) {
     bulbs.push({ x: g.x / W, y: g.y / H, color: OGONEK_PALETTE['9']!, delay: -((g.x * 0.37 + g.y * 0.11) % 5) });
   }
@@ -318,7 +437,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
   const img = new Uint8ClampedArray(W * H * 4);
   px.forEach((c, i) => {
     if (c === '.') return;
-    const h = OGONEK_PALETTE[c]!;
+    const h = TREE_PAL[c]!;
     img[i * 4] = parseInt(h.slice(1, 3), 16);
     img[i * 4 + 1] = parseInt(h.slice(3, 5), 16);
     img[i * 4 + 2] = parseInt(h.slice(5, 7), 16);

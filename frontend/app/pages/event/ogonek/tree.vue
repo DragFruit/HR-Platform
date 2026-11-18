@@ -83,13 +83,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Токены .og-theme — в main.css. Фон — зимняя ночь, ёлка на нём светится. */
+/* Токены .og-theme — в main.css. Фон — тёплая комната вечером: свет лампы сверху. */
 .ogt {
   /* Своё наложение: z-index игрушек не должен перекрывать шапку платформы */
   isolation: isolate;
   background:
-    radial-gradient(90% 40% at 50% 8%, rgba(255, 211, 92, 0.14), transparent 70%),
-    linear-gradient(180deg, #1b2440 0%, #2a1f3a 45%, #3a0911 100%);
+    radial-gradient(70% 35% at 50% 10%, rgba(255, 196, 120, 0.22), transparent 70%),
+    radial-gradient(90% 30% at 50% 100%, rgba(201, 138, 63, 0.18), transparent 70%),
+    linear-gradient(180deg, #3b2a22 0%, #33211b 50%, #2b1714 100%);
   border: 2px solid var(--og-line);
   box-shadow: 6px 6px 0 var(--og-shade);
   min-height: 60vh;
@@ -105,7 +106,7 @@ onMounted(async () => {
   gap: 12px 18px;
   flex-wrap: wrap;
   padding: 14px clamp(14px, 2.4vw, 24px);
-  background: rgba(27, 36, 64, 0.92);
+  background: rgba(46, 30, 24, 0.94);
   border-bottom: 2px solid var(--og-line);
   backdrop-filter: blur(4px);
 }
