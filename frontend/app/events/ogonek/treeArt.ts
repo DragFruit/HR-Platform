@@ -17,7 +17,7 @@ import {
   ogonekTreeHalfWidth
 } from './treePlacement';
 
-export type OgonekTreeBulb = { x: number; y: number; color: string; delay: number };
+export type OgonekTreeBulb = { x: number; y: number; color: string; delay: number; /** Диаметр свечения в пикселях ёлки. */ size?: number };
 /** Стекло окна в долях картинки и маска стекла (куда видно снег за окном). */
 export type OgonekTreeWindow = { x: number; y: number; w: number; h: number; pw: number; ph: number; mask: string };
 type TreeArt = { url: string; bulbs: OgonekTreeBulb[]; w: number; h: number; window?: OgonekTreeWindow };
@@ -66,7 +66,7 @@ export function ogonekTreeImage(): TreeArt {
     tinsel: 0,
     gifts: true,
     decor: false,
-    star: false,
+    star: true,
     scene: true,
     seed: 20271225
   });
@@ -134,6 +134,8 @@ const TREE_PAL: Record<string, string> = {
   // Фоновые лапы: тёмные, сливово-зелёные
   '(': '#1c1220', ')': '#201628', '[': '#241b2a', ']': '#2a2230', '{': '#2a2230',
   // Пламя свечи
+  // Звезда: контур, тень, золото, свет, блик
+  '&': '#5c3f10', '*': '#8a6418', '+': '#c99a2e', '=': '#f1d27a', '~': '#fff4c4',
   '<': '#fff3c4', '>': '#ffc04a', '^': '#ff7a22'
 };
 
@@ -144,19 +146,6 @@ const BACK = ['(', '(', ')', '[', ']'];
 
 const BAUBLE_COLORS = ['2', '3', '8', '9', 'h', 'b', 'c', 'g'];
 const GLOW_COLORS = new Set(['3', '9', 'c', 'h']);
-
-/** Звезда 9×9: светлое золото сверху слева, охра снизу справа. */
-const STAR = [
-  '....9....',
-  '...999...',
-  '...989...',
-  '999888877',
-  '.9988887.',
-  '..98887..',
-  '..88.87..',
-  '.887.877.',
-  '.77...77.'
-];
 
 function drawTree(cfg: TreeCfg): TreeArt {
   const W = cfg.w;
@@ -490,14 +479,66 @@ function drawTree(cfg: TreeCfg): TreeArt {
     }
   }
 
-  // 5. Звезда на макушке
-  const sf = cfg.star ? u1 : 0;
-  const starX = Math.round(cx - 4.5 * sf + 0.5);
-  const starY = top - 7 * sf;
-  if (sf) STAR.forEach((row, y) => [...row].forEach((c, x) => {
-    if (c === '.') return;
-    for (let dy = 0; dy < sf; dy++) for (let dx = 0; dx < sf; dx++) set(starX + x * sf + dx, starY + y * sf + dy, c);
-  }));
+  // 5. Звезда на макушке: восьмиконечная, как стеклянно-золотая игрушка.
+  //    Четыре длинных луча и четыре коротких, у каждого две грани — светлая
+  //    и тёмная (свет слева сверху), по оси луча блестит ребро. Стоит на
+  //    стержне над верхушкой; центр светится и подсвечивает макушку.
+  let starCenter: { x: number; y: number } | null = null;
+  if (cfg.star) {
+    const R = Math.round(W * 0.085);
+    const r2 = R * 0.62;
+    const ri = R * 0.34;
+    const scx = Math.round(cx);
+    const scy = Math.round(top - R * 1.05);
+    starCenter = { x: scx, y: scy };
+    // Многоугольник звезды: 16 вершин, внешние через одну
+    const poly: [number, number][] = [];
+    for (let k2 = 0; k2 < 16; k2++) {
+      const a = -Math.PI / 2 + (k2 * Math.PI) / 8;
+      const rr = k2 % 2 ? ri : (k2 / 2) % 2 ? r2 : R;
+      poly.push([scx + Math.cos(a) * rr, scy + Math.sin(a) * rr]);
+    }
+    const insideStar = (x: number, y: number) => {
+      let inn = false;
+      for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+        const [xa, ya] = poly[a]!;
+        const [xb, yb] = poly[b]!;
+        if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) inn = !inn;
+      }
+      return inn;
+    };
+    // Стержень от звезды к верхушке
+    for (let y = scy + Math.round(R * 0.5); y <= top + 4; y++) {
+      set(scx - 1, y, '*'); set(scx, y, '+');
+    }
+    const Lx = -0.55;
+    const Ly = -0.83;
+    for (let y = scy - R - 1; y <= scy + R + 1; y++) {
+      for (let x = scx - R - 1; x <= scx + R + 1; x++) {
+        const px0 = x + 0.5;
+        const py0 = y + 0.5;
+        if (!insideStar(px0, py0)) continue;
+        const edge = !insideStar(px0 - 1, py0) || !insideStar(px0 + 1, py0) || !insideStar(px0, py0 - 1) || !insideStar(px0, py0 + 1);
+        const th = Math.atan2(py0 - scy, px0 - scx);
+        // Ближайшая ось луча и сторона грани
+        const k2 = Math.round((th + Math.PI / 2) / (Math.PI / 4));
+        const ax = -Math.PI / 2 + k2 * (Math.PI / 4);
+        let dlt = th - ax;
+        dlt = Math.atan2(Math.sin(dlt), Math.cos(dlt));
+        const side = dlt >= 0 ? 1 : -1;
+        // Нормаль грани — ось луча, повёрнутая в сторону грани
+        const nx = Math.cos(ax + side * Math.PI / 2);
+        const ny = Math.sin(ax + side * Math.PI / 2);
+        const lit = nx * Lx + ny * Ly;
+        const dist = Math.hypot(px0 - scx, py0 - scy);
+        let c = lit > 0.35 ? '=' : lit > -0.25 ? '+' : '*';
+        if (Math.abs(dlt) < 0.05 + 0.6 / Math.max(1, dist) && lit > -0.6) c = '~'; // ребро луча
+        if (dist < ri * 0.55) c = '~'; // светящийся центр
+        if (edge) c = '&';
+        set(x, y, c);
+      }
+    }
+  }
 
   // 6. Ствола и кадки нет: низ ёлки закрывают нижние лапы и горка подарков.
 
@@ -532,6 +573,12 @@ function drawTree(cfg: TreeCfg): TreeArt {
       c.y = fy - 2;
       bulbs.push({ x: c.x / W, y: c.y / H, color: '#ffb347', delay: -((c.x * 0.37 + c.y * 0.11) % 3) });
     }
+  }
+
+  // Звезда светит тепло, как ещё одна свеча
+  if (starCenter) {
+    candles.push({ x: starCenter.x, y: starCenter.y });
+    bulbs.push({ x: starCenter.x / W, y: starCenter.y / H, color: '#ffd27a', delay: 0, size: 24 });
   }
 
   // 7. Подарки горкой под ёлкой — как в старой открытке: коробки в кремовой
@@ -845,7 +892,7 @@ function drawTree(cfg: TreeCfg): TreeArt {
           r = r * (1 - t) + 46 * t; g = g * (1 - t) + 24 * t; b = b * (1 - t) + 54 * t;
         }
       }
-      if (cfg.scene && candles.length) {
+      if (cfg.scene && candles.length && !'&*+=~'.includes(c)) {
         let L = 0;
         for (const cd of candles) {
           const d = Math.hypot(x - cd.x, (y - cd.y) * 1.1);

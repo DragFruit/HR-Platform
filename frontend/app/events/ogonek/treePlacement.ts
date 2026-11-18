@@ -11,7 +11,7 @@ export const OGONEK_TREE_W = 320;
 export const OGONEK_TREE_H = 512;
 
 /** Хвоя занимает эту полосу по высоте: выше звезда, ниже ствол и кадка. */
-export const OGONEK_TREE_TOP = 0.03;
+export const OGONEK_TREE_TOP = 0.1;
 export const OGONEK_TREE_BOTTOM = 0.8;
 
 /** Половина игрушки в долях ширины ёлки (игрушка ~64px на ёлке ~1100–1400px). */

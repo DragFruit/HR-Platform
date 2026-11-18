@@ -25,7 +25,7 @@
         v-for="(b, i) in bulbs"
         :key="i"
         class="og-tree__bulb"
-        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 16}px`, animationDelay: `${b.delay}s` }"
+        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * (b.size ?? 16)}px`, animationDelay: `${b.delay}s` }"
         aria-hidden="true"
       />
 
