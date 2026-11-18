@@ -3,6 +3,24 @@
     <div class="og-tree__stage" :style="{ width: `${stageW}px`, height: `${stageH}px` }">
       <span class="og-tree__img" :style="{ backgroundImage: art ? `url(${art.url})` : 'none' }" aria-hidden="true" />
 
+      <!-- Снег за окном: виден только в стекле (маска из картинки) -->
+      <canvas
+        v-if="win"
+        ref="snowRef"
+        class="og-tree__snow"
+        :width="win.pw"
+        :height="win.ph"
+        :style="{
+          left: `${win.x * 100}%`,
+          top: `${win.y * 100}%`,
+          width: `${win.w * 100}%`,
+          height: `${win.h * 100}%`,
+          maskImage: `url(${win.mask})`,
+          WebkitMaskImage: `url(${win.mask})`
+        }"
+        aria-hidden="true"
+      />
+
       <span
         v-for="(b, i) in bulbs"
         :key="i"
@@ -57,7 +75,7 @@
  * Ёлка — пиксельная сетка (treeArt.ts) с целым увеличением, чтобы пиксели
  * были ровными. Огоньки гирлянды светятся отдельными элементами поверх.
  */
-import { ogonekTreeImage, type OgonekTreeBulb } from '~/events/ogonek/treeArt';
+import { ogonekTreeImage, type OgonekTreeBulb, type OgonekTreeWindow } from '~/events/ogonek/treeArt';
 import { ogonekTreeClamp, OGONEK_TREE_H, OGONEK_TREE_W } from '~/events/ogonek/treePlacement';
 import type { OgonekToy } from '~/events/ogonek/types';
 
@@ -65,7 +83,9 @@ const props = withDefaults(defineProps<{ toys: OgonekToy[]; myToyId?: string | n
 
 const rootRef = ref<HTMLElement | null>(null);
 const scale = ref(8);
-const art = ref<{ url: string; bulbs: OgonekTreeBulb[] } | null>(null);
+const art = ref<{ url: string; bulbs: OgonekTreeBulb[]; window?: OgonekTreeWindow } | null>(null);
+const win = computed(() => art.value?.window ?? null);
+const snowRef = ref<HTMLCanvasElement | null>(null);
 /** Игрушки рисуют люди сеткой 16×16 — у них свой масштаб, не пиксель ёлки. */
 const openId = ref('');
 const foundId = ref('');
@@ -115,16 +135,83 @@ function measure() {
   scale.value = Math.max(2, Math.min(3, Math.floor(w / OGONEK_TREE_W)));
 }
 
+/**
+ * Снег за окном. Снежинка — пиксель картинки ёлки (холст размером со стекло,
+ * растянут так же, как картинка). Ветер раз в несколько секунд выбирает
+ * новое направление и силу и плавно к ним приходит; снежинки чуть качаются.
+ */
+let snowRaf = 0;
+function startSnow() {
+  const cv = snowRef.value;
+  const w = win.value;
+  if (!cv || !w) return;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  let reduce = false;
+  try {
+    reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    reduce = false;
+  }
+  const flakes = Array.from({ length: Math.round((w.pw * w.ph) / 70) }, () => ({
+    x: Math.random() * w.pw,
+    y: Math.random() * w.ph,
+    v: 0.12 + Math.random() * 0.28,
+    big: Math.random() < 0.22,
+    ph: Math.random() * Math.PI * 2
+  }));
+  let wind = 0;
+  let windTarget = 0;
+  let nextGust = 0;
+  const draw = () => {
+    ctx.clearRect(0, 0, w.pw, w.ph);
+    for (const f of flakes) {
+      ctx.fillStyle = f.big ? 'rgba(244, 238, 255, 0.95)' : 'rgba(214, 214, 245, 0.7)';
+      ctx.fillRect(Math.round(f.x), Math.round(f.y), f.big ? 2 : 1, f.big ? 2 : 1);
+    }
+  };
+  if (reduce) {
+    draw();
+    return;
+  }
+  let last = performance.now();
+  const step = (now: number) => {
+    const dt = Math.min(3, (now - last) / 16.7);
+    last = now;
+    if (now > nextGust) {
+      windTarget = (Math.random() * 2 - 1) * 1.1;
+      nextGust = now + 3000 + Math.random() * 4000;
+    }
+    wind += (windTarget - wind) * 0.012 * dt;
+    for (const f of flakes) {
+      f.ph += 0.03 * dt;
+      f.x += (wind * (0.5 + f.v) + Math.sin(f.ph) * 0.08) * dt;
+      f.y += f.v * (f.big ? 1.25 : 1) * dt;
+      if (f.y > w.ph) { f.y = -2; f.x = Math.random() * w.pw; }
+      if (f.x > w.pw + 2) f.x = -2;
+      if (f.x < -2) f.x = w.pw + 2;
+    }
+    draw();
+    snowRaf = requestAnimationFrame(step);
+  };
+  snowRaf = requestAnimationFrame(step);
+}
+
 let ro: ResizeObserver | null = null;
-onMounted(() => {
+onMounted(async () => {
   art.value = ogonekTreeImage();
   measure();
+  await nextTick();
+  startSnow();
   if (typeof ResizeObserver !== 'undefined' && rootRef.value) {
     ro = new ResizeObserver(measure);
     ro.observe(rootRef.value);
   }
 });
-onBeforeUnmount(() => ro?.disconnect());
+onBeforeUnmount(() => {
+  ro?.disconnect();
+  cancelAnimationFrame(snowRaf);
+});
 
 defineExpose({ reveal });
 </script>
@@ -139,6 +226,16 @@ defineExpose({ reveal });
   inset: 0;
   background-size: 100% 100%;
   image-rendering: pixelated;
+}
+
+.og-tree__snow {
+  position: absolute;
+  image-rendering: pixelated;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  pointer-events: none;
 }
 
 .og-tree__bulb {

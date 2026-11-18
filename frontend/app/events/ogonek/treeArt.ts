@@ -18,7 +18,9 @@ import {
 } from './treePlacement';
 
 export type OgonekTreeBulb = { x: number; y: number; color: string; delay: number };
-type TreeArt = { url: string; bulbs: OgonekTreeBulb[]; w: number; h: number };
+/** Стекло окна в долях картинки и маска стекла (куда видно снег за окном). */
+export type OgonekTreeWindow = { x: number; y: number; w: number; h: number; pw: number; ph: number; mask: string };
+type TreeArt = { url: string; bulbs: OgonekTreeBulb[]; w: number; h: number; window?: OgonekTreeWindow };
 
 type TreeCfg = {
   w: number;
@@ -268,7 +270,8 @@ function drawTree(cfg: TreeCfg): TreeArt {
   // Нижние мутовки уходят ниже кроны: лапы закрывают низ до подарков
   for (let y = top + 1; y < bottom + span * 0.7; ) {
     const tv = (y - top) / (bottom - top);
-    const reach = cfg.half(Math.min(bottom, y + span * 0.3) / H) * W;
+    // Размах лап с запасом на боковые лапы: ёлка не вылезает за края картинки
+    const reach = Math.min(cfg.half(Math.min(bottom, y + span * 0.3) / H) * W, W * 0.36);
     const count = 7 + Math.round(tv * 7);
     const rot = rand() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
@@ -689,8 +692,12 @@ function drawTree(cfg: TreeCfg): TreeArt {
    * дощатый пол в перспективе и ковёр под ёлкой. Ёлка тепло подсвечивает
    * стену и пол вокруг себя.
    */
+  let glass = false;
+  const WIN = { x0: Math.round(W * 0.06), x1: Math.round(W * 0.24), y0: Math.round(H * 0.12), y1: Math.round(H * 0.52) };
+  const glassMask = new Uint8ClampedArray((WIN.x1 - WIN.x0 + 1) * (WIN.y1 - WIN.y0 + 1) * 4);
   const room = (x: number, y: number): [number, number, number] => {
     let c: [number, number, number];
+    glass = false;
     if (y < horizon) {
       // Обои: тёмные сливово-коричневые, вертикальные полосы и ромбики
       c = [44, 28, 40];
@@ -711,19 +718,20 @@ function drawTree(cfg: TreeCfg): TreeArt {
         if (y >= horizon - 5) c = [32, 19, 18];
       }
       // Окно слева: лунный свет, переплёт, шторы, карниз
-      const wx0 = Math.round(W * 0.06);
-      const wx1 = Math.round(W * 0.24);
-      const wy0 = Math.round(H * 0.12);
-      const wy1 = Math.round(H * 0.52);
+      const { x0: wx0, x1: wx1, y0: wy0, y1: wy1 } = WIN;
       if (x >= wx0 && x <= wx1 && y >= wy0 && y <= wy1) {
         const t = (y - wy0) / (wy1 - wy0);
         c = [40 + 18 * (1 - t), 42 + 18 * (1 - t), 74 + 22 * (1 - t)];
         const mid = Math.round((wx0 + wx1) / 2);
         if (x <= wx0 + 2 || x >= wx1 - 2 || y <= wy0 + 2 || y >= wy1 - 2) c = [58, 40, 46];
         else if (Math.abs(x - mid) <= 1 || [0.33, 0.66].some((f) => Math.abs(y - (wy0 + (wy1 - wy0) * f)) <= 1)) c = [28, 18, 26];
+        else glass = true;
       }
       const curtain = (a: number, b: number) => x >= a && x <= b && y >= wy0 - 8 && y < horizon - 2;
-      if (curtain(wx0 - 12, wx0 + 3) || curtain(wx1 - 3, wx1 + 12)) c = x % 5 < 2 ? [52, 16, 24] : [68, 22, 30];
+      if (curtain(wx0 - 12, wx0 + 3) || curtain(wx1 - 3, wx1 + 12)) {
+        c = x % 5 < 2 ? [52, 16, 24] : [68, 22, 30];
+        glass = false;
+      }
       if (y >= wy0 - 11 && y <= wy0 - 8 && x >= wx0 - 14 && x <= wx1 + 14) c = [70, 50, 34];
       // Картина справа
       const fx0 = Math.round(W * 0.78);
@@ -770,6 +778,10 @@ function drawTree(cfg: TreeCfg): TreeArt {
       if (c === '.') {
         if (!cfg.scene) continue;
         [r, g, b] = room(x, y);
+        if (glass) {
+          const mi = ((y - WIN.y0) * (WIN.x1 - WIN.x0 + 1) + (x - WIN.x0)) * 4;
+          glassMask[mi] = 255; glassMask[mi + 1] = 255; glassMask[mi + 2] = 255; glassMask[mi + 3] = 255;
+        }
       } else {
         const h = TREE_PAL[c]!;
         r = parseInt(h.slice(1, 3), 16); g = parseInt(h.slice(3, 5), 16); b = parseInt(h.slice(5, 7), 16);
@@ -808,5 +820,15 @@ function drawTree(cfg: TreeCfg): TreeArt {
   canvas.width = W;
   canvas.height = H;
   canvas.getContext('2d')!.putImageData(new ImageData(img, W, H), 0, 0);
-  return { url: canvas.toDataURL('image/png'), bulbs, w: W, h: H };
+  let win: OgonekTreeWindow | undefined;
+  if (cfg.scene) {
+    const mw = WIN.x1 - WIN.x0 + 1;
+    const mh = WIN.y1 - WIN.y0 + 1;
+    const mc = document.createElement('canvas');
+    mc.width = mw;
+    mc.height = mh;
+    mc.getContext('2d')!.putImageData(new ImageData(glassMask, mw, mh), 0, 0);
+    win = { x: WIN.x0 / W, y: WIN.y0 / H, w: mw / W, h: mh / H, pw: mw, ph: mh, mask: mc.toDataURL('image/png') };
+  }
+  return { url: canvas.toDataURL('image/png'), bulbs, w: W, h: H, window: win };
 }
