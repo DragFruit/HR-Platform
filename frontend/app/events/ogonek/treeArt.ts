@@ -1,8 +1,9 @@
 /**
- * Ёлка желаний в крупный пиксель: рисуется кодом на маленькой сетке и
+ * Ёлка желаний: рисуется кодом на сетке 200×320 мелким пикселем и
  * растягивается целым множителем. Стиль — как у классической пиксельной
  * ёлки: ярусы с рваными лапами, у каждого светлый верх и тёмный низ,
- * золотая мишура наискосок, россыпь шариков, звезда и красная кадка.
+ * золотая мишура наискосок, звезда и красная кадка. Шариков нет:
+ * игрушки на ёлке только от людей.
  *
  * Свет слева сверху. Часть шариков светится: их координаты отдаются
  * отдельно, свечение рисуется элементами поверх картинки.
@@ -52,10 +53,10 @@ export function ogonekTreeImage(): TreeArt {
     h: OGONEK_TREE_H,
     top: OGONEK_TREE_TOP,
     bottom: OGONEK_TREE_BOTTOM,
-    tiers: 10,
+    tiers: 8,
     half: ogonekTreeHalfWidth,
-    baubles: 46,
-    tinsel: 4,
+    baubles: 0,
+    tinsel: 5,
     gifts: true,
     seed: 20271225
   });
@@ -65,8 +66,8 @@ export function ogonekTreeImage(): TreeArt {
 /** Маленькая ёлка для плитки в календаре: та же рисовка. */
 export function ogonekMiniTreeImage(): TreeArt {
   cachedMini ??= drawTree({
-    w: 44,
-    h: 56,
+    w: 76,
+    h: 96,
     top: 0.14,
     bottom: 0.84,
     tiers: 6,
@@ -74,7 +75,7 @@ export function ogonekMiniTreeImage(): TreeArt {
       const t = Math.min(1, Math.max(0, (y - 0.14) / 0.7));
       return 0.08 + 0.4 * Math.pow(t, 0.75);
     },
-    baubles: 16,
+    baubles: 0,
     tinsel: 2,
     gifts: false,
     seed: 1225
@@ -114,75 +115,123 @@ function drawTree(cfg: TreeCfg): TreeArt {
   const set = (x: number, y: number, c: string) => { if (inside(x, y)) px[y * W + x] = c; };
   const tierAt = (x: number, y: number) => (inside(x, y) ? tierOf[y * W + x]! : -1);
 
-  // 1. Силуэт: ярусы снизу вверх, верхний ложится поверх нижнего.
-  //    Низ яруса — рваные лапы: ступеньки по 2–4 пикселя разной глубины.
+  /** Масштаб деталей относительно сетки шириной 100. */
+  const sc = W / 100;
+  const u1 = Math.max(1, Math.round(sc));
+
+  // 1. Ярусы из веток-прядей. Сначала тёмная основа яруса, поверх неё —
+  //    десятки веток: каждая тянется от оси наружу и вниз и заканчивается
+  //    кончиком. Ветка светлая сверху и тёмная снизу, правый бок темнее
+  //    (свет слева сверху). Крайние ветки рисуются первыми, центральные —
+  //    поверх: центр ёлки ближе к нам. Кончики к краям провисают сильнее.
   const span = (bottom - top) / T;
+  const paintAt = (x: number, y: number, k: number, c: string) => {
+    if (!inside(x, y)) return;
+    tierOf[y * W + x] = k;
+    px[y * W + x] = c;
+  };
+  const thick = Math.max(1, Math.round(sc));
   for (let k = T - 1; k >= 0; k--) {
-    const y1 = Math.round(top + span * (k + 1));
-    const y0 = Math.round(top + span * k - (k ? span * 0.55 : 0));
-    const hwB = cfg.half(y1 / H) * W;
-    const hwT = k === 0 ? 0.6 : hwB * 0.5;
-    // Лапы — ровная пила: кончик каждые 6 пикселей, сдвиг свой у яруса
-    const ZIG = [0, 1, 2, 2, 1, 0];
-    const phase = Math.floor(rand() * 6);
-    const dips = Array.from({ length: W }, (_, x) => ZIG[(x + phase) % 6]!);
-    for (let y = y0; y <= y1 + 2; y++) {
-      const v = Math.min(1, (y - y0) / Math.max(1, y1 - y0));
-      const hw = hwT + (hwB - hwT) * Math.pow(v, 0.85);
-      for (let x = Math.ceil(cx - hw); x <= Math.floor(cx + hw); x++) {
-        if (y > y1 && dips[x]! < y - y1) continue;
-        // Кончики крайних лап торчат в стороны и чуть вниз
-        if (!inside(x, y)) continue;
-        tierOf[y * W + x] = k;
-        px[y * W + x] = '5';
+    const ya = k === 0 ? top - span * 0.2 : top + span * k - span * 0.75;
+    const yb = top + span * (k + 1);
+    const hw = cfg.half(yb / H) * W;
+    // Основа: тёмная, видна в щелях между ветками
+    for (let y = Math.ceil(ya + span * 0.25); y <= yb; y++) {
+      const v = (y - ya) / (yb - ya);
+      const w = hw * 0.92 * Math.pow(v, 0.9);
+      for (let x = Math.ceil(cx - w); x <= Math.floor(cx + w); x++) paintAt(x, y, k, '4');
+    }
+    const n = Math.round(hw * 1.5) + 8;
+    const strands: { u: number; r: number }[] = [];
+    for (let i = 0; i < n; i++) strands.push({ u: (i / (n - 1)) * 2 - 1 + (rand() - 0.5) * (2 / n), r: rand() });
+    strands.sort((a, b) => Math.abs(b.u) - Math.abs(a.u));
+    for (const { u, r } of strands) {
+      const au = Math.abs(u);
+      const sy = ya + (yb - ya) * (0.12 + r * 0.38);
+      const sx = cx + u * hw * (0.08 + ((sy - ya) / (yb - ya)) * 0.45);
+      const ex = cx + u * hw * (0.94 + rand() * 0.12);
+      const ey = yb - (1 - au) * span * 0.12 + Math.pow(au, 1.6) * span * 0.32 + rand() * 2.5 * sc;
+      const len = Math.hypot(ex - sx, ey - sy);
+      const steps = Math.max(2, Math.ceil(len));
+      for (let st = 0; st <= steps; st++) {
+        const t = st / steps;
+        // Ветка чуть выгнута вверх в середине — как настоящая лапа
+        const bx = sx + (ex - sx) * t;
+        const by = sy + (ey - sy) * t - Math.sin(Math.PI * t) * span * 0.08;
+        const x = Math.round(bx);
+        const y = Math.round(by);
+        const w = t > 0.85 ? 1 : thick + 1;
+        const lightSide = u < 0.3;
+        for (let d = 0; d < w; d++) {
+          let c: string;
+          const upper = d === 0;
+          if (t > 0.9) c = lightSide ? '6' : '5';
+          else if (upper) c = au > 0.7 && !lightSide ? '5' : lightSide && t > 0.35 ? '6' : '5';
+          else c = d === w - 1 ? '4' : lightSide ? '5' : '4';
+          paintAt(x, y + d, k, c);
+        }
       }
     }
   }
 
-  // 2. Тени и свет по ярусам
+  // 2. Тень яруса на ярус ниже, затем снег на открытых сверху лапах
   const base = px.slice();
+  const darker: Record<string, string> = { '6': '5', '5': '4', '4': 'a' };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const k = tierAt(x, y);
       if (k < 0 || base[y * W + x] === '.') continue;
-      const below = tierAt(x, y + 1);
-      const above1 = tierAt(x, y - 1);
-      const above2 = tierAt(x, y - 2);
-      const edgeSide = tierAt(x - 1, y) < 0 || tierAt(x + 1, y) < 0;
-      let c = '5';
-      if (below < 0 || below > k) c = 'a';
-      else if (tierAt(x, y + 2) < 0 || tierAt(x, y + 2) > k) c = '4';
-      else if (above1 >= 0 && above1 < k) c = '4';
-      else if (above2 >= 0 && above2 < k) c = x < cx + 2 ? '6' : '5';
-      else if (above1 < 0 || tierAt(x, y - 3) < 0) c = x < cx ? '6' : '5';
-      if (edgeSide) c = 'a';
-      // Правый бок чуть темнее: свет слева
-      const hwHere = cfg.half(y / H) * W;
-      // Редкие иголки: светлые слева, тёмные справа — без регулярной сетки
-      if (c === '5' && x > cx + hwHere * 0.6 && rand() < 0.12) c = '4';
-      if (c === '5' && x < cx - hwHere * 0.3 && rand() < 0.08) c = '6';
-      set(x, y, c);
+      for (let d = 1; d <= thick * 3; d++) {
+        const a = tierAt(x, y - d);
+        if (a >= 0 && a < k) {
+          set(x, y, darker[base[y * W + x]!] ?? base[y * W + x]!);
+          break;
+        }
+      }
+    }
+  }
+  const withShade = px.slice();
+  for (let x = 0; x < W; x++) {
+    for (let y = 1; y < H - 3; y++) {
+      if (tierAt(x, y) < 0) continue;
+      if (withShade[(y - 1) * W + x] !== '.') continue;
+      // Снег ложится на толстые лапы, тонкие кончики — без снега
+      const solid = tierAt(x, y + 1) >= 0 && tierAt(x, y + 2) >= 0 && tierAt(x, y + 3) >= 0;
+      if (!solid || rand() < 0.12) continue;
+      const depth = 1 + (rand() < 0.5 ? 1 : 0) + (sc > 1.5 ? 1 : 0);
+      for (let d = 0; d < depth; d++) set(x, y + d, d === 0 ? 'f' : d === depth - 1 ? 'c' : 'e');
     }
   }
 
-  // 3. Мишура: золотые нити наискосок с провисом, поверх хвои
+  // 3. Мишура: витой золотой шнур наискосок с провисом, поверх хвои.
+  //    Свет и тень чередуются — шнур читается как скрученный.
+  const glints: { x: number; y: number }[] = [];
   for (let i = 0; i < cfg.tinsel; i++) {
     const yA = top + (bottom - top) * ((i + 0.8) / (cfg.tinsel + 0.6));
     const tilt = (i % 2 ? -1 : 1) * span * 0.6;
     const hw = cfg.half(yA / H) * W * 1.05;
+    const twist = Math.max(2, Math.round(3 * sc));
     for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
       const u = (x - (cx - hw)) / (2 * hw);
       const y = Math.round(yA + tilt * (u - 0.5) + span * 0.35 * Math.sin(Math.PI * u));
       if (tierAt(x, y) < 0) continue;
-      set(x, y, (x + i) % 4 === 0 ? '9' : '8');
-      if (tierAt(x, y + 1) >= 0 && get(x, y + 1) !== '8') set(x, y + 1, '7');
+      const ph = (x + i * 2) % twist;
+      for (let t = 0; t < u1; t++) {
+        if (tierAt(x, y + t) < 0) continue;
+        set(x, y + t, ph === 0 ? '9' : t === u1 - 1 ? '7' : '8');
+      }
+      if (tierAt(x, y + u1) >= 0) set(x, y + u1, ph === 1 ? '7' : get(x, y + u1) === 'a' ? 'a' : '4');
+      if (ph === 0 && rand() < 0.25) glints.push({ x, y });
     }
   }
 
-  // 4. Шарики: на хвое, не на мишуре и не вплотную друг к другу
+  // 4. Шарики, если заданы (на ёлке желаний их нет: игрушки — только от людей)
   const bulbs: OgonekTreeBulb[] = [];
   const placed: [number, number][] = [];
   const big = W >= 80;
+  for (const g of glints) {
+    bulbs.push({ x: g.x / W, y: g.y / H, color: OGONEK_PALETTE['9']!, delay: -((g.x * 0.37 + g.y * 0.11) % 5) });
+  }
   for (let tries = 0; placed.length < cfg.baubles && tries < cfg.baubles * 60; tries++) {
     const y = Math.round(top + 3 + rand() * (bottom - top - 2));
     const hw = cfg.half(y / H) * W * 0.85;
@@ -217,9 +266,13 @@ function drawTree(cfg: TreeCfg): TreeArt {
   }
 
   // 5. Звезда на макушке
-  const starX = Math.round(cx - 4);
-  const starY = top - 7;
-  STAR.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') set(starX + x, starY + y, c); }));
+  const sf = u1;
+  const starX = Math.round(cx - 4.5 * sf + 0.5);
+  const starY = top - 7 * sf;
+  STAR.forEach((row, y) => [...row].forEach((c, x) => {
+    if (c === '.') return;
+    for (let dy = 0; dy < sf; dy++) for (let dx = 0; dx < sf; dx++) set(starX + x * sf + dx, starY + y * sf + dy, c);
+  }));
 
   // 6. Ствол и красная кадка
   const tw = Math.max(1, Math.round(W * 0.035));
@@ -249,16 +302,16 @@ function drawTree(cfg: TreeCfg): TreeArt {
       for (let y = 0; y < gh; y++) {
         for (let x = 0; x < gw; x++) {
           let c = x === gw - 1 || y === gh - 1 ? shade : box;
-          if (x === Math.floor(gw / 2) || y === 2) c = ribbon;
+          if (Math.abs(x - Math.floor(gw / 2)) < u1 || (y >= 2 * u1 && y < 3 * u1)) c = ribbon;
           set(gx + x, gy + y, c);
         }
       }
       set(gx + Math.floor(gw / 2) - 1, gy - 1, ribbon);
       set(gx + Math.floor(gw / 2) + 1, gy - 1, ribbon);
     };
-    gift(Math.round(cx - W * 0.26), 9, 7, 'b', 'a', '9');
-    gift(Math.round(cx + W * 0.14), 8, 6, 'h', 'g', '2');
-    gift(Math.round(cx - W * 0.17), 6, 5, '9', '7', '2');
+    gift(Math.round(cx - W * 0.26), 9 * u1, 7 * u1, 'b', 'a', '9');
+    gift(Math.round(cx + W * 0.14), 8 * u1, 6 * u1, 'h', 'g', '2');
+    gift(Math.round(cx - W * 0.17), 6 * u1, 5 * u1, '9', '7', '2');
   }
 
   // Рендер сетки в картинку один к одному

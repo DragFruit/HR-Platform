@@ -926,7 +926,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   width: 100%;
   max-width: 150px;
-  aspect-ratio: 44 / 56;
+  aspect-ratio: 76 / 96;
 }
 .og-mini-tree__img {
   position: absolute;

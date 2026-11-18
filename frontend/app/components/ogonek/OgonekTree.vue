@@ -7,7 +7,7 @@
         v-for="(b, i) in bulbs"
         :key="i"
         class="og-tree__bulb"
-        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 4}px`, animationDelay: `${b.delay}s` }"
+        :style="{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, '--c': b.color, '--g': `${scale * 5}px`, animationDelay: `${b.delay}s` }"
         aria-hidden="true"
       />
 
@@ -111,8 +111,8 @@ function reveal(id: string) {
 
 function measure() {
   const w = rootRef.value?.clientWidth ?? 0;
-  // Пиксель ёлки 4–9 экранных: крупно, но ёлка целиком по ширине влезает
-  scale.value = Math.max(4, Math.min(9, Math.floor(w / OGONEK_TREE_W)));
+  // Пиксель ёлки 2–5 экранных: детали видны, ёлка целиком влезает по ширине
+  scale.value = Math.max(2, Math.min(5, Math.floor(w / OGONEK_TREE_W)));
 }
 
 let ro: ResizeObserver | null = null;
