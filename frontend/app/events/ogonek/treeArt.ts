@@ -564,51 +564,8 @@ function drawTree(cfg: TreeCfg): TreeArt {
       return t[lv]!;
     };
     const band = (k2: number, rwid: number, r: Tone) => (k2 === 0 ? r[2] : k2 === rwid - 1 ? r[0] : r[1]);
-    const gift = (x0: number, fy: number, w: number, h: number, d: number, pap: Tone, ribA: Tone, ribB: Tone, bow: Tone, seed: number) => {
-      const top0 = fy - h;
-      const skew = Math.max(3, Math.round(d * 0.75));
-      const dd = Math.max(3, Math.round(d * 0.55));
-      const rwA = Math.max(4, Math.round(w * 0.13));
-      const rwB = Math.max(2, Math.round(rwA * 0.55));
-      const fx = x0 + Math.floor(w * (0.38 + (seed % 3) * 0.08));
-      // Бок
-      for (let i = 1; i <= skew; i++) {
-        const yo = Math.round((i * dd) / skew);
-        for (let y = top0 - yo; y <= fy - yo; y++) {
-          let c = paper(x0 + w + i, y, pap, 0, seed);
-          const ly = y - (top0 - yo);
-          if (ly >= h * 0.42 && ly < h * 0.42 + rwA) c = ribA[0];
-          set(x0 + w - 1 + i, y, c);
-        }
-      }
-      // Крышка
-      for (let r = 1; r <= dd; r++) {
-        const sh = Math.round((r * skew) / dd);
-        for (let x = x0 + sh; x <= x0 + w - 1 + sh; x++) set(x, top0 - r, paper(x, top0 - r, pap, 2, seed));
-      }
-      // Перед
-      for (let y = top0; y <= fy; y++) {
-        for (let x = x0; x < x0 + w; x++) {
-          const lv = y <= top0 + 1 ? 2 : y >= fy - 1 || x >= x0 + w - 2 ? 0 : 1;
-          set(x, y, paper(x, y, pap, lv, seed));
-        }
-      }
-      // Ленты: широкая и рядом узкая другого цвета; по переду, по крышке и вокруг бока
-      for (let y = top0 - dd; y <= fy; y++) {
-        const onTop = y < top0;
-        const sh = onTop ? Math.round(((top0 - y) * skew) / dd) : 0;
-        for (let k2 = 0; k2 < rwA; k2++) set(fx + k2 + sh, y, band(k2, rwA, ribA));
-        for (let k2 = 0; k2 < rwB; k2++) set(fx + rwA + 1 + k2 + sh, y, band(k2, rwB, ribB));
-      }
-      const yb = top0 + Math.round(h * 0.42);
-      for (let x = x0; x < x0 + w; x++) {
-        if (x >= fx && x < fx + rwA + rwB + 1) continue;
-        for (let k2 = 0; k2 < rwA; k2++) set(x, yb + k2, band(k2, rwA, ribA));
-      }
-      // Мятый бумажный бант: неровные лепестки со складками
-      const bx = fx + Math.floor(rwA / 2) + Math.round(skew / 2);
-      const by = top0 - Math.round(dd / 2);
-      const R = Math.max(7, Math.round(w * 0.26));
+    /** Бумажный бант: две петли в стороны и чуть вверх, узел, хвосты. */
+    const drawBow = (bx: number, by: number, R: number, bow: Tone, seed: number) => {
       // Две петли, раскинутые в стороны и чуть вверх, между ними щель у узла
       for (const side of [-1, 1]) {
         const rx = R * 0.62;
@@ -650,31 +607,127 @@ function drawTree(cfg: TreeCfg): TreeArt {
         }
       }
     };
+    const gift = (x0: number, fy: number, w: number, h: number, d: number, pap: Tone, ribA: Tone, ribB: Tone, bow: Tone, seed: number, withBow = true) => {
+      const top0 = fy - h;
+      const skew = Math.max(3, Math.round(d * 0.75));
+      const dd = Math.max(3, Math.round(d * 0.55));
+      const rwA = Math.max(4, Math.round(w * 0.13));
+      const rwB = Math.max(2, Math.round(rwA * 0.55));
+      const fx = x0 + Math.floor(w * (0.38 + (seed % 3) * 0.08));
+      // Бок
+      for (let i = 1; i <= skew; i++) {
+        const yo = Math.round((i * dd) / skew);
+        for (let y = top0 - yo; y <= fy - yo; y++) {
+          let c = paper(x0 + w + i, y, pap, 0, seed);
+          const ly = y - (top0 - yo);
+          if (ly >= h * 0.42 && ly < h * 0.42 + rwA) c = ribA[0];
+          set(x0 + w - 1 + i, y, c);
+        }
+      }
+      // Крышка
+      for (let r = 1; r <= dd; r++) {
+        const sh = Math.round((r * skew) / dd);
+        for (let x = x0 + sh; x <= x0 + w - 1 + sh; x++) set(x, top0 - r, paper(x, top0 - r, pap, 2, seed));
+      }
+      // Перед
+      for (let y = top0; y <= fy; y++) {
+        for (let x = x0; x < x0 + w; x++) {
+          const lv = y <= top0 + 1 ? 2 : y >= fy - 1 || x >= x0 + w - 2 ? 0 : 1;
+          set(x, y, paper(x, y, pap, lv, seed));
+        }
+      }
+      // Ленты: широкая и рядом узкая другого цвета; по переду, по крышке и вокруг бока
+      for (let y = top0 - dd; y <= fy; y++) {
+        const onTop = y < top0;
+        const sh = onTop ? Math.round(((top0 - y) * skew) / dd) : 0;
+        for (let k2 = 0; k2 < rwA; k2++) set(fx + k2 + sh, y, band(k2, rwA, ribA));
+        for (let k2 = 0; k2 < rwB; k2++) set(fx + rwA + 1 + k2 + sh, y, band(k2, rwB, ribB));
+      }
+      const yb = top0 + Math.round(h * 0.42);
+      for (let x = x0; x < x0 + w; x++) {
+        if (x >= fx && x < fx + rwA + rwB + 1) continue;
+        for (let k2 = 0; k2 < rwA; k2++) set(x, yb + k2, band(k2, rwA, ribA));
+      }
+      // Бумажный бант на крышке
+      const bx = fx + Math.floor(rwA / 2) + Math.round(skew / 2);
+      const by = top0 - Math.round(dd / 2);
+      if (withBow) drawBow(bx, by, Math.max(6, Math.round(Math.min(w, 60) * 0.26)), bow, seed);
+      // Где крышка: сюда можно поставить коробку сверху
+      return { top: top0 - Math.round(dd / 2), left: x0 + Math.round(skew / 2), w };
+    };
+    /**
+     * Круглая шляпная коробка: цилиндр с крышкой-овалом, бок затенён справа,
+     * лента крест-накрест через крышку, бант сверху.
+     */
+    const hatbox = (cx0: number, fy: number, r: number, h: number, pap: Tone, ribA: Tone, ribB: Tone, bow: Tone, seed: number) => {
+      const ry = Math.max(3, r * 0.34);
+      const ell = (dx: number) => ry * Math.sqrt(Math.max(0, 1 - (dx / r) ** 2));
+      const topY = fy - h;
+      const rwA = Math.max(3, Math.round(r * 0.22));
+      const rwB = Math.max(2, Math.round(rwA * 0.55));
+      for (let x = Math.ceil(cx0 - r); x <= Math.floor(cx0 + r); x++) {
+        const dx = x - cx0;
+        const e = ell(dx);
+        const lv = dx < -r * 0.35 ? 2 : dx > r * 0.5 ? 0 : 1;
+        for (let y = Math.round(topY + e); y <= Math.round(fy + e); y++) {
+          let c = paper(x, y, pap, lv, seed);
+          if (y <= topY + e + 3) c = y === Math.round(topY + e + 3) ? pap[0] : paper(x, y, pap, Math.min(2, lv + 1), seed); // кромка крышки
+          if (Math.abs(dx) < rwA / 2) c = band(Math.floor(dx + rwA / 2), rwA, ribA);
+          else if (dx >= rwA / 2 + 1 && dx < rwA / 2 + 1 + rwB) c = band(Math.floor(dx - rwA / 2 - 1), rwB, ribB);
+          set(x, y, c);
+        }
+      }
+      // Крышка
+      for (let y = Math.floor(topY - ry); y <= Math.ceil(topY + ry); y++) {
+        for (let x = Math.floor(cx0 - r); x <= Math.ceil(cx0 + r); x++) {
+          const q = ((x - cx0) / r) ** 2 + ((y - topY) / ry) ** 2;
+          if (q > 1) continue;
+          let c = q > 0.82 ? pap[1] : paper(x, y, pap, 2, seed);
+          if (Math.abs(x - cx0) < rwA / 2) c = ribA[2];
+          else if (Math.abs(y - topY) < 1.2) c = ribA[1];
+          set(x, y, c);
+        }
+      }
+      drawBow(Math.round(cx0), Math.round(topY), Math.max(6, Math.round(r * 0.5)), bow, seed);
+      return { top: topY, left: cx0 - r * 0.6, w: r * 1.2 };
+    };
+
     const CREAM: Tone = ['A', 'B', 'C'];
     const KRAFT: Tone = ['D', 'E', 'F'];
     const RIB_RED: Tone = ['G', 'H', 'I'];
     const RIB_GREEN: Tone = ['J', 'K', 'L'];
     const BOW_CREAM: Tone = ['M', 'N', 'O'];
     const floor = H - 4;
-    const g = (dx: number, row: number, w: number, h: number, pap: Tone, a: Tone, b: Tone, bow: Tone, seed: number) =>
-      gift(Math.round(cx + dx), floor - row * 14, w, h, 16, pap, a, b, bow, seed);
-    // Дальний ряд
-    g(-150, 2, 50, 44, CREAM, RIB_RED, RIB_GREEN, BOW_CREAM, 1);
-    g(-92, 2, 54, 50, KRAFT, RIB_GREEN, RIB_RED, RIB_RED, 2);
-    g(-30, 2, 50, 42, CREAM, RIB_RED, RIB_GREEN, BOW_CREAM, 3);
-    g(30, 2, 54, 48, CREAM, RIB_GREEN, RIB_RED, RIB_GREEN, 4);
-    g(92, 2, 52, 44, KRAFT, RIB_RED, RIB_GREEN, BOW_CREAM, 5);
+    const X = (dx: number) => Math.round(cx + dx);
+    type Top = { top: number; left: number; w: number };
+    /** Коробка на крышке другой: ставим по центру крышки, чуть сдвинув. */
+    const on = (t: Top, w: number, h: number, shift: number, pap: Tone, a: Tone, b: Tone, bow: Tone, seed: number) =>
+      gift(Math.round(t.left + (t.w - w) / 2 + shift), t.top + 2, w, h, 12, pap, a, b, bow, seed);
+
+    // Дальний ряд: высокие и широкие, на некоторых стоят ещё коробки
+    gift(X(-152), floor - 30, 32, 64, 14, CREAM, RIB_RED, RIB_GREEN, BOW_CREAM, 1);
+    hatbox(X(-92), floor - 28, 26, 34, KRAFT, RIB_GREEN, RIB_RED, RIB_RED, 2);
+    const wide = gift(X(-56), floor - 30, 70, 24, 16, CREAM, RIB_GREEN, RIB_RED, BOW_CREAM, 3, false);
+    // На широкой коробке — круглая шляпная
+    hatbox(wide.left + wide.w / 2 - 4, wide.top + 4, 17, 20, KRAFT, RIB_RED, RIB_GREEN, RIB_GREEN, 4);
+    const tall = gift(X(26), floor - 30, 40, 56, 14, KRAFT, RIB_RED, RIB_GREEN, BOW_CREAM, 5, false);
+    on(tall, 24, 18, 2, CREAM, RIB_GREEN, RIB_RED, RIB_RED, 6);
+    gift(X(84), floor - 30, 48, 44, 16, CREAM, RIB_GREEN, RIB_RED, RIB_RED, 7);
     // Средний ряд
-    g(-128, 1, 52, 40, KRAFT, RIB_GREEN, RIB_RED, BOW_CREAM, 6);
-    g(-60, 1, 56, 44, CREAM, RIB_RED, RIB_GREEN, RIB_RED, 7);
-    g(8, 1, 50, 38, CREAM, RIB_GREEN, RIB_RED, BOW_CREAM, 8);
-    g(70, 1, 54, 42, KRAFT, RIB_RED, RIB_GREEN, RIB_GREEN, 9);
-    // Передний ряд
-    g(-152, 0, 48, 34, CREAM, RIB_GREEN, RIB_RED, BOW_CREAM, 10);
-    g(-92, 0, 56, 38, CREAM, RIB_RED, RIB_GREEN, RIB_GREEN, 11);
-    g(-26, 0, 52, 32, KRAFT, RIB_GREEN, RIB_RED, BOW_CREAM, 12);
-    g(38, 0, 56, 36, CREAM, RIB_RED, RIB_GREEN, RIB_RED, 13);
-    g(100, 0, 48, 34, CREAM, RIB_GREEN, RIB_RED, BOW_CREAM, 14);
+    const mid1 = gift(X(-138), floor - 15, 46, 28, 14, KRAFT, RIB_GREEN, RIB_RED, BOW_CREAM, 8, false);
+    on(mid1, 20, 30, 3, CREAM, RIB_RED, RIB_GREEN, RIB_GREEN, 9);
+    hatbox(X(-60), floor - 14, 18, 24, CREAM, RIB_RED, RIB_GREEN, RIB_GREEN, 10);
+    gift(X(-28), floor - 15, 58, 36, 16, CREAM, RIB_RED, RIB_GREEN, BOW_CREAM, 11);
+    gift(X(50), floor - 15, 34, 50, 12, CREAM, RIB_GREEN, RIB_RED, RIB_RED, 12);
+    const mid2 = gift(X(96), floor - 15, 50, 28, 14, KRAFT, RIB_RED, RIB_GREEN, RIB_GREEN, 13, false);
+    on(mid2, 32, 22, -2, CREAM, RIB_GREEN, RIB_RED, BOW_CREAM, 14);
+    // Передний ряд: низкие, маленькие, длинные
+    gift(X(-156), floor, 40, 26, 12, CREAM, RIB_GREEN, RIB_RED, RIB_RED, 15);
+    gift(X(-106), floor, 64, 20, 14, KRAFT, RIB_RED, RIB_GREEN, BOW_CREAM, 16);
+    hatbox(X(-14), floor - 4, 21, 26, CREAM, RIB_RED, RIB_GREEN, RIB_GREEN, 17);
+    gift(X(14), floor, 26, 18, 10, KRAFT, RIB_RED, RIB_GREEN, BOW_CREAM, 18);
+    gift(X(44), floor, 56, 26, 14, CREAM, RIB_GREEN, RIB_RED, RIB_RED, 19);
+    gift(X(110), floor, 36, 34, 10, KRAFT, RIB_GREEN, RIB_RED, BOW_CREAM, 20);
   }
 
   // Рендер: палитра → RGB. В сцене поверх — сливовые тени, тёмная комната
