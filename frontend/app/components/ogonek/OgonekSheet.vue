@@ -219,8 +219,9 @@ defineExpose({ tear, shake, pulse, settle, el: rootRef });
   color: #ffd9d6;
 }
 
-.ogs__chip--ok { background: var(--og-green); color: #06210f; }
-.ogs__chip--new { background: var(--og-gold); color: #3a2600; }
+/* Плашки тихие: контур вместо заливки, чтобы 19 карточек не кричали разом */
+.ogs__chip--ok { background: transparent; color: #8fd3a0; box-shadow: inset 0 0 0 1px rgba(143, 211, 160, 0.55); }
+.ogs__chip--new { background: transparent; color: var(--og-gold-soft); box-shadow: inset 0 0 0 1px rgba(255, 207, 74, 0.45); }
 
 .ogs__n {
   position: absolute;

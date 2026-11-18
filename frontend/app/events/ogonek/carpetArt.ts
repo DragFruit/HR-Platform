@@ -36,18 +36,17 @@ function edgeStripes(g: string[][], len: number, at: (i: number, row: number) =>
   void g;
 }
 
-const STRIPE: Record<number, string> = { 0: '0', 1: '5', 2: '4' };
+const STRIPE: Record<number, string> = { 0: '0', 1: '7', 2: '1' };
 const stripeKey = (row: number) => STRIPE[row < 3 ? row : BAND - 1 - row]!;
 
 /** Бордюр по горизонтали: тайл 14×28, ромб охры с кремовой серединой. */
 export const CARPET_BAND_H = (() => {
-  const g = blank(STEP, BAND, '2');
+  // Тон-в-тон: ромбы чуть светлее фона, золото только тонкой ниткой
+  const g = blank(STEP, BAND, '1');
   edgeStripes(g, STEP, (x, row) => { g[row]![x] = stripeKey(row); });
-  diamond(g, 7, 13.5, 7, '8', '0');
-  diamond(g, 7, 13.5, 4, 'e', '7');
-  diamond(g, 7, 13.5, 1.5, '2');
-  // Кремовые точки между ромбами
-  for (const y of [6, 21]) g[y]![0] = 'f';
+  diamond(g, 7, 13.5, 7, '1', '2');
+  diamond(g, 7, 13.5, 3, '2');
+  diamond(g, 7, 13.5, 1, '7');
   return join(g);
 })();
 
@@ -59,7 +58,7 @@ export const CARPET_BAND_V = (() => {
 
 /** Угол 28×28: продолжает обе полосы и держит медальон. */
 export const CARPET_CORNER = (() => {
-  const g = blank(BAND, BAND, '2');
+  const g = blank(BAND, BAND, '1');
   for (let i = 0; i < BAND; i++) {
     for (const row of [0, 1, 2]) {
       g[row]![i] = stripeKey(row);
@@ -72,10 +71,10 @@ export const CARPET_CORNER = (() => {
       }
     }
   }
-  diamond(g, 14, 14, 10, 'b', '0');
-  diamond(g, 14, 14, 7, '8', '0');
-  diamond(g, 14, 14, 4, 'e', '7');
-  diamond(g, 14, 14, 1.5, '2');
+  diamond(g, 14, 14, 10, '1', '7');
+  diamond(g, 14, 14, 7, '2', '0');
+  diamond(g, 14, 14, 4, '1', '2');
+  diamond(g, 14, 14, 1.5, '7');
   return join(g);
 })();
 
@@ -92,6 +91,6 @@ export const CARPET_FIELD = (() => {
     }
   }
   // Узелок на пересечении нитей
-  for (const [x, y] of [[12, 12], [11, 12], [13, 12], [12, 11], [12, 13]] as const) g[y]![x] = '7';
+  g[12]![12] = '7';
   return join(g);
 })();

@@ -1,7 +1,8 @@
 <template>
   <div v-if="festive" class="og-decor" aria-hidden="true">
     <!-- Гирлянда над шапкой — только когда вилка в розетке (с 4 декабря) -->
-    <div v-if="enabled" class="og-decor__garland" :style="garlandStyle" />
+    <!-- На адвенте своя гирлянда-прогресс: вторая сверху лишняя -->
+    <div v-if="enabled && !isAdvent" class="og-decor__garland" :style="garlandStyle" />
 
     <!-- Снег идёт с 1 декабря, без вилки. На странице адвента свой снег, с подписями -->
     <canvas v-if="snowAllowed && !isAdvent" ref="canvasRef" class="og-decor__snow" />

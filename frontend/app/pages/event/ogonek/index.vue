@@ -1,86 +1,81 @@
 <template>
-  <div class="og-page og-theme">
+  <div class="og-page og-theme og-carpet" :style="carpetVars">
     <p v-if="pending && !state" class="og-page__state">Достаём календарь...</p>
     <p v-else-if="loadError" class="og-page__state" role="alert">{{ loadError }}</p>
 
     <template v-else-if="state">
-      <!--
-        Полный экран — свой слой через Teleport в body, а не Fullscreen API:
-        так календарь выходит из-под масштаба платформы и координаты курсора
-        совпадают с отрисовкой (грабля уже ловилась на «Ноктюрне»).
-      -->
-      <Teleport to="body" :disabled="!fullscreen">
-        <div
-          :class="fullscreen ? 'og-fullscreen og-theme' : 'og-inline'"
-          :style="{ '--og-sticky-top': `${fullscreen ? 0 : stickyTop}px` }"
-        >
+        <div class="og-inline" :style="{ '--og-sticky-top': `${stickyTop}px` }">
           <div class="og-wrap">
             <header class="og-top">
               <h1 class="og-top__title">ОГОНЁК 2027</h1>
               <div class="og-top__stats">
                 <span class="og-score" aria-live="polite">ОГОНЬКИ <span><b>{{ doneCount }}</b>/19</span></span>
                 <span class="og-score">ДО ВЕЧЕРА <b>{{ countdown }}</b></span>
-                <span class="og-score og-score--rank">{{ state.player.rank }}</span>
               </div>
             </header>
 
             <OgonekGarlandBar ref="garlandRef" :days="state.days" :power="festive" />
 
-            <main ref="stageRef" class="og-stage" :style="carpetVars">
+            <main ref="stageRef" class="og-stage">
               <div class="og-stage__head">
                 <h2>ДЕКАБРЬ 2026</h2>
-                <button type="button" class="og-btn og-btn--ghost" @click="toggleFullscreen">
-                  {{ fullscreen ? 'Свернуть' : 'Во весь экран' }}
-                </button>
               </div>
+              <!-- Статистика живёт прямо в сетке: плитка в конце каждого ряда, лента — внизу -->
               <div class="og-grid">
-                <OgonekSheet
-                  v-for="day in state.days"
-                  :key="day.id"
-                  :ref="(c) => setSheet(day.id, c)"
-                  :day="day"
-                  @open="openDay"
-                />
+                <template v-for="cell in cells" :key="cell.key">
+                  <OgonekSheet
+                    v-if="cell.day"
+                    :ref="(c) => setSheet(cell.day!.id, c)"
+                    :day="cell.day"
+                    @open="openDay"
+                  />
+
+                  <div v-else-if="cell.tile === 'rank'" class="og-tile og-tile--rank">
+                    <span class="og-tile__k">ВАШЕ ЗВАНИЕ</span>
+                    <OgonekSprite class="og-tile__art" :rows="rankArt" width-css="62%" :alt="state.player.rank" />
+                    <b class="og-tile__title">{{ state.player.rank }}</b>
+                    <span class="og-tile__sub">{{ nextRankLabel }}</span>
+                  </div>
+
+                  <div v-else-if="cell.tile === 'pulse'" class="og-tile">
+                    <template v-if="mailbox.state.value.open && mailbox.state.value.letters.length">
+                      <span class="og-tile__k">КОРОБКА С ПИСЬМАМИ</span>
+                      <b class="og-tile__big">{{ mailbox.state.value.letters.length }}</b>
+                      <button type="button" class="og-btn og-tile__btn" @click="mailbox.show()">{{ unreadLabel }}</button>
+                    </template>
+                    <template v-else-if="state.todayId">
+                      <span class="og-tile__k">СЕГОДНЯ</span>
+                      <b class="og-tile__big">{{ state.openedToday }}</b>
+                      <span class="og-tile__sub">{{ plural(state.openedToday, 'человек открыл', 'человека открыли', 'человек открыли') }} окно дня</span>
+                    </template>
+                    <template v-else>
+                      <span class="og-tile__k">МЕТЕЛЬ</span>
+                      <b class="og-tile__big">{{ state.snowflakeCount }}</b>
+                      <span class="og-tile__sub">{{ plural(state.snowflakeCount, 'снежинка', 'снежинки', 'снежинок') }} от коллег</span>
+                    </template>
+                  </div>
+
+                  <NuxtLink v-else-if="cell.tile === 'tree'" class="og-tile og-tile--link" to="/event/ogonek/tree">
+                    <span class="og-tile__k">ЁЛКА ЖЕЛАНИЙ</span>
+                    <b class="og-tile__big">{{ state.treeCount }}</b>
+                    <span class="og-tile__sub">{{ plural(state.treeCount, 'игрушка', 'игрушки', 'игрушек') }} висит</span>
+                    <span class="og-tile__go">Смотреть →</span>
+                  </NuxtLink>
+
+                  <div v-else-if="cell.tile === 'feed'" class="og-tile og-tile--feed">
+                    <span class="og-tile__k">{{ state.micro.feedTitle }}</span>
+                    <p v-if="!state.feed.length" class="og-tile__sub">{{ state.micro.feedEmpty }}</p>
+                    <TransitionGroup v-else name="og-feed" tag="ul" class="og-tile__feed">
+                      <li v-for="item in state.feed.slice(0, 5)" :key="item.id">
+                        <template v-if="item.name"><b>{{ item.name }}</b> {{ item.text }}</template>
+                        <template v-else>{{ item.text }}</template>
+                      </li>
+                    </TransitionGroup>
+                  </div>
+                </template>
               </div>
             </main>
 
-            <section class="og-below">
-              <OgonekFeed
-                :items="state.feed"
-                :title="state.micro.feedTitle"
-                :empty="state.micro.feedEmpty"
-                :now-ms="nowMs"
-              />
-              <div class="og-below__side">
-                <NuxtLink class="og-panel og-panel--link" to="/event/ogonek/tree">
-                  <span class="og-panel__k">ЁЛКА ЖЕЛАНИЙ</span>
-                  <span>{{ state.treeCount }} игрушек · снежинок в метели {{ state.snowflakeCount }}</span>
-                </NuxtLink>
-                <button
-                  v-if="mailbox.state.value.open && mailbox.state.value.letters.length"
-                  type="button"
-                  class="og-panel og-panel--link og-panel--btn"
-                  @click="mailbox.show()"
-                >
-                  <span class="og-panel__k">КОРОБКА С ПИСЬМАМИ</span>
-                  <span>{{ unreadLabel }}</span>
-                </button>
-                <div v-if="state.todayId" class="og-panel">
-                  <span class="og-panel__k">СЕГОДНЯ</span>
-                  <span>уже открыли {{ state.openedToday }} человек</span>
-                </div>
-                <ol class="og-panel og-ranks">
-                  <li class="og-panel__k">ЗВАНИЯ</li>
-                  <li
-                    v-for="r in state.ranks"
-                    :key="r.title"
-                    :class="{ 'is-current': r.title === state.player.rank }"
-                  >
-                    <span>{{ r.title }}</span><i>от {{ r.from }}</i>
-                  </li>
-                </ol>
-              </div>
-            </section>
 
             <!-- Панель отладки: только вне боя -->
             <div v-if="state.devTools" class="og-demo">
@@ -100,11 +95,10 @@
             </div>
           </div>
         </div>
-      </Teleport>
 
       <!-- Снег над календарём: снежинки участников с подписью при наведении -->
       <Teleport to="body">
-        <div v-if="festive" class="og-theme" :class="{ 'og-snow-over': fullscreen }">
+        <div v-if="festive" class="og-theme">
           <OgonekSnowField :authors="flakeAuthors" />
         </div>
       </Teleport>
@@ -183,6 +177,7 @@
  * Страница даты не считает — иначе проверка расползётся по компонентам.
  */
 import { OGONEK_OBJECTS } from '~/events/ogonek/sprites';
+import { ogonekRankArt } from '~/events/ogonek/rankArt';
 import {
   CARPET_BAND_H,
   CARPET_BAND_V,
@@ -259,20 +254,53 @@ const KIND: Record<OgonekDayKind, string> = {
   minigame: 'МИНИ-ИГРА', letter: 'ПИСЬМО', olivier: 'РЕЦЕПТЫ', program: 'ПРОГРАММА', final: 'ФИНАЛ'
 };
 
-const FULLSCREEN_KEY = 'vbi-ogonek-fullscreen';
 const DEV_DAY_COOKIE = 'ogonek-dev-day';
 
 const state = ref<AdventState | null>(null);
 const pending = ref(true);
 const loadError = ref('');
 const busy = ref(false);
-const fullscreen = ref(false);
 const toastText = ref('');
 
 const { employees, hydrate } = useEmployees();
 const decor = useOgonekDecor();
 const { festive } = decor;
 const mailbox = useOgonekMailbox();
+/**
+ * Сетка: 19 листков + 5 плиток статистики = ровно 4 ряда по 6.
+ * Плитка встаёт в конец ряда, лента (на две клетки) замыкает последний.
+ */
+type Cell = { key: string; day?: OgonekDayView; tile?: 'rank' | 'pulse' | 'tree' | 'feed' };
+const TILE_AFTER: Record<number, Cell['tile']> = { 5: 'rank', 10: 'pulse', 15: 'tree', 19: 'feed' };
+const cells = computed<Cell[]>(() => {
+  const out: Cell[] = [];
+  (state.value?.days ?? []).forEach((day, i) => {
+    out.push({ key: `d${day.id}`, day });
+    const tile = TILE_AFTER[i + 1];
+    if (tile) out.push({ key: `t-${tile}`, tile });
+  });
+  return out;
+});
+
+const rankArt = computed(() => ogonekRankArt(state.value?.player.rank ?? ''));
+const nextRankLabel = computed(() => {
+  const s = state.value;
+  if (!s) return '';
+  const opened = s.player.opened.length;
+  const next = s.ranks.find((r) => r.from > opened);
+  if (!next) return 'Выше званий нет';
+  const left = next.from - opened;
+  return `Ещё ${left} ${plural(left, 'окно', 'окна', 'окон')} до «${next.title}»`;
+});
+
+function plural(n: number, one: string, few: string, many: string) {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return one;
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
+  return many;
+}
+
 const unreadLabel = computed(() => {
   const all = mailbox.state.value.letters;
   const unread = all.filter((l) => !l.read).length;
@@ -411,7 +439,7 @@ const px = (r: { left: number; top: number; width: number; height: number }) => 
 function overlayFrame() {
   const m = 8;
   const vw = window.innerWidth;
-  const minTop = (fullscreen.value ? 0 : stickyTop.value) + m;
+  const minTop = stickyTop.value + m;
   const s = stageRef.value?.getBoundingClientRect();
   const left = s ? Math.max(s.left, m) : m;
   const right = s ? Math.min(s.right, vw - m) : vw - m;
@@ -632,21 +660,9 @@ async function resetProgress() {
   }
 }
 
-/* ------------------------------------------------------------ полный экран */
-
-function toggleFullscreen() {
-  fullscreen.value = !fullscreen.value;
-  try {
-    localStorage.setItem(FULLSCREEN_KEY, fullscreen.value ? '1' : '0');
-  } catch {
-    /* приватный режим — режим просто не запомнится */
-  }
-}
-
 function onKey(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (openId.value !== null) void closeDay();
-  else if (fullscreen.value) toggleFullscreen();
 }
 
 function onResize() {
@@ -673,11 +689,6 @@ function measureStickyTop() {
 let feedTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
-  try {
-    fullscreen.value = localStorage.getItem(FULLSCREEN_KEY) === '1';
-  } catch {
-    /* не страшно */
-  }
   // Зубчатый край оторванного листка — один раз на страницу.
   const pts = ['0 0', '100% 0'];
   for (let i = 24; i >= 0; i--) pts.push(`${((i / 24) * 100).toFixed(2)}% calc(100% - ${i % 2 ? 0 : 6}px)`);
@@ -713,22 +724,12 @@ onBeforeUnmount(() => {
 <style scoped>
 .og-page {
   min-height: 60vh;
-  background: radial-gradient(120% 80% at 50% 0%, #64101d 0%, var(--og-bg) 60%), var(--og-bg);
-  padding: 20px clamp(12px, 2vw, 20px) 40px;
   font-size: 16px;
   line-height: 1.5;
 }
 
 .og-page__state { color: var(--og-muted); }
 
-.og-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  overflow: auto;
-  background: radial-gradient(120% 80% at 50% 0%, #64101d 0%, var(--og-bg) 60%), var(--og-bg);
-  padding: 20px 16px 40px;
-}
 
 .og-wrap {
   max-width: 1080px;
@@ -776,11 +777,10 @@ onBeforeUnmount(() => {
 .og-score--rank { color: var(--og-gold); }
 
 /* ——— сцена ——— */
-.og-stage {
-  position: relative;
+/* Ковёр — весь ивент целиком: одна рамка по краю, без вложенных */
+.og-carpet {
   /* Пиксель ковра — ровно 2 экранных: бордюр 56px, поле 48px */
   --og-band: 56px;
-  margin: 18px 0;
   background-color: #4e0f19;
   background-image:
     var(--og-c-tl), var(--og-c-tr), var(--og-c-bl), var(--og-c-br),
@@ -800,24 +800,10 @@ onBeforeUnmount(() => {
     28px var(--og-band), 28px var(--og-band), var(--og-band) 28px, var(--og-band) 28px,
     48px 48px;
   image-rendering: pixelated;
-  box-shadow: 6px 6px 0 var(--og-shade);
-  padding: calc(var(--og-band) + 16px) calc(var(--og-band) + 14px) calc(var(--og-band) + 18px);
+  padding: calc(var(--og-band) + 18px) calc(var(--og-band) + 16px) calc(var(--og-band) + 24px);
 }
 
-/* Бахрома по коротким сторонам ковра */
-.og-stage::before,
-.og-stage::after {
-  content: '';
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  height: 14px;
-  background: repeating-linear-gradient(90deg, #f4e6c8 0 4px, transparent 4px 8px);
-  pointer-events: none;
-}
-
-.og-stage::before { bottom: 100%; }
-.og-stage::after { top: 100%; }
+.og-stage { position: relative; margin-top: 6px; }
 
 .og-stage__head {
   display: flex;
@@ -838,41 +824,62 @@ onBeforeUnmount(() => {
 .og-grid {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: clamp(10px, 1.6vw, 16px);
 }
 
-/* ——— под сценой: лента и звания ——— */
-.og-below {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 14px;
-  align-items: start;
-}
-
-.og-below__side { display: flex; flex-direction: column; gap: 14px; }
-
-.og-panel {
+/* ——— плитки статистики в сетке календаря ——— */
+.og-tile {
+  aspect-ratio: 3 / 4;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: var(--og-bg-2);
-  border: 2px solid var(--og-line);
-  box-shadow: 4px 4px 0 var(--og-shade);
-  padding: 12px 14px;
-  font-size: 15px;
-  color: var(--og-muted);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  text-align: center;
+  background: rgba(30, 12, 14, 0.45);
+  border: 2px dashed rgba(255, 207, 74, 0.28);
+  color: var(--og-ink, #f6d9d6);
   text-decoration: none;
 }
 
-.og-panel--link:hover { border-color: var(--og-gold); }
-.og-panel--btn { font: inherit; text-align: left; cursor: pointer; }
-.og-panel__k { font-family: var(--og-pixel); font-size: 9px; color: var(--og-gold); letter-spacing: 0.04em; }
+.og-tile__k { font-family: var(--og-pixel); font-size: 8px; letter-spacing: 0.06em; color: var(--og-gold-soft); }
+.og-tile__big { font-family: var(--og-pixel); font-size: clamp(22px, 2.6vw, 30px); color: var(--og-gold); line-height: 1.2; }
+.og-tile__title { font-size: 15px; line-height: 1.2; color: var(--og-gold); }
+.og-tile__sub { font-size: 13px; line-height: 1.3; color: var(--og-muted); margin: 0; }
+.og-tile__go { font-family: var(--og-pixel); font-size: 8px; color: var(--og-gold-soft); margin-top: 4px; }
+.og-tile__btn { font-size: 8px; padding: 8px 10px; }
+.og-tile__art { margin: 2px 0; }
 
-.og-ranks { list-style: none; margin: 0; }
-.og-ranks li:not(.og-panel__k) { display: flex; justify-content: space-between; opacity: 0.7; }
-.og-ranks li.is-current { opacity: 1; color: var(--og-gold); font-weight: 700; }
-.og-ranks i { font-style: normal; opacity: 0.6; }
+.og-tile--link { cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
+.og-tile--link:hover { border-color: var(--og-gold); background: rgba(30, 12, 14, 0.6); }
+
+.og-tile--feed {
+  grid-column: span 2;
+  aspect-ratio: auto;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+}
+
+.og-tile__feed {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #f6d9d6;
+}
+.og-tile__feed b { color: #fff3e6; font-weight: 700; }
+
+.og-feed-enter-active { transition: opacity 0.4s ease, transform 0.4s ease; }
+.og-feed-enter-from { opacity: 0; transform: translateY(-6px); }
 
 /* ——— отладка ——— */
 .og-demo {
@@ -915,7 +922,6 @@ onBeforeUnmount(() => {
 
 /* ——— раскрытый день ——— */
 /* Снег в полном экране идёт поверх календаря, но под раскрытым днём */
-.og-snow-over { position: relative; z-index: 71; }
 
 .og-ov {
   box-sizing: border-box;
@@ -1034,8 +1040,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-  .og-grid { grid-template-columns: repeat(4, 1fr); }
-  .og-below { grid-template-columns: minmax(0, 1fr); }
+  .og-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
@@ -1045,7 +1050,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 620px) {
-  .og-grid { grid-template-columns: repeat(3, 1fr); }
+  .og-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

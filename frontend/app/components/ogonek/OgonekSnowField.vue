@@ -28,7 +28,7 @@ import { OGONEK_BASE_FLAKE, ogonekFlakeSprite } from '~/events/ogonek/snowflake'
 
 type Author = { by: string; q: string[]; mine?: boolean };
 
-const props = withDefaults(defineProps<{ authors: Author[]; count?: number }>(), { count: 26 });
+const props = withDefaults(defineProps<{ authors: Author[]; count?: number }>(), { count: 14 });
 
 type Flake = {
   id: number;
@@ -124,7 +124,7 @@ onMounted(() => {
     y: Math.random() * H,
     v: 10 + Math.random() * 16,
     ph: Math.random() * 6,
-    size: 14 + Math.random() * 12,
+    size: 10 + Math.random() * 8,
     paused: false,
     author: null,
     rows: BASE_ROWS
@@ -161,7 +161,7 @@ watch(() => props.authors, assign, { deep: true });
   left: 0;
   top: 0;
   will-change: transform;
-  opacity: 0.9;
+  opacity: 0.65;
   filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
 }
 
