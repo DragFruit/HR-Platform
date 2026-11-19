@@ -56,10 +56,14 @@ function cellLabel(big: number, small: number) {
 .ttt {
   --x: #ff6b6b;
   --o: #7ad8cf;
+  /* Размер задаёт родитель; клетки — доли доски, знак в клетке её не растягивает */
+  container-type: inline-size;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  width: min(100%, 540px);
+  width: 100%;
   aspect-ratio: 1;
   padding: 8px;
   background: rgba(30, 12, 14, 0.55);
@@ -68,8 +72,11 @@ function cellLabel(big: number, small: number) {
 
 .ttt__small {
   position: relative;
+  min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 3px;
   padding: 4px;
   background: rgba(255, 255, 255, 0.04);
@@ -81,12 +88,16 @@ function cellLabel(big: number, small: number) {
 .ttt__cell {
   display: grid;
   place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   border: 0;
   background: var(--og-paper, #f3efe9);
   font-family: var(--og-pixel);
-  font-size: clamp(10px, 2.2vw, 18px);
-  line-height: 1;
+  /* Шрифт от ширины доски, а не окна: знак всегда влезает в клетку */
+  font-size: 3.4cqi;
+  line-height: 0;
   color: #2a1216;
   cursor: pointer;
 }
@@ -103,7 +114,8 @@ function cellLabel(big: number, small: number) {
   display: grid;
   place-items: center;
   font-family: var(--og-pixel);
-  font-size: clamp(36px, 9vw, 84px);
+  font-size: 18cqi;
+  line-height: 1;
   pointer-events: none;
   text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
 }

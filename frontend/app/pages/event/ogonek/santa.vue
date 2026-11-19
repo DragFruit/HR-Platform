@@ -342,3 +342,25 @@ onMounted(load);
   .ogs-order { columns: 1; }
 }
 </style>
+
+<style>
+/* Кнопки ивента: на отдельной странице стиль календаря не действует */
+.og-theme .og-btn {
+  display: inline-block;
+  font-family: var(--og-pixel);
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  background: var(--og-gold);
+  color: #3a2600;
+  box-shadow: 3px 3px 0 #6b2a00;
+  text-decoration: none;
+  text-align: center;
+}
+.og-theme .og-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #6b2a00; }
+.og-theme .og-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.og-theme .og-btn--ghost { background: transparent; color: #ffd9d6; box-shadow: none; border: 2px solid var(--og-line); }
+</style>

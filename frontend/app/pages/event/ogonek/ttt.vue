@@ -1,6 +1,6 @@
 <template>
   <div class="ogt3 og-theme">
-    <header class="ogt3__head">
+    <header class="ogt3__head" :class="{ 'is-compact': !!game }">
       <div>
         <p class="ogt3__kicker">ОГОНЁК 2027 · ОКНО 10</p>
         <h1 class="ogt3__title">Крестики-нолики</h1>
@@ -10,7 +10,7 @@
 
     <p v-if="error" class="ogt3__error" role="alert">{{ error }}</p>
 
-    <div class="ogt3__layout">
+    <div class="ogt3__layout" :class="{ 'is-playing': !!game }">
       <main class="ogt3__main">
         <!-- Меню: онлайн или бот -->
         <template v-if="mode === 'menu'">
@@ -66,62 +66,72 @@
           </div>
         </section>
 
-        <!-- Партия -->
-        <template v-else-if="game">
-          <div class="ogt3__players">
-            <span class="ogt3__p" :class="{ 'is-turn': game.myTurn }">
-              <b :class="`is-${game.mySymbol.toLowerCase()}`">{{ game.mySymbol }}</b> Вы
-            </span>
-            <span class="ogt3__vs">vs</span>
-            <span class="ogt3__p" :class="{ 'is-turn': !game.myTurn && !game.over }">
-              <b :class="`is-${game.oppSymbol.toLowerCase()}`">{{ game.oppSymbol }}</b> {{ game.oppName }}
-            </span>
-          </div>
+        <!-- Партия: доска главная и видна целиком, всё остальное — узкая панель справа -->
+        <div v-else-if="game" class="ogt3__game">
+          <div class="ogt3__board">
+            <OgonekTttBoard :state="game.state" :can-play="game.myTurn && !game.over && !busy && !incomingDraw" :last-move="game.lastMove" @move="onMove" />
 
-          <div v-if="!game.over" class="ogt3__turn">
-            <span>{{ game.myTurn ? 'Ваш ход' : mode === 'bot' ? 'Бот думает…' : 'Ход соперника' }}</span>
-            <span v-if="mode === 'online' && secondsLeft !== null" class="ogt3__timer" :class="{ 'is-low': secondsLeft <= 10 }">{{ secondsLeft }} с</span>
-          </div>
-          <div v-if="mode === 'online' && !game.over && secondsLeft !== null" class="ogt3__bar">
-            <i :style="{ width: `${(secondsLeft / TURN) * 100}%` }" />
-          </div>
-
-          <OgonekTttBoard :state="game.state" :can-play="game.myTurn && !game.over && !busy" :last-move="game.lastMove" @move="onMove" />
-
-          <!-- Предложение ничьей -->
-          <div v-if="mode === 'online' && room?.drawOfferedBy && room.drawOfferedBy !== room.you && !game.over" class="ogt3__offer">
-            <span>{{ game.oppName }} предлагает ничью</span>
-            <button type="button" class="og-btn" :disabled="busy" @click="draw('accept')">Принять</button>
-            <button type="button" class="og-btn og-btn--ghost" :disabled="busy" @click="draw('decline')">Отказаться</button>
-          </div>
-
-          <div v-if="!game.over" class="ogt3__row">
-            <button
-              v-if="mode === 'online'"
-              type="button"
-              class="og-btn og-btn--ghost"
-              :disabled="busy || room?.drawOfferedBy === room?.you"
-              @click="draw('offer')"
-            >
-              {{ room?.drawOfferedBy === room?.you ? 'Ничья предложена' : 'Предложить ничью' }}
-            </button>
-            <button type="button" class="og-btn og-btn--ghost" :disabled="busy" @click="surrender">Сдаться</button>
-          </div>
-
-          <!-- Итог -->
-          <section v-else class="ogt3__result" :class="`is-${game.result}`">
-            <p class="ogt3__result-t">{{ RESULT[game.result!] }}</p>
-            <p v-if="mode === 'online' && game.result === 'win'" class="ogt3__muted">Победа записана в таблицу лидеров.</p>
-            <div class="ogt3__row">
-              <button v-if="mode === 'bot'" type="button" class="og-btn" @click="startBot(botLevel)">Ещё раз</button>
-              <button type="button" class="og-btn og-btn--ghost" @click="toMenu">В меню</button>
+            <!-- Предложение ничьей — поверх доски, мимо не пройти -->
+            <div v-if="incomingDraw" class="ogt3__draw" role="alertdialog" aria-live="assertive" aria-label="Предложение ничьей">
+              <p class="ogt3__draw-k">НИЧЬЯ?</p>
+              <p class="ogt3__draw-t"><b>{{ game.oppName }}</b> предлагает закончить партию вничью</p>
+              <div class="ogt3__row">
+                <button type="button" class="og-btn" :disabled="busy" @click="draw('accept')">Принять ничью</button>
+                <button type="button" class="og-btn og-btn--ghost" :disabled="busy" @click="draw('decline')">Играть дальше</button>
+              </div>
             </div>
-          </section>
-        </template>
+
+            <!-- Итог — тоже поверх доски -->
+            <div v-if="game.over" class="ogt3__draw ogt3__final" :class="`is-${game.result}`">
+              <p class="ogt3__result-t">{{ RESULT[game.result!] }}</p>
+              <p v-if="mode === 'online' && game.result === 'win'" class="ogt3__muted">Победа записана в таблицу лидеров.</p>
+              <div class="ogt3__row">
+                <button v-if="mode === 'bot'" type="button" class="og-btn" @click="startBot(botLevel)">Ещё раз</button>
+                <button type="button" class="og-btn" :class="{ 'og-btn--ghost': mode === 'bot' }" @click="toMenu">В меню</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="ogt3__panel">
+            <div class="ogt3__who">
+              <span class="ogt3__p" :class="{ 'is-turn': game.myTurn }">
+                <b :class="`is-${game.mySymbol.toLowerCase()}`">{{ game.mySymbol }}</b> Вы
+              </span>
+              <span class="ogt3__p" :class="{ 'is-turn': !game.myTurn && !game.over }">
+                <b :class="`is-${game.oppSymbol.toLowerCase()}`">{{ game.oppSymbol }}</b> {{ game.oppName }}
+              </span>
+            </div>
+
+            <div v-if="!game.over" class="ogt3__turn-box" :class="{ 'is-mine': game.myTurn }">
+              <span class="ogt3__turn-t">{{ game.myTurn ? 'Ваш ход' : mode === 'bot' ? 'Бот думает…' : 'Ход соперника' }}</span>
+              <template v-if="mode === 'online' && secondsLeft !== null">
+                <span class="ogt3__timer" :class="{ 'is-low': secondsLeft <= 10 }">{{ secondsLeft }} с</span>
+                <span class="ogt3__bar"><i :style="{ width: `${(secondsLeft / TURN) * 100}%` }" /></span>
+              </template>
+            </div>
+
+            <p v-if="mode === 'online' && room?.drawOfferedBy === room?.you && !game.over" class="ogt3__wait-draw">
+              Вы предложили ничью — ждём ответа
+            </p>
+
+            <div v-if="!game.over" class="ogt3__actions">
+              <button
+                v-if="mode === 'online'"
+                type="button"
+                class="og-btn og-btn--ghost"
+                :disabled="busy || room?.drawOfferedBy === room?.you"
+                @click="draw('offer')"
+              >
+                Предложить ничью
+              </button>
+              <button type="button" class="og-btn og-btn--ghost" :disabled="busy" @click="surrender">Сдаться</button>
+            </div>
+          </aside>
+        </div>
       </main>
 
-      <!-- Лидеры онлайн-партий -->
-      <aside class="ogt3__side">
+      <!-- Лидеры — только в меню: во время партии они не нужны -->
+      <aside v-if="mode === 'menu'" class="ogt3__side">
         <h2 class="ogt3__h">Лидеры</h2>
         <p v-if="!leaders.length" class="ogt3__muted">Пока никто не сыграл онлайн. Станьте первым.</p>
         <ol v-else class="ogt3__leaders">
@@ -243,6 +253,11 @@ const game = computed(() => {
     lastMove: r.lastMove
   } as const;
 });
+
+/** Соперник предложил ничью — показываем поверх доски. */
+const incomingDraw = computed(
+  () => mode.value === 'online' && !!room.value?.drawOfferedBy && room.value.drawOfferedBy !== room.value.you && room.value.status === 'playing'
+);
 
 const secondsLeft = computed(() => {
   const d = room.value?.deadline;
@@ -496,6 +511,77 @@ onBeforeUnmount(() => {
 .ogt3__result.is-loss .ogt3__result-t { color: #ff8f8f; }
 .ogt3__result.is-draw .ogt3__result-t { color: #d8c39b; }
 
+/* ——— партия: доска вписана в высоту окна, панель справа ——— */
+.ogt3__layout.is-playing { grid-template-columns: 1fr; }
+.ogt3__head.is-compact .ogt3__kicker { display: none; }
+.ogt3__head.is-compact .ogt3__title { font-size: 16px; }
+.ogt3__game {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+}
+.ogt3__board {
+  position: relative;
+  /* Доска видна целиком без прокрутки: не шире колонки и не выше окна */
+  justify-self: center;
+  width: 100%;
+  max-width: min(calc(100dvh - 210px), 760px);
+}
+.ogt3__panel { display: flex; flex-direction: column; gap: 14px; }
+.ogt3__who { display: flex; flex-direction: column; gap: 6px; }
+.ogt3__turn-box {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(30, 12, 14, 0.45);
+  border: 2px solid transparent;
+}
+.ogt3__turn-box.is-mine { border-color: var(--og-gold); background: rgba(255, 207, 74, 0.12); }
+.ogt3__turn-t { font-family: var(--og-pixel); font-size: 10px; color: var(--og-gold-soft); }
+.ogt3__turn-box .ogt3__bar { grid-column: 1 / -1; width: 100%; }
+.ogt3__actions { display: flex; flex-direction: column; gap: 8px; }
+.ogt3__actions .og-btn { width: 100%; }
+.ogt3__wait-draw { margin: 0; padding: 8px 10px; font-size: 14px; color: var(--og-gold-soft); border: 1px dashed rgba(255, 207, 74, 0.5); }
+
+/* Поверх доски: предложение ничьей и итог */
+.ogt3__draw {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(86%, 420px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  text-align: center;
+  padding: 22px 20px;
+  background: #3a0911;
+  border: 3px solid var(--og-gold);
+  box-shadow: 0 0 0 9999px rgba(20, 6, 10, 0.55), 6px 6px 0 #6b2a00;
+  animation: ogt3-pop 0.25s ease-out;
+  z-index: 5;
+}
+.ogt3__draw-k { margin: 0; font-family: var(--og-pixel); font-size: 22px; color: var(--og-gold); animation: ogt3-blink 1.2s ease-in-out infinite; }
+.ogt3__draw-t { margin: 0; font-size: 17px; }
+.ogt3__draw-t b { color: var(--og-gold); }
+.ogt3__draw .ogt3__row { justify-content: center; }
+.ogt3__final.is-win { border-color: var(--og-gold); }
+.ogt3__final.is-loss { border-color: #ff8f8f; }
+@keyframes ogt3-pop { from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@keyframes ogt3-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .ogt3__draw, .ogt3__draw-k { animation: none; } }
+
+@media (max-width: 1000px) {
+  .ogt3__game { grid-template-columns: 1fr; }
+  .ogt3__board { max-width: min(100%, calc(100dvh - 300px)); }
+}
+
 .ogt3__side { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: rgba(30, 12, 14, 0.45); }
 .ogt3__leaders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .ogt3__leaders li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
@@ -509,4 +595,26 @@ onBeforeUnmount(() => {
 @media (max-width: 900px) {
   .ogt3__layout { grid-template-columns: 1fr; }
 }
+</style>
+
+<style>
+/* Кнопки ивента: на отдельной странице стиль календаря не действует */
+.og-theme .og-btn {
+  display: inline-block;
+  font-family: var(--og-pixel);
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  background: var(--og-gold);
+  color: #3a2600;
+  box-shadow: 3px 3px 0 #6b2a00;
+  text-decoration: none;
+  text-align: center;
+}
+.og-theme .og-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #6b2a00; }
+.og-theme .og-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.og-theme .og-btn--ghost { background: transparent; color: #ffd9d6; box-shadow: none; border: 2px solid var(--og-line); }
 </style>
