@@ -317,6 +317,64 @@ export const countVacationBillableDays = (startStr: string, endStr: string) => {
   return n;
 };
 
+export const VACATION_ONLY_HOLIDAYS_MESSAGE = 'Выбранные даты приходятся только на праздничные дни';
+
+export type VacationHolidayEdgeTrim = {
+  /** Начало после обрезки (при `empty` — исходное). */
+  start: string;
+  /** Конец после обрезки (при `empty` — исходный). */
+  end: string;
+  /** Отрезанные праздничные даты по порядку (ISO). */
+  removed: string[];
+  /** Все дни периода — праздники: заявку оформить нельзя. */
+  empty: boolean;
+};
+
+const shiftIsoDay = (iso: string, delta: number): string => {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + delta);
+  return toIso(d);
+};
+
+/**
+ * Праздники РФ (`isRuHoliday`) на краях периода в отпуск не входят: `start` двигаем вперёд,
+ * `end` назад, пока они на празднике. Выходные (сб/вс) не трогаем — они входят в отпуск.
+ * Праздники внутри периода остаются (просто не считаются в billable-днях).
+ */
+export const trimVacationHolidayEdges = (startIso: string, endIso: string): VacationHolidayEdgeTrim => {
+  const valid =
+    /^\d{4}-\d{2}-\d{2}$/.test(startIso) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(endIso) &&
+    startIso <= endIso;
+  if (!valid) return { start: startIso, end: endIso, removed: [], empty: false };
+
+  const head: string[] = [];
+  let start = startIso;
+  while (start <= endIso && isRuHoliday(start)) {
+    head.push(start);
+    start = shiftIsoDay(start, 1);
+  }
+  if (start > endIso) {
+    return { start: startIso, end: endIso, removed: head, empty: true };
+  }
+  const tail: string[] = [];
+  let end = endIso;
+  while (end > start && isRuHoliday(end)) {
+    tail.unshift(end);
+    end = shiftIsoDay(end, -1);
+  }
+  return { start, end, removed: [...head, ...tail], empty: false };
+};
+
+/** «31.12 праздничный день, в отпуск не входит» / «30.12, 31.12 праздничные дни, в отпуск не входят». */
+export const vacationHolidayEdgeHint = (removed: string[]): string => {
+  if (!removed.length) return '';
+  const labels = removed.map((iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`).join(', ');
+  return removed.length === 1
+    ? `${labels} праздничный день, в отпуск не входит`
+    : `${labels} праздничные дни, в отпуск не входят`;
+};
+
 /** Обрезать диапазон до календарного года; null если пересечения нет. */
 export const clipIsoRangeToYear = (
   startStr: string,

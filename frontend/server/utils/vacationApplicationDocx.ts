@@ -9,7 +9,8 @@ import {
 } from '../../app/data/employeeDirectoryOptions';
 import {
   addWorkingDaysIso,
-  countInclusiveCalendarDays
+  countVacationBillableDays,
+  trimVacationHolidayEdges
 } from '../../app/utils/vacationCalendar';
 
 const execFileAsync = promisify(execFile);
@@ -57,17 +58,38 @@ async function templatePath(): Promise<string> {
   throw new Error('Шаблон заявления не найден (templates/vacation-application.docx)');
 }
 
-/** Без npm-zip: системные unzip/zip (на VPS есть). Не тянем pizzip в Nitro CI. */
-export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
-  const values: Record<string, string> = {
+/**
+ * Период для заявления: праздники на краях в отпуск не входят. Новые заявки уже сохранены
+ * обрезанными; для старых (край на празднике) обрезаем здесь же, данные заявки не трогаем.
+ */
+export const vacationApplicationPeriod = (
+  startIso: string,
+  endIso: string
+): { start: string; end: string; days: number } => {
+  const trimmed = trimVacationHolidayEdges(startIso, endIso);
+  const start = trimmed.empty ? startIso : trimmed.start;
+  const end = trimmed.empty ? endIso : trimmed.end;
+  return { start, end, days: countVacationBillableDays(start, end) };
+};
+
+/** Значения плейсхолдеров бланка (без файла — удобно для тестов). */
+export const vacationApplicationValues = (data: VacationApplicationData): Record<string, string> => {
+  const period = vacationApplicationPeriod(data.startDate, data.endDate);
+  return {
     legal_entity: resolveLegalEntityFullName(data.legalEntity) || '—',
     employee_name: data.employeeName.trim() || '—',
     position: data.position.trim() || '—',
-    start_date: ruDate(data.startDate),
-    end_date: ruDate(data.endDate),
-    days_count: String(countInclusiveCalendarDays(data.startDate, data.endDate)),
-    return_date: ruDate(addWorkingDaysIso(data.endDate, 1))
+    start_date: ruDate(period.start),
+    end_date: ruDate(period.end),
+    // Дни в счёт отпуска: календарные без праздников (как в балансе), а не календарная разница.
+    days_count: String(period.days),
+    return_date: ruDate(addWorkingDaysIso(period.end, 1))
   };
+};
+
+/** Без npm-zip: системные unzip/zip (на VPS есть). Не тянем pizzip в Nitro CI. */
+export async function buildVacationApplicationDocx(data: VacationApplicationData): Promise<Buffer> {
+  const values = vacationApplicationValues(data);
 
   const root = await mkdtemp(join(tmpdir(), 'vbi-vac-app-'));
   const extract = join(root, 'extract');

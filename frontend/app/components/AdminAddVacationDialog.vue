@@ -41,6 +41,14 @@
             <input v-model="form.end" type="date" class="vac-emp-input vac-admin-add-input" required />
           </label>
         </div>
+        <p
+          v-if="holidayEdgeHint"
+          class="vac-holiday-edge-hint"
+          :class="{ 'is-error': onlyHolidays }"
+          role="status"
+        >
+          {{ holidayEdgeHint }}
+        </p>
 
         <p v-if="formError" class="vac-admin-add-error" role="alert">{{ formError }}</p>
         <p v-else-if="shortfall.shortfall > 0" class="vac-admin-add-warn" role="status">
@@ -80,6 +88,7 @@ const { departmentsGrouped, employees } = useEmployees();
 const { addRequest, state, viewYear } = useVacations();
 
 const form = reactive({ employee: '', start: '', end: '' });
+const { holidayEdgeHint, onlyHolidays } = useVacationHolidayEdgeTrim(form);
 const formError = ref('');
 const submitting = ref(false);
 

@@ -218,6 +218,14 @@
                 Сохранить
               </button>
             </div>
+            <p
+              v-if="holidayEdgeHint"
+              class="vac-holiday-edge-hint"
+              :class="{ 'is-error': onlyHolidays }"
+              role="status"
+            >
+              {{ holidayEdgeHint }}
+            </p>
             <p v-if="editError" class="emp-request-edit__error">{{ editError }}</p>
             <p
               v-else-if="editShortfall.shortfall > 0"
@@ -386,6 +394,7 @@ const { position: menuPosition, updatePosition: updateMenuPosition } = useFloati
 );
 const editingId = ref<number | null>(null);
 const editForm = reactive({ start: '', end: '' });
+const { holidayEdgeHint, onlyHolidays } = useVacationHolidayEdgeTrim(editForm);
 const editError = ref('');
 
 const currentEmployee = computed(() => findByUserForAuth(user.value));

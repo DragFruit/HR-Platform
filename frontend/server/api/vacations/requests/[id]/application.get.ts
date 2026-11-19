@@ -13,7 +13,8 @@ import {
 import { readVacations } from '../../../../utils/vacationsStore';
 import {
   buildVacationApplicationDocx,
-  vacationApplicationFilename
+  vacationApplicationFilename,
+  vacationApplicationPeriod
 } from '../../../../utils/vacationApplicationDocx';
 
 export default defineEventHandler(async (event) => {
@@ -65,7 +66,9 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const encoded = encodeURIComponent(vacationApplicationFilename(employee.name, request.start));
+  const encoded = encodeURIComponent(
+    vacationApplicationFilename(employee.name, vacationApplicationPeriod(request.start, request.end).start)
+  );
   setHeader(
     event,
     'Content-Type',

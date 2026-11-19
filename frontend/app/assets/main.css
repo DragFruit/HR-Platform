@@ -12940,6 +12940,23 @@ button.emp-name--card:hover {
   color: #b91c1c;
 }
 
+/* Праздник на краю периода отрезан: «31.12 праздничный день, в отпуск не входит» */
+.vac-holiday-edge-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.vac-holiday-edge-hint.is-error {
+  color: #b91c1c;
+}
+
+.vac-holiday-edge-hint--toolbar {
+  flex-basis: 100%;
+  margin-top: 4px;
+}
+
 .emp-request-download-error {
   margin: 4px 0 0;
   font-size: 11px;

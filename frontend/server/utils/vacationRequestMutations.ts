@@ -29,6 +29,8 @@ import {
   isPastApprovedVacationRequest,
   isVacationStartInPast,
   todayIso,
+  trimVacationHolidayEdges,
+  VACATION_ONLY_HOLIDAYS_MESSAGE,
   vacationRangesOverlap
 } from '../../app/utils/vacationCalendar';
 import { vacationBelongsToEmployee } from '../../app/utils/vacationEmployeeRef';
@@ -148,6 +150,18 @@ const assertStartNotInPastUnlessAdmin = (session: SessionUser, start: string) =>
   }
 };
 
+/**
+ * Праздники на краях периода в отпуск не входят: обрезаем до ближайших не праздничных дней.
+ * Единая точка истины для создания и правки дат (сотрудник, HR, админ).
+ */
+const normalizeVacationDates = (start: string, end: string): { start: string; end: string } => {
+  const trimmed = trimVacationHolidayEdges(start, end);
+  if (trimmed.empty) {
+    throw createError({ statusCode: 400, statusMessage: VACATION_ONLY_HOLIDAYS_MESSAGE });
+  }
+  return { start: trimmed.start, end: trimmed.end };
+};
+
 const findRequest = (state: VacationStoreState, id: number) => {
   for (const [yearKey, list] of Object.entries(state.requestsByYear)) {
     const index = list.findIndex((item) => item.id === id);
@@ -236,6 +250,13 @@ export async function createVacationRequest(
       statusMessage: 'Нельзя подать заявку за другого сотрудника'
     });
   }
+
+  // Год папки сверяем с датой начала до обрезки (как выбрал сотрудник); после обрезки
+  // начало может уехать в следующий год (31.12 → 11.01) — тогда и папка следующего года.
+  assertYearMatchesStart(body.year, body.start);
+  const dates = normalizeVacationDates(body.start, body.end);
+  const requestYear = yearFromIsoDate(dates.start);
+  body = { ...body, year: requestYear, start: dates.start, end: dates.end };
 
   const employee = await findEmployeeByName(employeeName);
   const yearKey = String(body.year);
@@ -437,6 +458,11 @@ export async function patchVacationRequest(
     if (changesComment) found.item.comment = patch.comment!.trim();
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
+    if (changesDates) {
+      const dates = normalizeVacationDates(found.item.start, found.item.end);
+      found.item.start = dates.start;
+      found.item.end = dates.end;
+    }
 
     if (patch.start !== undefined || patch.end !== undefined) {
       yearFromIsoDate(found.item.end);

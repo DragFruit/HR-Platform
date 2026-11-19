@@ -71,6 +71,14 @@
             :title="GROUP_LEAD_OVERLAP_POPOVER_TITLE"
           />
         </p>
+        <p
+          v-if="!isHistoricalYear && holidayEdgeHint"
+          class="vac-holiday-edge-hint vac-holiday-edge-hint--toolbar"
+          :class="{ 'is-error': onlyHolidays }"
+          role="status"
+        >
+          {{ holidayEdgeHint }}
+        </p>
         <p v-if="!isHistoricalYear && clarifyHint" class="vac-emp-toolbar__clarify-hint" role="status">
           {{ clarifyHint }}
         </p>
@@ -130,6 +138,14 @@
         </div>
       </div>
 
+      <p
+        v-if="!isHistoricalYear && holidayEdgeHint"
+        class="vac-holiday-edge-hint"
+        :class="{ 'is-error': onlyHolidays }"
+        role="status"
+      >
+        {{ holidayEdgeHint }}
+      </p>
       <p v-if="!isHistoricalYear && clarifyHint" class="vac-mob-chrome__hint">{{ clarifyHint }}</p>
       <p v-if="formShortfallBlocked" class="vac-mob-chrome__err" role="alert">{{ formShortfall.message }}</p>
       <p v-if="formError" class="vac-mob-chrome__err">
@@ -655,6 +671,7 @@ const formShortfallBlocked = computed(
 );
 
 const form = reactive({ start: '', end: '' });
+const { holidayEdgeHint, onlyHolidays } = useVacationHolidayEdgeTrim(form);
 const formError = ref<{ title: string; text: string } | null>(null);
 const submitting = ref(false);
 
@@ -1073,7 +1090,13 @@ const submitRequest = async () => {
   submitting.value = true;
   dismissRequestCreatedToast();
   try {
-    const created = await addRequest({ employee: employeeName.value, start: form.start, end: form.end });
+    // Год папки — по дате начала (после обрезки праздника 31.12 начало может уйти в январь).
+    const created = await addRequest({
+      employee: employeeName.value,
+      start: form.start,
+      end: form.end,
+      year: Number(form.start.slice(0, 4))
+    });
     if (created) {
       showRequestCreatedToast();
     }

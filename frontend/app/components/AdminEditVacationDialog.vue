@@ -30,6 +30,14 @@
             <input v-model="form.end" type="date" class="vac-emp-input vac-admin-add-input" required />
           </label>
         </div>
+        <p
+          v-if="holidayEdgeHint"
+          class="vac-holiday-edge-hint"
+          :class="{ 'is-error': onlyHolidays }"
+          role="status"
+        >
+          {{ holidayEdgeHint }}
+        </p>
 
         <label class="vac-admin-add-field">
           <span class="vac-admin-add-label">Комментарий</span>
@@ -93,6 +101,7 @@ const { employees, findByName } = useEmployees();
 const { adminEditRequest, requestStatusLabel, state } = useVacations();
 
 const form = reactive({ start: '', end: '', comment: '' });
+const { holidayEdgeHint, onlyHolidays } = useVacationHolidayEdgeTrim(form);
 const formError = ref('');
 const submitting = ref(false);
 
