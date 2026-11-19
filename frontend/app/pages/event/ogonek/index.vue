@@ -799,7 +799,7 @@ onBeforeUnmount(() => {
 
 
 .og-wrap {
-  max-width: 1080px;
+  max-width: 1280px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -892,7 +892,8 @@ onBeforeUnmount(() => {
   position: relative;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: clamp(10px, 1.6vw, 16px);
+  /* По горизонтали шире: на большом экране календарь не жмётся к середине */
+  gap: clamp(10px, 1.6vw, 16px) clamp(12px, 2.6vw, 40px);
 }
 
 /* ——— плитки статистики в сетке календаря ——— */
