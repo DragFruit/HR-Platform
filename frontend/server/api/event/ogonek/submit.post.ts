@@ -168,7 +168,7 @@ export default defineEventHandler(async (event) => {
         return { ok: true, santaWish: player.santaWish ?? '' };
       }
       case 'ttt': {
-        // Открыл игру — окно засчитано. Результаты партий сайт пока не отдаёт.
+        // Открыл игру — окно засчитано.
         done();
         return { ok: true };
       }

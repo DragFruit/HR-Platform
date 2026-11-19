@@ -1,4 +1,4 @@
-import { ogonekTttEnterUrl, ogonekTttLeaders, syncOgonekTtt } from '../../../utils/ogonekTtt';
+import { ogonekTttLeaders } from '../../../utils/ogonekTtt';
 import { requireVbiSession } from '../../../utils/session';
 import { getDeployAppEnv } from '../../../utils/appEnv';
 import { ogonekClock } from '../../../utils/ogonekClock';
@@ -38,9 +38,6 @@ export default defineEventHandler(async (event) => {
 
   // Файл пишем, только если игрок новый. Раньше запись шла на каждом
   // открытии экрана — полная перезапись файла со всей ёлкой и лентой.
-  // Новые партии крестиков-ноликов — в фоне, не чаще раза в минуту: медленный
-  // сайт игры не тормозит адвент, таблица догонится к следующему открытию
-  void syncOgonekTtt();
   let state = await readOgonekState();
   let player = state.players.find((p) => p.userId === session.id);
   if (!player) {
@@ -101,7 +98,7 @@ export default defineEventHandler(async (event) => {
       const leaders = ogonekTttLeaders(state.ttt?.matches ?? [], nameOf);
       const myIndex = leaders.findIndex((r) => r.uid === String(session.id));
       return {
-        url: ogonekTttEnterUrl(session.id, player.name),
+        url: '/event/ogonek/ttt',
         games: state.ttt?.matches.length ?? 0,
         top: leaders.slice(0, 5).map((r) => ({ name: r.name, wins: r.wins, games: r.games, mine: r.uid === String(session.id) })),
         me: myIndex >= 0 ? { place: myIndex + 1, wins: leaders[myIndex]!.wins, games: leaders[myIndex]!.games } : null

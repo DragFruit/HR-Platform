@@ -132,6 +132,7 @@ export type OgonekFeedKind =
   | 'plug'
   | 'skating'
   | 'santa'
+  | 'ttt'
   | 'song';
 
 export type OgonekFeedItem = {

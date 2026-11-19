@@ -182,6 +182,9 @@ export function usePlatformContext() {
     if (route.path.startsWith('/event/ogonek/tree')) {
       return 'Ёлка желаний · «Огонёк 2027»';
     }
+    if (route.path.startsWith('/event/ogonek/ttt')) {
+      return 'Крестики-нолики · «Огонёк 2027»';
+    }
     if (route.path.startsWith('/event/ogonek/santa')) {
       return 'Тайный Санта · «Огонёк 2027»';
     }

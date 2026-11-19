@@ -49,7 +49,7 @@
                     </ol>
                     <span v-else class="og-tile__sub">Сыграйте онлайн с коллегой — здесь появятся лидеры</span>
                     <span v-if="state.ttt.me" class="og-tile__sub">Вы: {{ state.ttt.me.place }} место · {{ state.ttt.me.wins }} {{ plural(state.ttt.me.wins, 'победа', 'победы', 'побед') }}</span>
-                    <a class="og-tile__go og-ttt__play" :href="state.ttt.url" target="_blank" rel="noopener">Играть ↗</a>
+                    <NuxtLink class="og-tile__go og-ttt__play" :to="state.ttt.url">Играть →</NuxtLink>
                   </div>
 
                   <div v-else-if="cell.tile === 'pulse'" class="og-tile og-tile--wide">
@@ -1057,6 +1057,7 @@ onBeforeUnmount(() => {
 .og-live__dot--letter { background: #2fa7a8; }
 .og-live__dot--plug { background: #45bd68; }
 .og-live__dot--santa { background: #ff7466; }
+.og-live__dot--ttt { background: #c2a6f2; }
 
 /* Новое въезжает сверху, старое уходит вниз и тает */
 .og-live-enter-active { transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }

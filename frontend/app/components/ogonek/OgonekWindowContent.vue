@@ -19,16 +19,10 @@
       <NuxtLink class="og-btn og-btn--ghost og-win__santa-link" to="/event/ogonek/santa">Страница Тайного Санты →</NuxtLink>
     </section>
 
-    <!-- 10. Крестики-нолики: игра живёт на своём сайте, открываем в новой вкладке -->
+    <!-- 10. Крестики-нолики: своя страница игры в адвенте -->
     <section v-else-if="day.kind === 'tictactoe'" class="og-win__body">
-      <a
-        class="og-btn og-win__play"
-        :href="tttUrl || TTT_URL"
-        target="_blank"
-        rel="noopener"
-        @click="send('ttt', {})"
-      >Играть в крестики-нолики ↗</a>
-      <p class="og-win__note">Игра откроется в новой вкладке.</p>
+      <NuxtLink class="og-btn og-win__play" :to="tttUrl || '/event/ogonek/ttt'" @click="send('ttt', {})">Играть в крестики-нолики →</NuxtLink>
+      <p class="og-win__note">С ботом или онлайн с коллегой. Победы в онлайн-партиях идут в таблицу лидеров.</p>
     </section>
 
     <section v-else-if="day.kind === 'avatar'" class="og-win__body">
@@ -365,7 +359,7 @@ const props = defineProps<{
   submitOpen: boolean;
   santaOpen?: boolean;
   santaCounts?: Record<string, number>;
-  /** Ссылка «Играть» с токеном сотрудника — так партии попадают в рейтинг. */
+  /** Страница игры (окно 10). */
   tttUrl?: string;
   player: PlayerView;
   micro: Record<string, string>;
@@ -397,8 +391,6 @@ const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind ==
 
 /** Окна, где что-то добавляют. Вилка, колпак и окна для чтения не закрываются. */
 const CLOSING_KINDS = ['skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'olivier', 'final'];
-const TTT_URL = 'https://ultimate-tic-tac-toe.ru/';
-
 const locked = computed(() => !props.submitOpen && CLOSING_KINDS.includes(props.day.kind));
 
 const wish = ref(props.player.toy?.wish ?? '');
