@@ -8,6 +8,7 @@ export type OgonekDayKind =
   | 'avatar'     // новогодний аксессуар на аватарку
   | 'merch'      // показ мерча
   | 'plug'       // вилка в розетку: выключатель декора
+  | 'santa'      // регистрация в Тайном Санте
   | 'skating'    // запись на каток
   | 'toy'        // нарисуй игрушку на ёлку
   | 'numbers'    // год компании в цифрах
@@ -130,6 +131,7 @@ export type OgonekFeedKind =
   | 'letter'
   | 'plug'
   | 'skating'
+  | 'santa'
   | 'song';
 
 export type OgonekFeedItem = {

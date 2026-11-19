@@ -57,6 +57,13 @@ export function ogonekMailboxInSeason(now: Date = new Date()): boolean {
  */
 export const OGONEK_SUBMIT_UNTIL = OGONEK_MAILBOX_FROM;
 
+/** Регистрация в Тайном Санте — до 11 декабря включительно (МСК). */
+export const OGONEK_SANTA_UNTIL = '2026-12-12T00:00:00+03:00';
+
+export function ogonekSantaOpen(now: Date = new Date()): boolean {
+  return now.getTime() < Date.parse(OGONEK_SANTA_UNTIL);
+}
+
 export function ogonekSubmitInTime(now: Date = new Date()): boolean {
   return now.getTime() < Date.parse(OGONEK_SUBMIT_UNTIL);
 }

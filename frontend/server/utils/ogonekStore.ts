@@ -45,12 +45,14 @@ export type OgonekPlayer = {
   done: number[];
   /** Вилка воткнута — декор платформы горит. */
   plugged: boolean;
-  /** Колпак на аватарке (окно 2). */
+  /** Колпак на аватарке (окно 3). */
   hat: boolean;
   /** Песня года (окно 1) — до вечера не показывается никому. */
   song?: string;
   /** Записался на каток (окно 5). */
   skating?: boolean;
+  /** Записался в Тайного Санту (окно 2). */
+  santa?: boolean;
   /** Выбранный образ на Огонёк (окно 8). */
   dresscode?: string;
   toyId?: string;
@@ -176,6 +178,7 @@ async function readState(): Promise<OgonekState> {
         hat: Boolean(src.hat),
         song: src.song ? str(src.song, 160) : undefined,
         skating: src.skating ? true : undefined,
+        santa: src.santa ? true : undefined,
         dresscode: src.dresscode ? str(src.dresscode, 80) : undefined,
         toyId: src.toyId ? String(src.toyId) : undefined,
         snowflakeId: src.snowflakeId ? String(src.snowflakeId) : undefined,

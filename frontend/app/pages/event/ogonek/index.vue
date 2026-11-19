@@ -157,6 +157,8 @@
                   :player="state.player"
                   :micro="state.micro"
                   :submit-open="state.submitOpen"
+                  :santa-open="state.santaOpen"
+                  :santa-count="state.santaCount"
                   :awaiting-label="state.awaitingLabel"
                   :toy-size="state.toySize"
                   :colleagues="colleagues"
@@ -228,6 +230,7 @@ type PlayerView = {
   hat: boolean;
   song: string;
   skating: boolean;
+  santa: boolean;
   dresscode: string;
   toy: { id: string; pixels: string[]; wish: string; x: number; y: number } | null;
   snowflake: { id: string; pixels: string[] } | null;
@@ -242,6 +245,8 @@ type AdventState = {
   partyAt: string;
   debugAllOpen: boolean;
   submitOpen: boolean;
+  santaOpen: boolean;
+  santaCount: number;
   devDay: number | null;
   devTools: boolean;
   micro: Record<string, string>;
@@ -265,7 +270,7 @@ type AdventState = {
 
 /** Подпись типа окна в шапке раскрытого дня. */
 const KIND: Record<OgonekDayKind, string> = {
-  song: 'ПЛЕЙЛИСТ', avatar: 'АВАТАР', merch: 'МЕРЧ', plug: 'ДЕКОР', skating: 'КАТОК',
+  song: 'ПЛЕЙЛИСТ', santa: 'ТАЙНЫЙ САНТА', avatar: 'АВАТАР', merch: 'МЕРЧ', plug: 'ДЕКОР', skating: 'КАТОК',
   toy: 'ЁЛКА', numbers: 'ЦИФРЫ', dresscode: 'ДРЕСС-КОД', reels: 'РИЛСЫ', tictactoe: 'ИГРА',
   photoyear: 'ФОТО', snowflake: 'СНЕЖИНКА', thanks: 'ОТКРЫТКА', teamphoto: 'ФОТО',
   minigame: 'МИНИ-ИГРА', letter: 'ПИСЬМО', olivier: 'РЕЦЕПТЫ', program: 'ПРОГРАММА', final: 'ФИНАЛ'
@@ -1014,6 +1019,7 @@ onBeforeUnmount(() => {
 .og-live__dot--recipe { background: #f4e6c8; }
 .og-live__dot--letter { background: #2fa7a8; }
 .og-live__dot--plug { background: #45bd68; }
+.og-live__dot--santa { background: #ff7466; }
 
 /* Новое въезжает сверху, старое уходит вниз и тает */
 .og-live-enter-active { transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }

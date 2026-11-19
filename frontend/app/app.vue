@@ -180,7 +180,7 @@ const { isAdmin, navItems, switchRole, pageTitle, syncRoleFromAuth, canSwitchRol
 const { homePath, isPathAllowed } = useLaunchScope();
 // Сезонный декор: вешает класс на <html>, сам снимается вне окна 28.10–06.11
 useHalloweenDecor();
-// Новогодний декор «Огонька»: горит, только пока вилка из окна 4 в розетке
+// Новогодний декор «Огонька»: горит, только пока вилка из окна 1 в розетке
 const ogonekDecor = useOgonekDecor();
 // Состояние вилки лежит на сервере — тянем его один раз после входа.
 watch(

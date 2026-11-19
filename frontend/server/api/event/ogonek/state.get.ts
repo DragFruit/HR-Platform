@@ -26,7 +26,8 @@ import {
   OGONEK_LETTER_DELIVERY_AT,
   OGONEK_PARTY_AT,
   ogonekDayScheduleOpen,
-  ogonekTodayDayId
+  ogonekTodayDayId,
+  ogonekSantaOpen
 } from '../../../../app/events/ogonek/timeline';
 
 export default defineEventHandler(async (event) => {
@@ -89,6 +90,9 @@ export default defineEventHandler(async (event) => {
     letterDeliveryAt: OGONEK_LETTER_DELIVERY_AT,
     debugAllOpen: clock.debugAllOpen,
     submitOpen: ogonekSubmitOpen(clock),
+    // Тайный Санта: регистрация до конца 11 декабря и сколько уже записалось
+    santaOpen: clock.debugAllOpen || ogonekSantaOpen(now),
+    santaCount: state.players.filter((p) => p.santa).length,
     devDay: clock.devDay,
     // Панель отладки показываем только вне боя.
     devTools: getDeployAppEnv() !== 'production',
@@ -126,6 +130,7 @@ export default defineEventHandler(async (event) => {
       hat: player.hat,
       song: player.song ?? '',
       skating: Boolean(player.skating),
+      santa: Boolean(player.santa),
       dresscode: player.dresscode ?? '',
       toy: toys.find((t) => t.id === player.toyId) ?? null,
       snowflake: snowflakes.find((s) => s.id === player.snowflakeId) ?? null,

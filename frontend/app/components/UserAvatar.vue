@@ -32,7 +32,7 @@ const props = withDefaults(
 );
 
 const { getAvatarUrl } = useAvatars();
-// Новогодний колпак из окна 2 «Огонька»: только на тех, кто его надел.
+// Новогодний колпак из окна 3 «Огонька»: только на тех, кто его надел.
 const { hatOn } = useOgonekDecor({ effects: false });
 
 const src = computed(() => getAvatarUrl(props.userId));

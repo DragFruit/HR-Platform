@@ -18,7 +18,7 @@ import { ogonekSubmitOpen, requireUnlockedDay } from '../../../utils/ogonekGate'
 import { readEmployees } from '../../../utils/employeesStore';
 import { demoToys, ogonekDemoAllowed } from '../../../utils/ogonekDemo';
 import { ogonekTreeBestSpot } from '../../../../app/events/ogonek/treePlacement';
-import { OGONEK_LETTER_DELIVERY_AT } from '../../../../app/events/ogonek/timeline';
+import { OGONEK_LETTER_DELIVERY_AT, ogonekSantaOpen } from '../../../../app/events/ogonek/timeline';
 import { ogonekDayById } from '../../../../app/events/ogonek/content';
 import { isOgonekFlakeQuarter } from '../../../../app/events/ogonek/snowflake';
 
@@ -39,9 +39,9 @@ type Body = {
 
 /** Какое окно отвечает за какое действие. Без открытого окна действие нельзя. */
 const DAY_OF: Record<string, number> = {
-  song: 1,
-  hat: 2,
-  plug: 4,
+  plug: 1,
+  santa: 2,
+  hat: 3,
   skating: 5,
   toy: 6,
   dresscode: 8,
@@ -68,7 +68,7 @@ function completesByReading(dayId: number): boolean {
  * Отметка «прочитал» тоже: она никому ничего не добавляет.
  */
 const CLOSES_AT_DEADLINE = new Set([
-  'song', 'skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'recipe', 'recipeVote'
+  'skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'recipe', 'recipeVote'
 ]);
 
 /**
@@ -97,6 +97,7 @@ export default defineEventHandler(async (event) => {
       player.plugged = false;
       player.hat = false;
       delete player.song;
+      delete player.santa;
       delete player.skating;
       delete player.dresscode;
       return { ok: true };
@@ -136,12 +137,19 @@ export default defineEventHandler(async (event) => {
         done();
         return { ok: true, done: player.done };
       }
-      case 'song': {
-        player.song = String(body.text || '').trim().slice(0, 160);
-        if (!player.song) throw createError({ statusCode: 400, statusMessage: 'text required' });
-        done();
-        // В ленту песню не пишем: плейлист — сюрприз до вечера (спека, раздел 3).
-        return { ok: true, song: player.song };
+      case 'santa': {
+        // Записаться и передумать можно только до конца 11 декабря
+        if (!clock.debugAllOpen && !ogonekSantaOpen(clock.now)) {
+          throw createError({ statusCode: 403, statusMessage: 'Регистрация в Тайном Санте закрыта 11 декабря' });
+        }
+        const next = Boolean(body.on);
+        const changed = next !== Boolean(player.santa);
+        player.santa = next || undefined;
+        if (next) {
+          if (changed) pushOgonekFeed(state, 'santa', 'теперь в Тайном Санте', who);
+          done();
+        }
+        return { ok: true, santa: Boolean(player.santa) };
       }
       case 'hat': {
         player.hat = Boolean(body.on);

@@ -4,6 +4,7 @@ import { readOgonekState } from '../../../utils/ogonekStore';
 import { demoSnowflakes } from '../../../utils/ogonekDemo';
 import { OGONEK_DAY_IDS, ogonekDayScheduleOpen } from '../../../../app/events/ogonek/timeline';
 import { ogonekFlakeSprite } from '../../../../app/events/ogonek/snowflake';
+import { OGONEK_PLUG_DAY } from '../../../../app/events/ogonek/content';
 
 /**
  * Лёгкая ручка для декора платформы: её дёргает слой, который висит на всех
@@ -36,8 +37,8 @@ export default defineEventHandler(async (event) => {
     seasonOn,
     plugged: Boolean(player?.plugged),
     hat: Boolean(player?.hat),
-    everPlugged: Boolean(player?.plugged || player?.done.includes(4)),
-    // Колпак видят все, но только на тех, кто сам его надел в окне 2
+    everPlugged: Boolean(player?.plugged || player?.done.includes(OGONEK_PLUG_DAY)),
+    // Колпак видят все, но только на тех, кто сам его надел в окне колпака
     hatUserIds: state.players.filter((p) => p.hat).map((p) => p.userId),
     authorFlakes
   };

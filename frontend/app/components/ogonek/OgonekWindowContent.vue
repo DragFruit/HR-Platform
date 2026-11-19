@@ -6,20 +6,18 @@
     <fieldset class="og-win__fields" :disabled="locked">
 
     <!-- 1. Песня года -->
-    <section v-if="day.kind === 'song'" class="og-win__body">
-      <label class="og-field">
-        <span>Ваша песня года</span>
-        <input v-model="song" type="text" maxlength="160" placeholder="Исполнитель — название" />
-      </label>
-      <button type="button" class="og-btn" :disabled="!song.trim() || busy" @click="send('song', { text: song })">
-        {{ player.song ? 'Поменять песню' : 'Записать в плейлист' }}
-      </button>
-      <p v-if="player.song" class="og-win__done">
-        Записано: «{{ player.song }}». Плейлист не покажем никому до вечера.
+    <!-- 2. Тайный Санта: регистрация до конца 11 декабря -->
+    <section v-if="day.kind === 'santa'" class="og-win__body">
+      <p class="og-win__note">
+        Регистрация до 11 декабря включительно · уже {{ santaCount }} {{ santaWord }}
       </p>
+      <button type="button" class="og-btn" :disabled="busy || !santaOpen" @click="send('santa', { on: !player.santa })">
+        {{ player.santa ? 'Передумал участвовать' : 'Участвую в Тайном Санте' }}
+      </button>
+      <p v-if="player.santa" class="og-win__done">Вы в списке. Кому дарите, сообщим после 11 декабря.</p>
+      <p v-if="!santaOpen" class="og-win__note">Регистрация закрыта 11 декабря.</p>
     </section>
 
-    <!-- 2. Колпак на аватарку -->
     <section v-else-if="day.kind === 'avatar'" class="og-win__body">
       <div class="og-win__col">
         <button type="button" class="og-btn" :disabled="busy" @click="send('hat', { on: !player.hat })">
@@ -338,6 +336,7 @@ type PlayerView = {
   hat: boolean;
   song: string;
   skating: boolean;
+  santa: boolean;
   dresscode: string;
   toy: { pixels: string[]; wish: string; x: number; y: number } | null;
   snowflake: { pixels: string[] } | null;
@@ -351,6 +350,8 @@ const props = defineProps<{
   day: OgonekDayView;
   /** Приём открыт: сервер решает, после 27 декабря закрыто. */
   submitOpen: boolean;
+  santaOpen?: boolean;
+  santaCount?: number;
   player: PlayerView;
   micro: Record<string, string>;
   awaitingLabel: string;
@@ -380,10 +381,18 @@ const plugKey = ref(0);
 const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind === 'final');
 
 /** Окна, где что-то добавляют. Вилка, колпак и окна для чтения не закрываются. */
-const CLOSING_KINDS = ['song', 'skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'olivier', 'final'];
+const CLOSING_KINDS = ['skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'olivier', 'final'];
+const santaWord = computed(() => {
+  const n = props.santaCount ?? 0;
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return 'участник';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'участника';
+  return 'участников';
+});
+
 const locked = computed(() => !props.submitOpen && CLOSING_KINDS.includes(props.day.kind));
 
-const song = ref(props.player.song);
 const wish = ref(props.player.toy?.wish ?? '');
 const brush = ref('2');
 const thanksTo = ref(0);
@@ -468,7 +477,6 @@ watch(
 watch(
   () => props.player,
   (p) => {
-    song.value = p.song;
     if (p.toy) {
       toyPixels.value = p.toy.pixels;
       wish.value = p.toy.wish;
