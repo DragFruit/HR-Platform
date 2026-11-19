@@ -85,18 +85,18 @@ describe('заявки на 2027 видны и списываются, пока 
     expect(around.map((q) => q.id).sort((a, b) => a - b)).toEqual([1, 1024, 1025, 1029, 1030]);
   });
 
-  it('«Доступно» уменьшается на billable-дни 2027 (7+7+5+5 = 24: 22–23.02 и 12.06 праздники), «План» растёт', () => {
+  it('«Доступно» уменьшается на billable-дни 2027 (7+7+5+6 = 25: 22–23.02 и 12.06 праздники, 13.06 вс входит), «План» растёт', () => {
     const only2026 = calcEmployeeBalance(NAME, HIRE, byYear['2026']!, asOf, 2026, 10, 2684);
     const all = calcEmployeeBalance(NAME, HIRE, around, asOf, 2026, 10, 2684);
-    expect(Number(only2026.remain) - Number(all.remain)).toBeCloseTo(24, 6);
-    expect(all.planned - only2026.planned).toBe(24);
+    expect(Number(only2026.remain) - Number(all.remain)).toBeCloseTo(25, 6);
+    expect(all.planned - only2026.planned).toBe(25);
   });
 
   it('«к дате» и форма на 2027 вычитают дни 2027 до этой даты', () => {
-    // 2026: 10 + 28 − 14 = 24 на 31.12; к 30.06.2027: + 6 начислений (14) − 5 (февраль) − 5 (июнь) = 28
-    expect(calcAvailableOnDate(NAME, HIRE, '2027-06-30', around, 2026, 10)).toBe(28);
+    // 2026: 10 + 28 − 14 = 24 на 31.12; к 30.06.2027: + 6 начислений (14) − 5 (февраль) − 6 (июнь) = 27
+    expect(calcAvailableOnDate(NAME, HIRE, '2027-06-30', around, 2026, 10)).toBe(27);
     const a = assessVacationBalance(NAME, HIRE, '2027-06-30', '2027-06-30', around, 2026, undefined, 10);
-    expect(a.availableAtStart).toBe(28);
+    expect(a.availableAtStart).toBe(27);
   });
 });
 

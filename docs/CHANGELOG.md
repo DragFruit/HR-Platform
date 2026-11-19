@@ -4,6 +4,16 @@
 
 ## 2026-11-19
 
+### Отпуска: праздник внутри отпуска — отдельные заявления и отсутствия в Bitrix; список праздников по ст. 112
+
+- **Список праздников** (`RU_PROD_CAL_OFF_BY_YEAR` в `app/utils/vacationCalendar.ts`): праздники ст. 112 ТК в списке даже на сб/вс, переносы в списке, обычные сб/вс нет. 2026: убраны 21–22.02, 07.03, 02–03.05, 10.05, 13–14.06; добавлены 03–04.01. 2027: убраны 09–10.01, 21.02, 06–07.03, 02.05, 08.05, 13.06, 06–07.11. **Влияет на дни и баланс уже существующих заявок** на эти даты (по локальным данным 8 заявок, +17 дней в сумме; заказчик в курсе).
+- **Отрезки:** `splitVacationByHolidays` (рядом с `trimVacationHolidayEdges`). Заявка остаётся одной.
+- **Заявление:** `server/utils/vacationApplicationDocx.ts` (`vacationApplicationPages`, `renderVacationApplicationXml`): тело бланка повторяется на каждый отрезок через разрыв страницы, у каждого свои даты, дни и выход. Имя файла по всему периоду.
+- **Bitrix:** `pushVacationSegmentsToBitrix`, поле `bitrix_absence_parts` (JSON и `extra` в Postgres), коды `vbi-hr-vac-<id>-pN`; правка дат обновляет/создаёт/удаляет отрезки; сверка и повтор старые заявки с одним элементом не пересобирают. Импорт `scripts/bitrix/import-absences-to-vibe.mjs` учитывает привязанные отрезки. См. `docs/BITRIX.md`.
+- Удалён отчёт `scripts/report-vacation-holiday-edges.mjs` (не нужен).
+- Тесты: `tests/unit/vacationHolidayEdgeTrim.test.ts`, `vacationApplicationPages.test.ts`, `bitrixVacationSegments.test.ts`.
+- Проверка: на стейдже заявка 25.12.2026–12.01.2027 → «Скачать заявление» → две страницы (25–30.12 и 09–12.01).
+
 ### Отпуска: праздник на краю периода не входит в отпуск (даты заявки и заявления)
 
 - **Баг:** заявка 28.12.2026–31.12.2026 и заявление писали период до 31.12, хотя 31.12 праздник. Теперь сохраняется 28–30.12.
@@ -11,7 +21,7 @@
 - **Сервер (единая точка):** `server/utils/vacationRequestMutations.ts` — `createVacationRequest` и `patchVacationRequest` (сотрудник, HR, админ) сохраняют обрезанные даты; если начало уехало в январь, заявка ложится в папку года нового начала. Импорт из Bitrix не трогаем (даты как в Битриксе). Брони дат не имеют.
 - **Форма:** `useVacationHolidayEdgeTrim` (`app/composables/`) в `EmployeeVacationPanel.vue`, `EmployeeVacationAside.vue` (правка), `AdminAddVacationDialog.vue`, `AdminEditVacationDialog.vue`: даты в полях сразу обрезаются, под ними подсказка «31.12 праздничный день, в отпуск не входит». Стиль `.vac-holiday-edge-hint` в `main.css`.
 - **Заявление:** `vacationApplicationValues` в `server/utils/vacationApplicationDocx.ts` пишет число billable-дней (раньше календарную разницу) и сам обрезает края у старых заявок; данные заявки не меняются. Имя файла по обрезанной дате начала.
-- **Старые заявки:** не правим автоматически. Отчёт read-only: `node scripts/report-vacation-holiday-edges.mjs [vacations.json] [--json]`.
+- **Старые заявки:** не правим автоматически.
 - Тесты: `tests/unit/vacationHolidayEdgeTrim.test.ts`.
 - Проверка: `/vacations` → выбрать 28.12–31.12.2026 → в полях 28.12–30.12 и подсказка; создать заявку → «Скачать заявление»: 28–30 декабря, 3 дня.
 

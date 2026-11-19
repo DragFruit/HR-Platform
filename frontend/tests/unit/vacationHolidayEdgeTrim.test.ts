@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VacationStoreState } from '../../server/utils/vacationsStore';
 import {
   countVacationBillableDays,
+  isRuHoliday,
+  splitVacationByHolidays,
   trimVacationHolidayEdges,
   VACATION_ONLY_HOLIDAYS_MESSAGE,
   vacationHolidayEdgeHint
@@ -61,19 +63,19 @@ describe('trimVacationHolidayEdges', () => {
     });
   });
 
-  it('праздники в начале отрезаются до первого не праздника: 31.12.2026–12.01.2027 → с 11.01.2027', () => {
+  it('праздники в начале отрезаются до первого не праздника: 31.12.2026–12.01.2027 → с 09.01.2027 (сб)', () => {
     const r = trimVacationHolidayEdges('2026-12-31', '2027-01-12');
-    expect(r.start).toBe('2027-01-11');
+    expect(r.start).toBe('2027-01-09');
     expect(r.end).toBe('2027-01-12');
     expect(r.removed[0]).toBe('2026-12-31');
-    expect(r.removed.at(-1)).toBe('2027-01-10');
+    expect(r.removed.at(-1)).toBe('2027-01-08');
     expect(r.empty).toBe(false);
   });
 
   it('праздник внутри периода остаётся (только не считается)', () => {
     const r = trimVacationHolidayEdges('2026-12-28', '2027-01-15');
     expect(r).toMatchObject({ start: '2026-12-28', end: '2027-01-15', removed: [] });
-    expect(countVacationBillableDays(r.start, r.end)).toBe(19 - 11);
+    expect(countVacationBillableDays(r.start, r.end)).toBe(19 - 9);
   });
 
   it('выходной на краю не обрезается', () => {
@@ -134,14 +136,14 @@ describe('сервер: даты заявки обрезаются по праз
     expect(created).toMatchObject({ start: '2026-12-28', end: '2026-12-30' });
   });
 
-  it('создание с 31.12.2026 переносит заявку в папку 2027 с первого не праздника', async () => {
+  it('создание с 31.12.2026 переносит заявку в папку 2027 с первого не праздника (09.01, сб)', async () => {
     const state = await createVacationRequest(employeeSession, {
       year: 2026,
       employee: employee.name,
       start: '2026-12-31',
       end: '2027-01-15'
     });
-    expect(state.requestsByYear['2027']![0]).toMatchObject({ start: '2027-01-11', end: '2027-01-15' });
+    expect(state.requestsByYear['2027']![0]).toMatchObject({ start: '2027-01-09', end: '2027-01-15' });
   });
 
   it('только праздники → 400 с понятным текстом', async () => {
@@ -171,20 +173,63 @@ describe('сервер: даты заявки обрезаются по праз
   });
 });
 
-describe('заявление: даты после обрезки и billable-дни', () => {
-  const base = { employeeName: 'Петров Пётр', position: 'SEO', legalEntity: '' };
-
-  it('старая заявка 28–31.12.2026 → в заявлении 28–30 декабря, 3 дня, выход 11.01.2027', () => {
-    const v = vacationApplicationValues({ ...base, startDate: '2026-12-28', endDate: '2026-12-31' });
-    expect(v.start_date).toBe('28 декабря 2026 г.');
-    expect(v.end_date).toBe('30 декабря 2026 г.');
-    expect(v.days_count).toBe('3');
-    expect(v.return_date).toBe('11 января 2027 г.');
+describe('список праздников: ст. 112 ТК + переносы, обычные сб/вс не праздник', () => {
+  it('обычные суббота и воскресенье не праздник', () => {
+    for (const iso of ['2026-02-21', '2026-02-22', '2026-03-07', '2026-05-02', '2026-05-03', '2026-05-10', '2026-06-13', '2026-06-14', '2027-01-09', '2027-01-10', '2027-11-06']) {
+      expect(isRuHoliday(iso), iso).toBe(false);
+    }
   });
 
-  it('праздники внутри периода не входят в число дней', () => {
-    const v = vacationApplicationValues({ ...base, startDate: '2026-12-28', endDate: '2027-01-15' });
-    expect(v.end_date).toBe('15 января 2027 г.');
-    expect(v.days_count).toBe('8');
+  it('праздник ст. 112 на выходном остаётся праздником, переносы тоже', () => {
+    expect(isRuHoliday('2026-03-08')).toBe(true); // вс
+    expect(isRuHoliday('2026-05-09')).toBe(true); // сб
+    expect(isRuHoliday('2026-01-03')).toBe(true); // сб
+    expect(isRuHoliday('2026-01-04')).toBe(true); // вс
+    expect(isRuHoliday('2026-12-31')).toBe(true); // перенос
+    expect(isRuHoliday('2026-01-09')).toBe(true); // перенос
+    expect(isRuHoliday('2026-03-09')).toBe(true); // перенос
+    expect(isRuHoliday('2026-05-11')).toBe(true); // перенос
+  });
+
+  it('13–21.06.2026: 12.06 праздник вне периода, 13–14.06 (сб/вс) не обрезаются и считаются', () => {
+    expect(isRuHoliday('2026-06-12')).toBe(true);
+    expect(trimVacationHolidayEdges('2026-06-13', '2026-06-21')).toMatchObject({
+      start: '2026-06-13',
+      end: '2026-06-21',
+      removed: []
+    });
+    expect(countVacationBillableDays('2026-06-13', '2026-06-21')).toBe(9);
+    expect(countVacationBillableDays('2026-06-12', '2026-06-21')).toBe(9);
+  });
+});
+
+describe('splitVacationByHolidays', () => {
+  it('без праздников — один отрезок', () => {
+    expect(splitVacationByHolidays('2026-12-14', '2026-12-27')).toEqual([{ start: '2026-12-14', end: '2026-12-27' }]);
+  });
+
+  it('праздник внутри — два отрезка: 25.12.2026–12.01.2027 → 25–30.12 и 09–12.01', () => {
+    expect(splitVacationByHolidays('2026-12-25', '2027-01-12')).toEqual([
+      { start: '2026-12-25', end: '2026-12-30' },
+      { start: '2027-01-09', end: '2027-01-12' }
+    ]);
+  });
+
+  it('несколько праздников подряд и несколько разрывов', () => {
+    // 01.05 пт, 09.05 сб, 11.05 пн — праздники; 02–03.05 и 10.05 — обычные выходные
+    expect(splitVacationByHolidays('2026-04-27', '2026-05-15')).toEqual([
+      { start: '2026-04-27', end: '2026-04-30' },
+      { start: '2026-05-02', end: '2026-05-08' },
+      { start: '2026-05-10', end: '2026-05-10' },
+      { start: '2026-05-12', end: '2026-05-15' }
+    ]);
+  });
+
+  it('отрезки не начинаются и не заканчиваются праздником; всё праздники — пусто', () => {
+    for (const seg of splitVacationByHolidays('2026-12-31', '2027-01-20')) {
+      expect(isRuHoliday(seg.start)).toBe(false);
+      expect(isRuHoliday(seg.end)).toBe(false);
+    }
+    expect(splitVacationByHolidays('2026-12-31', '2027-01-05')).toEqual([]);
   });
 });

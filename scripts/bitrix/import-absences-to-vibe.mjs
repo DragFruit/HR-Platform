@@ -13,7 +13,8 @@
  * Импортированные заявки: status=approved, bitrix_sync_status=synced,
  * bitrix_sync_method=bitrix-import (не «lists.element*»): ежедневная сверка дат и перенос между
  * инфоблоками их не трогают, т.е. элемент в Bitrix не переписывается. Повторный запуск
- * идемпотентен: уже привязанные элементы (bitrix_absence_id) пропускаются.
+ * идемпотентен: уже привязанные элементы (bitrix_absence_id и отрезки bitrix_absence_parts в extra:
+ * отпуск, разрезанный праздником, в Bitrix — несколько элементов на одну заявку) пропускаются.
  *
  * Запуск на сервере (по умолчанию dry-run):
  *   sudo bash -c 'set -a; . /etc/vbi-hr/bitrix-production.env; set +a; \
@@ -189,6 +190,16 @@ const isoFromBitrix = (v) => {
 };
 const ruFromIso = (iso) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '');
 const days = (s, e) => Math.round((Date.parse(`${e}T00:00:00Z`) - Date.parse(`${s}T00:00:00Z`)) / 86400000) + 1;
+/** Все элементы Bitrix, привязанные к заявкам: bitrix_absence_id + extra.bitrix_absence_parts[].absence_id. */
+const linkedAbsenceIds = (rows) => {
+  const ids = new Set();
+  for (const r of rows) {
+    if (Number(r.bitrix_absence_id) > 0) ids.add(Number(r.bitrix_absence_id));
+    const parts = Array.isArray(r.extra?.bitrix_absence_parts) ? r.extra.bitrix_absence_parts : [];
+    for (const p of parts) if (Number(p?.absence_id) > 0) ids.add(Number(p.absence_id));
+  }
+  return ids;
+};
 const nameKey = (n) => String(n || '').trim().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ');
 
 async function loadPostgres() {
@@ -398,9 +409,9 @@ try {
   for (const e of goneFromBitrix) console.log(`  ~ ${e.id} ${e.name} (bitrix ${e.bitrix_user_id})`);
 
   const requests = await sql`
-    select id, employee, employee_id, start_date::text as start, end_date::text as "end", status, bitrix_absence_id
+    select id, employee, employee_id, start_date::text as start, end_date::text as "end", status, bitrix_absence_id, extra
     from vacations.requests`;
-  const linked = new Set(requests.map((r) => Number(r.bitrix_absence_id)).filter((x) => x > 0));
+  const linked = linkedAbsenceIds(requests);
   const usedIds = new Set(requests.map((r) => Number(r.id)));
   const sameOwner = (r, emp) => (r.employee_id != null ? Number(r.employee_id) === Number(emp.id) : nameKey(r.employee) === nameKey(emp.name));
   const live = (r) => !['rejected', 'cancelled', 'canceled'].includes(String(r.status));
@@ -467,8 +478,8 @@ try {
     const inserted = await sql.begin(async (tx) => {
       await tx`select pg_advisory_xact_lock(${VACATIONS_WRITE_LOCK_KEY})`;
       // Перечитываем под lock: процесс vbi-hr мог успеть записать
-      const fresh = await tx`select id, bucket_year, position, bitrix_absence_id from vacations.requests`;
-      const freshLinked = new Set(fresh.map((r) => Number(r.bitrix_absence_id)).filter((x) => x > 0));
+      const fresh = await tx`select id, bucket_year, position, bitrix_absence_id, extra from vacations.requests`;
+      const freshLinked = linkedAbsenceIds(fresh);
       const ids = new Set(fresh.map((r) => Number(r.id)));
       const pos = {};
       for (const r of fresh) pos[r.bucket_year] = Math.max(pos[r.bucket_year] ?? -1, Number(r.position));

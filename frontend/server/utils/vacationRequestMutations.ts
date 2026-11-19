@@ -589,6 +589,7 @@ export async function patchVacationRequest(
         const found = findRequest(state, id);
         if (!found) return state;
         delete found.item.bitrix_absence_id;
+        delete found.item.bitrix_absence_parts;
         delete found.item.bitrix_absence_iblock_id;
         found.item.bitrix_sync_status = undefined;
         found.item.bitrix_sync_method = undefined;
@@ -600,6 +601,7 @@ export async function patchVacationRequest(
         nextRequest = {
           ...nextRequest,
           bitrix_absence_id: undefined,
+          bitrix_absence_parts: undefined,
           bitrix_absence_iblock_id: undefined,
           bitrix_sync_status: undefined,
           bitrix_sync_method: undefined,

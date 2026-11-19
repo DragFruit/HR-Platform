@@ -1,4 +1,6 @@
 import type { VacationRequest, VacationStoreState } from './vacationsStore';
+import type { VacationBitrixAbsencePart } from '../../app/composables/useVacations';
+import { splitVacationByHolidays } from '../../app/utils/vacationCalendar';
 import { bitrixRest, bitrixWebhookRest } from './bitrixClient';
 import { getBitrixWebhookUrl, isBitrixWebhookConfigured } from './bitrixConfig';
 import { findEmployeeByName, readEmployees } from './employeesStore';
@@ -22,6 +24,13 @@ type BitrixListRow = {
 };
 
 type AuthMode = 'webhook' | 'oauth';
+
+/**
+ * CODE элемента графика отсутствий. Первый отрезок заявки (и все старые заявки) — vbi-hr-vac-<id>,
+ * следующие отрезки, если отпуск разрезан праздником, — vbi-hr-vac-<id>-p2, -p3 …
+ */
+export const absenceCode = (requestId: number, partIndex = 0): string =>
+  partIndex > 0 ? `vbi-hr-vac-${requestId}-p${partIndex + 1}` : `vbi-hr-vac-${requestId}`;
 
 const errorMessage = (err: unknown): string => {
   if (err && typeof err === 'object' && 'statusMessage' in err) {
@@ -272,9 +281,9 @@ export const elementMatchesDates = (
 
 const pickAbsenceHit = (
   rows: AbsenceListElement[] | undefined,
-  params: { bitrixUserId: number; start: string; end: string; requestId: number }
+  params: { bitrixUserId: number; start: string; end: string; requestId: number; partIndex?: number }
 ): AbsenceListElement | undefined => {
-  const code = `vbi-hr-vac-${params.requestId}`;
+  const code = absenceCode(params.requestId, params.partIndex);
   const list = rows || [];
   const withCode = list.find((el) => String(el.CODE || '') === code && Number(el.ID) > 0);
   if (withCode) return withCode;
@@ -300,6 +309,7 @@ const findExistingAbsenceElement = async (params: {
   start: string;
   end: string;
   requestId: number;
+  partIndex?: number;
   knownAbsenceId?: number | null;
 }): Promise<{ absenceId: number; auth: AuthMode; upToDate: boolean } | null> => {
   const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
@@ -310,7 +320,7 @@ const findExistingAbsenceElement = async (params: {
     return null;
   }
 
-  const code = `vbi-hr-vac-${params.requestId}`;
+  const code = absenceCode(params.requestId, params.partIndex);
 
   if (params.knownAbsenceId && params.knownAbsenceId > 0) {
     try {
@@ -426,7 +436,7 @@ const absenceFields = (params: {
 };
 
 /** CODE наших элементов: vbi-hr-vac-<id заявки>. */
-const ABSENCE_CODE_RE = /^vbi-hr-vac-(\d+)$/;
+const ABSENCE_CODE_RE = /^vbi-hr-vac-(\d+)(?:-p\d+)?$/;
 
 /**
  * Что знает платформа о своих заявках — нужно, чтобы отличить «сироту» (элемент с нашим CODE,
@@ -439,13 +449,24 @@ export type AbsenceAdoptionContext = {
   linkedAbsenceIds: Set<number>;
 };
 
+/** Все id элементов, привязанных к заявке: bitrix_absence_id и отрезки bitrix_absence_parts. */
+export const linkedAbsenceIdsOf = (r: VacationRequest): number[] => {
+  const ids = new Set<number>();
+  const main = Number(r.bitrix_absence_id);
+  if (main > 0) ids.add(main);
+  for (const part of r.bitrix_absence_parts ?? []) {
+    const id = Number(part?.absence_id);
+    if (id > 0) ids.add(id);
+  }
+  return [...ids];
+};
+
 export const absenceAdoptionContext = (state: VacationStoreState): AbsenceAdoptionContext => {
   const knownRequestIds = new Set<number>();
   const linkedAbsenceIds = new Set<number>();
   for (const r of flattenRequests(state)) {
     knownRequestIds.add(Number(r.id));
-    const absenceId = Number(r.bitrix_absence_id);
-    if (absenceId > 0) linkedAbsenceIds.add(absenceId);
+    for (const absenceId of linkedAbsenceIdsOf(r)) linkedAbsenceIds.add(absenceId);
   }
   return { knownRequestIds, linkedAbsenceIds };
 };
@@ -512,6 +533,7 @@ const createViaAbsenceIblock = async (params: {
   end: string;
   comment: string;
   requestId: number;
+  partIndex?: number;
   employeeName: string;
 }): Promise<{ absenceId: number; auth: AuthMode }> => {
   const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
@@ -525,7 +547,7 @@ const createViaAbsenceIblock = async (params: {
   const { result, auth } = await bitrixVacationRest<number>('lists.element.add', {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
-    ELEMENT_CODE: `vbi-hr-vac-${params.requestId}`,
+    ELEMENT_CODE: absenceCode(params.requestId, params.partIndex),
     FIELDS: absenceFields(params)
   });
   return { absenceId: result, auth };
@@ -539,6 +561,7 @@ const updateViaAbsenceIblock = async (params: {
   end: string;
   comment: string;
   requestId: number;
+  partIndex?: number;
   employeeName: string;
 }): Promise<{ absenceId: number; auth: AuthMode; codeSet: boolean }> => {
   const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
@@ -551,7 +574,7 @@ const updateViaAbsenceIblock = async (params: {
 
   // codeSet: update прошёл с ELEMENT_CODE (код у элемента есть). false: обновили только по ELEMENT_ID,
   // CODE не установлен (19.10.2026 на бою: пустой CODE update не восстанавливает ни так, ни руками в форме).
-  const code = `vbi-hr-vac-${params.requestId}`;
+  const code = absenceCode(params.requestId, params.partIndex);
   const base = {
     IBLOCK_TYPE_ID: absenceIblockTypeId(),
     IBLOCK_ID: iblockId,
@@ -642,9 +665,19 @@ const updateOrAddAbsence = async (
   }
 };
 
+/** Отрезок заявки для отдельного элемента графика отсутствий. */
+export type AbsencePartTarget = {
+  start: string;
+  end: string;
+  partIndex: number;
+  /** Уже привязанный к этому отрезку элемент (null — ищем по CODE/датам или создаём). */
+  absenceId: number | null;
+};
+
 export const pushVacationToBitrixAbsence = async (
   request: VacationRequest,
-  ctx?: AbsenceAdoptionContext
+  ctx?: AbsenceAdoptionContext,
+  part?: AbsencePartTarget
 ): Promise<{
   absenceId: number;
   method: string;
@@ -665,18 +698,23 @@ export const pushVacationToBitrixAbsence = async (
     );
   }
 
+  const start = part?.start ?? request.start;
+  const end = part?.end ?? request.end;
+  const partIndex = part?.partIndex ?? 0;
   const payload = {
     bitrixUserId,
-    start: request.start,
-    end: request.end,
+    start,
+    end,
     comment: request.comment,
     requestId: request.id,
+    partIndex,
     employeeName: request.employee
   };
 
   const { id: targetIblockId } = await resolveAbsenceIblockId();
   const storedIblockId = Number(request.bitrix_absence_iblock_id) > 0 ? Number(request.bitrix_absence_iblock_id) : null;
-  const storedAbsenceId = Number(request.bitrix_absence_id) > 0 ? Number(request.bitrix_absence_id) : null;
+  const storedRaw = part ? Number(part.absenceId) : Number(request.bitrix_absence_id);
+  const storedAbsenceId = storedRaw > 0 ? storedRaw : null;
   // ID из ДРУГОГО инфоблока (например, ошибочного списка 313) — не наш элемент: не ищем и не апдейтим его.
   const knownAbsenceId =
     storedAbsenceId && (storedIblockId == null || storedIblockId === targetIblockId) ? storedAbsenceId : null;
@@ -688,9 +726,10 @@ export const pushVacationToBitrixAbsence = async (
 
   const existing = await findExistingAbsenceElement({
     bitrixUserId,
-    start: request.start,
-    end: request.end,
+    start,
+    end,
     requestId: request.id,
+    partIndex,
     knownAbsenceId
   });
   if (existing) {
@@ -722,9 +761,10 @@ export const pushVacationToBitrixAbsence = async (
       if (isElementAlreadyExistsError(message)) {
         const recovered = await findExistingAbsenceElement({
           bitrixUserId,
-          start: request.start,
-          end: request.end,
+          start,
+          end,
           requestId: request.id,
+          partIndex,
           knownAbsenceId
         });
         if (recovered) {
@@ -764,6 +804,98 @@ export const pushVacationToBitrixAbsence = async (
   return { absenceId, method, iblockId: targetIblockId };
 };
 
+/**
+ * Новая логика (с 19.11.2026): заявка ведётся по отрезкам, если у неё уже есть bitrix_absence_parts
+ * (пусть пустой) или она ещё ни разу не попадала в Bitrix. Старые синкнутые заявки с одним
+ * bitrix_absence_id без списка — по-старому, одним элементом (повтор/сверка их не пересоздают).
+ */
+export const usesSegmentedAbsences = (request: VacationRequest): boolean =>
+  Array.isArray(request.bitrix_absence_parts) || !(Number(request.bitrix_absence_id) > 0);
+
+/** Известные элементы по порядку отрезков; у старой заявки — один bitrix_absence_id. */
+const knownPartAbsenceIds = (request: VacationRequest): number[] => {
+  const parts = request.bitrix_absence_parts ?? [];
+  if (parts.length) return parts.map((p) => Number(p.absence_id) || 0);
+  const main = Number(request.bitrix_absence_id);
+  return main > 0 ? [main] : [];
+};
+
+/**
+ * Согласованная заявка → по элементу графика отсутствий на каждый отрезок без праздников
+ * (праздник внутри отпуска отсутствием не помечается). Существующие элементы обновляются по
+ * порядку (первый отрезок берёт старый bitrix_absence_id), недостающие создаются, лишние удаляются.
+ */
+export const pushVacationSegmentsToBitrix = async (
+  request: VacationRequest,
+  ctx?: AbsenceAdoptionContext
+): Promise<{ parts: VacationBitrixAbsencePart[]; method: string; iblockId: number | null }> => {
+  const segments = splitVacationByHolidays(request.start, request.end);
+  if (!segments.length) {
+    throw new Error('Все дни заявки — праздники: отсутствие в Bitrix не ставим');
+  }
+  const known = knownPartAbsenceIds(request);
+  const parts: VacationBitrixAbsencePart[] = [];
+  const methods: string[] = [];
+  let iblockId: number | null = null;
+  for (const [partIndex, segment] of segments.entries()) {
+    const res = await pushVacationToBitrixAbsence(request, ctx, {
+      start: segment.start,
+      end: segment.end,
+      partIndex,
+      absenceId: known[partIndex] || null
+    });
+    parts.push({ start: segment.start, end: segment.end, absence_id: res.absenceId });
+    methods.push(res.method);
+    iblockId = res.iblockId;
+  }
+
+  const kept = new Set(parts.map((p) => p.absence_id));
+  for (const staleId of known.slice(segments.length)) {
+    if (!(staleId > 0) || kept.has(staleId)) continue;
+    try {
+      await deleteViaAbsenceIblock(staleId);
+      console.info(`[bitrix-vacation] #${request.id}: лишний отрезок ${staleId} удалён из графика отсутствий`);
+    } catch (err) {
+      if (!isElementNotFoundError(errorMessage(err))) throw err;
+    }
+  }
+
+  return { parts, method: [...new Set(methods)].join(','), iblockId };
+};
+
+/** Синк одной заявки: по отрезкам (новая логика) или одним элементом (старые заявки). */
+const pushApprovedRequest = async (
+  request: VacationRequest,
+  ctx: AbsenceAdoptionContext,
+  segmented: boolean
+): Promise<Partial<VacationRequest>> => {
+  if (segmented) {
+    const { parts, method, iblockId } = await pushVacationSegmentsToBitrix(request, ctx);
+    return {
+      bitrix_absence_id: parts[0]!.absence_id,
+      bitrix_absence_parts: parts,
+      bitrix_absence_iblock_id: iblockId ?? undefined,
+      bitrix_sync_status: 'synced',
+      bitrix_sync_method: method,
+      bitrix_synced_at: new Date().toISOString(),
+      bitrix_sync_error: undefined
+    };
+  }
+  const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
+  return {
+    bitrix_absence_id: absenceId,
+    bitrix_absence_iblock_id: iblockId ?? undefined,
+    bitrix_sync_status: 'synced',
+    bitrix_sync_method: method,
+    bitrix_synced_at: new Date().toISOString(),
+    bitrix_sync_error: undefined
+  };
+};
+
+/** Ошибка синка по отрезкам: фиксируем режим (пустой список), чтобы повтор шёл тоже по отрезкам. */
+const segmentedFailurePatch = (request: VacationRequest, segmented: boolean): Partial<VacationRequest> =>
+  segmented ? { bitrix_absence_parts: request.bitrix_absence_parts ?? [] } : {};
+
 const deleteViaAbsenceIblock = async (absenceId: number): Promise<void> => {
   const { id: iblockId, error: iblockError } = await resolveAbsenceIblockId();
   if (!iblockId) {
@@ -802,8 +934,9 @@ const deleteViaCalendarEvent = async (eventId: number): Promise<void> => {
 
 /** Снять отметку об отпуске в Bitrix при удалении/отмене заявки. */
 export const removeVacationAbsenceFromBitrix = async (request: VacationRequest): Promise<void> => {
-  const absenceId = Number(request.bitrix_absence_id);
-  if (!Number.isFinite(absenceId) || absenceId <= 0) return;
+  const ids = linkedAbsenceIdsOf(request);
+  if (!ids.length) return;
+  const absenceId = ids[0]!;
 
   // Стейдж/локалка: не удаляем в реальном портале. Бросаем, чтобы вызывающий НЕ стёр bitrix_absence_id
   // (отметка в Bitrix осталась) и не создавал админу алерт — см. isBitrixWriteBlockedError.
@@ -830,15 +963,18 @@ export const removeVacationAbsenceFromBitrix = async (request: VacationRequest):
     }
   }
 
-  try {
-    await deleteViaAbsenceIblock(absenceId);
-  } catch (err) {
-    // Нет в графике отсутствий (удалили руками или запись была в другом списке) — снимать нечего.
-    if (isElementNotFoundError(errorMessage(err))) {
-      console.warn(`[bitrix-vacation] #${request.id}: отметки ${absenceId} нет в графике отсутствий`);
-      return;
+  // Отпуск, разрезанный праздниками, — снимаем все отрезки.
+  for (const id of ids) {
+    try {
+      await deleteViaAbsenceIblock(id);
+    } catch (err) {
+      // Нет в графике отсутствий (удалили руками или запись была в другом списке) — снимать нечего.
+      if (isElementNotFoundError(errorMessage(err))) {
+        console.warn(`[bitrix-vacation] #${request.id}: отметки ${id} нет в графике отсутствий`);
+        continue;
+      }
+      throw err;
     }
-    throw err;
   }
 };
 
@@ -951,6 +1087,7 @@ export const relocateAbsencesToTargetIblock = async (
   const candidates = flattenRequests(state).filter(
     (r) =>
       isListsSynced(r) &&
+      !r.bitrix_absence_parts?.length &&
       Number(r.bitrix_absence_iblock_id) !== targetIblockId &&
       String(r.end || '') >= today
   );
@@ -1055,20 +1192,14 @@ export const retryFailedBitrixVacationSyncs = async (
       continue;
     }
 
+    const segmented = usesSegmentedAbsences(request);
     try {
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
-      next = updateRequestInState(next, request.id, {
-        bitrix_absence_id: absenceId,
-        bitrix_absence_iblock_id: iblockId ?? undefined,
-        bitrix_sync_status: 'synced',
-        bitrix_sync_method: method,
-        bitrix_synced_at: new Date().toISOString(),
-        bitrix_sync_error: undefined
-      });
+      next = updateRequestInState(next, request.id, await pushApprovedRequest(request, ctx, segmented));
     } catch (error) {
       const message = errorMessage(error);
       console.error(`[bitrix-vacation] retry failed for request #${request.id}:`, message);
       next = updateRequestInState(next, request.id, {
+        ...segmentedFailurePatch(request, segmented),
         bitrix_sync_status:
           message.includes('не настроен') || isBitrixWritesBlockedMessage(message) ? 'skipped' : 'failed',
         bitrix_sync_error: message,
@@ -1105,21 +1236,22 @@ export const syncApprovedVacationsToBitrix = async (
     if (!needsBitrixSync(request, prev)) continue;
 
     const employee = await findEmployeeByName(request.employee);
+    // Новое согласование или новые даты → по отрезкам без праздников. Старую согласованную заявку
+    // с одним элементом (повтор после failed/skipped) не пересобираем.
+    const segmented =
+      !prev ||
+      prev.status !== 'approved' ||
+      prev.start !== request.start ||
+      prev.end !== request.end ||
+      usesSegmentedAbsences(request);
 
     try {
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
-      state = updateRequestInState(state, request.id, {
-        bitrix_absence_id: absenceId,
-        bitrix_absence_iblock_id: iblockId ?? undefined,
-        bitrix_sync_status: 'synced',
-        bitrix_sync_method: method,
-        bitrix_synced_at: new Date().toISOString(),
-        bitrix_sync_error: undefined
-      });
+      state = updateRequestInState(state, request.id, await pushApprovedRequest(request, ctx, segmented));
     } catch (error) {
       const message = errorMessage(error);
       console.error(`[bitrix-vacation] sync failed for request #${request.id}:`, message);
       state = updateRequestInState(state, request.id, {
+        ...segmentedFailurePatch(request, segmented),
         bitrix_sync_status:
           message.includes('не настроен') || isBitrixWritesBlockedMessage(message) ? 'skipped' : 'failed',
         bitrix_sync_error: message,
@@ -1196,6 +1328,43 @@ const runWithConcurrency = async <T>(items: T[], limit: number, fn: (item: T) =>
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 };
 
+/** Что сверяем: элемент старой заявки (весь период) или отрезок заявки, разрезанной праздниками. */
+type ReconcileUnit = {
+  request: VacationRequest;
+  absenceId: number;
+  start: string;
+  end: string;
+  partIndex: number;
+  segmented: boolean;
+};
+
+const reconcileUnitsOf = (request: VacationRequest): ReconcileUnit[] => {
+  const parts = request.bitrix_absence_parts ?? [];
+  if (!parts.length) {
+    return [
+      {
+        request,
+        absenceId: Number(request.bitrix_absence_id),
+        start: request.start,
+        end: request.end,
+        partIndex: 0,
+        segmented: false
+      }
+    ];
+  }
+  return parts.map((part, partIndex) => ({
+    request,
+    absenceId: Number(part.absence_id),
+    start: part.start,
+    end: part.end,
+    partIndex,
+    segmented: true
+  }));
+};
+
+const unitTag = (unit: ReconcileUnit): string =>
+  unit.segmented ? `#${unit.request.id} (отрезок ${unit.partIndex + 1})` : `#${unit.request.id}`;
+
 type ReconcileAction =
   | { kind: 'ok' }
   | { kind: 'fix'; absenceId: number; reasons: string[]; codeMismatch: boolean; expectedCode: string }
@@ -1264,9 +1433,14 @@ export const reconcileFutureAbsences = async (
     return result;
   }
 
+  // Элемент на проверку: у старой заявки один (весь период), у разрезанной праздниками — по отрезку.
+  const units = candidates
+    .flatMap((request) => reconcileUnitsOf(request))
+    .filter((u) => u.absenceId > 0 && u.end >= today);
+
   const elements = await fetchAbsenceElementsByIds(
     targetIblockId,
-    candidates.map((r) => Number(r.bitrix_absence_id))
+    units.map((u) => u.absenceId)
   );
   if (!elements) {
     // Не смогли прочитать — ничего не решаем (иначе всё ушло бы в «re-add» с дублями).
@@ -1277,28 +1451,28 @@ export const reconcileFutureAbsences = async (
   await readEmployees();
   const ctx = absenceAdoptionContext(state);
 
-  const plan: Array<{ request: VacationRequest; action: ReconcileAction }> = [];
-  for (const request of candidates) {
+  const plan: Array<{ unit: ReconcileUnit; action: ReconcileAction }> = [];
+  for (const unit of units) {
+    const { request, absenceId } = unit;
     result.checked += 1;
-    const absenceId = Number(request.bitrix_absence_id);
     const el = elements.get(absenceId);
     if (!el) {
-      plan.push({ request, action: { kind: 'readd' } });
+      plan.push({ unit, action: { kind: 'readd' } });
       continue;
     }
-    const expectedCode = `vbi-hr-vac-${request.id}`;
+    const expectedCode = absenceCode(request.id, unit.partIndex);
     const code = String(el.CODE || '').trim();
     const codeMatch = code.match(ABSENCE_CODE_RE);
     if (code && code !== expectedCode && codeMatch && ctx.knownRequestIds.has(Number(codeMatch[1]))) {
       plan.push({
-        request,
+        unit,
         action: { kind: 'conflict', reason: `элемент ${absenceId} с CODE ${code} принадлежит другой заявке` }
       });
       continue;
     }
     const reasons: string[] = [];
-    if (!elementMatchesDates(el, request.start, request.end)) {
-      reasons.push(`даты ${el.ACTIVE_FROM ?? '?'} – ${el.ACTIVE_TO ?? '?'} ≠ ${request.start} – ${request.end}`);
+    if (!elementMatchesDates(el, unit.start, unit.end)) {
+      reasons.push(`даты ${el.ACTIVE_FROM ?? '?'} – ${el.ACTIVE_TO ?? '?'} ≠ ${unit.start} – ${unit.end}`);
     }
     const employee = await findEmployeeByName(request.employee);
     const expectedUser = employee?.bitrix_user_id ?? null;
@@ -1308,7 +1482,7 @@ export const reconcileFutureAbsences = async (
     }
     // CODE сам по себе не повод для update: Bitrix его так не ставит (см. updateViaAbsenceIblock).
     plan.push({
-      request,
+      unit,
       action: reasons.length
         ? { kind: 'fix', absenceId, reasons, codeMismatch: code !== expectedCode, expectedCode }
         : { kind: 'ok' }
@@ -1316,33 +1490,63 @@ export const reconcileFutureAbsences = async (
   }
 
   if (dryRun) {
-    for (const { request, action } of plan) {
+    for (const { unit, action } of plan) {
+      const tag = unitTag(unit);
       if (action.kind === 'fix') {
         result.fixed += 1;
         console.info(
-          `[bitrix-vacation] reconcile dry-run #${request.id}: обновили бы ${action.absenceId} (${action.reasons.join('; ')})`
+          `[bitrix-vacation] reconcile dry-run ${tag}: обновили бы ${action.absenceId} (${action.reasons.join('; ')})`
         );
       } else if (action.kind === 'readd') {
         result.readded += 1;
         console.info(
-          `[bitrix-vacation] reconcile dry-run #${request.id}: элемента ${request.bitrix_absence_id} нет в графике, создали бы заново`
+          `[bitrix-vacation] reconcile dry-run ${tag}: элемента ${unit.absenceId} нет в графике, создали бы заново`
         );
       } else if (action.kind === 'conflict') {
         result.failed += 1;
-        console.warn(`[bitrix-vacation] reconcile dry-run #${request.id}: ${action.reason}`);
+        console.warn(`[bitrix-vacation] reconcile dry-run ${tag}: ${action.reason}`);
       }
     }
     summary();
     return result;
   }
 
-  const patches = new Map<number, Partial<VacationRequest>>();
+  type RequestPatch = { fields: Partial<VacationRequest>; failed: boolean; parts?: VacationBitrixAbsencePart[] };
+  const patches = new Map<number, RequestPatch>();
+  const patchOf = (unit: ReconcileUnit): RequestPatch => {
+    let entry = patches.get(unit.request.id);
+    if (!entry) {
+      entry = {
+        fields: {},
+        failed: false,
+        parts: unit.segmented ? (unit.request.bitrix_absence_parts ?? []).map((p) => ({ ...p })) : undefined
+      };
+      patches.set(unit.request.id, entry);
+    }
+    return entry;
+  };
+  const markSynced = (unit: ReconcileUnit, absenceId: number, method: string, iblockId: number | null) => {
+    const entry = patchOf(unit);
+    if (entry.parts) entry.parts[unit.partIndex] = { ...entry.parts[unit.partIndex]!, absence_id: absenceId };
+    else entry.fields.bitrix_absence_id = absenceId;
+    if (entry.failed) return;
+    Object.assign(entry.fields, {
+      bitrix_absence_iblock_id: iblockId ?? undefined,
+      bitrix_sync_status: 'synced',
+      bitrix_sync_method: method,
+      bitrix_synced_at: new Date().toISOString(),
+      bitrix_sync_error: undefined
+    });
+  };
+
   const work = plan.filter((p) => p.action.kind !== 'ok');
-  await runWithConcurrency(work, RECONCILE_CONCURRENCY, async ({ request, action }) => {
+  await runWithConcurrency(work, RECONCILE_CONCURRENCY, async ({ unit, action }) => {
+    const { request } = unit;
+    const tag = unitTag(unit);
     if (action.kind === 'ok') return;
     if (action.kind === 'conflict') {
       result.failed += 1;
-      console.warn(`[bitrix-vacation] reconcile #${request.id}: ${action.reason}, не трогаем`);
+      console.warn(`[bitrix-vacation] reconcile ${tag}: ${action.reason}, не трогаем`);
       return;
     }
     try {
@@ -1356,22 +1560,16 @@ export const reconcileFutureAbsences = async (
           action.absenceId,
           {
             bitrixUserId,
-            start: request.start,
-            end: request.end,
+            start: unit.start,
+            end: unit.end,
             comment: request.comment,
             requestId: request.id,
+            partIndex: unit.partIndex,
             employeeName: request.employee
           },
           '-reconcile'
         );
-        patches.set(request.id, {
-          bitrix_absence_id: absenceId,
-          bitrix_absence_iblock_id: targetIblockId,
-          bitrix_sync_status: 'synced',
-          bitrix_sync_method: method,
-          bitrix_synced_at: new Date().toISOString(),
-          bitrix_sync_error: undefined
-        });
+        markSynced(unit, absenceId, method, targetIblockId);
         if (method.includes('add-after-not-found')) result.readded += 1;
         else result.fixed += 1;
         const codeNote = !action.codeMismatch
@@ -1380,45 +1578,55 @@ export const reconcileFutureAbsences = async (
             ? `; CODE ${action.expectedCode} установлен`
             : '; CODE не установлен (Bitrix не меняет код через update)';
         console.info(
-          `[bitrix-vacation] reconcile #${request.id}: ${action.absenceId} обновлён (${action.reasons.join('; ')})${codeNote}`
+          `[bitrix-vacation] reconcile ${tag}: ${action.absenceId} обновлён (${action.reasons.join('; ')})${codeNote}`
         );
         return;
       }
       // readd: элемента нет в графике — обычный путь синка (найдёт по CODE/датам, сироту или создаст).
       console.warn(
-        `[bitrix-vacation] reconcile #${request.id}: элемента ${request.bitrix_absence_id} нет в графике отсутствий, восстанавливаем`
+        `[bitrix-vacation] reconcile ${tag}: элемента ${unit.absenceId} нет в графике отсутствий, восстанавливаем`
       );
-      const { absenceId, method, iblockId } = await pushVacationToBitrixAbsence(request, ctx);
-      patches.set(request.id, {
-        bitrix_absence_id: absenceId,
-        bitrix_absence_iblock_id: iblockId ?? undefined,
-        bitrix_sync_status: 'synced',
-        bitrix_sync_method: method,
-        bitrix_synced_at: new Date().toISOString(),
-        bitrix_sync_error: undefined
-      });
+      const { absenceId, method, iblockId } = unit.segmented
+        ? await pushVacationToBitrixAbsence(request, ctx, {
+            start: unit.start,
+            end: unit.end,
+            partIndex: unit.partIndex,
+            absenceId: unit.absenceId
+          })
+        : await pushVacationToBitrixAbsence(request, ctx);
+      markSynced(unit, absenceId, method, iblockId);
       if (method.includes('-adopted')) result.adopted += 1;
       else result.readded += 1;
     } catch (err) {
       const message = errorMessage(err);
       if (isBitrixWriteBlockedError(err) || isBitrixWritesBlockedMessage(message)) {
         // Гвард стенда — не ошибка заявки: статус не трогаем.
-        console.warn(`[bitrix-vacation] reconcile #${request.id}: ${message}`);
+        console.warn(`[bitrix-vacation] reconcile ${tag}: ${message}`);
         return;
       }
       result.failed += 1;
-      console.error(`[bitrix-vacation] reconcile failed for request #${request.id}:`, message);
+      console.error(`[bitrix-vacation] reconcile failed for request ${tag}:`, message);
       // failed → подхватит обычный повтор; bitrix_absence_id не трогаем. Без алерта админу.
-      patches.set(request.id, {
+      const entry = patchOf(unit);
+      entry.failed = true;
+      entry.fields = {
+        ...(entry.fields.bitrix_absence_id ? { bitrix_absence_id: entry.fields.bitrix_absence_id } : {}),
         bitrix_sync_status: 'failed',
         bitrix_sync_error: message,
         bitrix_synced_at: new Date().toISOString()
-      });
+      };
     }
   });
 
   let next = state;
-  for (const [requestId, patch] of patches) next = updateRequestInState(next, requestId, patch);
+  for (const [requestId, entry] of patches) {
+    const patch: Partial<VacationRequest> = { ...entry.fields };
+    if (entry.parts) {
+      patch.bitrix_absence_parts = entry.parts;
+      if (entry.parts[0]?.absence_id) patch.bitrix_absence_id = entry.parts[0].absence_id;
+    }
+    next = updateRequestInState(next, requestId, patch);
+  }
   result.state = next;
   summary();
   return result;

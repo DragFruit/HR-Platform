@@ -38,6 +38,12 @@ export type VacationRequest = {
   bitrix_absence_id?: number;
   /** Инфоблок, в который записан bitrix_absence_id (график отсутствий = 3). Нет поля — запись до 16.10.2026. */
   bitrix_absence_iblock_id?: number;
+  /**
+   * Отпуск, разрезанный праздниками (с 19.11.2026): по элементу графика отсутствий на отрезок.
+   * bitrix_absence_id = первый отрезок. Нет поля — старая заявка с одним элементом на весь период.
+   * В Postgres лежит в `extra` (без миграции).
+   */
+  bitrix_absence_parts?: VacationBitrixAbsencePart[];
   bitrix_sync_status?: BitrixVacationSyncStatus;
   bitrix_sync_method?: string;
   bitrix_synced_at?: string;
@@ -45,6 +51,8 @@ export type VacationRequest = {
   /** Правки дат/комментария админом или HR без смены статуса (последние 20). */
   admin_edits?: VacationAdminEditEntry[];
 };
+
+export type VacationBitrixAbsencePart = { start: string; end: string; absence_id: number };
 
 export type VacationState = {
   primaryYear: number;

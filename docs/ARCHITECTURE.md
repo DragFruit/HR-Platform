@@ -412,7 +412,7 @@ OrgLink        // from/to ports + optional mid
 1. `useEmployees` — кто чей руководитель; `findByUserForAuth()` по `platform_user_id` или email.
 2. `useVacations` — заявки, статусы, `canManagerApproveRequest()`, `formatMonthVacationRange()` (даты в месячной таблице: `DD.MM-DD.MM`).
 3. `utils/vacationBalance.ts` — баланс ЗУП, аванс (`assessVacationBalance`), колонки **Отгулял** / **План** (`calcEmployeeBalance`: будущие согласованные → план, прошедшие/текущие → отгулял).
-4. `utils/vacationCalendar.ts` — праздники РФ, `countVacationBillableDays` (праздники не входят в счёт), `trimVacationHolidayEdges` (обрезка праздников на краях периода; на клиенте через `composables/useVacationHolidayEdgeTrim.ts`, на сервере в `vacationRequestMutations.ts`).
+4. `utils/vacationCalendar.ts` — праздники РФ, `countVacationBillableDays` (праздники не входят в счёт), `trimVacationHolidayEdges` (обрезка праздников на краях периода; на клиенте через `composables/useVacationHolidayEdgeTrim.ts`, на сервере в `vacationRequestMutations.ts`), `splitVacationByHolidays` (отрезки без праздников: страницы заявления в `server/utils/vacationApplicationDocx.ts`, отсутствия Bitrix по отрезкам в `server/utils/bitrixVacationAbsence.ts`, поле заявки `bitrix_absence_parts`).
 5. Сид: `data/vacation-seed.json` (год, праздники, демо-заявки).
 
 **UI-плашки (ITMO pill):** solid фон, белый жирный текст, без обводки. CSS-токены в `main.css`:
