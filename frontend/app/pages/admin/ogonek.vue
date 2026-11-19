@@ -25,10 +25,6 @@
           </span>
         </li>
         <li>
-          <b>{{ s.allDone }}</b>
-          <span>прошли все 19 окон</span>
-        </li>
-        <li>
           <b>{{ s.plugged }}</b>
           <span>включили новогодний дизайн</span>
         </li>
@@ -39,7 +35,6 @@
         <h2 class="ogd__h2">Звания</h2>
         <ul class="ogd__ranks">
           <li v-for="r in ranks" :key="r.title">
-            <OgonekSprite class="ogd__rank-art" :rows="ogonekRankArt(r.title)" :width="40" />
             <b>{{ r.count }}</b>
             <span>{{ r.title }}<i> · от {{ r.from }} окон</i></span>
           </li>
@@ -79,27 +74,6 @@
           <details v-if="lists.hats.length"><summary>Кто</summary><PeopleList :people="lists.hats" /></details>
         </article>
 
-        <article class="ogd__card">
-          <header><b>{{ dressTotal }}</b><span>выбрали образ на Огонёк</span></header>
-          <details v-for="[look, n] in dresscodeRows" :key="look">
-            <summary>{{ look }} <i>· {{ n }}</i></summary>
-            <PeopleList :people="lists.dresscode[look] ?? []" />
-          </details>
-        </article>
-
-        <article class="ogd__card ogd__card--wide">
-          <header><b>{{ s.toys }}</b><span>игрушек на ёлке желаний</span></header>
-          <details v-if="lists.toys.length">
-            <summary>Пожелания</summary>
-            <ul class="ogd__wishes">
-              <li v-for="(t, i) in lists.toys" :key="i">«{{ t.wish }}» <i>— {{ t.name }}</i></li>
-            </ul>
-          </details>
-        </article>
-
-        <article class="ogd__card">
-          <header><b>{{ s.snowflakes }}</b><span>снежинок в метели</span></header>
-        </article>
         <article class="ogd__card">
           <header><b>{{ s.thanks }}</b><span>открыток «спасибо»</span></header>
           <p class="ogd__sub">анонимные: кто отправил, не храним в отчёте</p>
@@ -162,7 +136,6 @@
  * сотрудники. Подробности Тайного Санты — на /admin/ogonek-santa.
  */
 import type { PropType } from 'vue';
-import { ogonekRankArt } from '~/events/ogonek/rankArt';
 
 type Person = { name: string; department: string };
 
@@ -232,8 +205,6 @@ const lists = ref<Lists>({ plugged: [], hats: [], skating: [], santaClassic: [],
 const error = ref('');
 const loading = ref(false);
 
-const dresscodeRows = computed(() => Object.entries(dresscode.value).sort((a, b) => b[1] - a[1]));
-const dressTotal = computed(() => dresscodeRows.value.reduce((n, [, c]) => n + c, 0));
 
 function votesWord(n: number) {
   const d = n % 10;
@@ -296,7 +267,7 @@ onMounted(load);
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 .ogd__kpis li,

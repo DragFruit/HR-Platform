@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const byId = new Map(state.players.map((p) => [p.userId, p]));
   const person = (id: number) => {
     const p = byId.get(id);
-    return { name: p?.name ?? 'Участник', department: p?.department ?? '' };
+    return { userId: id, name: p?.name ?? 'Участник', department: p?.department ?? '' };
   };
 
   const participants = state.players

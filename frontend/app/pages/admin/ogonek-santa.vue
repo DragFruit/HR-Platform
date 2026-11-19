@@ -18,18 +18,33 @@
         <template v-else>регистрация закрыта, жеребьёвка пройдёт при первом входе участника на страницу Санты</template>
       </p>
 
-      <!-- Пары классики: кто кому Санта -->
-      <section v-if="d.pairs.length" class="ogsa__block">
-        <h2 class="ogsa__h2">Классика: кто кому дарит</h2>
+      <!-- Классика: на каждого игрока его Санта и подопечный, под размытием.
+           Клик по ячейке открывает её — чтобы не подсмотреть случайно. -->
+      <section v-if="classicRows.length" class="ogsa__block">
+        <h2 class="ogsa__h2">Классика: Санты и подопечные</h2>
+        <p class="ogsa__hint">Имена скрыты. Нажмите на ячейку, чтобы открыть.</p>
         <table class="ogsa__table">
           <thead>
-            <tr><th>Санта</th><th>Подопечный</th><th>Вишлист подопечного</th></tr>
+            <tr><th>Игрок</th><th>Его Санта</th><th>Его подопечный</th><th>Вишлист подопечного</th></tr>
           </thead>
           <tbody>
-            <tr v-for="(p, i) in d.pairs" :key="i">
-              <td>{{ p.santa.name }}<i v-if="p.santa.department"> · {{ p.santa.department }}</i></td>
-              <td>{{ p.ward.name }}<i v-if="p.ward.department"> · {{ p.ward.department }}</i></td>
-              <td>{{ p.ward.wish || '—' }}</td>
+            <tr v-for="r in classicRows" :key="r.id">
+              <td>{{ r.name }}<i v-if="r.department"> · {{ r.department }}</i></td>
+              <td>
+                <button type="button" class="ogsa__blur" :class="{ 'is-open': shown.has(`s:${r.id}`) }" @click="toggle(`s:${r.id}`)">
+                  {{ r.santa }}
+                </button>
+              </td>
+              <td>
+                <button type="button" class="ogsa__blur" :class="{ 'is-open': shown.has(`w:${r.id}`) }" @click="toggle(`w:${r.id}`)">
+                  {{ r.ward }}
+                </button>
+              </td>
+              <td>
+                <button type="button" class="ogsa__blur" :class="{ 'is-open': shown.has(`h:${r.id}`) }" @click="toggle(`h:${r.id}`)">
+                  {{ r.wardWish || '—' }}
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -70,7 +85,7 @@
  * Тайный Санта для админа: участники по форматам и вишлисты, после
  * жеребьёвки — пары «Санта → подопечный» и порядок ходов «Белого слона».
  */
-type Who = { name: string; department: string };
+type Who = { userId: number; name: string; department: string };
 type Data = {
   open: boolean;
   until: string;
@@ -82,6 +97,26 @@ type Data = {
 };
 
 const d = ref<Data | null>(null);
+
+/** Какие ячейки открыты кликом. */
+const shown = ref(new Set<string>());
+function toggle(key: string) {
+  const next = new Set(shown.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  shown.value = next;
+}
+
+/** Строка на каждого игрока классики: кто его Санта и кто его подопечный. */
+const classicRows = computed(() => {
+  const pairs = d.value?.pairs ?? [];
+  return pairs
+    .map((p) => {
+      const mySanta = pairs.find((q) => q.ward.userId === p.santa.userId)?.santa.name ?? '—';
+      return { id: p.santa.userId, name: p.santa.name, department: p.santa.department, santa: mySanta, ward: p.ward.name, wardWish: p.ward.wish };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+});
 const error = ref('');
 const loading = ref(false);
 
@@ -127,6 +162,22 @@ onMounted(load);
 .ogsa__table th, .ogsa__table td { padding: 5px 8px; border-bottom: 1px solid #e4e4de; text-align: left; vertical-align: top; }
 .ogsa__table th { font-weight: 700; background: var(--bg-soft); }
 .ogsa i { font-style: normal; color: var(--text-soft); }
+.ogsa__hint { margin: 0; font-size: 0.8rem; color: var(--text-soft); }
+.ogsa__blur {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bg-soft);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  filter: blur(5px);
+  user-select: none;
+  transition: filter 0.2s ease;
+}
+.ogsa__blur:hover { filter: blur(3.5px); }
+.ogsa__blur.is-open { filter: none; user-select: text; background: transparent; }
 .ogsa__order { margin: 0; padding-left: 26px; columns: 3; column-gap: 24px; font-size: 0.85rem; line-height: 1.6; }
 
 @media (max-width: 900px) {
