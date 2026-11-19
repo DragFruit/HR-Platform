@@ -154,9 +154,13 @@
                   v-for="(bar, idx) in barsFor(emp)"
                   :key="`${emp.id}-bar-${idx}`"
                   class="vac-detailed-bar"
-                  :class="bar.status"
+                  :class="[bar.status, { 'vac-detailed-bar--editable': editableRequests }]"
                   :style="barStyle(bar)"
-                  :title="bar.title"
+                  :title="editableRequests ? `Изменить отпуск: ${bar.title}` : bar.title"
+                  :role="editableRequests ? 'button' : undefined"
+                  :tabindex="editableRequests ? 0 : undefined"
+                  @click="editableRequests && emit('edit-request', bar.requestId)"
+                  @keydown.enter.prevent="editableRequests && emit('edit-request', bar.requestId)"
                 />
                 <span
                   v-for="(band, idx) in reservationBandsFor(emp)"
@@ -234,6 +238,7 @@ type YearDayCell = {
 };
 
 type GanttBar = {
+  requestId: number;
   status: 'approved' | 'pending';
   startIdx: number;
   endIdx: number;
@@ -263,9 +268,12 @@ const props = withDefaults(
     highlightEmployeeNames?: string[] | null;
     /** Полоса загрузки над сеткой: сколько людей отсутствует в день (руководитель/админ). */
     showLoadStrip?: boolean;
+    /** Админ/HR: клик по бару → правка заявки (emit edit-request). */
+    editableRequests?: boolean;
   }>(),
   {
     showLoadStrip: false,
+    editableRequests: false,
     showDepartmentDailyCounts: false,
     showTitleColumn: true,
     titleColumnToggleable: false,
@@ -275,6 +283,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'toggle-title-column': [];
+  'edit-request': [id: number];
 }>();
 
 /** Ширина дня — только сетка дат/баров; не связана с ФИО. */
@@ -651,6 +660,7 @@ const barsFor = (emp: Employee): GanttBar[] => {
       const clip = clipToYear(r.start, r.end);
       if (!clip) return null;
       return {
+        requestId: r.id,
         status: r.status as 'approved' | 'pending',
         startIdx: clip.startIdx,
         endIdx: clip.endIdx,

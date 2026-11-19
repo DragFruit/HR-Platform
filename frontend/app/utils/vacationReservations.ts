@@ -54,6 +54,8 @@ export type VacationMonthEntry = {
   kind: VacationMonthEntryKind;
   status: 'approved' | 'pending' | 'reservation';
   label: string;
+  /** id заявки (только kind=dated) — клик админа открывает правку. */
+  requestId?: number;
 };
 
 export const RESERVATION_DURATION_PRESETS = [

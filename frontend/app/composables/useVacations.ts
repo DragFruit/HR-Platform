@@ -584,7 +584,8 @@ export function useVacations() {
       .map((r) => ({
         kind: 'dated' as const,
         status: r.status,
-        label: formatMonthVacationRange(r.start, r.end, month, year)
+        label: formatMonthVacationRange(r.start, r.end, month, year),
+        requestId: r.id
       }))
       .filter((x) => x.label !== '');
 

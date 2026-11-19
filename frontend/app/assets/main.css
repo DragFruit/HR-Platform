@@ -11618,6 +11618,31 @@ button.emp-name--card:hover {
   background: #f59e0b;
 }
 
+/* Админ/HR: клик по бару открывает правку отпуска (AdminEditVacationDialog). */
+.vac-detailed-bar--editable {
+  pointer-events: auto;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.vac-detailed-bar--editable:hover,
+.vac-detailed-bar--editable:focus-visible {
+  filter: brightness(0.92);
+  box-shadow: 0 0 0 2px var(--primary-strong, #5b3fd6);
+  outline: none;
+}
+
+.vac-block--editable {
+  cursor: pointer;
+}
+
+.vac-block--editable:hover,
+.vac-block--editable:focus-visible {
+  filter: brightness(0.94);
+  outline: 2px solid var(--primary-strong, #5b3fd6);
+  outline-offset: 1px;
+}
+
 .vac-detailed-reservation {
   position: absolute;
   top: 50%;

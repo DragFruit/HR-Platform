@@ -42,8 +42,10 @@
               :show-title-column="showTitleColumn"
               :highlight-employee-names="highlightEmployeeNames"
               :show-load-strip="showLoadStrip"
+              :editable-requests="canEditRequests"
               title-column-toggleable
               @toggle-title-column="toggleTitleColumn"
+              @edit-request="openEditRequest"
             />
             <VacationMonthlyCalendar
               v-else
@@ -54,7 +56,9 @@
               :show-title-column="variant === 'manager' && showTitleColumn"
               :title-column-toggleable="variant === 'manager'"
               :highlight-employee-names="highlightEmployeeNames"
+              :editable-requests="canEditRequests"
               @toggle-title-column="toggleTitleColumn"
+              @edit-request="openEditRequest"
             />
           </div>
 
@@ -91,6 +95,11 @@
     </div>
 
     <AdminAddVacationDialog v-if="isAdmin && !hideAdminAdd" v-model:open="adminAddOpen" />
+    <AdminEditVacationDialog
+      v-if="canEditRequests"
+      v-model:open="editOpen"
+      :request="editRequest"
+    />
   </div>
 </template>
 
@@ -98,6 +107,7 @@
 import type { EmployeeDepartment } from '~/composables/useEmployees';
 import type { VacationRequest } from '~/composables/useVacations';
 import type { VacationReservation } from '~/utils/vacationReservations';
+import { canAdminEditVacationRequest, isVacationAdminEditorRole } from '~/utils/vacationAdminEdit';
 
 /** Зазор от нижнего края окна до поля таблицы (визуальные px). */
 const VIEWPORT_BOTTOM_GAP_PX = 8;
@@ -151,8 +161,33 @@ const emit = defineEmits<{
   'update:viewMode': [value: 'detailed' | 'months'];
 }>();
 
-const { isAdmin } = usePermissions();
+const { isAdmin, role } = usePermissions();
 const { viewYear, state } = useVacations();
+
+/**
+ * Админ/HR: клик по отпуску в календаре (детально и по месяцам) открывает правку
+ * дат/комментария. Превью «Как выглядит» (hideAdminAdd) и вид сотрудника — без правки.
+ */
+const canEditRequests = computed(
+  () => props.variant === 'manager' && !props.hideAdminAdd && isVacationAdminEditorRole(role.value)
+);
+const editOpen = ref(false);
+const editRequestId = ref<number | null>(null);
+const editRequest = computed(() =>
+  editRequestId.value === null
+    ? null
+    : Object.values(state.value.requestsByYear)
+        .flat()
+        .find((r) => r.id === editRequestId.value) ?? null
+);
+const openEditRequest = (id: number) => {
+  const req = Object.values(state.value.requestsByYear)
+    .flat()
+    .find((r) => r.id === id);
+  if (!canAdminEditVacationRequest(role.value, req)) return;
+  editRequestId.value = id;
+  editOpen.value = true;
+};
 
 const adminAddOpen = ref(false);
 const calendarYear = computed(() => props.year ?? viewYear.value);

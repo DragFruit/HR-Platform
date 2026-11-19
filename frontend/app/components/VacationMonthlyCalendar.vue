@@ -87,6 +87,7 @@
                   :key="idx"
                   class="vac-block"
                   :class="blockClass(block)"
+                  v-bind="blockEditAttrs(block)"
                 >
                   {{ block.label }}
                 </span>
@@ -97,6 +98,7 @@
                   :key="idx"
                   class="vac-block"
                   :class="blockClass(block)"
+                  v-bind="blockEditAttrs(block)"
                 >
                   {{ block.label }}
                 </span>
@@ -159,8 +161,11 @@ const props = withDefaults(
     titleColumnToggleable?: boolean;
     /** Подсветка ФИО; null = режим выкл. */
     highlightEmployeeNames?: string[] | null;
+    /** Админ/HR: клик по плашке отпуска → правка заявки (emit edit-request). */
+    editableRequests?: boolean;
   }>(),
   {
+    editableRequests: false,
     compactCells: false,
     showTitleColumn: false,
     titleColumnToggleable: false,
@@ -170,6 +175,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'toggle-title-column': [];
+  'edit-request': [id: number];
 }>();
 
 const { MONTHS_RU } = useVacations();
@@ -280,8 +286,30 @@ const cellBlocks = (emp: { id: number; name: string }, month: number) =>
 
 const blockClass = (block: VacationMonthEntry) => ({
   [block.status]: true,
-  reservation: block.kind === 'reservation'
+  reservation: block.kind === 'reservation',
+  'vac-block--editable': isEditableBlock(block)
 });
+
+const isEditableBlock = (block: VacationMonthEntry) =>
+  props.editableRequests && block.kind === 'dated' && typeof block.requestId === 'number';
+
+/** Плашка отпуска у админа/HR — кнопка правки; у остальных атрибутов нет. */
+const blockEditAttrs = (block: VacationMonthEntry) => {
+  if (!isEditableBlock(block)) return {};
+  const open = () => emit('edit-request', block.requestId!);
+  return {
+    role: 'button',
+    tabindex: 0,
+    title: 'Изменить отпуск',
+    onClick: open,
+    onKeydown: (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        open();
+      }
+    }
+  };
+};
 
 watch(
   [flatEmployees, () => props.titleColumnToggleable],
