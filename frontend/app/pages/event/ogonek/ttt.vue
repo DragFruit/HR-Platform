@@ -84,6 +84,7 @@
             <!-- Итог — тоже поверх доски -->
             <div v-if="game.over" class="ogt3__draw ogt3__final" :class="`is-${game.result}`">
               <p class="ogt3__result-t">{{ RESULT[game.result!] }}</p>
+              <p v-if="endNote" class="ogt3__end-note">{{ endNote }}</p>
               <p v-if="mode === 'online' && game.result === 'win'" class="ogt3__muted">Победа записана в таблицу лидеров.</p>
               <div class="ogt3__row">
                 <button v-if="mode === 'bot'" type="button" class="og-btn" @click="startBot(botLevel)">Ещё раз</button>
@@ -113,6 +114,7 @@
             <p v-if="mode === 'online' && room?.drawOfferedBy === room?.you && !game.over" class="ogt3__wait-draw">
               Вы предложили ничью — ждём ответа
             </p>
+            <p v-else-if="drawDeclined && !game.over" class="ogt3__declined" role="status">Соперник отклонил ничью</p>
 
             <div v-if="!game.over" class="ogt3__actions">
               <button
@@ -138,10 +140,10 @@
           <li v-for="r in leaders" :key="r.place" :class="{ 'is-mine': r.mine }">
             <span class="ogt3__n">{{ r.place }}</span>
             <span class="ogt3__name">{{ r.name }}</span>
-            <span class="ogt3__wdl" :title="`побед ${r.wins} · ничьих ${r.draws} · поражений ${r.losses}`">{{ r.wins }} / {{ r.draws }} / {{ r.losses }}</span>
+            <span class="ogt3__wdl">{{ r.wins }}</span>
           </li>
         </ol>
-        <p class="ogt3__muted ogt3__legend">победы / ничьи / поражения</p>
+        <p class="ogt3__muted ogt3__legend">число побед в онлайн-партиях</p>
         <p v-if="myPlace && !leaders.some((r) => r.mine)" class="ogt3__muted">Вы: {{ myPlace.place }} место · {{ myPlace.wins }} побед</p>
       </aside>
     </div>
@@ -201,6 +203,9 @@ type RoomView = {
   seq: number;
   lastMove: TttMove | null;
   expiresAt: string | null;
+  endReason: 'win' | 'surrender' | 'timeout' | 'board_draw' | 'agreed_draw' | null;
+  drawDeclinedBy: 'p1' | 'p2' | null;
+  drawDeclinedAt: string | null;
 };
 
 type Leader = { place: number; name: string; wins: number; draws: number; losses: number; mine: boolean };
@@ -258,6 +263,24 @@ const game = computed(() => {
 const incomingDraw = computed(
   () => mode.value === 'online' && !!room.value?.drawOfferedBy && room.value.drawOfferedBy !== room.value.you && room.value.status === 'playing'
 );
+
+/** Соперник отклонил мою ничью — показываем 6 секунд. */
+const drawDeclined = computed(() => {
+  const r = room.value;
+  if (mode.value !== 'online' || !r?.drawDeclinedBy || r.drawDeclinedBy === r.you || !r.drawDeclinedAt) return false;
+  return now.value - Date.parse(r.drawDeclinedAt) < 6000;
+});
+
+/** Пояснение к итогу: почему партия кончилась. */
+const endNote = computed(() => {
+  const g = game.value;
+  if (mode.value !== 'online' || !g?.over) return '';
+  const reason = room.value?.endReason;
+  if (reason === 'surrender') return g.result === 'win' ? 'Ваш соперник сдался' : 'Вы сдались';
+  if (reason === 'timeout') return g.result === 'win' ? 'У соперника вышло время на ход' : 'Вышло время на ход';
+  if (reason === 'agreed_draw') return 'Ничья по согласию';
+  return '';
+});
 
 const secondsLeft = computed(() => {
   const d = room.value?.deadline;
@@ -545,6 +568,9 @@ onBeforeUnmount(() => {
 .ogt3__turn-box .ogt3__bar { grid-column: 1 / -1; width: 100%; }
 .ogt3__actions { display: flex; flex-direction: column; gap: 8px; }
 .ogt3__actions .og-btn { width: 100%; }
+.ogt3__declined { margin: 0; padding: 10px 12px; font-family: var(--og-pixel); font-size: 9px; line-height: 1.6; color: #ffd0d0; background: rgba(224, 70, 79, 0.2); border: 2px solid #e0464f; animation: ogt3-pop-in 0.25s ease-out; }
+@keyframes ogt3-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.ogt3__end-note { margin: 0; font-size: 16px; font-weight: 700; color: #fff3e6; }
 .ogt3__wait-draw { margin: 0; padding: 8px 10px; font-size: 14px; color: var(--og-gold-soft); border: 1px dashed rgba(255, 207, 74, 0.5); }
 
 /* Поверх доски: предложение ничьей и итог */

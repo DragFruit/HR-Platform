@@ -51,7 +51,14 @@ export type TttRoom = {
   createdAt: string;
   expiresAt: string | null;
   finishedAt: string | null;
+  /** Чем кончилась партия: обычная победа, сдача, время хода, ничья на доске или по согласию. */
+  endReason?: TttEndReason | null;
+  /** Кто и когда отклонил предложение ничьей — предложившему показываем «Соперник отклонил ничью». */
+  drawDeclinedBy?: TttSlot | null;
+  drawDeclinedAt?: string | null;
 };
+
+export type TttEndReason = 'win' | 'surrender' | 'timeout' | 'board_draw' | 'agreed_draw';
 
 type Store = { nextId: number; rooms: TttRoom[] };
 
@@ -94,8 +101,9 @@ const symbolOf = (room: TttRoom, slot: TttSlot): TttSymbol =>
   slot === 'p1' ? room.p1Symbol : room.p1Symbol === 'X' ? 'O' : 'X';
 
 /** Партия закончилась: фиксируем и пишем результат в таблицу лидеров адвента. */
-async function finish(room: TttRoom, winner: TttSlot | 'draw', how: string) {
+async function finish(room: TttRoom, winner: TttSlot | 'draw', how: string, reason: TttEndReason) {
   room.status = 'finished';
+  room.endReason = reason;
   room.winner = winner;
   room.turn = null;
   room.deadline = null;
@@ -128,7 +136,7 @@ async function finish(room: TttRoom, winner: TttSlot | 'draw', how: string) {
 /** Ход просрочен — проиграл тот, чей ход. Проверяется при каждом обращении. */
 async function checkTimeout(room: TttRoom): Promise<void> {
   if (room.status === 'playing' && room.deadline && Date.parse(room.deadline) <= Date.now() && room.turn) {
-    await finish(room, room.turn === 'p1' ? 'p2' : 'p1', ' (время хода вышло)');
+    await finish(room, room.turn === 'p1' ? 'p2' : 'p1', ' (время хода вышло)', 'timeout');
   }
   if (room.status === 'waiting' && room.expiresAt && Date.parse(room.expiresAt) <= Date.now()) {
     room.status = 'abandoned';
@@ -155,7 +163,10 @@ export function tttView(room: TttRoom, uid: number) {
     winner: room.winner,
     seq: room.seq,
     lastMove: room.lastMove,
-    expiresAt: room.expiresAt
+    expiresAt: room.expiresAt,
+    endReason: room.endReason ?? null,
+    drawDeclinedBy: room.drawDeclinedBy ?? null,
+    drawDeclinedAt: room.drawDeclinedAt ?? null
   };
 }
 export type TttRoomView = ReturnType<typeof tttView>;
@@ -290,7 +301,7 @@ export const tttMove = (uid: number, id: number, m: TttMove) =>
     room.seq++;
     const r = room.state.bigResult;
     if (r !== null) {
-      await finish(room, r === 'draw' ? 'draw' : r === room.p1Symbol ? 'p1' : 'p2', '');
+      await finish(room, r === 'draw' ? 'draw' : r === room.p1Symbol ? 'p1' : 'p2', '', r === 'draw' ? 'board_draw' : 'win');
       return;
     }
     room.turn = slot === 'p1' ? 'p2' : 'p1';
@@ -306,7 +317,7 @@ export const tttSurrender = (uid: number, id: number) =>
       return;
     }
     if (room.status !== 'playing') return;
-    await finish(room, slot === 'p1' ? 'p2' : 'p1', ' (соперник сдался)');
+    await finish(room, slot === 'p1' ? 'p2' : 'p1', ' (соперник сдался)', 'surrender');
   });
 
 export const tttDraw = (uid: number, id: number, action: 'offer' | 'accept' | 'decline') =>
@@ -314,12 +325,16 @@ export const tttDraw = (uid: number, id: number, action: 'offer' | 'accept' | 'd
     if (room.status !== 'playing') fail('Партия уже закончилась', 409);
     if (action === 'offer') {
       room.drawOfferedBy = slot;
+      room.drawDeclinedBy = null;
+      room.drawDeclinedAt = null;
     } else if (room.drawOfferedBy && room.drawOfferedBy !== slot) {
       if (action === 'accept') {
-        await finish(room, 'draw', '');
+        await finish(room, 'draw', '', 'agreed_draw');
         return;
       }
       room.drawOfferedBy = null;
+      room.drawDeclinedBy = slot;
+      room.drawDeclinedAt = new Date().toISOString();
     }
     room.seq++;
   });
