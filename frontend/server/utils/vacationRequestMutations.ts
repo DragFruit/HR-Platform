@@ -18,6 +18,7 @@ import { isBitrixWriteBlockedError } from './bitrixWriteGuard';
 import type { SessionUser } from './credentials';
 import { findEmployeeByName, findEmployeeForSession, readEmployees } from './employeesStore';
 import {
+  notifyVacationDatesChangedByAdmin,
   notifyVacationRequestCreated,
   notifyVacationRequestDeleted,
   notifyVacationRequestPatched
@@ -37,6 +38,13 @@ import {
   assessVacationShortfall,
   isVacationShortfallBlocking
 } from '../../app/utils/vacationShortfall';
+import {
+  appendVacationAdminEdit,
+  buildVacationAdminEditEntry,
+  VACATION_COMMENT_MAX_LENGTH,
+  type VacationAdminEditEntry
+} from '../../app/utils/vacationAdminEdit';
+import type { VacationWriteContext } from '../vacations/types';
 
 /**
  * Нельзя подать заявку больше доступного остатка (та же проверка, что в форме).
@@ -161,6 +169,8 @@ export type PatchVacationRequestBody = {
   end?: string;
   status?: VacationStatus;
   approval_step?: VacationApprovalStep | null;
+  /** Только HR/админ (правка заявки без смены статуса). */
+  comment?: string;
 };
 
 /** Год папки requestsByYear должен совпадать с годом даты начала. */
@@ -301,11 +311,33 @@ export async function patchVacationRequest(
 ): Promise<VacationStoreState> {
   let previousRequest: VacationRequest | null = null;
   let nextRequest: VacationRequest | null = null;
+  let adminEdit: VacationAdminEditEntry | null = null;
+  let adminEditOfOwnRequest = false;
 
   const sessionEmployee = await findEmployeeForSession(session);
   const elevated = hasRosterWideRights(session);
   const changesDates = patch.start !== undefined || patch.end !== undefined;
   const changesDecision = patch.status !== undefined || patch.approval_step !== undefined;
+  const changesComment = patch.comment !== undefined;
+
+  if (changesComment && !elevated) {
+    throw createError({ statusCode: 403, statusMessage: 'Комментарий заявки меняет только HR или администратор' });
+  }
+  if (changesComment && typeof patch.comment !== 'string') {
+    throw createError({ statusCode: 400, statusMessage: 'Некорректный комментарий' });
+  }
+  if (changesComment && patch.comment!.trim().length > VACATION_COMMENT_MAX_LENGTH) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Комментарий длиннее ${VACATION_COMMENT_MAX_LENGTH} символов`
+    });
+  }
+
+  // reason читается репозиторием после мутатора: для правки админом подставим строку истории.
+  const writeCtx: VacationWriteContext = {
+    actorEmployeeId: sessionEmployee?.id ?? null,
+    reason: 'api:request-patch'
+  };
 
   const result = await mutateVacations(async (state) => {
     const previous = cloneState(state);
@@ -401,6 +433,8 @@ export async function patchVacationRequest(
 
     const prevStart = found.item.start;
     const prevEnd = found.item.end;
+    const prevComment = found.item.comment ?? '';
+    if (changesComment) found.item.comment = patch.comment!.trim();
     if (patch.start !== undefined) found.item.start = patch.start;
     if (patch.end !== undefined) found.item.end = patch.end;
 
@@ -495,9 +529,25 @@ export async function patchVacationRequest(
       }
     }
 
+    // HR/админ правит даты/комментарий без решения по заявке → запись в историю заявки.
+    if (elevated && !changesDecision && (changesDates || changesComment)) {
+      adminEdit = buildVacationAdminEditEntry({
+        actorEmployeeId: sessionEmployee?.id ?? null,
+        actorName: sessionEmployee?.name?.trim() || session.name || '',
+        actorRole: session.role === 'hr' ? 'hr' : 'admin',
+        before: { start: prevStart, end: prevEnd, comment: prevComment },
+        after: { start: found.item.start, end: found.item.end, comment: found.item.comment ?? '' }
+      });
+      if (adminEdit) {
+        found.item.admin_edits = appendVacationAdminEdit(found.item.admin_edits, adminEdit);
+        adminEditOfOwnRequest = isOwnRequest;
+        writeCtx.reason = `api:request-admin-edit: ${adminEdit.summary}`;
+      }
+    }
+
     nextRequest = { ...found.item };
     return syncApprovedVacationsToBitrix(previous, state);
-  }, { actorEmployeeId: sessionEmployee?.id ?? null, reason: 'api:request-patch' });
+  }, writeCtx);
 
   // Сняли согласование (reject или смена дат → снова pending) — пальму в Bitrix убираем.
   if (
@@ -562,6 +612,22 @@ export async function patchVacationRequest(
 
   if (previousRequest && nextRequest) {
     await notifyVacationRequestPatched(previousRequest, nextRequest);
+  }
+
+  // Сотруднику — колокольчик в Vibe (не Bitrix-чат): даты его отпуска поменял HR/админ.
+  const edit = adminEdit as VacationAdminEditEntry | null;
+  if (edit && nextRequest && !adminEditOfOwnRequest) {
+    const edited = nextRequest as VacationRequest;
+    if (edit.start_before !== edit.start_after || edit.end_before !== edit.end_after) {
+      try {
+        await notifyVacationDatesChangedByAdmin(edited, edit);
+      } catch (error) {
+        console.error(
+          `[vacations] notify employee about admin edit failed for request #${id}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
   }
 
   return result;

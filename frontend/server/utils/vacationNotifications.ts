@@ -9,6 +9,10 @@ import {
 import { notifyBitrixVacationApprover } from './bitrixVacationNotify';
 import { findEmployeeByName, employeeNotificationUserId } from './employeesStore';
 import { createUserNotification, type UserNotificationKind } from './userNotificationsStore';
+import {
+  formatVacationRangeRu,
+  type VacationAdminEditEntry
+} from '../../app/utils/vacationAdminEdit';
 
 const userIdForEmployeeName = async (name: string): Promise<number | null> => {
   const emp = await findEmployeeByName(name);
@@ -129,6 +133,29 @@ export async function notifyVacationRequestPatched(
       await notifyApprover(next, 'director');
     }
   }
+}
+
+/**
+ * HR/админ поменял даты отпуска сотрудника → колокольчик в Vibe самому сотруднику.
+ * В Bitrix ничего не шлём (ни чат, ни колокольчик): правило bitrix-vacation-notify-no-chat.
+ */
+export async function notifyVacationDatesChangedByAdmin(
+  request: VacationRequest,
+  edit: VacationAdminEditEntry
+) {
+  const recipientId = await userIdForEmployeeName(request.employee);
+  if (!recipientId) return;
+  await createUserNotification({
+    kind: 'vacation_dates_changed_by_admin',
+    recipient_user_id: recipientId,
+    vacation_request_id: request.id,
+    employee_name: request.employee,
+    start: request.start,
+    end: request.end,
+    // было: старые даты; кто поменял — в status_comment
+    stage_label: formatVacationRangeRu(edit.start_before, edit.end_before),
+    status_comment: `${edit.by_role === 'hr' ? 'HR' : 'Администратор'} ${edit.by_name}`.trim()
+  });
 }
 
 /** Удаление заявки → руководителю и директору отдела. */

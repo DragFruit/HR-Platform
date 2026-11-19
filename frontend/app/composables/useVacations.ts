@@ -15,6 +15,7 @@ import {
   type VacationMonthEntry,
   type VacationReservation
 } from '~/utils/vacationReservations';
+import type { VacationAdminEditEntry } from '~/utils/vacationAdminEdit';
 
 export type { VacationReservation, VacationMonthEntry };
 
@@ -41,6 +42,8 @@ export type VacationRequest = {
   bitrix_sync_method?: string;
   bitrix_synced_at?: string;
   bitrix_sync_error?: string;
+  /** Правки дат/комментария админом или HR без смены статуса (последние 20). */
+  admin_edits?: VacationAdminEditEntry[];
 };
 
 export type VacationState = {
@@ -183,6 +186,7 @@ export function useVacations() {
       end?: string;
       status?: VacationStatus;
       approval_step?: VacationApprovalStep | null;
+      comment?: string;
     }
   ) => {
     if (!import.meta.client) return null;
@@ -492,6 +496,15 @@ export function useVacations() {
     }
   };
 
+  /**
+   * Админ/HR правит даты и комментарий заявки (pending/approved), статус не меняется.
+   * Ошибку сервера пробрасываем: форма показывает текст (год, остаток, пересечение своих отпусков).
+   */
+  const adminEditRequest = async (
+    id: number,
+    patch: { start: string; end: string; comment?: string }
+  ) => syncPatchRequest(id, patch);
+
   const deleteRequest = async (id: number) => {
     const found = findRequestById(id);
     if (!found || isPastApprovedVacationRequest(found.item)) return false;
@@ -637,6 +650,7 @@ export function useVacations() {
     approveRequest,
     setRequestStatus,
     updateRequestDates,
+    adminEditRequest,
     deleteRequest,
     deleteReservation,
     findRequestById,

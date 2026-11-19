@@ -269,7 +269,7 @@ Cookie **`vbi-session`** (httpOnly) — при логине `POST /api/auth/sess
 |----------|------------|
 | `GET /api/vacations` | Полное состояние (`primaryYear`, `requestsByYear`, `nextRequestId`, `reservationsByYear`, `nextReservationId`) |
 | `POST /api/vacations/requests` | Создать одну заявку (тело: `year`, `employee`, `start`, `end`, `comment?`) |
-| `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step` |
+| `PATCH /api/vacations/requests/:id` | Изменить даты, статус, `approval_step`; `comment` только admin/hr. Правка admin/hr без решения пишет `admin_edits` (`app/utils/vacationAdminEdit.ts`), reason `api:request-admin-edit: …`, колокольчик сотруднику `vacation_dates_changed_by_admin` |
 | `DELETE /api/vacations/requests/:id` | Удалить заявку |
 | `POST /api/vacations/reservations` | Предварительная бронь: `year`, `month` (1–12), `durationDays`, `comment?` |
 | `PATCH /api/vacations/reservation-caps` | Зарезервировано (лимиты фиксированы в коде: 5 на отдел, 1 в подгруппе); UI у руководителей убран |

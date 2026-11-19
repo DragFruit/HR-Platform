@@ -47,6 +47,23 @@
               </div>
             </div>
             <div class="vac-approval-item__actions">
+              <button
+                v-if="canEdit(req)"
+                class="vac-admin-edit-pencil"
+                type="button"
+                aria-label="Изменить даты"
+                title="Изменить даты"
+                @click="openEdit(req)"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                <path
+                  d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              </button>
               <button class="button vac-btn-approve" type="button" @click="approve(req.id)">
                 Согласовать
               </button>
@@ -63,6 +80,61 @@
         </li>
       </ul>
     </section>
+
+    <section v-if="canEditAny" class="card section-card vac-approval-panel vac-admin-all">
+      <header class="vac-approval-panel__head">
+        <h3 class="section-title vac-approval-panel__title">Отпуска {{ viewYear }}</h3>
+        <input
+          v-model="allQuery"
+          type="search"
+          class="vac-emp-input vac-admin-all__search"
+          placeholder="Сотрудник"
+          aria-label="Поиск по сотруднику"
+        />
+      </header>
+
+      <p v-if="filteredAll.length === 0" class="vac-admin-all__empty">Нет заявок</p>
+      <ul v-else class="list-reset vac-admin-all__list">
+        <li v-for="req in visibleAll" :key="req.id" class="vac-admin-all__row">
+          <span class="vac-admin-all__name">{{ req.employee }}</span>
+          <span class="vac-admin-all__dates">{{ formatRange(req.start, req.end) }}</span>
+          <span
+            class="vac-admin-all__status"
+            :class="req.status === 'approved' ? 'is-approved' : 'is-pending'"
+          >{{ approvalStepLabel(req) }}</span>
+          <span
+            class="vac-admin-all__edited"
+            :title="lastEditSummary(req)"
+          >{{ lastEditSummary(req) ? 'изменено' : '' }}</span>
+          <button
+            class="vac-admin-edit-pencil"
+            type="button"
+            aria-label="Изменить отпуск"
+            title="Изменить"
+            @click="openEdit(req)"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                <path
+                  d="M14.5 5.5 18.5 9.5M4 20l.8-3.7L16.2 5 20 8.8 8.7 20.1 5 20.9 4 20Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+              </svg>
+          </button>
+        </li>
+      </ul>
+      <button
+        v-if="filteredAll.length > visibleAll.length"
+        type="button"
+        class="button ghost vac-admin-all__more"
+        @click="allLimit += 50"
+      >
+        Показать ещё ({{ filteredAll.length - visibleAll.length }})
+      </button>
+    </section>
+
+    <AdminEditVacationDialog v-model:open="editOpen" :request="editRequest" />
   </div>
 </template>
 
@@ -76,9 +148,11 @@ import {
 import { assessVacationBalance } from '~/utils/vacationBalance';
 import { requestsAroundYear } from '~/utils/vacationBookingYears';
 import type { VacationRequest } from '~/composables/useVacations';
+import { canAdminEditVacationRequest, isVacationAdminEditorRole } from '~/utils/vacationAdminEdit';
+import { employeeNamesMatch } from '~/utils/employeeName';
 
 const { departmentsGrouped, employees, findByName, reloadFromServer: reloadEmployees } = useEmployees();
-const { canSeeAllVacationApprovals } = usePermissions();
+const { canSeeAllVacationApprovals, role } = usePermissions();
 const {
   viewYear,
   yearRequests,
@@ -100,6 +174,45 @@ const approvalStepLabel = (req: VacationRequest) =>
   requestStatusLabel(req, findByName(req.employee));
 
 const approve = (id: number) => approveRequest(id, null, { elevated: true });
+
+/** Правка дат/комментария HR/админом без смены статуса (сервер проверяет права сам). */
+const canEditAny = computed(() => isVacationAdminEditorRole(role.value));
+const canEdit = (req: VacationRequest) => canAdminEditVacationRequest(role.value, req);
+const editOpen = ref(false);
+const editRequestId = ref<number | null>(null);
+/** Берём заявку из state по id: после сохранения диалог видит свежие данные. */
+const editRequest = computed(() =>
+  editRequestId.value === null
+    ? null
+    : Object.values(state.value.requestsByYear)
+        .flat()
+        .find((r) => r.id === editRequestId.value) ?? null
+);
+const openEdit = (req: VacationRequest) => {
+  editRequestId.value = req.id;
+  editOpen.value = true;
+};
+
+const allQuery = ref('');
+const allLimit = ref(50);
+watch(allQuery, () => {
+  allLimit.value = 50;
+});
+const filteredAll = computed(() => {
+  const q = allQuery.value.trim().toLowerCase();
+  return yearRequests.value
+    .filter((r) => canEdit(r))
+    .filter(
+      (r) => !q || r.employee.toLowerCase().includes(q) || employeeNamesMatch(r.employee, allQuery.value)
+    )
+    .slice()
+    .sort((a, b) => a.start.localeCompare(b.start) || a.employee.localeCompare(b.employee, 'ru'));
+});
+const visibleAll = computed(() => filteredAll.value.slice(0, allLimit.value));
+const lastEditSummary = (req: VacationRequest) => {
+  const edits = req.admin_edits;
+  return edits?.length ? edits[edits.length - 1]!.summary : '';
+};
 const reject = (id: number) => setRequestStatus(id, 'rejected');
 
 const formatRange = (start: string, end: string) => {
@@ -163,3 +276,114 @@ onMounted(() => {
   reloadVacations();
 });
 </script>
+
+<style scoped>
+.vac-admin-edit-pencil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.vac-admin-edit-pencil:hover {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg-soft);
+}
+
+.vac-admin-edit-pencil:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.vac-admin-all__search {
+  width: min(240px, 50%);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.vac-admin-all__empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.vac-admin-all__list {
+  border: 1px solid var(--border-brutal);
+  border-radius: var(--brutal-list-radius);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.vac-admin-all__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) minmax(170px, 1fr) minmax(120px, 1fr) 64px 30px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+
+.vac-admin-all__row:last-child {
+  border-bottom: none;
+}
+
+.vac-admin-all__name {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vac-admin-all__dates {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.vac-admin-all__status {
+  font-size: 0.78rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vac-admin-all__status.is-approved {
+  color: #166534;
+}
+
+.vac-admin-all__status.is-pending {
+  color: #92400e;
+}
+
+.vac-admin-all__edited {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.vac-admin-all__more {
+  margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+  .vac-admin-all__row {
+    grid-template-columns: 1fr auto 30px;
+  }
+
+  .vac-admin-all__status,
+  .vac-admin-all__edited {
+    display: none;
+  }
+}
+</style>

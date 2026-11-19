@@ -5,6 +5,7 @@ export type UserNotificationKind =
   | 'vacation_approved'
   | 'vacation_rejected'
   | 'vacation_next_stage'
+  | 'vacation_dates_changed_by_admin'
   | 'vacation_reservation_updated'
   | 'vacation_reservation_expiring'
   | 'vacation_reservation_expiring_manager'

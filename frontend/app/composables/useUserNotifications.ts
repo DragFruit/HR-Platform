@@ -7,6 +7,7 @@ export type UserNotification = {
     | 'vacation_approved'
     | 'vacation_rejected'
     | 'vacation_next_stage'
+    | 'vacation_dates_changed_by_admin'
     | 'vacation_reservation_updated'
     | 'vacation_reservation_expiring'
     | 'vacation_reservation_expiring_manager'
@@ -130,6 +131,8 @@ export function useUserNotifications() {
         return 'Отпуск отклонён';
       case 'vacation_next_stage':
         return 'Следующий этап согласования';
+      case 'vacation_dates_changed_by_admin':
+        return 'Даты отпуска изменены';
       case 'vacation_reservation_updated':
         return 'Предварительная бронь изменена';
       case 'vacation_reservation_expiring':
@@ -197,6 +200,12 @@ export function useUserNotifications() {
         return `Ваш отпуск ${period} согласован.`;
       case 'vacation_rejected':
         return `Заявка на отпуск ${period} отклонена.`;
+      case 'vacation_dates_changed_by_admin': {
+        const who = item.status_comment?.trim() || 'Администратор';
+        return item.stage_label
+          ? `${who} изменил(а) даты вашего отпуска: было ${item.stage_label}, стало ${period}.`
+          : `${who} изменил(а) даты вашего отпуска: ${period}.`;
+      }
       case 'vacation_next_stage':
         return item.stage_label
           ? `Заявка на ${period}: ${item.stage_label}.`
