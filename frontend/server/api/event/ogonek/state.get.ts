@@ -1,3 +1,4 @@
+import { ogonekTttEnterUrl, ogonekTttLeaders, syncOgonekTtt } from '../../../utils/ogonekTtt';
 import { requireVbiSession } from '../../../utils/session';
 import { getDeployAppEnv } from '../../../utils/appEnv';
 import { ogonekClock } from '../../../utils/ogonekClock';
@@ -37,6 +38,9 @@ export default defineEventHandler(async (event) => {
 
   // Файл пишем, только если игрок новый. Раньше запись шла на каждом
   // открытии экрана — полная перезапись файла со всей ёлкой и лентой.
+  // Новые партии крестиков-ноликов — в фоне, не чаще раза в минуту: медленный
+  // сайт игры не тормозит адвент, таблица догонится к следующему открытию
+  void syncOgonekTtt();
   let state = await readOgonekState();
   let player = state.players.find((p) => p.userId === session.id);
   if (!player) {
@@ -91,6 +95,18 @@ export default defineEventHandler(async (event) => {
     debugAllOpen: clock.debugAllOpen,
     submitOpen: ogonekSubmitOpen(clock),
     // Тайный Санта: регистрация до конца 11 декабря и сколько уже записалось
+    // Крестики-нолики: ссылка с токеном и таблица лидеров онлайн-партий
+    ttt: (() => {
+      const nameOf = (uid: string) => state.players.find((p) => String(p.userId) === uid)?.name;
+      const leaders = ogonekTttLeaders(state.ttt?.matches ?? [], nameOf);
+      const myIndex = leaders.findIndex((r) => r.uid === String(session.id));
+      return {
+        url: ogonekTttEnterUrl(session.id, player.name),
+        games: state.ttt?.matches.length ?? 0,
+        top: leaders.slice(0, 5).map((r) => ({ name: r.name, wins: r.wins, games: r.games, mine: r.uid === String(session.id) })),
+        me: myIndex >= 0 ? { place: myIndex + 1, wins: leaders[myIndex]!.wins, games: leaders[myIndex]!.games } : null
+      };
+    })(),
     santaOpen: clock.debugAllOpen || ogonekSantaOpen(now),
     santaCount: state.players.filter((p) => p.santa).length,
     santaCounts: {

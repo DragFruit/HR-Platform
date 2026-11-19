@@ -23,7 +23,7 @@
     <section v-else-if="day.kind === 'tictactoe'" class="og-win__body">
       <a
         class="og-btn og-win__play"
-        :href="TTT_URL"
+        :href="tttUrl || TTT_URL"
         target="_blank"
         rel="noopener"
         @click="send('ttt', {})"
@@ -365,6 +365,8 @@ const props = defineProps<{
   submitOpen: boolean;
   santaOpen?: boolean;
   santaCounts?: Record<string, number>;
+  /** Ссылка «Играть» с токеном сотрудника — так партии попадают в рейтинг. */
+  tttUrl?: string;
   player: PlayerView;
   micro: Record<string, string>;
   awaitingLabel: string;

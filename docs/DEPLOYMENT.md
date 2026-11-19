@@ -236,3 +236,8 @@ git push -u origin staging
 - [ ] Push `staging` → pipeline build OK → manual deploy → открыть тестовый URL
 - [ ] Проверка входа, отпуска, админки
 - [ ] Merge в `main` → deploy production
+
+## Огонёк: крестики-нолики
+
+- `OGONEK_TTT_SECRET` — общий секрет с сервером игры (`VIBE_TTT_SECRET` в `.env` игры на Beget). Задать на стейдже и бою, в Git не коммитить. Без него рейтинг партий не наполняется.
+- `OGONEK_TTT_URL` — адрес игры, по умолчанию `https://ultimate-tic-tac-toe.ru`.

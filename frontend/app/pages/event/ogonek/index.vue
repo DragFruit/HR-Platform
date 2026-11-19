@@ -37,7 +37,22 @@
                     <span class="og-tile__sub">{{ nextRankLabel }}</span>
                   </div>
 
-                  <div v-else-if="cell.tile === 'pulse'" class="og-tile">
+                  <!-- Лидеры онлайн-партий в крестики-нолики (окно 10) -->
+                  <div v-else-if="cell.tile === 'ttt'" class="og-tile og-tile--ttt">
+                    <span class="og-tile__k">КРЕСТИКИ-НОЛИКИ</span>
+                    <ol v-if="state.ttt.top.length" class="og-ttt">
+                      <li v-for="(r, i) in state.ttt.top" :key="i" :class="{ 'is-mine': r.mine }">
+                        <span class="og-ttt__n">{{ i + 1 }}</span>
+                        <span class="og-ttt__name">{{ r.name }}</span>
+                        <b>{{ r.wins }}</b>
+                      </li>
+                    </ol>
+                    <span v-else class="og-tile__sub">Сыграйте онлайн с коллегой — здесь появятся лидеры</span>
+                    <span v-if="state.ttt.me" class="og-tile__sub">Вы: {{ state.ttt.me.place }} место · {{ state.ttt.me.wins }} {{ plural(state.ttt.me.wins, 'победа', 'победы', 'побед') }}</span>
+                    <a class="og-tile__go og-ttt__play" :href="state.ttt.url" target="_blank" rel="noopener">Играть ↗</a>
+                  </div>
+
+                  <div v-else-if="cell.tile === 'pulse'" class="og-tile og-tile--wide">
                     <template v-if="mailbox.state.value.open && mailbox.state.value.letters.length">
                       <span class="og-tile__k">КОРОБКА С ПИСЬМАМИ</span>
                       <b class="og-tile__big">{{ mailbox.state.value.letters.length }}</b>
@@ -159,6 +174,7 @@
                   :submit-open="state.submitOpen"
                   :santa-open="state.santaOpen"
                   :santa-counts="state.santaCounts"
+                  :ttt-url="state.ttt.url"
                   :awaiting-label="state.awaitingLabel"
                   :toy-size="state.toySize"
                   :colleagues="colleagues"
@@ -248,6 +264,12 @@ type AdventState = {
   santaOpen: boolean;
   santaCount: number;
   santaCounts: Record<string, number>;
+  ttt: {
+    url: string;
+    games: number;
+    top: { name: string; wins: number; games: number; mine: boolean }[];
+    me: { place: number; wins: number; games: number } | null;
+  };
   devDay: number | null;
   devTools: boolean;
   micro: Record<string, string>;
@@ -290,17 +312,17 @@ const decor = useOgonekDecor();
 const { festive } = decor;
 const mailbox = useOgonekMailbox();
 /**
- * Сетка: 19 листков + 5 плиток статистики = ровно 4 ряда по 6.
- * Плитка встаёт в конец ряда, лента (на две клетки) замыкает последний.
+ * Сетка 6 колонок: плитка в конце каждого ряда — звание, лидеры
+ * крестиков-ноликов (сразу после окна 10), ёлка; последний ряд замыкает
+ * широкая плитка «сегодня / коробка», под ней на всю ширину живая лента.
  */
-type Cell = { key: string; day?: OgonekDayView; tile?: 'rank' | 'pulse' | 'tree' | 'feed' };
-const TILE_AFTER: Record<number, Cell['tile']> = { 5: 'rank', 10: 'pulse', 15: 'tree', 19: 'feed' };
+type Cell = { key: string; day?: OgonekDayView; tile?: 'rank' | 'pulse' | 'tree' | 'feed' | 'ttt' };
+const TILE_AFTER: Record<number, NonNullable<Cell['tile']>[]> = { 5: ['rank'], 10: ['ttt'], 15: ['tree'], 19: ['pulse', 'feed'] };
 const cells = computed<Cell[]>(() => {
   const out: Cell[] = [];
   (state.value?.days ?? []).forEach((day, i) => {
     out.push({ key: `d${day.id}`, day });
-    const tile = TILE_AFTER[i + 1];
-    if (tile) out.push({ key: `t-${tile}`, tile });
+    for (const tile of TILE_AFTER[i + 1] ?? []) out.push({ key: `t-${tile}`, tile });
   });
   return out;
 });
@@ -956,8 +978,21 @@ onBeforeUnmount(() => {
 @keyframes og-mini-bulb { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.85; } }
 @media (prefers-reduced-motion: reduce) { .og-mini-tree__bulb { animation: none; opacity: 0.5; } }
 
+.og-tile--wide { grid-column: span 2; aspect-ratio: auto; }
+
+/* Лидеры крестиков-ноликов: топ-5 по победам в онлайн-партиях */
+.og-tile--ttt { justify-content: flex-start; padding-top: 14px; }
+.og-ttt { list-style: none; margin: 2px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #f6d9d6; }
+.og-ttt li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; text-align: left; }
+.og-ttt li.is-mine { color: var(--og-gold); }
+.og-ttt__n { font-family: var(--og-pixel); font-size: 8px; color: var(--og-gold-soft); }
+.og-ttt__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.og-ttt b { font-variant-numeric: tabular-nums; color: var(--og-gold); }
+.og-ttt__play { margin-top: auto; text-decoration: none; }
+
+/* Живая лента — отдельным рядом на всю ширину под календарём */
 .og-tile--feed {
-  grid-column: span 2;
+  grid-column: 1 / -1;
   aspect-ratio: auto;
   align-items: stretch;
   justify-content: flex-start;

@@ -89,6 +89,15 @@ export type OgonekSantaDraw = {
   order: number[];
 };
 
+/** Онлайн-партия крестиков-ноликов между двумя сотрудниками (с сайта игры). */
+export type OgonekTttMatch = {
+  id: number;
+  at: string;
+  winner: 'player1' | 'player2' | 'draw';
+  p1: { uid: string; name: string };
+  p2: { uid: string; name: string };
+};
+
 export type OgonekState = {
   players: OgonekPlayer[];
   toys: OgonekToy[];
@@ -98,6 +107,8 @@ export type OgonekState = {
   letters: OgonekLetter[];
   feed: OgonekFeedItem[];
   santaDraw?: OgonekSantaDraw;
+  /** Крестики-нолики: партии и метка, с какого времени забирать новые. */
+  ttt?: { since: string; matches: OgonekTttMatch[] };
 };
 
 function emptyState(): OgonekState {
@@ -266,6 +277,22 @@ async function readState(): Promise<OgonekState> {
         at: str(s.at, 40) || new Date().toISOString()
       };
     }).filter((f) => f.id).slice(-OGONEK_FEED_LIMIT);
+    const t = raw.ttt as { since?: string; matches?: unknown[] } | undefined;
+    if (t && typeof t === 'object') {
+      state.ttt = {
+        since: str(t.since, 40),
+        matches: (Array.isArray(t.matches) ? t.matches : [])
+          .map((m) => m as Partial<OgonekTttMatch>)
+          .filter((m) => Number(m.id) > 0 && m.p1 && m.p2)
+          .map((m) => ({
+            id: Number(m.id),
+            at: str(m.at, 40),
+            winner: m.winner === 'player1' || m.winner === 'player2' ? m.winner : 'draw',
+            p1: { uid: str(m.p1!.uid, 64), name: str(m.p1!.name, 80) },
+            p2: { uid: str(m.p2!.uid, 64), name: str(m.p2!.name, 80) }
+          }))
+      };
+    }
     const d = raw.santaDraw as Partial<OgonekSantaDraw> | undefined;
     if (d && typeof d === 'object' && d.at) {
       state.santaDraw = {
