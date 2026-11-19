@@ -93,6 +93,10 @@ export default defineEventHandler(async (event) => {
     // Тайный Санта: регистрация до конца 11 декабря и сколько уже записалось
     santaOpen: clock.debugAllOpen || ogonekSantaOpen(now),
     santaCount: state.players.filter((p) => p.santa).length,
+    santaCounts: {
+      classic: state.players.filter((p) => p.santa === 'classic').length,
+      elephant: state.players.filter((p) => p.santa === 'elephant').length
+    },
     devDay: clock.devDay,
     // Панель отладки показываем только вне боя.
     devTools: getDeployAppEnv() !== 'production',
@@ -130,7 +134,7 @@ export default defineEventHandler(async (event) => {
       hat: player.hat,
       song: player.song ?? '',
       skating: Boolean(player.skating),
-      santa: Boolean(player.santa),
+      santa: player.santa ?? '',
       dresscode: player.dresscode ?? '',
       toy: toys.find((t) => t.id === player.toyId) ?? null,
       snowflake: snowflakes.find((s) => s.id === player.snowflakeId) ?? null,

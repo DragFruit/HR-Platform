@@ -59,6 +59,7 @@ const adminNav: NavItem[] = [
   { to: '/admin/employees', label: 'Сотрудники' },
   { to: '/admin/tasks', label: 'Задачи' },
   { to: '/admin/vacations', label: 'График отпусков' },
+  { to: '/admin/ogonek', label: 'Огонёк 2027' },
   { to: '/admin/how-it-looks', label: 'Как выглядит' },
   { to: '/admin/store', label: 'Магазин' },
   { to: '/admin/adaptation', label: 'Адаптация' },
@@ -180,6 +181,9 @@ export function usePlatformContext() {
     }
     if (route.path.startsWith('/event/ogonek/tree')) {
       return 'Ёлка желаний · «Огонёк 2027»';
+    }
+    if (route.path.startsWith('/event/ogonek/santa')) {
+      return 'Тайный Санта · «Огонёк 2027»';
     }
     if (route.path.startsWith('/event/ogonek')) {
       return 'Адвент «Огонёк 2027»';

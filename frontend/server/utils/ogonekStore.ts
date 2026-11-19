@@ -51,8 +51,10 @@ export type OgonekPlayer = {
   song?: string;
   /** Записался на каток (окно 5). */
   skating?: boolean;
-  /** Записался в Тайного Санту (окно 2). */
-  santa?: boolean;
+  /** Формат Тайного Санты (окно 2): классический или «Белый слон». */
+  santa?: OgonekSantaFormat;
+  /** Вишлист для классического Санты: его увидит тот, кто дарит. */
+  santaWish?: string;
   /** Выбранный образ на Огонёк (окно 8). */
   dresscode?: string;
   toyId?: string;
@@ -70,6 +72,23 @@ export type OgonekPlayer = {
   updatedAt: string;
 };
 
+export type OgonekSantaFormat = 'classic' | 'elephant';
+
+/**
+ * Жеребьёвка Тайного Санты. Делается сама после закрытия регистрации
+ * (см. ensureOgonekSantaDraw). `sig` — состав участников на момент
+ * жеребьёвки: если он поменялся (бывает только на стендах в отладке),
+ * жеребьёвка пересчитывается.
+ */
+export type OgonekSantaDraw = {
+  at: string;
+  sig: string;
+  /** Классика: кто кому дарит, userId → userId. */
+  pairs: Record<string, number>;
+  /** Белый слон: порядок ходов на вечере. */
+  order: number[];
+};
+
 export type OgonekState = {
   players: OgonekPlayer[];
   toys: OgonekToy[];
@@ -78,6 +97,7 @@ export type OgonekState = {
   thanks: OgonekThanks[];
   letters: OgonekLetter[];
   feed: OgonekFeedItem[];
+  santaDraw?: OgonekSantaDraw;
 };
 
 function emptyState(): OgonekState {
@@ -178,7 +198,9 @@ async function readState(): Promise<OgonekState> {
         hat: Boolean(src.hat),
         song: src.song ? str(src.song, 160) : undefined,
         skating: src.skating ? true : undefined,
-        santa: src.santa ? true : undefined,
+        // Старое «записался» без формата считаем классикой
+        santa: src.santa === 'elephant' ? 'elephant' : src.santa ? 'classic' : undefined,
+        santaWish: src.santaWish ? str(src.santaWish, 400) : undefined,
         dresscode: src.dresscode ? str(src.dresscode, 80) : undefined,
         toyId: src.toyId ? String(src.toyId) : undefined,
         snowflakeId: src.snowflakeId ? String(src.snowflakeId) : undefined,
@@ -244,6 +266,15 @@ async function readState(): Promise<OgonekState> {
         at: str(s.at, 40) || new Date().toISOString()
       };
     }).filter((f) => f.id).slice(-OGONEK_FEED_LIMIT);
+    const d = raw.santaDraw as Partial<OgonekSantaDraw> | undefined;
+    if (d && typeof d === 'object' && d.at) {
+      state.santaDraw = {
+        at: str(d.at, 40),
+        sig: str(d.sig, 4000),
+        pairs: d.pairs && typeof d.pairs === 'object' ? Object.fromEntries(Object.entries(d.pairs).map(([k, v]) => [k, Number(v)])) : {},
+        order: Array.isArray(d.order) ? d.order.map(Number).filter(Number.isFinite) : []
+      };
+    }
     return state;
   } catch {
     return emptyState();
@@ -314,4 +345,43 @@ export function pushOgonekFeed(
   if (state.feed.length > OGONEK_FEED_LIMIT) {
     state.feed.splice(0, state.feed.length - OGONEK_FEED_LIMIT);
   }
+}
+
+
+function shuffled<T>(list: T[]): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
+function santaSig(state: OgonekState): string {
+  const ids = (f: OgonekSantaFormat) => state.players.filter((p) => p.santa === f).map((p) => p.userId).sort((a, b) => a - b).join(',');
+  return `c:${ids('classic')}|e:${ids('elephant')}`;
+}
+
+/**
+ * Жеребьёвка после закрытия регистрации. Классика — один круг по
+ * перемешанному списку: каждый дарит следующему, себе никто. «Белый слон» —
+ * перемешанный порядок ходов. Вызывать только когда регистрация закрыта.
+ * Возвращает актуальную жеребьёвку; пишет файл, только если её не было
+ * или состав участников поменялся.
+ */
+export async function ensureOgonekSantaDraw(): Promise<OgonekSantaDraw> {
+  const current = await readState();
+  if (current.santaDraw && current.santaDraw.sig === santaSig(current)) return current.santaDraw;
+  return mutateOgonek((state) => {
+    const sig = santaSig(state);
+    if (state.santaDraw && state.santaDraw.sig === sig) return state.santaDraw;
+    const classic = shuffled(state.players.filter((p) => p.santa === 'classic').map((p) => p.userId));
+    const pairs: Record<string, number> = {};
+    if (classic.length >= 2) {
+      classic.forEach((id, i) => { pairs[String(id)] = classic[(i + 1) % classic.length]!; });
+    }
+    const order = shuffled(state.players.filter((p) => p.santa === 'elephant').map((p) => p.userId));
+    state.santaDraw = { at: new Date().toISOString(), sig, pairs, order };
+    return state.santaDraw;
+  });
 }

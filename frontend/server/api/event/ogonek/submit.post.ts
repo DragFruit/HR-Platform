@@ -12,7 +12,8 @@ import {
   OGONEK_RECIPE_MAX,
   OGONEK_THANKS_MAX,
   OGONEK_TOY_SIZE,
-  OGONEK_WISH_MAX
+  OGONEK_WISH_MAX,
+  type OgonekSantaFormat
 } from '../../../utils/ogonekStore';
 import { ogonekSubmitOpen, requireUnlockedDay } from '../../../utils/ogonekGate';
 import { readEmployees } from '../../../utils/employeesStore';
@@ -25,6 +26,8 @@ import { isOgonekFlakeQuarter } from '../../../../app/events/ogonek/snowflake';
 type Body = {
   kind?: string;
   on?: boolean;
+  /** Формат Тайного Санты: classic | elephant, пусто — выйти. */
+  format?: string;
   text?: string;
   title?: string;
   wish?: string;
@@ -41,6 +44,7 @@ type Body = {
 const DAY_OF: Record<string, number> = {
   plug: 1,
   santa: 2,
+  santaWish: 2,
   hat: 3,
   skating: 5,
   toy: 6,
@@ -98,6 +102,7 @@ export default defineEventHandler(async (event) => {
       player.hat = false;
       delete player.song;
       delete player.santa;
+      delete player.santaWish;
       delete player.skating;
       delete player.dresscode;
       return { ok: true };
@@ -138,18 +143,28 @@ export default defineEventHandler(async (event) => {
         return { ok: true, done: player.done };
       }
       case 'santa': {
-        // Записаться и передумать можно только до конца 11 декабря
+        // Выбрать формат, поменять его или выйти можно только до конца 11 декабря
         if (!clock.debugAllOpen && !ogonekSantaOpen(clock.now)) {
           throw createError({ statusCode: 403, statusMessage: 'Регистрация в Тайном Санте закрыта 11 декабря' });
         }
-        const next = Boolean(body.on);
-        const changed = next !== Boolean(player.santa);
-        player.santa = next || undefined;
+        const raw = String(body.format ?? '');
+        const next: OgonekSantaFormat | undefined = raw === 'classic' || raw === 'elephant' ? raw : undefined;
+        const changed = next !== player.santa;
+        player.santa = next;
         if (next) {
-          if (changed) pushOgonekFeed(state, 'santa', 'теперь в Тайном Санте', who);
+          if (changed) {
+            pushOgonekFeed(state, 'santa', next === 'classic' ? 'теперь в Тайном Санте' : 'несёт подарок «Белому слону»', who);
+          }
           done();
         }
-        return { ok: true, santa: Boolean(player.santa) };
+        return { ok: true, santa: player.santa ?? '' };
+      }
+      case 'santaWish': {
+        if (!clock.debugAllOpen && !ogonekSantaOpen(clock.now)) {
+          throw createError({ statusCode: 403, statusMessage: 'Вишлист можно менять до 11 декабря' });
+        }
+        player.santaWish = String(body.text || '').trim().slice(0, 400) || undefined;
+        return { ok: true, santaWish: player.santaWish ?? '' };
       }
       case 'hat': {
         player.hat = Boolean(body.on);

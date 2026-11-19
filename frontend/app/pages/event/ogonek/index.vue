@@ -158,7 +158,7 @@
                   :micro="state.micro"
                   :submit-open="state.submitOpen"
                   :santa-open="state.santaOpen"
-                  :santa-count="state.santaCount"
+                  :santa-counts="state.santaCounts"
                   :awaiting-label="state.awaitingLabel"
                   :toy-size="state.toySize"
                   :colleagues="colleagues"
@@ -230,7 +230,7 @@ type PlayerView = {
   hat: boolean;
   song: string;
   skating: boolean;
-  santa: boolean;
+  santa: string;
   dresscode: string;
   toy: { id: string; pixels: string[]; wish: string; x: number; y: number } | null;
   snowflake: { id: string; pixels: string[] } | null;
@@ -247,6 +247,7 @@ type AdventState = {
   submitOpen: boolean;
   santaOpen: boolean;
   santaCount: number;
+  santaCounts: Record<string, number>;
   devDay: number | null;
   devTools: boolean;
   micro: Record<string, string>;
