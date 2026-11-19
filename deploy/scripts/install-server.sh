@@ -18,7 +18,8 @@ fi
 
 echo "→ nginx"
 apt-get update
-apt-get install -y nginx rsync
+# zip/unzip: сборка «Скачать заявление» (docx) — server/utils/vacationApplicationDocx.ts
+apt-get install -y nginx rsync zip unzip
 
 echo "→ пользователь ${DEPLOY_USER}"
 if ! id "${DEPLOY_USER}" &>/dev/null; then
