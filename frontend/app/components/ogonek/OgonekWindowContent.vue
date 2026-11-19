@@ -39,6 +39,15 @@
 
     <!-- 5. Каток -->
     <section v-else-if="day.kind === 'skating'" class="og-win__body">
+      <!-- Фото катка в пиксельном стиле: старая фотокарточка, увеличение ровно ×3 -->
+      <figure class="og-win__photo">
+        <img
+          src="/events/ogonek/skating/katok.png"
+          width="540"
+          height="318"
+          alt="Каток вечером: лёд в сиреневой подсветке, в центре ёлка, вокруг катаются люди"
+        >
+      </figure>
       <button type="button" class="og-btn" :disabled="busy" @click="send('skating', { on: !player.skating })">
         {{ player.skating ? 'Я передумал кататься' : 'Я катаюсь' }}
       </button>
@@ -554,6 +563,24 @@ watch(
 
 .og-win__note { margin: 0; font-size: 15px; color: var(--og-muted); }
 .og-win__done { margin: 0; color: var(--og-green); font-weight: 700; }
+
+.og-win__photo {
+  margin: 4px 0 10px;
+  align-self: flex-start;
+  /* Ширина явная: в сжимающемся по содержимому блоке проценты схлопываются в ноль */
+  box-sizing: border-box;
+  width: min(100%, 560px);
+  padding: 10px 10px 24px;
+  background: var(--og-paper);
+  box-shadow: 6px 6px 0 var(--og-shade);
+  transform: rotate(-1.2deg);
+}
+.og-win__photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
 .og-win__error { margin: 0; color: var(--og-gold-soft); }
 
 .og-win__sub {
