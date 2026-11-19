@@ -45,6 +45,7 @@ const DAY_OF: Record<string, number> = {
   plug: 1,
   santa: 2,
   santaWish: 2,
+  ttt: 10,
   hat: 3,
   skating: 5,
   toy: 6,
@@ -165,6 +166,11 @@ export default defineEventHandler(async (event) => {
         }
         player.santaWish = String(body.text || '').trim().slice(0, 400) || undefined;
         return { ok: true, santaWish: player.santaWish ?? '' };
+      }
+      case 'ttt': {
+        // Открыл игру — окно засчитано. Результаты партий сайт пока не отдаёт.
+        done();
+        return { ok: true };
       }
       case 'hat': {
         player.hat = Boolean(body.on);

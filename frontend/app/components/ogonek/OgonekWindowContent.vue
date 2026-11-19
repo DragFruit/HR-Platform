@@ -19,6 +19,18 @@
       <NuxtLink class="og-btn og-btn--ghost og-win__santa-link" to="/event/ogonek/santa">Страница Тайного Санты →</NuxtLink>
     </section>
 
+    <!-- 10. Крестики-нолики: игра живёт на своём сайте, открываем в новой вкладке -->
+    <section v-else-if="day.kind === 'tictactoe'" class="og-win__body">
+      <a
+        class="og-btn og-win__play"
+        :href="TTT_URL"
+        target="_blank"
+        rel="noopener"
+        @click="send('ttt', {})"
+      >Играть в крестики-нолики ↗</a>
+      <p class="og-win__note">Игра откроется в новой вкладке.</p>
+    </section>
+
     <section v-else-if="day.kind === 'avatar'" class="og-win__body">
       <div class="og-win__col">
         <button type="button" class="og-btn" :disabled="busy" @click="send('hat', { on: !player.hat })">
@@ -383,6 +395,8 @@ const readable = computed(() => Boolean(props.day.awaiting) || props.day.kind ==
 
 /** Окна, где что-то добавляют. Вилка, колпак и окна для чтения не закрываются. */
 const CLOSING_KINDS = ['skating', 'toy', 'dresscode', 'snowflake', 'thanks', 'letter', 'olivier', 'final'];
+const TTT_URL = 'https://ultimate-tic-tac-toe.ru/';
+
 const locked = computed(() => !props.submitOpen && CLOSING_KINDS.includes(props.day.kind));
 
 const wish = ref(props.player.toy?.wish ?? '');
@@ -563,6 +577,7 @@ watch(
 
 .og-win__note { margin: 0; font-size: 15px; color: var(--og-muted); }
 .og-win__santa-link { align-self: flex-start; text-decoration: none; }
+.og-win__play { align-self: flex-start; text-decoration: none; }
 .og-win__done { margin: 0; color: var(--og-green); font-weight: 700; }
 
 .og-win__photo {
