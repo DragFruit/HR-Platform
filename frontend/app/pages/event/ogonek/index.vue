@@ -17,6 +17,15 @@
             <OgonekGarlandBar ref="garlandRef" :days="state.days" :power="festive" />
 
             <main ref="stageRef" class="og-stage">
+              <!-- Вызов в крестики-нолики: кто-то ждёт соперника — видно всем сразу -->
+              <div v-if="tttCall" class="og-call" role="status" aria-live="polite">
+                <span class="og-call__dot" aria-hidden="true" />
+                <span class="og-call__k">ВЫЗОВ</span>
+                <span class="og-call__t">
+                  <b>{{ tttCall.name }}</b> ждёт соперника в крестики-нолики<template v-if="tttWaiting.length > 1"> · и ещё {{ tttWaiting.length - 1 }}</template>
+                </span>
+                <NuxtLink class="og-btn og-call__btn" :to="`/event/ogonek/ttt?join=${tttCall.code}`">Принять вызов</NuxtLink>
+              </div>
               <div class="og-stage__head">
                 <h2>ДЕКАБРЬ 2026</h2>
               </div>
@@ -38,8 +47,11 @@
                   </div>
 
                   <!-- Лидеры онлайн-партий в крестики-нолики (окно 10) -->
-                  <div v-else-if="cell.tile === 'ttt'" class="og-tile og-tile--ttt">
+                  <div v-else-if="cell.tile === 'ttt'" class="og-tile og-tile--ttt" :class="{ 'is-call': tttCall }">
                     <span class="og-tile__k">КРЕСТИКИ-НОЛИКИ</span>
+                    <NuxtLink v-if="tttCall" class="og-ttt__call" :to="`/event/ogonek/ttt?join=${tttCall.code}`">
+                      {{ tttWaiting.length }} {{ plural(tttWaiting.length, 'ждёт', 'ждут', 'ждут') }} соперника →
+                    </NuxtLink>
                     <ol v-if="state.ttt.top.length" class="og-ttt">
                       <li v-for="(r, i) in state.ttt.top" :key="i" :class="{ 'is-mine': r.mine }">
                         <span class="og-ttt__n">{{ i + 1 }}</span>
@@ -627,6 +639,20 @@ async function onSubmit(kind: string, payload: Record<string, unknown>) {
   }
 }
 
+/* ------------------------------------------- вызов в крестики-нолики */
+
+type TttWaiting = { code: string; name: string; department: string; createdAt: string };
+/** Коллеги, которые ждут соперника. Обновляется вместе с лентой (5 с). */
+const tttWaiting = ref<TttWaiting[]>([]);
+/** Показываем вызов тем, у кого окно с игрой уже открыто: иначе войти нельзя. */
+const tttCall = computed(() => {
+  const s = state.value;
+  if (!s || !tttWaiting.value.length) return null;
+  const day = s.days.find((d) => d.kind === 'tictactoe');
+  if (!day || !s.player.opened.includes(day.id)) return null;
+  return tttWaiting.value[0]!;
+});
+
 /* ------------------------------------------------------- живая доска */
 
 const online = ref(0);
@@ -636,9 +662,10 @@ const freshIds = ref(new Set<string>());
 
 async function refreshFeed() {
   try {
-    const res = await $fetch<{ feed: OgonekFeedItem[]; online: number }>('/api/event/ogonek/feed');
+    const res = await $fetch<{ feed: OgonekFeedItem[]; online: number; tttWaiting?: TttWaiting[] }>('/api/event/ogonek/feed');
     liveOk.value = true;
     online.value = res.online;
+    tttWaiting.value = res.tttWaiting ?? [];
     if (!state.value) return;
     const known = new Set(state.value.feed.map((f) => f.id));
     const fresh = res.feed.filter((f) => !known.has(f.id)).map((f) => f.id);
@@ -979,6 +1006,34 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) { .og-mini-tree__bulb { animation: none; opacity: 0.5; } }
 
 .og-tile--wide { grid-column: span 2; aspect-ratio: auto; }
+
+/* Вызов в крестики-нолики: золотая полоса над календарём, пульсирует точка */
+.og-call {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(255, 207, 74, 0.22), rgba(255, 207, 74, 0.08));
+  border: 2px solid var(--og-gold);
+  box-shadow: 4px 4px 0 #6b2a00;
+  color: #fff3e6;
+}
+.og-call__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--og-gold); box-shadow: 0 0 0 0 rgba(255, 207, 74, 0.7); animation: og-call-pulse 1.4s ease-out infinite; }
+@keyframes og-call-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 207, 74, 0.7); } 100% { box-shadow: 0 0 0 12px rgba(255, 207, 74, 0); } }
+.og-call__k { font-family: var(--og-pixel); font-size: 9px; letter-spacing: 0.08em; color: var(--og-gold); }
+.og-call__t { flex: 1 1 260px; font-size: 16px; }
+.og-call__t b { color: var(--og-gold); }
+.og-call__btn { text-decoration: none; }
+
+.og-tile--ttt.is-call { border-color: var(--og-gold); border-style: solid; animation: og-tile-call 1.6s ease-in-out infinite; }
+@keyframes og-tile-call { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 207, 74, 0); } 50% { box-shadow: 0 0 18px 2px rgba(255, 207, 74, 0.45); } }
+.og-ttt__call { font-family: var(--og-pixel); font-size: 8px; line-height: 1.5; color: #3a2600; background: var(--og-gold); padding: 6px 8px; text-decoration: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .og-call__dot, .og-tile--ttt.is-call { animation: none; }
+}
 
 /* Лидеры крестиков-ноликов: топ-5 по победам в онлайн-партиях */
 .og-tile--ttt { justify-content: flex-start; padding-top: 14px; }

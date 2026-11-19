@@ -168,6 +168,19 @@ export async function tttActiveRoom(uid: number): Promise<TttRoom | null> {
   });
 }
 
+/**
+ * Кто ждёт соперника — только чтение, без записи файла: это опрашивает
+ * лента адвента раз в 5 секунд у каждого. Просроченные комнаты отсекаем
+ * по времени, а закроются они при следующей записи.
+ */
+export async function tttWaitingRead(uid: number) {
+  const s = await readStore();
+  const now = Date.now();
+  return s.rooms
+    .filter((r) => r.status === 'waiting' && r.p1.uid !== uid && (!r.expiresAt || Date.parse(r.expiresAt) > now))
+    .map((r) => ({ code: r.code, name: r.p1.name, department: r.p1.department, createdAt: r.createdAt }));
+}
+
 /** Открытые комнаты коллег — можно войти одним кликом, без кода. */
 export async function tttLobby(uid: number) {
   return mutate(async (s) => {
@@ -211,6 +224,10 @@ export async function tttCreate(me: TttPlayer): Promise<TttRoom> {
       finishedAt: null
     };
     s.rooms.push(room);
+    // Все в адвенте видят вызов в ленте «Прямо сейчас»
+    await mutateOgonek((st) => {
+      pushOgonekFeed(st, 'ttt', 'ищет соперника в крестики-нолики', { name: me.name, department: me.department });
+    });
     return room;
   });
 }

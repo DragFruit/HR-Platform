@@ -14,6 +14,17 @@
       <main class="ogt3__main">
         <!-- Меню: онлайн или бот -->
         <template v-if="mode === 'menu'">
+          <!-- Вызовы: коллеги ждут соперника — первым делом и заметно -->
+          <section v-if="lobby.length" class="ogt3__card ogt3__calls" role="status" aria-live="polite">
+            <h2 class="ogt3__h"><span class="ogt3__pulse" aria-hidden="true" /> Вас ждут</h2>
+            <ul>
+              <li v-for="r in lobby" :key="r.code">
+                <span><b>{{ r.name }}</b><i v-if="r.department"> · {{ r.department }}</i> ждёт соперника</span>
+                <button type="button" class="og-btn" :disabled="busy" @click="joinRoom(r.code)">Принять вызов</button>
+              </li>
+            </ul>
+          </section>
+
           <section class="ogt3__card">
             <h2 class="ogt3__h">Онлайн с коллегой</h2>
             <p class="ogt3__muted">Победы идут в таблицу лидеров адвента. На ход — {{ TURN }} секунд.</p>
@@ -23,15 +34,6 @@
                 <input v-model="code" class="ogt3__input" maxlength="6" placeholder="КОД" aria-label="Код комнаты" />
                 <button type="submit" class="og-btn og-btn--ghost" :disabled="busy || code.trim().length !== 6">Войти</button>
               </form>
-            </div>
-            <div v-if="lobby.length" class="ogt3__lobby">
-              <p class="ogt3__label">Ждут соперника</p>
-              <ul>
-                <li v-for="r in lobby" :key="r.code">
-                  <span>{{ r.name }}<i v-if="r.department"> · {{ r.department }}</i></span>
-                  <button type="button" class="og-btn og-btn--ghost ogt3__small-btn" :disabled="busy" @click="joinRoom(r.code)">Играть</button>
-                </li>
-              </ul>
             </div>
           </section>
 
@@ -161,6 +163,9 @@ useHead({
     }
   ]
 });
+
+const route = useRoute();
+const router = useRouter();
 
 const TURN = 30;
 const DIFFS: { id: TttDifficulty; label: string }[] = [
@@ -387,7 +392,13 @@ async function pollRoom() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Пришли по «Принять вызов» с адвента — сразу садимся в комнату
+  const join = String(route.query.join ?? '').trim();
+  if (join.length === 6) {
+    await joinRoom(join);
+    void router.replace({ query: {} });
+  }
   void loadHome();
   poll = setInterval(() => {
     if (mode.value === 'online') void pollRoom();
@@ -447,10 +458,14 @@ onBeforeUnmount(() => {
   background: var(--og-paper, #f3efe9);
   color: #2a1216;
 }
-.ogt3__lobby ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.ogt3__lobby li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 15px; }
-.ogt3__lobby i { font-style: normal; color: var(--og-muted); }
-.ogt3__small-btn { padding: 6px 10px; }
+.ogt3__calls { border: 2px solid var(--og-gold); background: linear-gradient(90deg, rgba(255, 207, 74, 0.2), rgba(255, 207, 74, 0.06)); box-shadow: 4px 4px 0 #6b2a00; }
+.ogt3__calls ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ogt3__calls li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 16px; }
+.ogt3__calls b { color: var(--og-gold); }
+.ogt3__calls i { font-style: normal; color: var(--og-muted); }
+.ogt3__pulse { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: var(--og-gold); animation: ogt3-pulse 1.4s ease-out infinite; vertical-align: 1px; }
+@keyframes ogt3-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 207, 74, 0.7); } 100% { box-shadow: 0 0 0 10px rgba(255, 207, 74, 0); } }
+@media (prefers-reduced-motion: reduce) { .ogt3__pulse { animation: none; } }
 
 .ogt3__rules { width: 100%; font-size: 14px; color: var(--og-muted); }
 .ogt3__rules summary { cursor: pointer; color: #f6d9d6; font-weight: 700; }

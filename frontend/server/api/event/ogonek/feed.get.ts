@@ -2,6 +2,7 @@ import { requireVbiSession } from '../../../utils/session';
 import { ogonekClock } from '../../../utils/ogonekClock';
 import { readOgonekState } from '../../../utils/ogonekStore';
 import { demoFeed } from '../../../utils/ogonekDemo';
+import { tttWaitingRead } from '../../../utils/ogonekTtt';
 
 /**
  * Кто сейчас на странице адвента: страница опрашивает ленту каждые
@@ -27,5 +28,7 @@ export default defineEventHandler(async (event) => {
   const feed = [...state.feed, ...demoFeed(now)]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 30);
-  return { feed, online, serverNow: now.toISOString() };
+  // Кто ждёт соперника в крестики-нолики — баннер вызова на адвенте
+  const tttWaiting = await tttWaitingRead(session.id);
+  return { feed, online, tttWaiting, serverNow: now.toISOString() };
 });
