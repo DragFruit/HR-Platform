@@ -1,89 +1,182 @@
 <template>
   <div class="ogd">
     <div class="ogd__toolbar">
-      <p v-if="s" class="ogd__summary">
-        Заходили {{ s.entered }} / {{ s.employees }} · прошли все 19 окон {{ s.allDone }}
-        <template v-if="s.todayId"> · сегодня (окно {{ s.todayId }}) открыли {{ s.openedToday }}</template>
-      </p>
-      <button type="button" class="button ghost ogd__refresh" :disabled="loading" @click="load">Обновить</button>
+      <h1 class="ogd__h1">Огонёк 2027 · статистика</h1>
+      <div class="ogd__actions">
+        <NuxtLink class="button ghost ogd__btn" to="/admin/ogonek-santa">Тайный Санта →</NuxtLink>
+        <button type="button" class="button ghost ogd__btn" :disabled="loading" @click="load">Обновить</button>
+      </div>
     </div>
 
     <p v-if="error" class="vac-emp-error">{{ error }}</p>
 
     <template v-if="s">
-      <!-- Итоги по артефактам ивента -->
-      <ul class="ogd__tiles">
-        <li><b>{{ s.plugged }}</b><span>вилка в розетке</span></li>
-        <li><b>{{ s.santaClassic }}</b><span>Тайный Санта · классика</span></li>
-        <li><b>{{ s.santaElephant }}</b><span>Белый слон</span></li>
-        <li><b>{{ s.hats }}</b><span>в колпаке</span></li>
-        <li><b>{{ s.skating }}</b><span>на каток</span></li>
-        <li><b>{{ s.toys }}</b><span>игрушек на ёлке</span></li>
-        <li><b>{{ s.snowflakes }}</b><span>снежинок</span></li>
-        <li><b>{{ s.thanks }}</b><span>открыток «спасибо»</span></li>
-        <li><b>{{ s.letters }}</b><span>писем себе</span></li>
-        <li><b>{{ s.recipes }}</b><span>рецептов · {{ s.recipeVotes }} голосов</span></li>
+      <!-- Главное: охват -->
+      <ul class="ogd__kpis">
+        <li>
+          <b>{{ s.players }}</b>
+          <span>зашли в ивент <i>из {{ s.employees }} сотрудников</i></span>
+        </li>
+        <li>
+          <b>{{ s.todayId ? s.openedToday : '—' }}</b>
+          <span>
+            <template v-if="s.todayId">открыли сегодняшнее окно <i>№{{ s.todayId }}</i></template>
+            <template v-else>сегодня окна нет</template>
+          </span>
+        </li>
+        <li>
+          <b>{{ s.allDone }}</b>
+          <span>прошли все 19 окон</span>
+        </li>
+        <li>
+          <b>{{ s.plugged }}</b>
+          <span>включили новогодний дизайн</span>
+        </li>
       </ul>
 
-      <div class="ogd__mid">
-        <!-- Воронка по окнам: открыли / выполнили -->
+      <!-- Звания -->
+      <section class="ogd__block">
+        <h2 class="ogd__h2">Звания</h2>
+        <ul class="ogd__ranks">
+          <li v-for="r in ranks" :key="r.title">
+            <OgonekSprite class="ogd__rank-art" :rows="ogonekRankArt(r.title)" :width="40" />
+            <b>{{ r.count }}</b>
+            <span>{{ r.title }}<i> · от {{ r.from }} окон</i></span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Карточки по окнам: число и список, кто -->
+      <section class="ogd__cards">
+        <article class="ogd__card">
+          <header><b>{{ s.santaClassic + s.santaElephant }}</b><span>в Тайном Санте</span></header>
+          <p class="ogd__sub">классика {{ s.santaClassic }} · Белый слон {{ s.santaElephant }}</p>
+          <details v-if="lists.santaClassic.length"><summary>Классика</summary><PeopleList :people="lists.santaClassic" /></details>
+          <details v-if="lists.santaElephant.length"><summary>Белый слон</summary><PeopleList :people="lists.santaElephant" /></details>
+          <NuxtLink class="ogd__more" to="/admin/ogonek-santa">Пары, вишлисты, порядок ходов →</NuxtLink>
+        </article>
+
+        <article class="ogd__card">
+          <header><b>{{ s.skating }}</b><span>идут на каток</span></header>
+          <details v-if="lists.skating.length"><summary>Кто</summary><PeopleList :people="lists.skating" /></details>
+        </article>
+
+        <article class="ogd__card ogd__card--wide">
+          <header><b>{{ s.recipes }}</b><span>рецептов оливье · {{ s.recipeVotes }} голосов</span></header>
+          <details v-for="r in lists.recipes" :key="r.title + r.name">
+            <summary>{{ r.title || 'Без названия' }} — {{ r.name }} <i>· {{ r.votes }} {{ votesWord(r.votes) }}</i></summary>
+            <p class="ogd__text">{{ r.text }}</p>
+          </details>
+        </article>
+
+        <article class="ogd__card">
+          <header><b>{{ s.plugged }}</b><span>включили новогодний дизайн</span></header>
+          <details v-if="lists.plugged.length"><summary>Кто</summary><PeopleList :people="lists.plugged" /></details>
+        </article>
+
+        <article class="ogd__card">
+          <header><b>{{ s.hats }}</b><span>в колпаке на аватарке</span></header>
+          <details v-if="lists.hats.length"><summary>Кто</summary><PeopleList :people="lists.hats" /></details>
+        </article>
+
+        <article class="ogd__card">
+          <header><b>{{ dressTotal }}</b><span>выбрали образ на Огонёк</span></header>
+          <details v-for="[look, n] in dresscodeRows" :key="look">
+            <summary>{{ look }} <i>· {{ n }}</i></summary>
+            <PeopleList :people="lists.dresscode[look] ?? []" />
+          </details>
+        </article>
+
+        <article class="ogd__card ogd__card--wide">
+          <header><b>{{ s.toys }}</b><span>игрушек на ёлке желаний</span></header>
+          <details v-if="lists.toys.length">
+            <summary>Пожелания</summary>
+            <ul class="ogd__wishes">
+              <li v-for="(t, i) in lists.toys" :key="i">«{{ t.wish }}» <i>— {{ t.name }}</i></li>
+            </ul>
+          </details>
+        </article>
+
+        <article class="ogd__card">
+          <header><b>{{ s.snowflakes }}</b><span>снежинок в метели</span></header>
+        </article>
+        <article class="ogd__card">
+          <header><b>{{ s.thanks }}</b><span>открыток «спасибо»</span></header>
+          <p class="ogd__sub">анонимные: кто отправил, не храним в отчёте</p>
+        </article>
+        <article class="ogd__card">
+          <header><b>{{ s.letters }}</b><span>писем себе</span></header>
+          <p class="ogd__sub">запечатаны до 30 июня</p>
+        </article>
+      </section>
+
+      <!-- Воронка по окнам -->
+      <section class="ogd__block">
+        <h2 class="ogd__h2">По окнам</h2>
         <table class="ogd__table ogd__days">
           <thead>
             <tr><th>Окно</th><th>Открыли</th><th>Выполнили</th></tr>
           </thead>
           <tbody>
-            <tr v-for="d in byDay" :key="d.id">
+            <tr v-for="d in byDay" :key="d.id" :class="{ 'is-today': d.id === s.todayId }">
               <td>{{ d.id }}. {{ d.title }}</td>
               <td>{{ d.opened }}</td>
               <td>{{ d.done }}</td>
             </tr>
           </tbody>
         </table>
+      </section>
+    </template>
 
-        <table v-if="dresscodeRows.length" class="ogd__table ogd__dress">
+    <section class="ogd__block">
+      <h2 class="ogd__h2">Все сотрудники</h2>
+      <div v-if="!loading && !rows.length" class="muted">Нет сотрудников в справочнике</div>
+      <div v-else class="ogd__cols">
+        <table v-for="(col, ci) in columns" :key="ci" class="ogd__table">
           <thead>
-            <tr><th>Образ на Огонёк</th><th>Выбрали</th></tr>
+            <tr>
+              <th>ФИО</th>
+              <th>Окон</th>
+              <th>Огоньков</th>
+              <th>Санта</th>
+            </tr>
           </thead>
           <tbody>
-            <tr v-for="[name, n] in dresscodeRows" :key="name">
-              <td>{{ name }}</td>
-              <td>{{ n }}</td>
+            <tr v-for="row in col" :key="row.employeeId" :class="{ 'is-idle': !row.entered }">
+              <td>{{ row.name }}</td>
+              <td>{{ row.opened }}</td>
+              <td>{{ row.done }}</td>
+              <td>{{ SANTA_LABEL[row.santa] ?? '—' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-    </template>
-
-    <div v-if="!loading && !rows.length" class="muted">Нет сотрудников в справочнике</div>
-
-    <div v-else class="ogd__cols">
-      <table v-for="(col, ci) in columns" :key="ci" class="ogd__table">
-        <thead>
-          <tr>
-            <th>ФИО</th>
-            <th>Окон</th>
-            <th>Огоньков</th>
-            <th>Санта</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in col" :key="row.employeeId" :class="{ 'is-idle': !row.entered }">
-            <td>{{ row.name }}</td>
-            <td>{{ row.opened }}</td>
-            <td>{{ row.done }}</td>
-            <td>{{ SANTA_LABEL[row.santa] ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
  * Статистика «Огонька 2027» для админа — по образцу статистики гонки
- * Pit Stop: итоги, воронка по окнам и все сотрудники в три колонки.
+ * Pit Stop: охват, звания, карточки по окнам со списками, воронка и все
+ * сотрудники. Подробности Тайного Санты — на /admin/ogonek-santa.
  */
+import type { PropType } from 'vue';
+import { ogonekRankArt } from '~/events/ogonek/rankArt';
+
+type Person = { name: string; department: string };
+
+const PeopleList = defineComponent({
+  props: { people: { type: Array as PropType<Person[]>, required: true } },
+  setup(props) {
+    return () =>
+      h(
+        'ul',
+        { class: 'ogd__people' },
+        props.people.map((p) => h('li', [p.name, p.department ? h('i', ` · ${p.department}`) : null]))
+      );
+  }
+});
 
 type Row = {
   employeeId: number;
@@ -116,6 +209,17 @@ type Summary = {
   recipeVotes: number;
 };
 
+type Lists = {
+  plugged: Person[];
+  hats: Person[];
+  skating: Person[];
+  santaClassic: Person[];
+  santaElephant: Person[];
+  dresscode: Record<string, Person[]>;
+  recipes: { title: string; text: string; name: string; department: string; votes: number }[];
+  toys: { name: string; department: string; wish: string }[];
+};
+
 const SANTA_LABEL: Record<string, string> = { classic: 'классика', elephant: 'слон' };
 const COLS = 3;
 
@@ -123,10 +227,21 @@ const rows = ref<Row[]>([]);
 const s = ref<Summary | null>(null);
 const byDay = ref<{ id: number; title: string; opened: number; done: number }[]>([]);
 const dresscode = ref<Record<string, number>>({});
+const ranks = ref<{ title: string; from: number; count: number }[]>([]);
+const lists = ref<Lists>({ plugged: [], hats: [], skating: [], santaClassic: [], santaElephant: [], dresscode: {}, recipes: [], toys: [] });
 const error = ref('');
 const loading = ref(false);
 
 const dresscodeRows = computed(() => Object.entries(dresscode.value).sort((a, b) => b[1] - a[1]));
+const dressTotal = computed(() => dresscodeRows.value.reduce((n, [, c]) => n + c, 0));
+
+function votesWord(n: number) {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return 'голос';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'голоса';
+  return 'голосов';
+}
 
 const columns = computed(() => {
   const list = rows.value;
@@ -143,11 +258,15 @@ async function load() {
       summary: Summary;
       byDay: typeof byDay.value;
       dresscode: Record<string, number>;
+      ranks: typeof ranks.value;
+      lists: Lists;
       rows: Row[];
     }>('/api/admin/ogonek-dashboard');
     s.value = data.summary;
     byDay.value = data.byDay;
     dresscode.value = data.dresscode;
+    ranks.value = data.ranks;
+    lists.value = data.lists;
     rows.value = data.rows;
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Ошибка загрузки';
@@ -162,47 +281,79 @@ onMounted(load);
 <style scoped>
 .ogd {
   box-sizing: border-box;
-  padding: 8px 12px 16px;
+  padding: 8px 12px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
-.ogd__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.ogd__summary { margin: 0; font-size: 0.85rem; }
-.ogd__refresh { padding: 4px 10px; font-size: 0.8rem; }
+.ogd__toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ogd__h1 { margin: 0; font-size: 1.1rem; }
+.ogd__actions { display: flex; gap: 8px; }
+.ogd__btn { padding: 4px 12px; font-size: 0.8rem; text-decoration: none; }
 
-.ogd__tiles {
+.ogd__kpis {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.ogd__kpis li,
+.ogd__card {
+  border: 2px solid var(--border-brutal);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  padding: 10px 12px;
+}
+.ogd__kpis li { display: flex; flex-direction: column; gap: 2px; }
+.ogd__kpis b { font-size: 1.8rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ogd__kpis span { font-size: 0.8rem; color: var(--text-muted); }
+.ogd__kpis i, .ogd__card i, .ogd__ranks i { font-style: normal; color: var(--text-soft); }
+
+.ogd__block { display: flex; flex-direction: column; gap: 8px; }
+.ogd__h2 { margin: 0; font-size: 0.95rem; }
+
+.ogd__ranks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
 }
-.ogd__tiles li {
+.ogd__ranks li {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 8px 6px;
   border: 2px solid var(--border-brutal);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--bg-surface);
+  font-size: 0.72rem;
 }
-.ogd__tiles b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
-.ogd__tiles span { font-size: 0.75rem; color: var(--text-muted); }
+.ogd__ranks b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
 
-.ogd__mid {
+.ogd__cards {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   align-items: start;
 }
+.ogd__card { display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+.ogd__card--wide { grid-column: span 2; }
+.ogd__card header { display: flex; align-items: baseline; gap: 8px; }
+.ogd__card header b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.ogd__card header span { color: var(--text-muted); }
+.ogd__sub { margin: 0; color: var(--text-soft); }
+.ogd__card details summary { cursor: pointer; font-weight: 600; padding: 2px 0; }
+.ogd__text { margin: 4px 0 6px; white-space: pre-line; color: var(--text-muted); }
+.ogd__more { font-weight: 600; color: var(--primary); text-decoration: none; }
+.ogd__wishes { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.ogd :deep(.ogd__people) { margin: 4px 0 0; padding-left: 18px; columns: 2; column-gap: 16px; }
+.ogd :deep(.ogd__people i) { font-style: normal; color: var(--text-soft); }
 
 .ogd__cols {
   display: grid;
@@ -210,7 +361,6 @@ onMounted(load);
   gap: 8px;
   align-content: start;
 }
-
 .ogd__table {
   width: 100%;
   border-collapse: collapse;
@@ -219,18 +369,17 @@ onMounted(load);
   border: 2px solid var(--border-brutal);
 }
 .ogd__table th,
-.ogd__table td {
-  padding: 3px 6px;
-  border-bottom: 1px solid #e4e4de;
-  text-align: left;
-}
+.ogd__table td { padding: 3px 6px; border-bottom: 1px solid #e4e4de; text-align: left; }
 .ogd__table th { font-weight: 700; background: var(--bg-soft); }
 .ogd__table td:not(:first-child),
 .ogd__table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ogd__table tr.is-idle td { color: var(--text-soft); }
+.ogd__table tr.is-today td { font-weight: 700; background: var(--accent-lime-soft); }
 
 @media (max-width: 1100px) {
-  .ogd__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ogd__mid, .ogd__cols { grid-template-columns: 1fr; }
+  .ogd__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ogd__ranks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ogd__cards, .ogd__cols { grid-template-columns: 1fr; }
+  .ogd__card--wide { grid-column: auto; }
 }
 </style>

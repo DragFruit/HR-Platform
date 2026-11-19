@@ -4,7 +4,7 @@ import { readOgonekState } from '../../utils/ogonekStore';
 import { getDeployAppEnv } from '../../utils/appEnv';
 import { isQaTestEmployeeId, QA_TEST_DEPARTMENT_NAME } from '../../../app/data/qaTestDepartment';
 import { ogonekClock } from '../../utils/ogonekClock';
-import { OGONEK_DAYS } from '../../../app/events/ogonek/content';
+import { OGONEK_DAYS, OGONEK_RANKS, ogonekRankFor } from '../../../app/events/ogonek/content';
 import { OGONEK_DAY_DATES } from '../../../app/events/ogonek/timeline';
 
 /**
@@ -69,6 +69,33 @@ export default defineEventHandler(async (event) => {
   const dresscode: Record<string, number> = {};
   for (const p of players) if (p.dresscode) dresscode[p.dresscode] = (dresscode[p.dresscode] ?? 0) + 1;
 
+  // Сколько участников в каждом звании — по числу открытых окон
+  const ranks = OGONEK_RANKS.map((r) => ({
+    title: r.title,
+    from: r.from,
+    count: players.filter((p) => ogonekRankFor(p.opened.length) === r.title).length
+  }));
+
+  type Person = { name: string; department: string };
+  const who = (list: typeof players): Person[] =>
+    list.map((p) => ({ name: p.name, department: p.department })).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  // Списки для карточек. «Спасибо» анонимные, письма запечатаны — только числа.
+  const lists = {
+    plugged: who(players.filter((p) => p.plugged)),
+    hats: who(players.filter((p) => p.hat)),
+    skating: who(players.filter((p) => p.skating)),
+    santaClassic: who(players.filter((p) => p.santa === 'classic')),
+    santaElephant: who(players.filter((p) => p.santa === 'elephant')),
+    dresscode: Object.fromEntries(
+      Object.keys(dresscode).map((look) => [look, who(players.filter((p) => p.dresscode === look))])
+    ) as Record<string, Person[]>,
+    recipes: [...state.recipes]
+      .sort((a, b) => b.voters.length - a.voters.length)
+      .map((r) => ({ title: r.title, text: r.text, name: r.name, department: r.department, votes: r.voters.length })),
+    toys: state.toys.map((t) => ({ name: t.name, department: t.department, wish: t.wish }))
+  };
+
   return {
     summary: {
       employees: rows.length,
@@ -91,6 +118,8 @@ export default defineEventHandler(async (event) => {
     },
     byDay,
     dresscode,
+    ranks,
+    lists,
     rows
   };
 });
