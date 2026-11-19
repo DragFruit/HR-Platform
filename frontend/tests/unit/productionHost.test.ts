@@ -25,6 +25,7 @@ describe('isProductionBrowserHost', () => {
     expect(isProductionBrowserHost('vibe.testvbi.ru', '')).toBe(true);
     expect(isProductionBrowserHost('vibe.testvbi.ru', '80')).toBe(true);
     expect(isProductionBrowserHost('vibe.testvbi.ru', '443')).toBe(true);
+    expect(isProductionBrowserHost('vibe.testvbi.ru', '9180')).toBe(true);
     expect(isProductionBrowserHost('vibe.testvbi.ru', '8080')).toBe(false);
     expect(isProductionBrowserHost('git.testvbi.ru', '')).toBe(false);
   });
